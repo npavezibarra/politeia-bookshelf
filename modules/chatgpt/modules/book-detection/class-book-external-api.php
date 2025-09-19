@@ -1,6 +1,13 @@
 <?php
+
+namespace Politeia\ChatGPT\BookDetection;
+
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 /**
- * Class: Politeia_Book_External_API
+ * Class: BookExternalApi
  * Purpose: Query external book sources (Open Library, Google Books) to find the
  *          best match for a given (title, author). Always maps provider fields
  *          to a common shape and extracts a usable publication year.
@@ -20,9 +27,7 @@
  * - 'politeia_book_external_providers' (array)  Default ['openlibrary','googlebooks'].
  */
 
-if ( ! defined('ABSPATH') ) exit;
-
-class Politeia_Book_External_API {
+class BookExternalApi {
 
     /** @var string */
     protected $text_domain = 'politeia-chatgpt';
@@ -340,4 +345,8 @@ class Politeia_Book_External_API {
         }
         return $resp;
     }
+}
+
+if ( ! class_exists( 'Politeia_Book_External_API', false ) ) {
+    class_alias( BookExternalApi::class, 'Politeia_Book_External_API' );
 }
