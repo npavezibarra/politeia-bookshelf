@@ -2,6 +2,10 @@
 
 namespace Politeia\ChatGPT\BookDetection;
 
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 /**
  * Class: BookConfirmSchema
  * Purpose:
@@ -15,10 +19,6 @@ namespace Politeia\ChatGPT\BookDetection;
  *   - This module only manages the confirmation queue used by Politeia ChatGPT.
  *   - Canonical books tables (wp_politeia_books / wp_politeia_user_books) are owned by Politeia Reading.
  */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
 
 class BookConfirmSchema {
 

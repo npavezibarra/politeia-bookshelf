@@ -2,6 +2,10 @@
 
 namespace Politeia\ChatGPT\BookDetection;
 
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
 /**
  * Class: BookDbHandler
  * Purpose: Database utilities for book matching, deduplication (hash), insertion, user linking — with slug support.
@@ -19,10 +23,6 @@ namespace Politeia\ChatGPT\BookDetection;
  *
  * This class does not create or migrate tables.
  */
-
-if ( ! defined( 'ABSPATH' ) ) {
-    exit;
-}
 
 class BookDbHandler {
 
