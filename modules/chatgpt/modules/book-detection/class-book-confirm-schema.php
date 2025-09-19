@@ -1,6 +1,9 @@
 <?php
+
+namespace Politeia\ChatGPT\BookDetection;
+
 /**
- * Class: Politeia_Book_Confirm_Schema
+ * Class: BookConfirmSchema
  * Purpose:
  *   - Create/upgrade the confirmation queue table (wp_politeia_book_confirm).
  *   - Provide helpers to mark items as "In Shelf" (book already in user's library),
@@ -13,9 +16,11 @@
  *   - Canonical books tables (wp_politeia_books / wp_politeia_user_books) are owned by Politeia Reading.
  */
 
-if ( ! defined('ABSPATH') ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
-class Politeia_Book_Confirm_Schema {
+class BookConfirmSchema {
 
     /** @var string */
     protected static $td = 'politeia-chatgpt';
@@ -412,4 +417,8 @@ class Politeia_Book_Confirm_Schema {
             $wpdb->query($sql);
         }
     }
+}
+
+if ( ! class_exists( 'Politeia_Book_Confirm_Schema', false ) ) {
+    class_alias( BookConfirmSchema::class, 'Politeia_Book_Confirm_Schema' );
 }

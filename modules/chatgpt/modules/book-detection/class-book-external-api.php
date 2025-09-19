@@ -1,6 +1,19 @@
 <?php
+
+namespace Politeia\ChatGPT\BookDetection;
+
+use function add_query_arg;
+use function apply_filters;
+use function is_wp_error;
+use function remove_accents;
+use function sanitize_text_field;
+use function similar_text;
+use function wp_json_encode;
+use function wp_remote_get;
+use function wp_remote_retrieve_body;
+
 /**
- * Class: Politeia_Book_External_API
+ * Class: BookExternalApi
  * Purpose: Query external book sources (Open Library, Google Books) to find the
  *          best match for a given (title, author). Always maps provider fields
  *          to a common shape and extracts a usable publication year.
@@ -20,9 +33,11 @@
  * - 'politeia_book_external_providers' (array)  Default ['openlibrary','googlebooks'].
  */
 
-if ( ! defined('ABSPATH') ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
-class Politeia_Book_External_API {
+class BookExternalApi {
 
     /** @var string */
     protected $text_domain = 'politeia-chatgpt';
@@ -73,7 +88,9 @@ class Politeia_Book_External_API {
      */
     public function search_best_match( $title, $author, $args = [] ) {
         $limit = isset( $args['limit_per_provider'] ) ? (int) $args['limit_per_provider'] : 5;
-        if ( $limit <= 0 ) $limit = 5;
+        if ( $limit <= 0 ) {
+            $limit = 5;
+        }
 
         $target_title_norm  = $this->normalize( $title );
         $target_author_norm = $this->normalize( $author );
@@ -94,7 +111,9 @@ class Politeia_Book_External_API {
             }
         }
 
-        if ( empty( $candidates ) ) return null;
+        if ( empty( $candidates ) ) {
+            return null;
+        }
 
         // De-duplicate by normalized (title|author) keeping highest score
         $dedup = [];
@@ -118,7 +137,10 @@ class Politeia_Book_External_API {
             if ( $score > $best_score ) { $best_score = $score; $best = $cand; }
         }
 
-        if ( $best && $best['score'] >= $this->min_score ) return $best;
+        if ( $best && $best['score'] >= $this->min_score ) {
+            return $best;
+        }
+
         return null;
     }
 
@@ -340,4 +362,8 @@ class Politeia_Book_External_API {
         }
         return $resp;
     }
+}
+
+if ( ! class_exists( 'Politeia_Book_External_API', false ) ) {
+    class_alias( BookExternalApi::class, 'Politeia_Book_External_API' );
 }

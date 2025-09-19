@@ -1,6 +1,9 @@
 <?php
+
+namespace Politeia\ChatGPT\BookDetection;
+
 /**
- * Class: Politeia_Book_DB_Handler
+ * Class: BookDbHandler
  * Purpose: Database utilities for book matching, deduplication (hash), insertion, user linking — with slug support.
  * Language: English (all user-facing strings are translatable via the 'politeia-chatgpt' text domain).
  *
@@ -17,9 +20,11 @@
  * This class does not create or migrate tables.
  */
 
-if ( ! defined('ABSPATH') ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
 
-class Politeia_Book_DB_Handler {
+class BookDbHandler {
 
     /** @var string */
     protected $tbl_books;
@@ -516,4 +521,8 @@ class Politeia_Book_DB_Handler {
         $res = $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$table} LIKE %s", $column ) );
         return ! empty( $res );
     }
+}
+
+if ( ! class_exists( 'Politeia_Book_DB_Handler', false ) ) {
+    class_alias( BookDbHandler::class, 'Politeia_Book_DB_Handler' );
 }
