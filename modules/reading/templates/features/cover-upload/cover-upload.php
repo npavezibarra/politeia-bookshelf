@@ -12,7 +12,8 @@ class PRS_Cover_Upload_Feature {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		add_shortcode( 'prs_cover_button', array( __CLASS__, 'shortcode_button' ) );
 		add_action( 'wp_ajax_prs_cover_save_crop', array( __CLASS__, 'ajax_save_crop' ) );
-	}
+		add_action( 'wp_ajax_prs_cover_fetch_remote', array( __CLASS__, 'ajax_fetch_remote' ) );
+}
 
 	public static function assets() {
 		// Solo en la pantalla del libro (usas query var prs_book_slug en tu template).
@@ -48,16 +49,26 @@ class PRS_Cover_Upload_Feature {
 			array(
 				'ajax'        => admin_url( 'admin-ajax.php' ),
 				'nonce'       => wp_create_nonce( 'prs_cover_save_crop' ),
+				'fetchNonce'  => wp_create_nonce( 'prs_cover_fetch_remote' ),
 				'coverWidth'  => 240,
 				'coverHeight' => 450,
 				'onlyOne'     => 1,
 			)
 		);
-	}
+}
 
 	public static function shortcode_button( $atts ) {
-		// Botón compacto para insertar sobre la portada
-		return '<button type="button" id="prs-cover-open" class="prs-btn prs-cover-btn">Upload Book Cover</button>';
+		ob_start();
+		?>
+		<div class="prs-cover-actions">
+			<div class="prs-cover-buttons">
+				<button type="button" id="prs-cover-open" class="prs-btn prs-cover-btn">Upload Book Cover</button>
+				<button type="button" id="prs-cover-fetch" class="prs-btn prs-cover-btn">Get Book Cover</button>
+			</div>
+			<span id="prs-cover-status" aria-live="polite"></span>
+		</div>
+		<?php
+		return ob_get_clean();
 	}
 
 	/**
@@ -177,6 +188,7 @@ class PRS_Cover_Upload_Feature {
 			$t,
 			array(
 				'cover_attachment_id_user' => (int) $att_id,
+				'cover_url_user'          => null,
 				'updated_at'               => current_time( 'mysql', true ),
 			),
 			array( 'id' => $user_book_id )
@@ -190,6 +202,268 @@ class PRS_Cover_Upload_Feature {
 				'src' => $src ?: '',
 			)
 		);
+}
+
+	public static function ajax_fetch_remote() {
+		if ( ! is_user_logged_in() ) {
+			wp_send_json_error( array( 'message' => __( 'Authentication required', 'politeia-reading' ) ), 401 );
+		}
+
+		$nonce = isset( $_POST['_ajax_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_ajax_nonce'] ) ) : '';
+		if ( ! $nonce || ! wp_verify_nonce( $nonce, 'prs_cover_fetch_remote' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Security check failed', 'politeia-reading' ) ), 403 );
+		}
+
+		$user_id      = get_current_user_id();
+		$user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+		$book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+
+		if ( ! $user_book_id || ! $book_id ) {
+			wp_send_json_error( array( 'message' => __( 'Missing parameters', 'politeia-reading' ) ), 400 );
+		}
+
+		global $wpdb;
+		$user_books_table = $wpdb->prefix . 'politeia_user_books';
+		$books_table      = $wpdb->prefix . 'politeia_books';
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id FROM {$user_books_table} WHERE id = %d AND user_id = %d AND book_id = %d LIMIT 1",
+				$user_book_id,
+				$user_id,
+				$book_id
+			)
+		);
+
+		if ( ! $row ) {
+			wp_send_json_error( array( 'message' => __( 'You cannot modify this book.', 'politeia-reading' ) ), 403 );
+		}
+
+		$book = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT title, author FROM {$books_table} WHERE id = %d LIMIT 1",
+				$book_id
+			)
+		);
+
+		if ( ! $book ) {
+			wp_send_json_error( array( 'message' => __( 'Book not found.', 'politeia-reading' ) ), 404 );
+		}
+
+		$title  = isset( $book->title ) ? wp_strip_all_tags( $book->title ) : '';
+		$author = isset( $book->author ) ? wp_strip_all_tags( $book->author ) : '';
+
+		$providers = array( 'open_library', 'google_books' );
+		$result    = null;
+
+		foreach ( $providers as $provider ) {
+			if ( 'open_library' === $provider ) {
+				$result = self::fetch_from_open_library( $title, $author );
+			} elseif ( 'google_books' === $provider ) {
+				$result = self::fetch_from_google_books( $title, $author );
+			}
+
+			if ( $result ) {
+				break;
+			}
+		}
+
+		if ( ! $result || empty( $result['url'] ) ) {
+			wp_send_json_error( array( 'message' => __( 'No cover found', 'politeia-reading' ) ), 404 );
+		}
+
+		$url    = self::normalize_remote_url( $result['url'] );
+		$source = isset( $result['source'] ) ? $result['source'] : '';
+
+		if ( ! $url ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid cover URL returned', 'politeia-reading' ) ), 500 );
+		}
+
+                $key = 'u' . $user_id . 'ub' . $user_book_id;
+
+                $existing_attachments = get_posts(
+                        array(
+                                'post_type'      => 'attachment',
+                                'post_status'    => 'inherit',
+                                'fields'         => 'ids',
+                                'posts_per_page' => -1,
+                                'author'         => $user_id,
+                                'meta_query'     => array(
+                                        array(
+                                                'key'   => '_prs_cover_key',
+                                                'value' => $key,
+                                        ),
+                                ),
+                        )
+                );
+
+                foreach ( $existing_attachments as $attachment_id ) {
+                        wp_delete_attachment( $attachment_id, true );
+                }
+
+                $wpdb->update(
+                        $user_books_table,
+                        array(
+                                'cover_url_user'           => $url,
+                                'cover_attachment_id_user' => null,
+                                'updated_at'                => current_time( 'mysql', true ),
+                        ),
+                        array( 'id' => $user_book_id )
+                );
+
+		wp_send_json_success(
+			array(
+				'url'    => esc_url( $url ),
+				'source' => $source,
+			)
+		);
+	}
+
+	private static function fetch_from_open_library( $title, $author ) {
+		$args = array(
+			'limit' => 5,
+		);
+
+		if ( $title ) {
+			$args['title'] = $title;
+		}
+
+		if ( $author ) {
+			$args['author'] = $author;
+		}
+
+		$url     = add_query_arg( $args, 'https://openlibrary.org/search.json' );
+		$request = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 10,
+			)
+		);
+
+		if ( is_wp_error( $request ) ) {
+			return null;
+		}
+
+		$code = wp_remote_retrieve_response_code( $request );
+		if ( 200 !== (int) $code ) {
+			return null;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $request ), true );
+		if ( empty( $data['docs'] ) || ! is_array( $data['docs'] ) ) {
+			return null;
+		}
+
+		foreach ( $data['docs'] as $doc ) {
+			if ( ! empty( $doc['cover_i'] ) ) {
+				$cover_id = (int) $doc['cover_i'];
+				if ( $cover_id > 0 ) {
+					return array(
+						'url'    => sprintf( 'https://covers.openlibrary.org/b/id/%d-L.jpg', $cover_id ),
+						'source' => 'open_library',
+					);
+				}
+			}
+
+			if ( ! empty( $doc['isbn'] ) && is_array( $doc['isbn'] ) ) {
+				foreach ( $doc['isbn'] as $isbn ) {
+					$isbn = preg_replace( '/[^0-9Xx]/', '', (string) $isbn );
+					if ( $isbn ) {
+						return array(
+							'url'    => sprintf( 'https://covers.openlibrary.org/b/isbn/%s-L.jpg', rawurlencode( $isbn ) ),
+							'source' => 'open_library',
+						);
+					}
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private static function fetch_from_google_books( $title, $author ) {
+		$query_parts = array();
+
+		if ( $title ) {
+			$query_parts[] = 'intitle:' . $title;
+		}
+
+		if ( $author ) {
+			$query_parts[] = 'inauthor:' . $author;
+		}
+
+		if ( empty( $query_parts ) ) {
+			return null;
+		}
+
+		$url      = add_query_arg(
+			array(
+				'q'          => implode( ' ', $query_parts ),
+				'maxResults' => 5,
+			),
+			'https://www.googleapis.com/books/v1/volumes'
+		);
+		$request = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 10,
+			)
+		);
+
+		if ( is_wp_error( $request ) ) {
+			return null;
+		}
+
+		$code = wp_remote_retrieve_response_code( $request );
+		if ( 200 !== (int) $code ) {
+			return null;
+		}
+
+		$data = json_decode( wp_remote_retrieve_body( $request ), true );
+		if ( empty( $data['items'] ) || ! is_array( $data['items'] ) ) {
+			return null;
+		}
+
+		$priority = array( 'extraLarge', 'large', 'medium', 'small', 'thumbnail', 'smallThumbnail' );
+
+		foreach ( $data['items'] as $item ) {
+			if ( empty( $item['volumeInfo']['imageLinks'] ) || ! is_array( $item['volumeInfo']['imageLinks'] ) ) {
+				continue;
+			}
+
+			foreach ( $priority as $key ) {
+				if ( empty( $item['volumeInfo']['imageLinks'][ $key ] ) ) {
+					continue;
+				}
+
+				$url = self::normalize_remote_url( $item['volumeInfo']['imageLinks'][ $key ] );
+				if ( $url ) {
+					return array(
+						'url'    => $url,
+						'source' => 'google_books',
+					);
+				}
+			}
+		}
+
+		return null;
+	}
+
+	private static function normalize_remote_url( $url ) {
+		$url = trim( (string) $url );
+		if ( '' === $url ) {
+			return '';
+		}
+
+		if ( strpos( $url, '//' ) === 0 ) {
+			$url = 'https:' . $url;
+		}
+
+		if ( 0 === strpos( $url, 'http://' ) ) {
+			$url = 'https://' . substr( $url, 7 );
+		}
+
+		return esc_url_raw( $url, array( 'http', 'https' ) );
 	}
 }
 PRS_Cover_Upload_Feature::init();

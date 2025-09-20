@@ -8,9 +8,59 @@
     };
   }
 
+  function getAjaxUrl() {
+    return (window.PRS_COVER && PRS_COVER.ajax) || '';
+  }
+
+  function getFetchNonce() {
+    if (window.PRS_BOOK && window.PRS_BOOK.fetchNonce) {
+      return window.PRS_BOOK.fetchNonce;
+    }
+    return (window.PRS_COVER && PRS_COVER.fetchNonce) || '';
+  }
+
   // Helpers
   const $ = (s, r = document) => r.querySelector(s);
   const el = (t, cls) => { const e = document.createElement(t); if (cls) e.className = cls; return e; };
+
+  function setOverlayStatus(text, isError = false) {
+    const status = document.getElementById('prs-cover-status');
+    if (!status) return;
+    status.textContent = text || '';
+    status.classList.toggle('is-error', !!isError);
+  }
+
+  function ensureCoverImage(url) {
+    if (!url) return;
+    const frame = document.getElementById('prs-cover-frame');
+    if (!frame) return;
+
+    let img = document.getElementById('prs-cover-img');
+    const placeholder = document.getElementById('prs-cover-placeholder');
+
+    if (img) {
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+      img.removeAttribute('data-src');
+      img.removeAttribute('data-srcset');
+      img.src = url;
+    } else {
+      img = document.createElement('img');
+      img.id = 'prs-cover-img';
+      img.className = 'prs-cover-img';
+      img.alt = '';
+      img.src = url;
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+      frame.appendChild(img);
+    }
+
+    if (placeholder && placeholder.parentNode) {
+      placeholder.parentNode.removeChild(placeholder);
+    }
+
+    frame.classList.add('has-image');
+  }
 
   // Estado de la imagen en el stage
   const STAGE_W = 280; // más pequeño => cabe sin scroll
@@ -185,7 +235,7 @@
       });
 
       try {
-        const resp = await fetch((window.PRS_COVER && PRS_COVER.ajax) || '', {
+        const resp = await fetch(getAjaxUrl(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
           credentials: 'same-origin',
@@ -200,21 +250,8 @@
 
         // Reemplazar la portada del front
         const src = out.data.src;
-        const img = document.getElementById('prs-cover-img');
-        const ph  = document.getElementById('prs-cover-placeholder');
-        const frame = document.getElementById('prs-cover-frame');
-
-        if (img) {
-          img.src = src + (src.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
-        } else if (frame) {
-          if (ph && ph.parentNode) ph.parentNode.removeChild(ph);
-          const n = document.createElement('img');
-          n.id = 'prs-cover-img';
-          n.className = 'prs-cover-img';
-          n.alt = '';
-          n.src = src;
-          frame.appendChild(n);
-        }
+        const bust = src + (src.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+        ensureCoverImage(bust);
 
         closeModal();
       } catch (e) {
@@ -230,5 +267,80 @@
     if (!btn) return;
     e.preventDefault();
     openModal();
+  });
+
+  async function onFetchRemote(button) {
+    const { user_book_id, book_id } = getContext();
+    if (!user_book_id || !book_id) {
+      setOverlayStatus('Missing book context', true);
+      return;
+    }
+
+    const nonce = getFetchNonce();
+    if (!nonce) {
+      setOverlayStatus('Security token missing', true);
+      return;
+    }
+
+    button.disabled = true;
+    setOverlayStatus('Fetching…', false);
+
+    const body = new URLSearchParams({
+      action: 'prs_cover_fetch_remote',
+      user_book_id,
+      book_id,
+      _ajax_nonce: nonce
+    });
+
+    try {
+      const resp = await fetch(getAjaxUrl(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+        credentials: 'same-origin',
+        body
+      });
+
+      const text = await resp.text();
+      let out = null;
+      try {
+        out = JSON.parse(text);
+      } catch (parseErr) {
+        throw new Error('Unexpected response');
+      }
+
+      if (!resp.ok || !out || !out.success) {
+        const msg = out && out.data && out.data.message ? out.data.message : (out && out.message) ? out.message : 'No cover found';
+        throw new Error(msg);
+      }
+
+      const data = out.data || {};
+      if (!data.url) {
+        throw new Error('No cover found');
+      }
+
+      const bust = data.url + (data.url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+      ensureCoverImage(bust);
+
+      let provider = 'the selected provider';
+      if (data.source === 'open_library') {
+        provider = 'Open Library';
+      } else if (data.source === 'google_books') {
+        provider = 'Google Books';
+      }
+
+      setOverlayStatus(`Cover found from ${provider}.`, false);
+    } catch (error) {
+      console.error('[PRS] cover fetch error', error);
+      setOverlayStatus(error.message || 'Error fetching cover', true);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const fetchBtn = e.target.closest('#prs-cover-fetch');
+    if (!fetchBtn) return;
+    e.preventDefault();
+    onFetchRemote(fetchBtn);
   });
 })();
