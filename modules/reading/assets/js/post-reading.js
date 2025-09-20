@@ -7,8 +7,10 @@
  */
 document.addEventListener("DOMContentLoaded", () => {
   const wrap = document.querySelector(".politeia-post-reading-wrap");
-  const btn  = document.querySelector(".politeia-post-reading-btn");
   if (!wrap || typeof politeiaPostReading === "undefined") return;
+
+  // Limita cualquier manipulación al botón que vive dentro del wrapper del post.
+  const btn = wrap.querySelector(".politeia-post-reading-btn");
 
   /* ---------- Inyectar barra de progreso (sin tocar PHP) ---------- */
   const progress = document.createElement("div");
