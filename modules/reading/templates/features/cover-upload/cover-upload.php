@@ -279,15 +279,37 @@ class PRS_Cover_Upload_Feature {
 			wp_send_json_error( array( 'message' => __( 'Invalid cover URL returned', 'politeia-reading' ) ), 500 );
 		}
 
-		$wpdb->update(
-			$user_books_table,
-			array(
-				'cover_url_user'           => $url,
-				'cover_attachment_id_user' => null,
-				'updated_at'                => current_time( 'mysql', true ),
-			),
-			array( 'id' => $user_book_id )
-		);
+                $key = 'u' . $user_id . 'ub' . $user_book_id;
+
+                $existing_attachments = get_posts(
+                        array(
+                                'post_type'      => 'attachment',
+                                'post_status'    => 'inherit',
+                                'fields'         => 'ids',
+                                'posts_per_page' => -1,
+                                'author'         => $user_id,
+                                'meta_query'     => array(
+                                        array(
+                                                'key'   => '_prs_cover_key',
+                                                'value' => $key,
+                                        ),
+                                ),
+                        )
+                );
+
+                foreach ( $existing_attachments as $attachment_id ) {
+                        wp_delete_attachment( $attachment_id, true );
+                }
+
+                $wpdb->update(
+                        $user_books_table,
+                        array(
+                                'cover_url_user'           => $url,
+                                'cover_attachment_id_user' => null,
+                                'updated_at'                => current_time( 'mysql', true ),
+                        ),
+                        array( 'id' => $user_book_id )
+                );
 
 		wp_send_json_success(
 			array(

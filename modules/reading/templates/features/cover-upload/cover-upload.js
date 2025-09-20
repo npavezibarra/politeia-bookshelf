@@ -39,6 +39,10 @@
     const placeholder = document.getElementById('prs-cover-placeholder');
 
     if (img) {
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
+      img.removeAttribute('data-src');
+      img.removeAttribute('data-srcset');
       img.src = url;
     } else {
       img = document.createElement('img');
@@ -46,6 +50,8 @@
       img.className = 'prs-cover-img';
       img.alt = '';
       img.src = url;
+      img.removeAttribute('srcset');
+      img.removeAttribute('sizes');
       frame.appendChild(img);
     }
 
@@ -312,7 +318,8 @@
         throw new Error('No cover found');
       }
 
-      ensureCoverImage(data.url);
+      const bust = data.url + (data.url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
+      ensureCoverImage(bust);
 
       let provider = 'the selected provider';
       if (data.source === 'open_library') {

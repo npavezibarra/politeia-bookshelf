@@ -84,12 +84,13 @@ wp_localize_script(
 	#prs-reading-sessions{ grid-column:1 / 4; grid-row:3; min-height:320px; }
 
 	/* Frame portada */
-	.prs-cover-frame{
-	position:relative; width:100%; height:auto; overflow:hidden;
-	background:#eee; border-radius:12px;
-	}
-	.prs-cover-img{ width:100%; height:100%; object-fit:cover; display:block; }
-	.prs-cover-placeholder{ width:100%; height:100%; background:#ddd; }
+        .prs-cover-frame{
+        position:relative; width:280px; max-width:100%;
+        height:auto; overflow:hidden;
+        background:#eee; border-radius:12px; margin:0 auto;
+        }
+        .prs-cover-img{ width:100%; height:auto; display:block; object-fit:contain; }
+        .prs-cover-placeholder{ width:100%; aspect-ratio:280 / 450; background:#ddd; }
 
 	/* Tipos y tablas */
 	.prs-box h2{ margin:0 0 8px; }
