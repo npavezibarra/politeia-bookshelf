@@ -53,16 +53,17 @@ wp_enqueue_script( 'politeia-my-book' ); // asegúrate de registrar este JS en t
 
 /** Datos al JS principal */
 wp_localize_script(
-	'politeia-my-book',
-	'PRS_BOOK',
-	array(
-		'ajax_url'      => admin_url( 'admin-ajax.php' ),
-		'nonce'         => wp_create_nonce( 'prs_update_user_book_meta' ),
-		'user_book_id'  => (int) $ub->id,
-		'book_id'       => (int) $book->id,
-		'owning_status' => (string) $ub->owning_status,
-		'has_contact'   => $has_contact ? 1 : 0,
-		'rating'        => isset( $ub->rating ) && $ub->rating !== null ? (int) $ub->rating : 0,
+        'politeia-my-book',
+        'PRS_BOOK',
+        array(
+                'ajax_url'      => admin_url( 'admin-ajax.php' ),
+                'nonce'         => wp_create_nonce( 'prs_update_user_book_meta' ),
+                'fetchNonce'    => wp_create_nonce( 'prs_cover_fetch_remote' ),
+                'user_book_id'  => (int) $ub->id,
+                'book_id'       => (int) $book->id,
+                'owning_status' => (string) $ub->owning_status,
+                'has_contact'   => $has_contact ? 1 : 0,
+                'rating'        => isset( $ub->rating ) && $ub->rating !== null ? (int) $ub->rating : 0,
 	)
 );
 ?>
@@ -133,32 +134,61 @@ wp_localize_script(
 	<!-- Columna izquierda: portada -->
 	<div id="prs-book-cover" class="prs-box">
 		<?php
-		$user_cover_id  = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
-		$canon_cover_id = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
-		$final_cover_id = $user_cover_id ?: $canon_cover_id;
-		$has_image      = $final_cover_id > 0;
-		?>
-		<div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
-		<?php if ( $has_image ) : ?>
-			<?php
-			echo wp_get_attachment_image(
-				$final_cover_id,
-				'large',
-				false,
-				array(
-					'class' => 'prs-cover-img',
-					'alt'   => esc_attr( $book->title ),
-					'id'    => 'prs-cover-img',
-				)
-			);
-			?>
-		<?php else : ?>
-			<div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
-		<?php endif; ?>
-		<div class="prs-cover-overlay">
-			<?php echo do_shortcode( '[prs_cover_button]' ); ?>
-		</div>
-		</div>
+                $user_cover_id  = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
+                $user_cover_url = ! empty( $ub->cover_url_user ) ? esc_url( $ub->cover_url_user ) : '';
+                $canon_cover_id = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
+                $canon_cover_url = ! empty( $book->cover_url ) ? esc_url( $book->cover_url ) : '';
+                $final_cover_id = $user_cover_id ?: $canon_cover_id;
+                $has_image      = $final_cover_id > 0 || $user_cover_url || $canon_cover_url;
+                ?>
+                <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
+                <?php if ( $user_cover_id ) : ?>
+                        <?php
+                        echo wp_get_attachment_image(
+                                $user_cover_id,
+                                'large',
+                                false,
+                                array(
+                                        'class' => 'prs-cover-img',
+                                        'alt'   => esc_attr( $book->title ),
+                                        'id'    => 'prs-cover-img',
+                                )
+                        );
+                        ?>
+                <?php elseif ( $user_cover_url ) : ?>
+                        <img
+                                id="prs-cover-img"
+                                class="prs-cover-img"
+                                src="<?php echo esc_url( $user_cover_url ); ?>"
+                                alt="<?php echo esc_attr( $book->title ); ?>"
+                        />
+                <?php elseif ( $canon_cover_id ) : ?>
+                        <?php
+                        echo wp_get_attachment_image(
+                                $canon_cover_id,
+                                'large',
+                                false,
+                                array(
+                                        'class' => 'prs-cover-img',
+                                        'alt'   => esc_attr( $book->title ),
+                                        'id'    => 'prs-cover-img',
+                                )
+                        );
+                        ?>
+                <?php elseif ( $canon_cover_url ) : ?>
+                        <img
+                                id="prs-cover-img"
+                                class="prs-cover-img"
+                                src="<?php echo esc_url( $canon_cover_url ); ?>"
+                                alt="<?php echo esc_attr( $book->title ); ?>"
+                        />
+                <?php else : ?>
+                        <div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
+                <?php endif; ?>
+                <div class="prs-cover-overlay">
+                        <?php echo do_shortcode( '[prs_cover_button]' ); ?>
+                </div>
+                </div>
 	</div>
 
 	<!-- Arriba centro: título/info y metacampos -->
