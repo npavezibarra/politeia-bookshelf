@@ -8,6 +8,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PRS_Cover_Upload_Feature {
 
+        const REMOTE_MIN_WIDTH  = 280;
+        const REMOTE_MIN_HEIGHT = 450;
+        const REMOTE_SNIFF_LIMIT = 131072;
+
 	public static function init() {
 		add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
 		add_shortcode( 'prs_cover_button', array( __CLASS__, 'shortcode_button' ) );
@@ -226,14 +230,14 @@ class PRS_Cover_Upload_Feature {
 		$user_books_table = $wpdb->prefix . 'politeia_user_books';
 		$books_table      = $wpdb->prefix . 'politeia_books';
 
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT id FROM {$user_books_table} WHERE id = %d AND user_id = %d AND book_id = %d LIMIT 1",
-				$user_book_id,
-				$user_id,
-				$book_id
-			)
-		);
+                $row = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT id, cover_url_user FROM {$user_books_table} WHERE id = %d AND user_id = %d AND book_id = %d LIMIT 1",
+                                $user_book_id,
+                                $user_id,
+                                $book_id
+                        )
+                );
 
 		if ( ! $row ) {
 			wp_send_json_error( array( 'message' => __( 'You cannot modify this book.', 'politeia-reading' ) ), 403 );
@@ -250,38 +254,58 @@ class PRS_Cover_Upload_Feature {
 			wp_send_json_error( array( 'message' => __( 'Book not found.', 'politeia-reading' ) ), 404 );
 		}
 
-		$title  = isset( $book->title ) ? wp_strip_all_tags( $book->title ) : '';
-		$author = isset( $book->author ) ? wp_strip_all_tags( $book->author ) : '';
+                $title  = isset( $book->title ) ? wp_strip_all_tags( $book->title ) : '';
+                $author = isset( $book->author ) ? wp_strip_all_tags( $book->author ) : '';
 
-		$providers = array( 'open_library', 'google_books' );
-		$result    = null;
+                $existing_remote_url = '';
+                if ( isset( $row->cover_url_user ) ) {
+                        $existing_remote_url = self::normalize_remote_url( $row->cover_url_user );
+                }
 
-		foreach ( $providers as $provider ) {
-			if ( 'open_library' === $provider ) {
-				$result = self::fetch_from_open_library( $title, $author );
-			} elseif ( 'google_books' === $provider ) {
-				$result = self::fetch_from_google_books( $title, $author );
-			}
+                $exclude_urls = array();
+                if ( $existing_remote_url ) {
+                        $exclude_urls[] = $existing_remote_url;
+                }
 
-			if ( $result ) {
-				break;
-			}
-		}
+                $providers = array( 'open_library', 'google_books' );
+                $result    = null;
 
-		if ( ! $result || empty( $result['url'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'No verifiable cover found', 'politeia-reading' ) ), 404 );
-		}
+                foreach ( $providers as $provider ) {
+                        if ( 'open_library' === $provider ) {
+                                $result = self::fetch_from_open_library( $title, $author, $exclude_urls );
+                        } elseif ( 'google_books' === $provider ) {
+                                $result = self::fetch_from_google_books( $title, $author, $exclude_urls );
+                        }
 
-		$source        = isset( $result['source'] ) ? $result['source'] : '';
-		$validated_url = self::validate_remote_image_url( $result['url'] );
+                        if ( $result ) {
+                                break;
+                        }
+                }
 
-		if ( ! $validated_url ) {
-			wp_send_json_error( array( 'message' => __( 'No verifiable cover found', 'politeia-reading' ) ), 404 );
-		}
+                if ( ! $result || empty( $result['url'] ) ) {
+                        $message = $existing_remote_url ? __( 'No additional covers found', 'politeia-reading' ) : __( 'No verifiable cover found', 'politeia-reading' );
+                        wp_send_json_error( array( 'message' => $message ), 404 );
+                }
 
-		$url = $validated_url;
+                $source        = isset( $result['source'] ) ? $result['source'] : '';
+                $validated_url = self::validate_remote_image_url( $result['url'], self::REMOTE_MIN_WIDTH, self::REMOTE_MIN_HEIGHT );
 
-		$key = 'u' . $user_id . 'ub' . $user_book_id;
+                if ( ! $validated_url ) {
+                        $message = $existing_remote_url ? __( 'No additional covers found', 'politeia-reading' ) : __( 'No verifiable cover found', 'politeia-reading' );
+                        wp_send_json_error( array( 'message' => $message ), 404 );
+                }
+
+                $url    = isset( $validated_url['url'] ) ? $validated_url['url'] : '';
+                $width  = isset( $validated_url['width'] ) ? (int) $validated_url['width'] : 0;
+                $height = isset( $validated_url['height'] ) ? (int) $validated_url['height'] : 0;
+
+                if ( $existing_remote_url && $existing_remote_url === $url ) {
+                        wp_send_json_error( array( 'message' => __( 'No additional covers found', 'politeia-reading' ) ), 404 );
+                }
+
+                $status = $existing_remote_url ? 'alternate' : 'found';
+
+                $key = 'u' . $user_id . 'ub' . $user_book_id;
 
 		$existing_attachments = get_posts(
 			array(
@@ -317,14 +341,17 @@ class PRS_Cover_Upload_Feature {
                         array(
                                 'url'    => esc_url_raw( $url ),
                                 'source' => $source,
+                                'status' => $status,
+                                'width'  => $width,
+                                'height' => $height,
                         )
                 );
-	}
+        }
 
-	private static function fetch_from_open_library( $title, $author ) {
-		$args = array(
-			'limit' => 5,
-		);
+        private static function fetch_from_open_library( $title, $author, $exclude_urls = array() ) {
+                $args = array(
+                        'limit' => 5,
+                );
 
 		if ( $title ) {
 			$args['title'] = $title;
@@ -351,49 +378,57 @@ class PRS_Cover_Upload_Feature {
 			return null;
 		}
 
-		$data = json_decode( wp_remote_retrieve_body( $request ), true );
-		if ( empty( $data['docs'] ) || ! is_array( $data['docs'] ) ) {
-			return null;
-		}
+                $data = json_decode( wp_remote_retrieve_body( $request ), true );
+                if ( empty( $data['docs'] ) || ! is_array( $data['docs'] ) ) {
+                        return null;
+                }
 
-		foreach ( $data['docs'] as $doc ) {
-			if ( ! empty( $doc['cover_i'] ) ) {
-				$cover_id = (int) $doc['cover_i'];
-				if ( $cover_id > 0 ) {
-					$validated_url = self::validate_remote_image_url( sprintf( 'https://covers.openlibrary.org/b/id/%d-L.jpg', $cover_id ) );
-					if ( $validated_url ) {
-						return array(
-							'url'    => $validated_url,
-							'source' => 'open_library',
-						);
-					}
-				}
-			}
+                $checked_urls = self::normalize_excluded_urls( $exclude_urls );
 
-			if ( ! empty( $doc['isbn'] ) && is_array( $doc['isbn'] ) ) {
-				foreach ( $doc['isbn'] as $isbn ) {
-					$isbn = preg_replace( '/[^0-9Xx]/', '', (string) $isbn );
-					if ( $isbn ) {
-						$validated_url = self::validate_remote_image_url( sprintf( 'https://covers.openlibrary.org/b/isbn/%s-L.jpg', rawurlencode( $isbn ) ) );
-						if ( $validated_url ) {
-							return array(
-								'url'    => $validated_url,
-								'source' => 'open_library',
-							);
-						}
-					}
-				}
-			}
-		}
+                foreach ( $data['docs'] as $doc ) {
+                        if ( ! empty( $doc['cover_i'] ) ) {
+                                $cover_id = (int) $doc['cover_i'];
+                                if ( $cover_id > 0 ) {
+                                        $candidate = sprintf( 'https://covers.openlibrary.org/b/id/%d-L.jpg', $cover_id );
+                                        $validated = self::validate_candidate_url( $candidate, $checked_urls );
+                                        if ( $validated ) {
+                                                return array_merge(
+                                                        $validated,
+                                                        array( 'source' => 'open_library' )
+                                                );
+                                        }
+                                }
+                        }
 
-		return null;
-	}
+                        if ( empty( $doc['isbn'] ) || ! is_array( $doc['isbn'] ) ) {
+                                continue;
+                        }
 
-	private static function fetch_from_google_books( $title, $author ) {
-		$query_parts = array();
+                        foreach ( $doc['isbn'] as $isbn ) {
+                                $isbn = preg_replace( '/[^0-9Xx]/', '', (string) $isbn );
+                                if ( ! $isbn ) {
+                                        continue;
+                                }
 
-		if ( $title ) {
-			$query_parts[] = 'intitle:' . $title;
+                                $candidate = sprintf( 'https://covers.openlibrary.org/b/isbn/%s-L.jpg', rawurlencode( $isbn ) );
+                                $validated = self::validate_candidate_url( $candidate, $checked_urls );
+                                if ( $validated ) {
+                                        return array_merge(
+                                                $validated,
+                                                array( 'source' => 'open_library' )
+                                        );
+                                }
+                        }
+                }
+
+                return null;
+        }
+
+        private static function fetch_from_google_books( $title, $author, $exclude_urls = array() ) {
+                $query_parts = array();
+
+                if ( $title ) {
+                        $query_parts[] = 'intitle:' . $title;
 		}
 
 		if ( $author ) {
@@ -432,36 +467,72 @@ class PRS_Cover_Upload_Feature {
 			return null;
 		}
 
-		$priority = array( 'extraLarge', 'large', 'medium', 'small', 'thumbnail', 'smallThumbnail' );
+                $priority     = array( 'extraLarge', 'large', 'medium', 'small', 'thumbnail', 'smallThumbnail' );
+                $checked_urls = self::normalize_excluded_urls( $exclude_urls );
 
-		foreach ( $data['items'] as $item ) {
-			if ( empty( $item['volumeInfo']['imageLinks'] ) || ! is_array( $item['volumeInfo']['imageLinks'] ) ) {
-				continue;
-			}
+                foreach ( $data['items'] as $item ) {
+                        if ( empty( $item['volumeInfo']['imageLinks'] ) || ! is_array( $item['volumeInfo']['imageLinks'] ) ) {
+                                continue;
+                        }
 
-			foreach ( $priority as $key ) {
-				if ( empty( $item['volumeInfo']['imageLinks'][ $key ] ) ) {
-					continue;
-				}
+                        foreach ( $priority as $key ) {
+                                if ( empty( $item['volumeInfo']['imageLinks'][ $key ] ) ) {
+                                        continue;
+                                }
 
-				$validated_url = self::validate_remote_image_url( $item['volumeInfo']['imageLinks'][ $key ] );
-				if ( $validated_url ) {
-					return array(
-						'url'    => $validated_url,
-						'source' => 'google_books',
-					);
-				}
-			}
-		}
+                                $candidate = $item['volumeInfo']['imageLinks'][ $key ];
+                                $validated = self::validate_candidate_url( $candidate, $checked_urls );
+                                if ( $validated ) {
+                                        return array_merge(
+                                                $validated,
+                                                array( 'source' => 'google_books' )
+                                        );
+                                }
+                        }
+                }
 
-		return null;
-	}
+                return null;
+        }
 
-	private static function normalize_remote_url( $url ) {
-		$url = trim( (string) $url );
-		if ( '' === $url ) {
-			return '';
-		}
+        private static function normalize_excluded_urls( $urls ) {
+                $normalized = array();
+
+                foreach ( (array) $urls as $url ) {
+                        $normalized_url = self::normalize_remote_url( $url );
+                        if ( '' === $normalized_url ) {
+                                continue;
+                        }
+
+                        if ( in_array( $normalized_url, $normalized, true ) ) {
+                                continue;
+                        }
+
+                        $normalized[] = $normalized_url;
+                }
+
+                return $normalized;
+        }
+
+        private static function validate_candidate_url( $candidate, array &$checked_urls ) {
+                $normalized_candidate = self::normalize_remote_url( $candidate );
+                if ( '' === $normalized_candidate ) {
+                        return false;
+                }
+
+                if ( in_array( $normalized_candidate, $checked_urls, true ) ) {
+                        return false;
+                }
+
+                $checked_urls[] = $normalized_candidate;
+
+                return self::validate_remote_image_url( $candidate, self::REMOTE_MIN_WIDTH, self::REMOTE_MIN_HEIGHT );
+        }
+
+        private static function normalize_remote_url( $url ) {
+                $url = trim( (string) $url );
+                if ( '' === $url ) {
+                        return '';
+                }
 
 		if ( strpos( $url, '//' ) === 0 ) {
 			$url = 'https:' . $url;
@@ -474,51 +545,113 @@ class PRS_Cover_Upload_Feature {
 		return esc_url_raw( $url, array( 'http', 'https' ) );
 	}
 
-	private static function validate_remote_image_url( $url ) {
-		$url = self::normalize_remote_url( $url );
-		if ( '' === $url ) {
-			return false;
-		}
+        private static function validate_remote_image_url( $url, $min_width = 0, $min_height = 0 ) {
+                $url = self::normalize_remote_url( $url );
+                if ( '' === $url ) {
+                        return false;
+                }
 
-		$request_args = array(
-			'timeout'     => 10,
-			'redirection' => 3,
-		);
+                $request_args = array(
+                        'timeout'     => 10,
+                        'redirection' => 3,
+                );
 
-		$response = wp_remote_head( $url, $request_args );
+                $response = wp_remote_head( $url, $request_args );
 
-		if ( ! is_wp_error( $response ) && self::is_valid_remote_image_response( $response ) ) {
-			return $url;
-		}
+                if ( is_wp_error( $response ) ) {
+                        return false;
+                }
 
-		if ( is_wp_error( $response ) ) {
-			return false;
-		}
+                if ( self::is_valid_remote_image_response( $response ) ) {
+                        $dimensions = self::fetch_remote_image_dimensions( $url, $request_args );
+                        if ( $dimensions && self::dimensions_meet_minimums( $dimensions, $min_width, $min_height ) ) {
+                                return array(
+                                        'url'    => $url,
+                                        'width'  => (int) $dimensions['width'],
+                                        'height' => (int) $dimensions['height'],
+                                );
+                        }
 
-		$code               = (int) wp_remote_retrieve_response_code( $response );
-		$fallback_statuses   = array( 400, 401, 403, 405, 500, 501, 503 );
-		$should_try_fallback = in_array( $code, $fallback_statuses, true );
+                        return false;
+                }
 
-		if ( ! $should_try_fallback ) {
-			return false;
-		}
+                $code               = (int) wp_remote_retrieve_response_code( $response );
+                $fallback_statuses   = array( 400, 401, 403, 405, 500, 501, 503 );
+                $should_try_fallback = in_array( $code, $fallback_statuses, true ) || 200 === $code;
 
-		$fallback_response = wp_remote_get(
-			$url,
-			array_merge(
-				$request_args,
-				array(
-					'limit_response_size' => 1024,
-				)
-			)
-		);
+                if ( ! $should_try_fallback ) {
+                        return false;
+                }
 
-		if ( is_wp_error( $fallback_response ) ) {
-			return false;
-		}
+                $dimensions = self::fetch_remote_image_dimensions( $url, $request_args );
+                if ( ! $dimensions || ! self::dimensions_meet_minimums( $dimensions, $min_width, $min_height ) ) {
+                        return false;
+                }
 
-		return self::is_valid_remote_image_response( $fallback_response ) ? $url : false;
-	}
+                return array(
+                        'url'    => $url,
+                        'width'  => (int) $dimensions['width'],
+                        'height' => (int) $dimensions['height'],
+                );
+        }
+
+        private static function fetch_remote_image_dimensions( $url, $request_args ) {
+                $response = wp_remote_get(
+                        $url,
+                        array_merge(
+                                $request_args,
+                                array(
+                                        'limit_response_size' => self::REMOTE_SNIFF_LIMIT,
+                                )
+                        )
+                );
+
+                if ( is_wp_error( $response ) ) {
+                        return false;
+                }
+
+                if ( ! self::is_valid_remote_image_response( $response ) ) {
+                        return false;
+                }
+
+                return self::extract_image_dimensions_from_response( $response );
+        }
+
+        private static function extract_image_dimensions_from_response( $response ) {
+                $body = wp_remote_retrieve_body( $response );
+                if ( '' === $body ) {
+                        return false;
+                }
+
+                if ( ! function_exists( 'getimagesizefromstring' ) ) {
+                        return false;
+                }
+
+                $image_data = @getimagesizefromstring( $body );
+                if ( ! is_array( $image_data ) || empty( $image_data[0] ) || empty( $image_data[1] ) ) {
+                        return false;
+                }
+
+                return array(
+                        'width'  => (int) $image_data[0],
+                        'height' => (int) $image_data[1],
+                );
+        }
+
+        private static function dimensions_meet_minimums( $dimensions, $min_width, $min_height ) {
+                $width  = isset( $dimensions['width'] ) ? (int) $dimensions['width'] : 0;
+                $height = isset( $dimensions['height'] ) ? (int) $dimensions['height'] : 0;
+
+                if ( $min_width && $width < $min_width ) {
+                        return false;
+                }
+
+                if ( $min_height && $height < $min_height ) {
+                        return false;
+                }
+
+                return true;
+        }
 
 	private static function is_valid_remote_image_response( $response ) {
 		$code = (int) wp_remote_retrieve_response_code( $response );

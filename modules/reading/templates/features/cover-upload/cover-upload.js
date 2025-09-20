@@ -321,6 +321,8 @@
       const bust = data.url + (data.url.indexOf('?') >= 0 ? '&' : '?') + 't=' + Date.now();
       ensureCoverImage(bust);
 
+      const statusType = data.status === 'alternate' ? 'alternate' : 'found';
+
       let provider = 'the selected provider';
       if (data.source === 'open_library') {
         provider = 'Open Library';
@@ -328,7 +330,11 @@
         provider = 'Google Books';
       }
 
-      setOverlayStatus(`Cover found from ${provider}.`, false);
+      const statusMessage = statusType === 'alternate'
+        ? `Found another cover from ${provider}.`
+        : `Cover found from ${provider}.`;
+
+      setOverlayStatus(statusMessage, false);
     } catch (error) {
       console.error('[PRS] cover fetch error', error);
       setOverlayStatus(error.message || 'Error fetching cover', true);
