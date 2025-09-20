@@ -95,13 +95,12 @@ add_shortcode(
 
 		ob_start(); ?>
         <div class="prs-library">
-                <table id="prs-library" class="prs-table">
-                <thead>
+               <table id="prs-library" class="prs-table">
+               <thead>
                         <tr>
-                        <th scope="col"><?php esc_html_e( 'Book', 'politeia-reading' ); ?></th>
-                        <th scope="col"><?php esc_html_e( 'Status & Actions', 'politeia-reading' ); ?></th>
+                        <th scope="colgroup" colspan="2"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></th>
                         </tr>
-                </thead>
+               </thead>
                 <tbody>
                         <?php foreach ( (array) $rows as $r ) :
                                 $slug     = $r->slug ?: sanitize_title( $r->title . '-' . $r->author . ( $r->year ? '-' . $r->year : '' ) );
@@ -217,7 +216,7 @@ add_shortcode(
                                                 <span class="prs-library__progress-value"><?php echo (int) $progress; ?>%</span>
                                         </div>
                                         <button type="button" class="prs-library__remove" aria-label="<?php esc_attr_e( 'Remove book', 'politeia-reading' ); ?>">
-                                                <span aria-hidden="true">&times;</span>
+                                                <?php esc_html_e( 'Remove', 'politeia-reading' ); ?>
                                         </button>
                                 </div>
                                 </td>
