@@ -313,12 +313,12 @@ class PRS_Cover_Upload_Feature {
 			array( 'id' => $user_book_id )
 		);
 
-		wp_send_json_success(
-			array(
-				'url'    => esc_url( $url ),
-				'source' => $source,
-			)
-		);
+                wp_send_json_success(
+                        array(
+                                'url'    => esc_url_raw( $url ),
+                                'source' => $source,
+                        )
+                );
 	}
 
 	private static function fetch_from_open_library( $title, $author ) {
