@@ -100,17 +100,22 @@ function politeia_confirm_table_shortcode() {
 	$rows = array_merge( $ef_rows, $db_rows );
 
 	// Conteos para UI
-	$total_rows   = count($rows);
-	$confirmables = 0;
-	foreach ( $rows as $r ) {
-		// confirmable si NO está marcado como in_shelf
-		if ( empty($r['already_in_shelf']) ) {
-			$confirmables++;
-		}
-	}
+        $total_rows   = count($rows);
+        $confirmables = 0;
+        foreach ( $rows as $r ) {
+                // confirmable si NO está marcado como in_shelf
+                if ( empty($r['already_in_shelf']) ) {
+                        $confirmables++;
+                }
+        }
 
-	ob_start();
-	$nonce = wp_create_nonce('politeia-chatgpt-nonce');
+        if ( $confirmables === 0 ) {
+                delete_transient( $ephem_key );
+                return '';
+        }
+
+        ob_start();
+        $nonce = wp_create_nonce('politeia-chatgpt-nonce');
 	?>
 	<div id="pol-confirm" class="pol-confirm" data-nonce="<?php echo esc_attr($nonce); ?>">
 		<div class="pol-card">

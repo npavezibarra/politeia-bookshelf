@@ -71,9 +71,14 @@ function politeia_chatgpt_shortcode_callback() {
 
                 <div id="politeia-chat-status"></div>
 
+                <?php
+                $politeia_confirm_markup = do_shortcode('[politeia_confirm_table]');
+                if ( trim($politeia_confirm_markup) !== '' ) :
+                ?>
                 <div class="politeia-chat-confirm">
-                        <?php echo do_shortcode('[politeia_confirm_table]'); ?>
+                        <?php echo $politeia_confirm_markup; ?>
                 </div>
+                <?php endif; ?>
         </div>
 
 	<script>
