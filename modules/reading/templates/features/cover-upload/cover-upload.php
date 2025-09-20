@@ -269,47 +269,49 @@ class PRS_Cover_Upload_Feature {
 		}
 
 		if ( ! $result || empty( $result['url'] ) ) {
-			wp_send_json_error( array( 'message' => __( 'No cover found', 'politeia-reading' ) ), 404 );
+			wp_send_json_error( array( 'message' => __( 'No verifiable cover found', 'politeia-reading' ) ), 404 );
 		}
 
-		$url    = self::normalize_remote_url( $result['url'] );
-		$source = isset( $result['source'] ) ? $result['source'] : '';
+		$source        = isset( $result['source'] ) ? $result['source'] : '';
+		$validated_url = self::validate_remote_image_url( $result['url'] );
 
-		if ( ! $url ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid cover URL returned', 'politeia-reading' ) ), 500 );
+		if ( ! $validated_url ) {
+			wp_send_json_error( array( 'message' => __( 'No verifiable cover found', 'politeia-reading' ) ), 404 );
 		}
 
-                $key = 'u' . $user_id . 'ub' . $user_book_id;
+		$url = $validated_url;
 
-                $existing_attachments = get_posts(
-                        array(
-                                'post_type'      => 'attachment',
-                                'post_status'    => 'inherit',
-                                'fields'         => 'ids',
-                                'posts_per_page' => -1,
-                                'author'         => $user_id,
-                                'meta_query'     => array(
-                                        array(
-                                                'key'   => '_prs_cover_key',
-                                                'value' => $key,
-                                        ),
-                                ),
-                        )
-                );
+		$key = 'u' . $user_id . 'ub' . $user_book_id;
 
-                foreach ( $existing_attachments as $attachment_id ) {
-                        wp_delete_attachment( $attachment_id, true );
-                }
+		$existing_attachments = get_posts(
+			array(
+				'post_type'      => 'attachment',
+				'post_status'    => 'inherit',
+				'fields'         => 'ids',
+				'posts_per_page' => -1,
+				'author'         => $user_id,
+				'meta_query'     => array(
+					array(
+						'key'   => '_prs_cover_key',
+						'value' => $key,
+					),
+				),
+			)
+		);
 
-                $wpdb->update(
-                        $user_books_table,
-                        array(
-                                'cover_url_user'           => $url,
-                                'cover_attachment_id_user' => null,
-                                'updated_at'                => current_time( 'mysql', true ),
-                        ),
-                        array( 'id' => $user_book_id )
-                );
+		foreach ( $existing_attachments as $attachment_id ) {
+			wp_delete_attachment( $attachment_id, true );
+		}
+
+		$wpdb->update(
+			$user_books_table,
+			array(
+				'cover_url_user'           => $url,
+				'cover_attachment_id_user' => null,
+				'updated_at'                => current_time( 'mysql', true ),
+			),
+			array( 'id' => $user_book_id )
+		);
 
 		wp_send_json_success(
 			array(
@@ -358,10 +360,13 @@ class PRS_Cover_Upload_Feature {
 			if ( ! empty( $doc['cover_i'] ) ) {
 				$cover_id = (int) $doc['cover_i'];
 				if ( $cover_id > 0 ) {
-					return array(
-						'url'    => sprintf( 'https://covers.openlibrary.org/b/id/%d-L.jpg', $cover_id ),
-						'source' => 'open_library',
-					);
+					$validated_url = self::validate_remote_image_url( sprintf( 'https://covers.openlibrary.org/b/id/%d-L.jpg', $cover_id ) );
+					if ( $validated_url ) {
+						return array(
+							'url'    => $validated_url,
+							'source' => 'open_library',
+						);
+					}
 				}
 			}
 
@@ -369,10 +374,13 @@ class PRS_Cover_Upload_Feature {
 				foreach ( $doc['isbn'] as $isbn ) {
 					$isbn = preg_replace( '/[^0-9Xx]/', '', (string) $isbn );
 					if ( $isbn ) {
-						return array(
-							'url'    => sprintf( 'https://covers.openlibrary.org/b/isbn/%s-L.jpg', rawurlencode( $isbn ) ),
-							'source' => 'open_library',
-						);
+						$validated_url = self::validate_remote_image_url( sprintf( 'https://covers.openlibrary.org/b/isbn/%s-L.jpg', rawurlencode( $isbn ) ) );
+						if ( $validated_url ) {
+							return array(
+								'url'    => $validated_url,
+								'source' => 'open_library',
+							);
+						}
 					}
 				}
 			}
@@ -436,10 +444,10 @@ class PRS_Cover_Upload_Feature {
 					continue;
 				}
 
-				$url = self::normalize_remote_url( $item['volumeInfo']['imageLinks'][ $key ] );
-				if ( $url ) {
+				$validated_url = self::validate_remote_image_url( $item['volumeInfo']['imageLinks'][ $key ] );
+				if ( $validated_url ) {
 					return array(
-						'url'    => $url,
+						'url'    => $validated_url,
 						'source' => 'google_books',
 					);
 				}
@@ -464,6 +472,83 @@ class PRS_Cover_Upload_Feature {
 		}
 
 		return esc_url_raw( $url, array( 'http', 'https' ) );
+	}
+
+	private static function validate_remote_image_url( $url ) {
+		$url = self::normalize_remote_url( $url );
+		if ( '' === $url ) {
+			return false;
+		}
+
+		$request_args = array(
+			'timeout'     => 10,
+			'redirection' => 3,
+		);
+
+		$response = wp_remote_head( $url, $request_args );
+
+		if ( ! is_wp_error( $response ) && self::is_valid_remote_image_response( $response ) ) {
+			return $url;
+		}
+
+		if ( is_wp_error( $response ) ) {
+			return false;
+		}
+
+		$code               = (int) wp_remote_retrieve_response_code( $response );
+		$fallback_statuses   = array( 400, 401, 403, 405, 500, 501, 503 );
+		$should_try_fallback = in_array( $code, $fallback_statuses, true );
+
+		if ( ! $should_try_fallback ) {
+			return false;
+		}
+
+		$fallback_response = wp_remote_get(
+			$url,
+			array_merge(
+				$request_args,
+				array(
+					'limit_response_size' => 1024,
+				)
+			)
+		);
+
+		if ( is_wp_error( $fallback_response ) ) {
+			return false;
+		}
+
+		return self::is_valid_remote_image_response( $fallback_response ) ? $url : false;
+	}
+
+	private static function is_valid_remote_image_response( $response ) {
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		if ( 200 !== $code ) {
+			return false;
+		}
+
+		$content_type = wp_remote_retrieve_header( $response, 'content-type' );
+		if ( is_array( $content_type ) ) {
+			$content_type = reset( $content_type );
+		}
+
+		$content_type = strtolower( (string) $content_type );
+		if ( '' === $content_type || 0 !== strpos( $content_type, 'image/' ) ) {
+			return false;
+		}
+
+		$content_length = wp_remote_retrieve_header( $response, 'content-length' );
+		if ( null !== $content_length && false !== $content_length && '' !== $content_length ) {
+			if ( is_array( $content_length ) ) {
+				$content_length = reset( $content_length );
+			}
+
+			$content_length = trim( (string) $content_length );
+			if ( '' !== $content_length && (int) $content_length <= 0 ) {
+				return false;
+			}
+		}
+
+		return true;
 	}
 }
 PRS_Cover_Upload_Feature::init();
