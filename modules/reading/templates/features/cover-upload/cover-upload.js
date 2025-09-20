@@ -38,6 +38,11 @@
     let img = document.getElementById('prs-cover-img');
     const placeholder = document.getElementById('prs-cover-placeholder');
 
+    if (!img && placeholder && placeholder.tagName === 'IMG') {
+      img = placeholder;
+      img.id = 'prs-cover-img';
+    }
+
     if (img) {
       img.removeAttribute('srcset');
       img.removeAttribute('sizes');
@@ -55,9 +60,11 @@
       frame.appendChild(img);
     }
 
-    if (placeholder && placeholder.parentNode) {
+    if (placeholder && placeholder !== img && placeholder.parentNode) {
       placeholder.parentNode.removeChild(placeholder);
     }
+
+    img.classList.remove('prs-cover-img--placeholder');
 
     frame.classList.add('has-image');
   }

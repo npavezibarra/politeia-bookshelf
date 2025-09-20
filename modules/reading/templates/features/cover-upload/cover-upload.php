@@ -218,30 +218,39 @@ class PRS_Cover_Upload_Feature {
 			wp_send_json_error( array( 'message' => __( 'Security check failed', 'politeia-reading' ) ), 403 );
 		}
 
-		$user_id      = get_current_user_id();
-		$user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
-		$book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $user_id      = get_current_user_id();
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
 
-		if ( ! $user_book_id || ! $book_id ) {
-			wp_send_json_error( array( 'message' => __( 'Missing parameters', 'politeia-reading' ) ), 400 );
-		}
+                if ( ! $user_book_id ) {
+                        wp_send_json_error( array( 'message' => __( 'Missing book reference.', 'politeia-reading' ) ), 400 );
+                }
 
-		global $wpdb;
-		$user_books_table = $wpdb->prefix . 'politeia_user_books';
-		$books_table      = $wpdb->prefix . 'politeia_books';
+                global $wpdb;
+                $user_books_table = $wpdb->prefix . 'politeia_user_books';
+                $books_table      = $wpdb->prefix . 'politeia_books';
 
                 $row = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id, cover_url_user FROM {$user_books_table} WHERE id = %d AND user_id = %d AND book_id = %d LIMIT 1",
+                                "SELECT id, book_id, cover_url_user FROM {$user_books_table} WHERE id = %d AND user_id = %d LIMIT 1",
                                 $user_book_id,
-                                $user_id,
-                                $book_id
+                                $user_id
                         )
                 );
 
-		if ( ! $row ) {
-			wp_send_json_error( array( 'message' => __( 'You cannot modify this book.', 'politeia-reading' ) ), 403 );
-		}
+                if ( ! $row ) {
+                        wp_send_json_error( array( 'message' => __( 'You cannot modify this book.', 'politeia-reading' ) ), 403 );
+                }
+
+                $row_book_id = isset( $row->book_id ) ? (int) $row->book_id : 0;
+
+                if ( $row_book_id ) {
+                        $book_id = $row_book_id;
+                }
+
+                if ( ! $book_id ) {
+                        wp_send_json_error( array( 'message' => __( 'Book not found.', 'politeia-reading' ) ), 404 );
+                }
 
 		$book = $wpdb->get_row(
 			$wpdb->prepare(
@@ -261,6 +270,10 @@ class PRS_Cover_Upload_Feature {
                 if ( isset( $row->cover_url_user ) ) {
                         $existing_remote_url = self::normalize_remote_url( $row->cover_url_user );
                 }
+
+                $not_found_message = $existing_remote_url
+                        ? __( 'Could not find another book cover.', 'politeia-reading' )
+                        : __( 'Could not find book cover.', 'politeia-reading' );
 
                 $exclude_urls = array();
                 if ( $existing_remote_url ) {
@@ -283,16 +296,14 @@ class PRS_Cover_Upload_Feature {
                 }
 
                 if ( ! $result || empty( $result['url'] ) ) {
-                        $message = $existing_remote_url ? __( 'No additional covers found', 'politeia-reading' ) : __( 'No verifiable cover found', 'politeia-reading' );
-                        wp_send_json_error( array( 'message' => $message ), 404 );
+                        wp_send_json_error( array( 'message' => $not_found_message ), 404 );
                 }
 
                 $source        = isset( $result['source'] ) ? $result['source'] : '';
                 $validated_url = self::validate_remote_image_url( $result['url'], self::REMOTE_MIN_WIDTH, self::REMOTE_MIN_HEIGHT );
 
                 if ( ! $validated_url ) {
-                        $message = $existing_remote_url ? __( 'No additional covers found', 'politeia-reading' ) : __( 'No verifiable cover found', 'politeia-reading' );
-                        wp_send_json_error( array( 'message' => $message ), 404 );
+                        wp_send_json_error( array( 'message' => $not_found_message ), 404 );
                 }
 
                 $url    = isset( $validated_url['url'] ) ? $validated_url['url'] : '';
@@ -300,7 +311,7 @@ class PRS_Cover_Upload_Feature {
                 $height = isset( $validated_url['height'] ) ? (int) $validated_url['height'] : 0;
 
                 if ( $existing_remote_url && $existing_remote_url === $url ) {
-                        wp_send_json_error( array( 'message' => __( 'No additional covers found', 'politeia-reading' ) ), 404 );
+                        wp_send_json_error( array( 'message' => __( 'Could not find another book cover.', 'politeia-reading' ) ), 404 );
                 }
 
                 $status = $existing_remote_url ? 'alternate' : 'found';
@@ -559,7 +570,16 @@ class PRS_Cover_Upload_Feature {
                 $response = wp_remote_head( $url, $request_args );
 
                 if ( is_wp_error( $response ) ) {
-                        return false;
+                        $dimensions = self::fetch_remote_image_dimensions( $url, $request_args );
+                        if ( ! $dimensions || ! self::dimensions_meet_minimums( $dimensions, $min_width, $min_height ) ) {
+                                return false;
+                        }
+
+                        return array(
+                                'url'    => $url,
+                                'width'  => (int) $dimensions['width'],
+                                'height' => (int) $dimensions['height'],
+                        );
                 }
 
                 if ( self::is_valid_remote_image_response( $response ) ) {

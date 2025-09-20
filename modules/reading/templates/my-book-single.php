@@ -139,8 +139,9 @@ wp_localize_script(
                 $user_cover_url = ! empty( $ub->cover_url_user ) ? esc_url( $ub->cover_url_user ) : '';
                 $canon_cover_id = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
                 $canon_cover_url = ! empty( $book->cover_url ) ? esc_url( $book->cover_url ) : '';
-                $final_cover_id = $user_cover_id ?: $canon_cover_id;
-                $has_image      = $final_cover_id > 0 || $user_cover_url || $canon_cover_url;
+                $final_cover_id      = $user_cover_id ?: $canon_cover_id;
+                $has_image           = $final_cover_id > 0 || $user_cover_url || $canon_cover_url;
+                $default_cover_url   = plugins_url( 'assets/images/default-cover.svg', dirname( __DIR__ ) . '/politeia-reading.php' );
                 ?>
                 <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
                 <?php if ( $user_cover_id ) : ?>
@@ -184,7 +185,14 @@ wp_localize_script(
                                 alt="<?php echo esc_attr( $book->title ); ?>"
                         />
                 <?php else : ?>
-                        <div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
+                        <img
+                                id="prs-cover-placeholder"
+                                class="prs-cover-img prs-cover-img--placeholder"
+                                src="<?php echo esc_url( $default_cover_url ); ?>"
+                                alt="<?php echo esc_attr__( 'Default book cover', 'politeia-reading' ); ?>"
+                                width="280"
+                                height="440"
+                        />
                 <?php endif; ?>
                 <div class="prs-cover-overlay">
                         <?php echo do_shortcode( '[prs_cover_button]' ); ?>
