@@ -7,14 +7,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$post_id   = get_queried_object_id();
+$post_id   = isset( $post_id ) ? (int) $post_id : 0;
 $is_logged = is_user_logged_in();
+
+if ( ! $post_id && function_exists( 'get_queried_object_id' ) ) {
+        $queried_id = get_queried_object_id();
+        if ( $queried_id ) {
+                $post_id = (int) $queried_id;
+        }
+}
+
+if ( ! $post_id && isset( $post ) && $post instanceof \WP_Post ) {
+        $post_id = (int) $post->ID;
+}
 
 $label         = __( 'Start Reading', 'politeia-reading' );
 $extra_cls     = '';
 $disabled_attr = '';
 
-if ( $is_logged && class_exists( 'Politeia_Post_Reading_Manager' ) ) {
+if ( $post_id && $is_logged && class_exists( 'Politeia_Post_Reading_Manager' ) ) {
 	$state = Politeia_Post_Reading_Manager::current_status( get_current_user_id(), $post_id );
 	if ( isset( $state['status'] ) && $state['status'] === 'started' ) {
 		$label     = __( 'Finish Reading', 'politeia-reading' );

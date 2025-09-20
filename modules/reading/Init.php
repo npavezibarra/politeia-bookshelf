@@ -25,8 +25,10 @@ class Init {
             require_once $file;
         }
 
-        // Cargar templates helpers si los hay
-        foreach (glob(__DIR__ . '/templates/**/*.php') as $file) {
+        // Cargar helpers de templates si los hay. Los archivos de templates imprimen
+        // marcado y dependen del contexto de la consulta, por lo que deben incluirse
+        // solo cuando WordPress los requiera explícitamente.
+        foreach (glob(__DIR__ . '/templates/helpers/*.php') ?: array() as $file) {
             require_once $file;
         }
     }
