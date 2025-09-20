@@ -87,9 +87,10 @@
 }
 
 #prs-library .prs-library__meta {
-        display: flex;
+        display: flex
+;
         flex-direction: column;
-        gap: 4px;
+        gap: 0px;
         color: #555;
         font-size: 0.85rem;
 }
