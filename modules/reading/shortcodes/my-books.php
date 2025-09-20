@@ -115,8 +115,9 @@ add_shortcode(
                                         $progress = 50;
                                 }
 
-                                $reading_id = 'reading-status-' . (int) $r->user_book_id;
-                                $owning_id  = 'owning-status-' . (int) $r->user_book_id;
+                                $reading_id  = 'reading-status-' . (int) $r->user_book_id;
+                                $owning_id   = 'owning-status-' . (int) $r->user_book_id;
+                                $progress_id = 'reading-progress-' . (int) $r->user_book_id;
 
                                 $year_text  = $year ? sprintf( __( 'Published: %s', 'politeia-reading' ), $year ) : __( 'Published: —', 'politeia-reading' );
                                 $pages_text = $pages ? sprintf( __( 'Pages: %s', 'politeia-reading' ), $pages ) : __( 'Pages: —', 'politeia-reading' );
@@ -202,18 +203,22 @@ add_shortcode(
                                         </div>
                                 </div>
                                 <div class="prs-library__extras">
-                                        <div class="prs-library__progress">
-                                                <div
-                                                        class="prs-library__progress-track"
-                                                        role="progressbar"
-                                                        aria-valuenow="<?php echo esc_attr( $progress ); ?>"
-                                                        aria-valuemin="0"
-                                                        aria-valuemax="100"
-                                                        aria-valuetext="<?php echo esc_attr( $progress_label ); ?>"
-                                                >
-                                                        <div class="prs-library__progress-fill" style="width: <?php echo (int) $progress; ?>%;"></div>
+                                        <div class="prs-library__progress-field">
+                                                <span id="<?php echo esc_attr( $progress_id ); ?>" class="prs-library__progress-label"><?php esc_html_e( 'Reading Progress', 'politeia-reading' ); ?></span>
+                                                <div class="prs-library__progress">
+                                                        <div
+                                                                class="prs-library__progress-track"
+                                                                role="progressbar"
+                                                                aria-valuenow="<?php echo esc_attr( $progress ); ?>"
+                                                                aria-valuemin="0"
+                                                                aria-valuemax="100"
+                                                                aria-valuetext="<?php echo esc_attr( $progress_label ); ?>"
+                                                                aria-labelledby="<?php echo esc_attr( $progress_id ); ?>"
+                                                        >
+                                                                <div class="prs-library__progress-fill" style="width: <?php echo (int) $progress; ?>%;"></div>
+                                                        </div>
+                                                        <span class="prs-library__progress-value"><?php echo (int) $progress; ?>%</span>
                                                 </div>
-                                                <span class="prs-library__progress-value"><?php echo (int) $progress; ?>%</span>
                                         </div>
                                         <button type="button" class="prs-library__remove" aria-label="<?php esc_attr_e( 'Remove book', 'politeia-reading' ); ?>">
                                                 <?php esc_html_e( 'Remove', 'politeia-reading' ); ?>
