@@ -10,8 +10,20 @@ add_shortcode(
 			return '<p>' . esc_html__( 'You must be logged in to view your library.', 'politeia-reading' ) . '</p>';
 		}
 
-		wp_enqueue_style( 'politeia-reading' );
-		wp_enqueue_script( 'politeia-my-book' );
+                wp_enqueue_style( 'politeia-reading' );
+                wp_enqueue_script( 'politeia-my-book' );
+                wp_localize_script(
+                        'politeia-my-book',
+                        'PRS_LIBRARY',
+                        array(
+                                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                                'messages' => array(
+                                        'invalid'   => __( 'Please enter a valid number of pages.', 'politeia-reading' ),
+                                        'too_small' => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
+                                        'error'     => __( 'There was an error saving the number of pages.', 'politeia-reading' ),
+                                ),
+                        )
+                );
 
 		$user_id  = get_current_user_id();
 		$per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
@@ -120,7 +132,9 @@ add_shortcode(
                                 $progress_id = 'reading-progress-' . (int) $r->user_book_id;
 
                                 $year_text  = $year ? sprintf( __( 'Published: %s', 'politeia-reading' ), $year ) : __( 'Published: —', 'politeia-reading' );
-                                $pages_text = $pages ? sprintf( __( 'Pages: %s', 'politeia-reading' ), $pages ) : __( 'Pages: —', 'politeia-reading' );
+                                $pages_value    = $pages ? (int) $pages : '';
+                                $pages_display  = $pages ? (string) (int) $pages : '';
+                                $pages_input_id = 'prs-pages-input-' . (int) $r->user_book_id;
 
                                 /* translators: %s: percentage of reading progress. */
                                 $progress_label = sprintf( __( '%s%% complete', 'politeia-reading' ), $progress );
@@ -153,7 +167,24 @@ add_shortcode(
                                                 <span class="prs-library__meta-item prs-library__author"><?php echo esc_html( $r->author ); ?></span>
                                                 <?php endif; ?>
                                                 <span class="prs-library__meta-item prs-library__year"><?php echo esc_html( $year_text ); ?></span>
-                                                <span class="prs-library__meta-item prs-library__pages"><?php echo esc_html( $pages_text ); ?></span>
+                                                <span class="prs-library__meta-item prs-library__pages" data-pages="<?php echo esc_attr( $pages_value ); ?>">
+                                                        <span class="prs-library__pages-display">
+                                                                <span class="prs-library__pages-label"><?php esc_html_e( 'Pages:', 'politeia-reading' ); ?></span>
+                                                                <span class="prs-library__pages-value"><?php echo esc_html( $pages_display ); ?></span>
+                                                                <button type="button" class="prs-library__pages-edit"><?php esc_html_e( 'Edit', 'politeia-reading' ); ?></button>
+                                                        </span>
+                                                        <input
+                                                                type="number"
+                                                                min="1"
+                                                                step="1"
+                                                                inputmode="numeric"
+                                                                class="prs-library__pages-input"
+                                                                id="<?php echo esc_attr( $pages_input_id ); ?>"
+                                                                value="<?php echo esc_attr( $pages_value ); ?>"
+                                                                aria-label="<?php esc_attr_e( 'Total pages', 'politeia-reading' ); ?>"
+                                                        />
+                                                        <span class="prs-library__pages-error" role="alert" aria-live="polite"></span>
+                                                </span>
                                         </div>
                                 </div>
                                 </td>

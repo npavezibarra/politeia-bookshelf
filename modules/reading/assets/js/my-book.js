@@ -87,6 +87,152 @@
     });
   }
 
+  function setupLibraryPagesInlineEdit() {
+    const table = qs("#prs-library");
+    if (!table) return;
+
+    const nonceField = qs("#prs_update_user_book_nonce");
+    const ajaxUrl = (window.PRS_LIBRARY && PRS_LIBRARY.ajax_url) ||
+      (window.PRS_BOOK && PRS_BOOK.ajax_url) ||
+      (typeof window.ajaxurl === "string" ? window.ajaxurl : "");
+
+    if (!nonceField || !nonceField.value || !ajaxUrl) {
+      return;
+    }
+
+    const messages = (window.PRS_LIBRARY && PRS_LIBRARY.messages) || {};
+    const msgInvalid = messages.invalid || "Please enter a valid number of pages.";
+    const msgTooSmall = messages.too_small || "Please enter a number greater than zero.";
+    const msgSaveError = messages.error || "There was an error saving the number of pages.";
+
+    function wrapFor(el) {
+      return el ? el.closest(".prs-library__pages") : null;
+    }
+
+    function clearError(wrap) {
+      if (!wrap) return;
+      wrap.classList.remove("prs-library__pages--error");
+      const err = qs(".prs-library__pages-error", wrap);
+      setText(err, "");
+    }
+
+    function showError(wrap, msg) {
+      if (!wrap) return;
+      wrap.classList.add("prs-library__pages--error");
+      const err = qs(".prs-library__pages-error", wrap);
+      setText(err, msg);
+    }
+
+    function openEditor(wrap) {
+      if (!wrap) return;
+      clearError(wrap);
+      wrap.classList.remove("prs-library__pages--saving");
+      wrap.classList.add("prs-library__pages--editing");
+      const input = qs(".prs-library__pages-input", wrap);
+      if (input) {
+        input.disabled = false;
+        input.value = wrap.dataset.pages || "";
+        setTimeout(() => {
+          input.focus();
+          input.select && input.select();
+        }, 0);
+      }
+    }
+
+    function closeEditor(wrap) {
+      if (!wrap) return;
+      wrap.classList.remove("prs-library__pages--editing");
+    }
+
+    function saveValue(wrap, input) {
+      if (!wrap || !input) return;
+
+      clearError(wrap);
+
+      const row = wrap.closest("tr[data-user-book-id]");
+      const userBookId = row ? num(row.getAttribute("data-user-book-id"), 0) : 0;
+      if (!userBookId) return;
+
+      const raw = (input.value || "").trim();
+      if (raw !== "" && !/^[0-9]+$/.test(raw)) {
+        showError(wrap, msgInvalid);
+        return;
+      }
+
+      let pagesValue = "";
+      if (raw !== "") {
+        pagesValue = parseInt(raw, 10);
+        if (!Number.isFinite(pagesValue) || pagesValue < 1) {
+          showError(wrap, msgTooSmall);
+          return;
+        }
+      }
+
+      input.disabled = true;
+      wrap.classList.add("prs-library__pages--saving");
+
+      const fd = new FormData();
+      fd.append("action", "prs_update_user_book_meta");
+      fd.append("user_book_id", String(userBookId));
+      fd.append("pages", pagesValue === "" ? "" : String(pagesValue));
+      fd.append("prs_update_user_book_nonce", nonceField.value);
+
+      ajaxPost(ajaxUrl, fd)
+        .then(json => {
+          if (!json || !json.success) throw json;
+
+          const newDisplay = pagesValue === "" ? "" : String(pagesValue);
+          const valueEl = qs(".prs-library__pages-value", wrap);
+          setText(valueEl, newDisplay);
+          wrap.dataset.pages = pagesValue === "" ? "" : String(pagesValue);
+          input.value = wrap.dataset.pages || "";
+          closeEditor(wrap);
+        })
+        .catch(err => {
+          const msg = (err && err.data && err.data.message) ? err.data.message : msgSaveError;
+          showError(wrap, msg);
+        })
+        .then(() => {
+          wrap.classList.remove("prs-library__pages--saving");
+          input.disabled = false;
+        });
+    }
+
+    table.addEventListener("click", (event) => {
+      const editBtn = event.target.closest(".prs-library__pages-edit");
+      if (!editBtn) return;
+      const wrap = wrapFor(editBtn);
+      if (!wrap) return;
+      event.preventDefault();
+      openEditor(wrap);
+    });
+
+    table.addEventListener("keydown", (event) => {
+      const input = event.target.closest(".prs-library__pages-input");
+      if (!input) return;
+
+      const wrap = wrapFor(input);
+      if (!wrap) return;
+
+      if (event.key === "Enter") {
+        event.preventDefault();
+        saveValue(wrap, input);
+      } else if (event.key === "Escape") {
+        event.preventDefault();
+        input.value = wrap.dataset.pages || "";
+        clearError(wrap);
+        closeEditor(wrap);
+      }
+    });
+
+    table.addEventListener("input", (event) => {
+      const input = event.target.closest(".prs-library__pages-input");
+      if (!input) return;
+      const wrap = wrapFor(input);
+      clearError(wrap);
+    });
+  }
+
   // ---------- Edición: Purchase Date ----------
   function setupPurchaseDate() {
     const wrap = qs("#fld-purchase-date");
@@ -455,6 +601,7 @@
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     setupPages();
+    setupLibraryPagesInlineEdit();
     setupPurchaseDate();
     setupPurchaseChannel();
     setupRating();

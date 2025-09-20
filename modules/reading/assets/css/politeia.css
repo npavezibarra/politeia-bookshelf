@@ -94,6 +94,80 @@
         font-size: 0.85rem;
 }
 
+#prs-library .prs-library__pages {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+}
+
+#prs-library .prs-library__pages-display {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+}
+
+#prs-library .prs-library__pages-label {
+        font-weight: 600;
+        color: #444;
+}
+
+#prs-library .prs-library__pages-value {
+        color: #333;
+}
+
+#prs-library .prs-library__pages-edit {
+        background: none;
+        border: 0;
+        color: #0073aa;
+        cursor: pointer;
+        padding: 0;
+        font-size: 0.8rem;
+        font-weight: 600;
+}
+
+#prs-library .prs-library__pages-edit:hover,
+#prs-library .prs-library__pages-edit:focus {
+        text-decoration: underline;
+}
+
+#prs-library .prs-library__pages-input {
+        display: none;
+        width: 86px;
+        padding: 4px 6px;
+        border: 1px solid #d0d0d0;
+        border-radius: 4px;
+        font-size: 0.85rem;
+        color: #333;
+        background: #fff;
+}
+
+#prs-library .prs-library__pages-input:focus {
+        outline: 2px solid #0073aa;
+        outline-offset: 1px;
+}
+
+#prs-library .prs-library__pages--editing .prs-library__pages-display {
+        display: none;
+}
+
+#prs-library .prs-library__pages--editing .prs-library__pages-input {
+        display: inline-block;
+}
+
+#prs-library .prs-library__pages-error {
+        display: none;
+        font-size: 0.7rem;
+        color: #b00020;
+        flex-basis: 100%;
+        margin-top: 4px;
+}
+
+#prs-library .prs-library__pages--error .prs-library__pages-error {
+        display: inline;
+}
+
 #prs-library .prs-library__actions {
         flex: 1 1 0;
         display: flex;
