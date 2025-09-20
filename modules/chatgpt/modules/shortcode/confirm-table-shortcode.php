@@ -100,17 +100,22 @@ function politeia_confirm_table_shortcode() {
 	$rows = array_merge( $ef_rows, $db_rows );
 
 	// Conteos para UI
-	$total_rows   = count($rows);
-	$confirmables = 0;
-	foreach ( $rows as $r ) {
-		// confirmable si NO está marcado como in_shelf
-		if ( empty($r['already_in_shelf']) ) {
-			$confirmables++;
-		}
-	}
+        $total_rows   = count($rows);
+        $confirmables = 0;
+        foreach ( $rows as $r ) {
+                // confirmable si NO está marcado como in_shelf
+                if ( empty($r['already_in_shelf']) ) {
+                        $confirmables++;
+                }
+        }
 
-	ob_start();
-	$nonce = wp_create_nonce('politeia-chatgpt-nonce');
+        if ( $confirmables === 0 ) {
+                delete_transient( $ephem_key );
+                return '';
+        }
+
+        ob_start();
+        $nonce = wp_create_nonce('politeia-chatgpt-nonce');
 	?>
 	<div id="pol-confirm" class="pol-confirm" data-nonce="<?php echo esc_attr($nonce); ?>">
 		<div class="pol-card">
@@ -187,16 +192,19 @@ function politeia_confirm_table_shortcode() {
 	</div>
 
 	<style>
-		.pol-card{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(0,0,0,.06);}
-		.pol-card__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-		.pol-title{margin:0;font-weight:600;}
-		.pol-table{width:100%;border-collapse:collapse;}
-		.pol-table th,.pol-table td{padding:14px 16px;border-top:1px solid #eee;text-align:left;vertical-align:middle;}
-		.pol-btn{padding:6px 10px;border-radius:8px;border:1px solid #e6e6e6;background:#f7f7f7;cursor:pointer;font:inherit}
-		.pol-btn[disabled]{opacity:.45;cursor:not-allowed}
-		.pol-btn-primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
-		.pol-btn-ghost{background:#eaf2fe;border-color:#cfe0fd}
-		.pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:8px;padding:4px 6px;cursor:pointer}
+                .pol-card{background:#fff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(0,0,0,.06);}
+                .pol-card__header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+                .pol-title{margin:0;font-weight:600;}
+                .pol-table{width:100%;border-collapse:collapse;}
+                .pol-table thead{background:#f8f8f8;}
+                .pol-table th,.pol-table td{padding:14px 16px;border-top:1px solid #eee;text-align:left;vertical-align:middle;}
+                .pol-btn{padding:6px 10px;border-radius:8px;border:1px solid #e6e6e6;background:#f7f7f7;cursor:pointer;font:inherit}
+                .pol-btn[disabled]{opacity:.45;cursor:not-allowed}
+                .pol-btn-primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
+                .pol-btn-ghost{background:#eaf2fe;border-color:#1b73e8;color:#1b73e8;border:none}
+                .pol-btn-ghost:hover{background:#1b73e8;color:#fff}
+                .pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:8px;padding:4px 6px;cursor:pointer;color:#1b73e8}
+                .pol-edit:hover{background:#1b73e8;color:#fff}
 		.pol-input{width:100%;max-width:600px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font:inherit;}
 		.pol-row.saving{opacity:.6}
 		.pill{display:inline-block;padding:.25rem .6rem;border-radius:9999px;font-size:.85em;border:1px solid #bde5c8;background:#e7f7ec;color:#166534;margin-right:8px}
