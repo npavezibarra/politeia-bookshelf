@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Politeia Reading
  * Description: Manage "My Library" and Reading Sessions with custom tables and shortcodes.
- * Version: 0.2.1
+ * Version: 0.2.2
  * Author: Politeia
  * Text Domain: politeia-reading
  */
