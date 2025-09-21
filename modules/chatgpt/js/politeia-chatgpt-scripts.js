@@ -114,8 +114,33 @@
 
   btnSend.addEventListener('click', sendText);
   txt.addEventListener('keydown', (e)=>{ if (e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendText(); } });
-  txt.addEventListener('input', ()=>{ txt.style.height='auto'; txt.style.height=(txt.scrollHeight)+'px'; });
-  txt.dispatchEvent(new Event('input'));
+
+  const baseTextHeight = (() => {
+    try {
+      const styles = window.getComputedStyle(txt);
+      const lineHeight = parseFloat(styles.lineHeight) || 0;
+      const paddingTop = parseFloat(styles.paddingTop) || 0;
+      const paddingBottom = parseFloat(styles.paddingBottom) || 0;
+      const borderTop = parseFloat(styles.borderTopWidth) || 0;
+      const borderBottom = parseFloat(styles.borderBottomWidth) || 0;
+      const rowsAttr = parseInt(txt.getAttribute('rows') || '1', 10);
+      const rows = Number.isFinite(rowsAttr) && rowsAttr > 0 ? rowsAttr : 1;
+      const min = lineHeight > 0 ? (lineHeight * rows) + paddingTop + paddingBottom + borderTop + borderBottom : 0;
+      return Math.max(min, 44);
+    } catch (_err) {
+      return 44;
+    }
+  })();
+
+  function autoResizeTextarea(){
+    txt.style.height = 'auto';
+    const scrollHeight = txt.scrollHeight;
+    const target = Math.max(scrollHeight, baseTextHeight);
+    txt.style.height = `${target}px`;
+  }
+
+  txt.addEventListener('input', autoResizeTextarea);
+  autoResizeTextarea();
 
   // ======================= AUDIO (placeholder) =======================
   // Puedes implementar más adelante; por ahora mostramos aviso claro.
