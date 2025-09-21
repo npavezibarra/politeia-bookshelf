@@ -26,6 +26,24 @@
         border-bottom: none;
 }
 
+#prs-library .prs-library__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+}
+
+#prs-library .prs-library__header-title {
+        font-size: 22px;
+        line-height: 1.3;
+}
+
+#prs-library .prs-library__header-actions {
+        display: flex;
+        align-items: center;
+}
+
 #prs-library tbody tr {
         align-items: stretch;
         border-bottom: 1px solid #eee;
