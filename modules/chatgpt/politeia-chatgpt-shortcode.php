@@ -42,13 +42,13 @@ function politeia_chatgpt_shortcode_callback() {
 	ob_start();
 	?>
 	<style>
-                .politeia-chat-container { max-width: 980px; margin: 20px auto; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
+                .politeia-chat-container { max-width: 980px; margin: auto; font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; }
                 .politeia-chat-input-bar { display:flex; align-items:center; gap:6px; padding:8px; border:1px solid #e0e0e0; border-radius:999px; background:#fff; box-shadow:0 4px 10px rgba(0,0,0,.07); }
                 #politeia-chat-prompt { flex-grow:1; border:none; outline:none; background:transparent; font-size:16px; padding:8px; resize:none; line-height:1.5; }
                 .politeia-icon-button { background:transparent; border:none; cursor:pointer; padding:8px; display:inline-flex; align-items:center; justify-content:center; color:#555; border-radius:50%; }
                 .politeia-icon-button:hover { background-color:#f0f0f0; }
                 #politeia-chat-status { margin-top:10px; text-align:center; color:#333; min-height:1.2em; }
-                .politeia-chat-confirm { margin-top:24px; }
+                .politeia-chat-confirm { margin-top:0px; }
         </style>
 
         <div class="politeia-chat-container">
