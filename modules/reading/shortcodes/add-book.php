@@ -124,9 +124,18 @@ add_shortcode(
 											<span class="prs-form__file-icon" aria-hidden="true"></span>
 											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
 										</button>
-										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
-											<img src="" alt="<?php echo esc_attr__( 'Selected book cover preview', 'politeia-reading' ); ?>" />
-										</div>
+                                                                                <?php
+                                                                                $prs_cover_placeholder = plugins_url(
+                                                                                        'modules/reading/assets/img/icon-book-cover.png',
+                                                                                        dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
+                                                                                );
+                                                                                ?>
+                                                                                <div id="prs_cover_preview" class="prs-form__file-preview" hidden>
+                                                                                        <img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
+                                                                                                decoding="async"
+                                                                                                alt="<?php echo esc_attr( 'Selected book cover preview' ); ?>"
+                                                                                                data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
+                                                                                </div>
 									</div>
 								</td>
 							</tr>
@@ -147,8 +156,9 @@ add_shortcode(
 
 								var trigger = document.getElementById('prs_cover_trigger');
 								var triggerText = trigger ? trigger.querySelector('.prs-form__file-text') : null;
-								var previewWrapper = document.getElementById('prs_cover_preview');
-								var previewImage = previewWrapper ? previewWrapper.querySelector('img') : null;
+                                                                var previewWrapper = document.getElementById('prs_cover_preview');
+                                                                var previewImage = previewWrapper ? previewWrapper.querySelector('img') : null;
+                                                                var previewPlaceholder = previewImage ? previewImage.getAttribute('data-placeholder-src') : '';
 								var defaultLabel = trigger ? trigger.getAttribute('data-default-label') : '';
 								var changeLabel = trigger ? trigger.getAttribute('data-change-label') : '';
 								var form = fileInput.form;
@@ -158,7 +168,11 @@ add_shortcode(
                                                                                         previewWrapper.hidden = true;
                                                                                 }
                                                                                 if (previewImage) {
-                                                                                        previewImage.removeAttribute('src');
+                                                                                        if (previewPlaceholder) {
+                                                                                                previewImage.src = previewPlaceholder;
+                                                                                        } else {
+                                                                                                previewImage.removeAttribute('src');
+                                                                                        }
                                                                                 }
                                                                                 if (triggerText && defaultLabel) {
                                                                                         triggerText.textContent = defaultLabel;
