@@ -237,6 +237,14 @@ function politeia_confirm_table_shortcode() {
                         .pol-table tbody tr.pol-empty{display:block;padding:16px;text-align:center;background:#f9f9f9;border-radius:12px;}
                         .pol-table tbody tr.pol-empty td{display:block;padding:0;border:0;}
                 }
+                @media (max-width:767px){
+                        .pol-table tbody tr.pol-row{text-align:center;}
+                        .pol-table tbody tr.pol-row .pol-td,
+                        .pol-table tbody tr.pol-row .pol-cell,
+                        .pol-table tbody tr.pol-row .pol-text,
+                        .pol-table tbody tr.pol-row .pol-year-text{text-align:center;}
+                        .pol-table tbody tr.pol-row .pol-actions{text-align:center;}
+                }
         </style>
 
 	<script>
@@ -288,13 +296,16 @@ function politeia_confirm_table_shortcode() {
 				fd.append('nonce', NONCE);
 				fd.append('items', JSON.stringify(items));
 				const resp = await postFD(fd);
-				if (resp && resp.success && resp.data && Array.isArray(resp.data.years)){
-					rows.forEach((tr, i) => {
-						const y = resp.data.years[i];
-						const cell = q('.pol-year-text', tr);
-						if (cell) cell.textContent = Number.isInteger(y) ? String(y) : '…';
-					});
-				}
+                                if (resp && resp.success && resp.data && Array.isArray(resp.data.years)){
+                                        rows.forEach((tr, i) => {
+                                                const rawYear = resp.data.years[i];
+                                                const parsedYear = Number.isInteger(rawYear)
+                                                        ? rawYear
+                                                        : parseInt(rawYear, 10);
+                                                const cell = q('.pol-year-text', tr);
+                                                if (cell) cell.textContent = Number.isInteger(parsedYear) ? String(parsedYear) : '…';
+                                        });
+                                }
 			} catch(e){
 				console.warn('[Confirm Table] year lookup failed', e);
 			}
