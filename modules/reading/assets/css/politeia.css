@@ -353,20 +353,18 @@ table.prs-form__table {
         padding: 12px 20px;
         border: none;
         border-radius: 6px;
-        background: #8ccfec;
+        background: #a8a8a8;
         color: #fff;
         font-size: 0.95rem;
         font-weight: 600;
         line-height: 1;
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-        box-shadow: 0 6px 16px rgba(140, 207, 236, 0.35);
+        transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .prs-form__file-trigger:hover,
 .prs-form__file-trigger:focus {
-        background: #7dc8ea;
-        box-shadow: 0 10px 18px rgba(125, 200, 234, 0.45);
+        background: #9b9b9b;
         outline: none;
 }
 
