@@ -57,296 +57,317 @@ add_shortcode(
 			}
 		}
 
+		static $modal_registered = false;
+
+		if ( ! $modal_registered ) {
+			$modal_registered = true;
+
+			ob_start();
+			?>
+        <div class="prs-add-book prs-add-book--modal">
+        <div id="prs-add-book-modal"
+        			class="prs-add-book__modal"
+        			data-success="<?php echo esc_attr( $success ? '1' : '0' ); ?>"
+        			style="<?php echo esc_attr( $success ? 'display:flex;' : 'display:none;' ); ?>"
+        			role="dialog"
+        			aria-modal="true"
+        			aria-labelledby="<?php echo esc_attr( $success ? 'prs-add-book-success-title' : 'prs-add-book-form-title' ); ?>"
+        			onclick="this.style.display='none'">
+        			<div class="prs-add-book__modal-content<?php echo $success ? ' prs-add-book__modal-content--success' : ''; ?>" onclick="event.stopPropagation();">
+        				<button type="button"
+        					class="prs-add-book__close"
+        					aria-label="<?php echo esc_attr__( 'Close dialog', 'politeia-reading' ); ?>"
+        					onclick="document.getElementById('prs-add-book-modal').style.display='none'">
+        					&times;
+        				</button>
+                                        <div id="prs-add-book-success" class="prs-add-book__success"<?php echo $success ? '' : ' hidden'; ?>>
+                                                <?php if ( $success_cover_url ) : ?>
+        						<?php
+        						$success_cover_alt = $success_title
+        							? sprintf(
+        								/* translators: %s: book title. */
+        								__( 'Cover image for %s', 'politeia-reading' ),
+        								$success_title
+        							)
+        							: __( 'Uploaded book cover image', 'politeia-reading' );
+        						?>
+        						<div class="prs-add-book__success-cover">
+        							<img src="<?php echo esc_url( $success_cover_url ); ?>"
+        								alt="<?php echo esc_attr( $success_cover_alt ); ?>"
+        								loading="lazy"
+        								decoding="async" />
+        						</div>
+        					<?php endif; ?>
+        					<h2 id="prs-add-book-success-title" class="prs-add-book__success-heading">
+        						<?php echo esc_html__( 'Book Added Successfully', 'politeia-reading' ); ?>
+        					</h2>
+        					<ul class="prs-add-book__success-details">
+        						<?php if ( $success_title ) : ?>
+        							<li class="prs-add-book__success-item">
+        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Title', 'politeia-reading' ); ?></span>
+        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_title ); ?></span>
+        							</li>
+        						<?php endif; ?>
+        						<?php if ( $success_author ) : ?>
+        							<li class="prs-add-book__success-item">
+        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Author', 'politeia-reading' ); ?></span>
+        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_author ); ?></span>
+        							</li>
+        						<?php endif; ?>
+        						<?php if ( null !== $success_year ) : ?>
+        							<li class="prs-add-book__success-item">
+        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></span>
+        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_year ); ?></span>
+        							</li>
+        						<?php endif; ?>
+        						<?php if ( null !== $success_pages ) : ?>
+        							<li class="prs-add-book__success-item">
+        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></span>
+        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_pages ); ?></span>
+        							</li>
+        						<?php endif; ?>
+        					</ul>
+        				</div>
+                                        <div id="prs-add-book-mode-switch" class="prs-add-book__mode-switch"<?php echo $success ? ' hidden' : ''; ?>>
+                                                <button type="button"
+                                                        class="prs-add-book__mode-button is-active"
+                                                        data-mode="single"
+                                                        aria-pressed="true">
+                                                        <?php esc_html_e( 'Single', 'politeia-reading' ); ?>
+                                                </button>
+                                                <span class="prs-add-book__mode-separator" aria-hidden="true">|</span>
+                                                <button type="button"
+                                                        class="prs-add-book__mode-button"
+                                                        data-mode="multiple"
+                                                        aria-pressed="false">
+                                                        <?php esc_html_e( 'Multiple', 'politeia-reading' ); ?>
+                                                </button>
+                                        </div>
+                                        <form id="prs-add-book-form"
+                                                class="prs-form"
+                                                method="post"
+                                                enctype="multipart/form-data"
+                                                action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $success ? ' hidden' : ''; ?>>
+                                                <h2 id="prs-add-book-form-title" class="prs-add-book__heading"<?php echo $success ? ' hidden' : ''; ?>>
+                                                        <?php echo esc_html__( 'Add to Library', 'politeia-reading' ); ?>
+                                                </h2>
+                                                <?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
+                                                <input type="hidden" name="action" value="prs_add_book_submit" />
+        
+        					<table class="prs-form__table">
+        						<tbody>
+        							<tr>
+        								<th scope="row">
+        									<label for="prs_title">
+        										<?php esc_html_e( 'Title', 'politeia-reading' ); ?>
+        										<span class="prs-form__required" aria-hidden="true">*</span>
+        									</label>
+        								</th>
+        								<td>
+        									<div class="prs-add-book__field prs-add-book__field--title">
+        										<input type="text" id="prs_title" name="prs_title" autocomplete="off" required />
+        										<div
+        											id="prs_title_suggestions"
+        											class="prs-add-book__suggestions"
+        											role="listbox"
+        											aria-label="<?php esc_attr_e( 'Book suggestions', 'politeia-reading' ); ?>"
+        											aria-hidden="true"
+        										></div>
+        									</div>
+        								</td>
+        							</tr>
+        							<tr>
+        								<th scope="row">
+        									<label for="prs_author">
+        										<?php esc_html_e( 'Author', 'politeia-reading' ); ?>
+        										<span class="prs-form__required" aria-hidden="true">*</span>
+        									</label>
+        								</th>
+        								<td>
+        									<input type="text" id="prs_author" name="prs_author" required />
+        								</td>
+        							</tr>
+        							<tr>
+        								<th scope="row">
+        									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
+        								</th>
+        								<td>
+        									<input type="number"
+        										id="prs_year"
+        										name="prs_year"
+        										min="1400"
+        										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
+        								</td>
+        							</tr>
+        							<tr>
+        								<th scope="row">
+        									<label for="prs_pages"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></label>
+        								</th>
+        								<td>
+        									<input type="number"
+        										id="prs_pages"
+        										name="prs_pages"
+        										min="1"
+        										step="1"
+        										inputmode="numeric"
+        										pattern="[0-9]*" />
+        								</td>
+        							</tr>
+        							<tr>
+        								<th scope="row">
+        									<label class="prs-form__label" for="prs_cover">
+        										<span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?>:</span>
+        										<span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
+        									</label>
+        								</th>
+        								<td>
+        									<div class="prs-form__file-control">
+        										<input
+        											type="file"
+        											id="prs_cover"
+        											name="prs_cover"
+        											accept=".jpg,.jpeg,.png,.webp"
+        											class="prs-form__file-input"
+        										/>
+        										<button
+        											type="button"
+        											id="prs_cover_trigger"
+        											class="prs-form__file-trigger"
+        											data-default-label="<?php echo esc_attr__( 'Upload Book Cover', 'politeia-reading' ); ?>"
+        											data-change-label="<?php echo esc_attr__( 'Change Book Cover', 'politeia-reading' ); ?>"
+        											onclick="document.getElementById('prs_cover').click();"
+        										>
+        											<span class="prs-form__file-icon" aria-hidden="true"></span>
+        											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
+        										</button>
+        										<?php
+        										$prs_cover_placeholder = plugins_url(
+        											'modules/reading/assets/img/icon-book-cover.png',
+        											dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
+        										);
+        										?>
+        										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
+        											<img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
+        												decoding="async"
+        												alt="<?php echo esc_attr( 'Selected book cover preview' ); ?>"
+        												data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
+        										</div>
+        									</div>
+        								</td>
+        							</tr>
+        							<tr class="prs-form__actions">
+        								<td colspan="2">
+        									<button class="prs-btn" type="submit"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></button>
+        								</td>
+        							</tr>
+                                                        </tbody>
+                                                        </table>
+                                                        </form>
+                                                        <div id="prs-add-book-multiple" class="prs-add-book__multiple" hidden>
+                                                                <h2 id="prs-add-book-multiple-title" class="prs-add-book__heading">
+                                                                        <?php echo esc_html__( 'Add Multiple Books', 'politeia-reading' ); ?>
+                                                                </h2>
+                                                                <?php if ( $multiple_mode_content ) : ?>
+                                                                        <?php echo $multiple_mode_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                                                <?php else : ?>
+                                                                        <p class="prs-add-book__mode-unavailable">
+                                                                                <?php echo esc_html__( 'The multiple entry mode is currently unavailable.', 'politeia-reading' ); ?>
+                                                                        </p>
+                                                                <?php endif; ?>
+                                                        </div>
+                                                        <script>
+                                                                ( function () {
+        								var fileInput = document.getElementById('prs_cover');
+        								if (!fileInput) {
+        									return;
+        								}
+        
+        								var trigger = document.getElementById('prs_cover_trigger');
+        								var triggerText = trigger ? trigger.querySelector('.prs-form__file-text') : null;
+        								var previewWrapper = document.getElementById('prs_cover_preview');
+        								var previewImage = previewWrapper ? previewWrapper.querySelector('img') : null;
+        								var previewPlaceholder = previewImage ? previewImage.getAttribute('data-placeholder-src') : '';
+        								var defaultLabel = trigger ? trigger.getAttribute('data-default-label') : '';
+        								var changeLabel = trigger ? trigger.getAttribute('data-change-label') : '';
+        								var form = fileInput.form;
+        
+        									var resetPreview = function () {
+        										if (previewWrapper) {
+        											previewWrapper.hidden = true;
+        										}
+        										if (previewImage) {
+        											if (previewPlaceholder) {
+        												previewImage.src = previewPlaceholder;
+        											} else {
+        												previewImage.removeAttribute('src');
+        											}
+        										}
+        										if (triggerText && defaultLabel) {
+        											triggerText.textContent = defaultLabel;
+        										}
+        									};
+        
+        								if (form) {
+        									form.addEventListener('reset', function () {
+        										window.setTimeout(resetPreview);
+        									});
+        								}
+        
+        								fileInput.addEventListener('change', function () {
+        									if (this.files && this.files[0]) {
+        										var reader = new FileReader();
+        										reader.onload = function (event) {
+        											if (previewWrapper && previewImage) {
+        												previewImage.src = event.target && event.target.result ? event.target.result : '';
+        												previewWrapper.hidden = false;
+        											}
+        										};
+        										reader.readAsDataURL(this.files[0]);
+        										if (triggerText && changeLabel) {
+        											triggerText.textContent = changeLabel;
+        										}
+        									} else {
+        										resetPreview();
+        									}
+        								});
+        
+        								resetPreview();
+        							}() );
+        						</script>
+        						</div>
+        				</div>
+        		</div>
+        		
+        </div>
+                        <?php
+			$modal_markup = ob_get_clean();
+
+			add_action(
+				'wp_footer',
+				function () use ( $modal_markup ) {
+					echo $modal_markup; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				}
+			);
+		}
+
 		ob_start();
 
-                if ( ! empty( $_GET['prs_error'] ) && $_GET['prs_error'] === '1' ) {
-                        echo '<div class="prs-notice prs-notice--error">' .
-                        esc_html__( 'There was a problem adding the book.', 'politeia-reading' ) .
-                        '</div>';
-                }
+		if ( ! empty( $_GET['prs_error'] ) && $_GET['prs_error'] === '1' ) {
+			echo '<div class="prs-notice prs-notice--error">' .
+			esc_html__( 'There was a problem adding the book.', 'politeia-reading' ) .
+			'</div>';
+		}
 		?>
-	<div class="prs-add-book">
-		<button
-			type="button"
-			class="prs-btn"
-			aria-controls="prs-add-book-modal"
-			onclick="document.getElementById('prs-add-book-modal').style.display='flex'">
-			<?php echo esc_html__( 'Add Book', 'politeia-reading' ); ?>
-		</button>
-
-		<div id="prs-add-book-modal"
-			class="prs-add-book__modal"
-			data-success="<?php echo esc_attr( $success ? '1' : '0' ); ?>"
-			style="<?php echo esc_attr( $success ? 'display:flex;' : 'display:none;' ); ?>"
-			role="dialog"
-			aria-modal="true"
-			aria-labelledby="<?php echo esc_attr( $success ? 'prs-add-book-success-title' : 'prs-add-book-form-title' ); ?>"
-			onclick="this.style.display='none'">
-			<div class="prs-add-book__modal-content<?php echo $success ? ' prs-add-book__modal-content--success' : ''; ?>" onclick="event.stopPropagation();">
-				<button type="button"
-					class="prs-add-book__close"
-					aria-label="<?php echo esc_attr__( 'Close dialog', 'politeia-reading' ); ?>"
-					onclick="document.getElementById('prs-add-book-modal').style.display='none'">
-					&times;
-				</button>
-                                <div id="prs-add-book-success" class="prs-add-book__success"<?php echo $success ? '' : ' hidden'; ?>>
-                                        <?php if ( $success_cover_url ) : ?>
-						<?php
-						$success_cover_alt = $success_title
-							? sprintf(
-								/* translators: %s: book title. */
-								__( 'Cover image for %s', 'politeia-reading' ),
-								$success_title
-							)
-							: __( 'Uploaded book cover image', 'politeia-reading' );
-						?>
-						<div class="prs-add-book__success-cover">
-							<img src="<?php echo esc_url( $success_cover_url ); ?>"
-								alt="<?php echo esc_attr( $success_cover_alt ); ?>"
-								loading="lazy"
-								decoding="async" />
-						</div>
-					<?php endif; ?>
-					<h2 id="prs-add-book-success-title" class="prs-add-book__success-heading">
-						<?php echo esc_html__( 'Book Added Successfully', 'politeia-reading' ); ?>
-					</h2>
-					<ul class="prs-add-book__success-details">
-						<?php if ( $success_title ) : ?>
-							<li class="prs-add-book__success-item">
-								<span class="prs-add-book__success-label"><?php esc_html_e( 'Title', 'politeia-reading' ); ?></span>
-								<span class="prs-add-book__success-value"><?php echo esc_html( $success_title ); ?></span>
-							</li>
-						<?php endif; ?>
-						<?php if ( $success_author ) : ?>
-							<li class="prs-add-book__success-item">
-								<span class="prs-add-book__success-label"><?php esc_html_e( 'Author', 'politeia-reading' ); ?></span>
-								<span class="prs-add-book__success-value"><?php echo esc_html( $success_author ); ?></span>
-							</li>
-						<?php endif; ?>
-						<?php if ( null !== $success_year ) : ?>
-							<li class="prs-add-book__success-item">
-								<span class="prs-add-book__success-label"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></span>
-								<span class="prs-add-book__success-value"><?php echo esc_html( $success_year ); ?></span>
-							</li>
-						<?php endif; ?>
-						<?php if ( null !== $success_pages ) : ?>
-							<li class="prs-add-book__success-item">
-								<span class="prs-add-book__success-label"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></span>
-								<span class="prs-add-book__success-value"><?php echo esc_html( $success_pages ); ?></span>
-							</li>
-						<?php endif; ?>
-					</ul>
-				</div>
-                                <div id="prs-add-book-mode-switch" class="prs-add-book__mode-switch"<?php echo $success ? ' hidden' : ''; ?>>
-                                        <button type="button"
-                                                class="prs-add-book__mode-button is-active"
-                                                data-mode="single"
-                                                aria-pressed="true">
-                                                <?php esc_html_e( 'Single', 'politeia-reading' ); ?>
-                                        </button>
-                                        <span class="prs-add-book__mode-separator" aria-hidden="true">|</span>
-                                        <button type="button"
-                                                class="prs-add-book__mode-button"
-                                                data-mode="multiple"
-                                                aria-pressed="false">
-                                                <?php esc_html_e( 'Multiple', 'politeia-reading' ); ?>
-                                        </button>
-                                </div>
-                                <form id="prs-add-book-form"
-                                        class="prs-form"
-                                        method="post"
-                                        enctype="multipart/form-data"
-                                        action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $success ? ' hidden' : ''; ?>>
-                                        <h2 id="prs-add-book-form-title" class="prs-add-book__heading"<?php echo $success ? ' hidden' : ''; ?>>
-                                                <?php echo esc_html__( 'Add to Library', 'politeia-reading' ); ?>
-                                        </h2>
-                                        <?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
-                                        <input type="hidden" name="action" value="prs_add_book_submit" />
-
-					<table class="prs-form__table">
-						<tbody>
-							<tr>
-								<th scope="row">
-									<label for="prs_title">
-										<?php esc_html_e( 'Title', 'politeia-reading' ); ?>
-										<span class="prs-form__required" aria-hidden="true">*</span>
-									</label>
-								</th>
-								<td>
-									<div class="prs-add-book__field prs-add-book__field--title">
-										<input type="text" id="prs_title" name="prs_title" autocomplete="off" required />
-										<div
-											id="prs_title_suggestions"
-											class="prs-add-book__suggestions"
-											role="listbox"
-											aria-label="<?php esc_attr_e( 'Book suggestions', 'politeia-reading' ); ?>"
-											aria-hidden="true"
-										></div>
-									</div>
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="prs_author">
-										<?php esc_html_e( 'Author', 'politeia-reading' ); ?>
-										<span class="prs-form__required" aria-hidden="true">*</span>
-									</label>
-								</th>
-								<td>
-									<input type="text" id="prs_author" name="prs_author" required />
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
-								</th>
-								<td>
-									<input type="number"
-										id="prs_year"
-										name="prs_year"
-										min="1400"
-										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="prs_pages"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></label>
-								</th>
-								<td>
-									<input type="number"
-										id="prs_pages"
-										name="prs_pages"
-										min="1"
-										step="1"
-										inputmode="numeric"
-										pattern="[0-9]*" />
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label class="prs-form__label" for="prs_cover">
-										<span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?>:</span>
-										<span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
-									</label>
-								</th>
-								<td>
-									<div class="prs-form__file-control">
-										<input
-											type="file"
-											id="prs_cover"
-											name="prs_cover"
-											accept=".jpg,.jpeg,.png,.webp"
-											class="prs-form__file-input"
-										/>
-										<button
-											type="button"
-											id="prs_cover_trigger"
-											class="prs-form__file-trigger"
-											data-default-label="<?php echo esc_attr__( 'Upload Book Cover', 'politeia-reading' ); ?>"
-											data-change-label="<?php echo esc_attr__( 'Change Book Cover', 'politeia-reading' ); ?>"
-											onclick="document.getElementById('prs_cover').click();"
-										>
-											<span class="prs-form__file-icon" aria-hidden="true"></span>
-											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
-										</button>
-										<?php
-										$prs_cover_placeholder = plugins_url(
-											'modules/reading/assets/img/icon-book-cover.png',
-											dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
-										);
-										?>
-										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
-											<img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
-												decoding="async"
-												alt="<?php echo esc_attr( 'Selected book cover preview' ); ?>"
-												data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
-										</div>
-									</div>
-								</td>
-							</tr>
-							<tr class="prs-form__actions">
-								<td colspan="2">
-									<button class="prs-btn" type="submit"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></button>
-								</td>
-							</tr>
-                                                </tbody>
-                                                </table>
-                                                </form>
-                                                <div id="prs-add-book-multiple" class="prs-add-book__multiple" hidden>
-                                                        <h2 id="prs-add-book-multiple-title" class="prs-add-book__heading">
-                                                                <?php echo esc_html__( 'Add Multiple Books', 'politeia-reading' ); ?>
-                                                        </h2>
-                                                        <?php if ( $multiple_mode_content ) : ?>
-                                                                <?php echo $multiple_mode_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                                        <?php else : ?>
-                                                                <p class="prs-add-book__mode-unavailable">
-                                                                        <?php echo esc_html__( 'The multiple entry mode is currently unavailable.', 'politeia-reading' ); ?>
-                                                                </p>
-                                                        <?php endif; ?>
-                                                </div>
-                                                <script>
-                                                        ( function () {
-								var fileInput = document.getElementById('prs_cover');
-								if (!fileInput) {
-									return;
-								}
-
-								var trigger = document.getElementById('prs_cover_trigger');
-								var triggerText = trigger ? trigger.querySelector('.prs-form__file-text') : null;
-								var previewWrapper = document.getElementById('prs_cover_preview');
-								var previewImage = previewWrapper ? previewWrapper.querySelector('img') : null;
-								var previewPlaceholder = previewImage ? previewImage.getAttribute('data-placeholder-src') : '';
-								var defaultLabel = trigger ? trigger.getAttribute('data-default-label') : '';
-								var changeLabel = trigger ? trigger.getAttribute('data-change-label') : '';
-								var form = fileInput.form;
-
-									var resetPreview = function () {
-										if (previewWrapper) {
-											previewWrapper.hidden = true;
-										}
-										if (previewImage) {
-											if (previewPlaceholder) {
-												previewImage.src = previewPlaceholder;
-											} else {
-												previewImage.removeAttribute('src');
-											}
-										}
-										if (triggerText && defaultLabel) {
-											triggerText.textContent = defaultLabel;
-										}
-									};
-
-								if (form) {
-									form.addEventListener('reset', function () {
-										window.setTimeout(resetPreview);
-									});
-								}
-
-								fileInput.addEventListener('change', function () {
-									if (this.files && this.files[0]) {
-										var reader = new FileReader();
-										reader.onload = function (event) {
-											if (previewWrapper && previewImage) {
-												previewImage.src = event.target && event.target.result ? event.target.result : '';
-												previewWrapper.hidden = false;
-											}
-										};
-										reader.readAsDataURL(this.files[0]);
-										if (triggerText && changeLabel) {
-											triggerText.textContent = changeLabel;
-										}
-									} else {
-										resetPreview();
-									}
-								});
-
-								resetPreview();
-							}() );
-						</script>
-						</div>
-				</div>
-		</div>
-		<?php
+        <div class="prs-add-book">
+                <button
+                        type="button"
+                        class="prs-btn"
+                        aria-controls="prs-add-book-modal"
+                        onclick="document.getElementById('prs-add-book-modal').style.display='flex'">
+                        <?php echo esc_html__( 'Add Book', 'politeia-reading' ); ?>
+                </button>
+        </div>
+                <?php
 		return ob_get_clean();
 	}
 );
