@@ -99,8 +99,8 @@ add_shortcode(
 							</tr>
 							<tr>
 								<th scope="row">
-									<label class="prs-form__label" for="prs_cover">
-										<span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?></span>
+                                                                        <label class="prs-form__label" for="prs_cover">
+                                                                                <span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?>:</span>
 										<span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
 									</label>
 								</th>
@@ -153,17 +153,17 @@ add_shortcode(
 								var changeLabel = trigger ? trigger.getAttribute('data-change-label') : '';
 								var form = fileInput.form;
 
-								var resetPreview = function () {
-									if (previewWrapper) {
-										previewWrapper.setAttribute('hidden', 'hidden');
-									}
-									if (previewImage) {
-										previewImage.removeAttribute('src');
-									}
-									if (triggerText && defaultLabel) {
-										triggerText.textContent = defaultLabel;
-									}
-								};
+                                                                        var resetPreview = function () {
+                                                                                if (previewWrapper) {
+                                                                                        previewWrapper.hidden = true;
+                                                                                }
+                                                                                if (previewImage) {
+                                                                                        previewImage.removeAttribute('src');
+                                                                                }
+                                                                                if (triggerText && defaultLabel) {
+                                                                                        triggerText.textContent = defaultLabel;
+                                                                                }
+                                                                        };
 
 								if (form) {
 									form.addEventListener('reset', function () {
@@ -177,7 +177,7 @@ add_shortcode(
 										reader.onload = function (event) {
 											if (previewWrapper && previewImage) {
 												previewImage.src = event.target && event.target.result ? event.target.result : '';
-												previewWrapper.removeAttribute('hidden');
+                                                                                                previewWrapper.hidden = false;
 											}
 										};
 										reader.readAsDataURL(this.files[0]);

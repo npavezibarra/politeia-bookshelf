@@ -296,6 +296,7 @@ table.prs-form__table {
 .prs-form__label-text {
         font-weight: 600;
         color: #333;
+        display: block;
 }
 
 .prs-form__label-note {
@@ -303,6 +304,7 @@ table.prs-form__table {
         line-height: 1.2;
         color: #6b7280;
         font-weight: 500;
+        display: block;
 }
 
 .prs-form__table input[type="text"],
@@ -325,6 +327,7 @@ table.prs-form__table {
         position: relative;
         display: flex;
         align-items: center;
+        justify-content: center;
         gap: 16px;
         flex-wrap: wrap;
 }
@@ -395,8 +398,8 @@ table.prs-form__table {
         display: inline-flex;
         align-items: center;
         justify-content: center;
-        width: 80px;
-        height: 80px;
+        width: 60px;
+        height: 60px;
         border-radius: 8px;
         background: #f3f4f6;
         border: 1px dashed #cbd5f5;
