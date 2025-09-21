@@ -12,6 +12,7 @@ add_shortcode(
 		}
 
 		wp_enqueue_style( 'politeia-reading' );
+		wp_enqueue_script( 'politeia-add-book' );
 
 		ob_start();
 
@@ -80,7 +81,8 @@ add_shortcode(
 									</label>
 								</th>
 								<td>
-									<input type="text" id="prs_title" name="prs_title" required />
+									<input type="text" id="prs_title" name="prs_title" list="prs_title_suggestions" required />
+									<datalist id="prs_title_suggestions"></datalist>
 								</td>
 							</tr>
 							<tr>
