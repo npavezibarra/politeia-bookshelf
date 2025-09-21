@@ -232,6 +232,33 @@
         color: #111;
 }
 
+.prs-add-book__mode-switch {
+        margin-bottom: 16px;
+        text-align: center;
+        font-size: 0.95rem;
+        color: #4b5563;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+}
+
+.prs-add-book__mode-switch a {
+        color: #0d6efd;
+        text-decoration: none;
+        font-weight: 600;
+}
+
+.prs-add-book__mode-switch a:hover,
+.prs-add-book__mode-switch a:focus {
+        text-decoration: underline;
+}
+
+.prs-add-book__mode-separator {
+        color: #9ca3af;
+        font-weight: 500;
+}
+
 .prs-add-book__close {
         position: absolute;
         top: 12px;
@@ -261,6 +288,7 @@
 
 #prs-add-book-form {
         width: 100%;
+        margin-bottom: 0;
 }
 
 .prs-form__table {

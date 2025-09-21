@@ -50,19 +50,28 @@ add_shortcode(
 					onclick="document.getElementById('prs-add-book-modal').style.display='none'">
 					&times;
 				</button>
-				<form id="prs-add-book-form"
-					class="prs-form"
-					method="post"
-					enctype="multipart/form-data"
-					action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
-					<h2 id="prs-add-book-form-title" class="prs-add-book__heading">
-						<?php echo esc_html__( 'Add Book', 'politeia-reading' ); ?>
-					</h2>
-					<?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
-					<input type="hidden" name="action" value="prs_add_book_submit" />
+                                <form id="prs-add-book-form"
+                                        class="prs-form"
+                                        method="post"
+                                        enctype="multipart/form-data"
+                                        action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+                                        <h2 id="prs-add-book-form-title" class="prs-add-book__heading">
+                                                <?php echo esc_html__( 'Add to Library', 'politeia-reading' ); ?>
+                                        </h2>
+                                        <div id="prs-add-book-mode-switch" class="prs-add-book__mode-switch">
+                                                <a href="#" onclick="return false;">
+                                                        <?php esc_html_e( 'Single', 'politeia-reading' ); ?>
+                                                </a>
+                                                <span class="prs-add-book__mode-separator" aria-hidden="true">|</span>
+                                                <a href="#" onclick="return false;">
+                                                        <?php esc_html_e( 'Multiple', 'politeia-reading' ); ?>
+                                                </a>
+                                        </div>
+                                        <?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
+                                        <input type="hidden" name="action" value="prs_add_book_submit" />
 
-					<table class="prs-form__table">
-						<tbody>
+                                        <table class="prs-form__table">
+                                                <tbody>
 							<tr>
 								<th scope="row">
 									<label for="prs_title">
@@ -84,21 +93,35 @@ add_shortcode(
 								<td>
 									<input type="text" id="prs_author" name="prs_author" required />
 								</td>
-							</tr>
-							<tr>
-								<th scope="row">
-									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
-								</th>
+                                                        </tr>
+                                                        <tr>
+                                                                <th scope="row">
+                                                                        <label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
+                                                                </th>
 								<td>
 									<input type="number"
 										id="prs_year"
 										name="prs_year"
 										min="1400"
-										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
-								</td>
-							</tr>
-							<tr>
-								<th scope="row">
+                                                                                max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
+                                                                </td>
+                                                        </tr>
+                                                        <tr>
+                                                                <th scope="row">
+                                                                        <label for="prs_pages"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></label>
+                                                                </th>
+                                                                <td>
+                                                                        <input type="number"
+                                                                                id="prs_pages"
+                                                                                name="prs_pages"
+                                                                                min="1"
+                                                                                step="1"
+                                                                                inputmode="numeric"
+                                                                                pattern="[0-9]*" />
+                                                                </td>
+                                                        </tr>
+                                                        <tr>
+                                                                <th scope="row">
                                                                         <label class="prs-form__label" for="prs_cover">
                                                                                 <span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?>:</span>
 										<span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
@@ -231,15 +254,23 @@ function prs_add_book_submit_handler() {
 	// Sanitización
 	$title  = isset( $_POST['prs_title'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_title'] ) ) : '';
 	$author = isset( $_POST['prs_author'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_author'] ) ) : '';
-	$year   = null;
-	if ( isset( $_POST['prs_year'] ) && $_POST['prs_year'] !== '' ) {
-		$y   = absint( $_POST['prs_year'] );
-		$min = 1400;
-		$max = (int) date( 'Y' ) + 1;
-		if ( $y >= $min && $y <= $max ) {
-			$year = $y;
-		}
-	}
+        $year   = null;
+        if ( isset( $_POST['prs_year'] ) && $_POST['prs_year'] !== '' ) {
+                $y   = absint( $_POST['prs_year'] );
+                $min = 1400;
+                $max = (int) date( 'Y' ) + 1;
+                if ( $y >= $min && $y <= $max ) {
+                        $year = $y;
+                }
+        }
+
+        $pages = null;
+        if ( isset( $_POST['prs_pages'] ) && $_POST['prs_pages'] !== '' ) {
+                $p = absint( $_POST['prs_pages'] );
+                if ( $p > 0 ) {
+                        $pages = $p;
+                }
+        }
 
 	if ( $title === '' || $author === '' ) {
 		wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
@@ -256,11 +287,22 @@ function prs_add_book_submit_handler() {
 		exit;
 	}
 
-	// Vincular a la biblioteca del usuario (idempotente)
-	prs_ensure_user_book( $user_id, (int) $book_id );
+        // Vincular a la biblioteca del usuario (idempotente)
+        $user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );
 
-	// Redirect back with success flag
-	$url = add_query_arg( 'prs_added', 1, wp_get_referer() ?: home_url() );
-	wp_safe_redirect( $url );
-	exit;
+        if ( $user_book_id && null !== $pages ) {
+                global $wpdb;
+                $wpdb->update(
+                        $wpdb->prefix . 'politeia_user_books',
+                        array( 'pages' => $pages ),
+                        array( 'id' => (int) $user_book_id ),
+                        array( '%d' ),
+                        array( '%d' )
+                );
+        }
+
+        // Redirect back with success flag
+        $url = add_query_arg( 'prs_added', 1, wp_get_referer() ?: home_url() );
+        wp_safe_redirect( $url );
+        exit;
 }
