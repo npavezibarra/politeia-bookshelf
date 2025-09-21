@@ -42,19 +42,28 @@
                         var item = items[i];
                         var option = document.createElement('option');
                         option.value = item.title;
-                        var labelParts = [item.title];
-                        if (item.author) {
-                                option.dataset.author = item.author;
-                                labelParts.push('— ' + item.author);
-                        }
+                        var label = item.title;
                         if (item.year) {
                                 option.dataset.year = item.year;
-                                labelParts.push('(' + item.year + ')');
+                                label += ' (' + item.year + ')';
                         }
-                        option.label = labelParts.join(' ');
+                        if (item.author) {
+                                option.dataset.author = item.author;
+                                label += ' — ' + item.author;
+                        }
+                        option.label = label;
                         option.textContent = option.label;
                         suggestionList.appendChild(option);
                 }
+        };
+
+        var parseYear = function (publishedDate) {
+                if (!publishedDate) {
+                        return '';
+                }
+
+                var match = String(publishedDate).match(/\d{4}/);
+                return match ? match[0] : '';
         };
 
         var fetchSuggestions = function (query) {
@@ -69,8 +78,17 @@
 
                 abortController = supportsAbortController ? new AbortController() : null;
                 lastFetchedQuery = query;
+                var requestedQuery = query;
 
-                var url = 'https://openlibrary.org/search.json?limit=6&title=' + encodeURIComponent(query);
+                var baseUrl = 'https://www.googleapis.com/books/v1/volumes';
+                var params = [
+                        'q=' + encodeURIComponent('intitle:' + query),
+                        'maxResults=6',
+                        'printType=books',
+                        'orderBy=relevance',
+                        'fields=items(volumeInfo/title,volumeInfo/authors,volumeInfo/publishedDate)'
+                ];
+                var url = baseUrl + '?' + params.join('&');
                 var fetchOptions = {};
                 var currentController = abortController;
                 if (currentController) {
@@ -85,28 +103,33 @@
                                 return response.json();
                         })
                         .then(function (data) {
-                                if (!data || !data.docs || !data.docs.length) {
+                                if (!data || !data.items || !data.items.length) {
                                         clearSuggestions();
                                         return;
                                 }
 
-                                var docs = data.docs;
+                                var docs = data.items;
                                 var items = [];
                                 var seen = Object.create(null);
 
                                 for (var i = 0; i < docs.length; i++) {
                                         var doc = docs[i];
-                                        var title = (doc && doc.title) ? String(doc.title).trim() : '';
+                                        if (!doc || !doc.volumeInfo) {
+                                                continue;
+                                        }
+
+                                        var volumeInfo = doc.volumeInfo;
+                                        var title = volumeInfo.title ? String(volumeInfo.title).trim() : '';
                                         if (!title) {
                                                 continue;
                                         }
                                         var author = '';
-                                        if (doc.author_name && doc.author_name.length) {
-                                                author = String(doc.author_name[0]).trim();
+                                        if (volumeInfo.authors && volumeInfo.authors.length) {
+                                                author = String(volumeInfo.authors[0]).trim();
                                         }
                                         var year = '';
-                                        if (doc.first_publish_year) {
-                                                year = String(doc.first_publish_year);
+                                        if (volumeInfo.publishedDate) {
+                                                year = parseYear(volumeInfo.publishedDate);
                                         }
 
                                         var key = title.toLowerCase() + '|' + author.toLowerCase();
@@ -128,6 +151,10 @@
 
                                 if (!items.length) {
                                         clearSuggestions();
+                                        return;
+                                }
+
+                                if (titleInput.value && titleInput.value.trim().toLowerCase() !== requestedQuery.toLowerCase()) {
                                         return;
                                 }
 
@@ -164,6 +191,20 @@
                 return null;
         };
 
+        var applySuggestionDetails = function (option) {
+                if (!option) {
+                        return;
+                }
+
+                if (authorInput && option.dataset.author) {
+                        authorInput.value = option.dataset.author;
+                }
+
+                if (yearInput && option.dataset.year) {
+                        yearInput.value = option.dataset.year;
+                }
+        };
+
         titleInput.addEventListener('input', function (event) {
                 var query = event.target.value.trim();
 
@@ -182,6 +223,11 @@
                         }
                         fetchSuggestions(query);
                 }, 300);
+
+                var option = findOptionByValue(event.target.value);
+                if (option) {
+                        applySuggestionDetails(option);
+                }
         });
 
         titleInput.addEventListener('change', function (event) {
@@ -191,16 +237,6 @@
                 }
 
                 var option = findOptionByValue(value);
-                if (!option) {
-                        return;
-                }
-
-                if (authorInput && option.dataset.author) {
-                        authorInput.value = option.dataset.author;
-                }
-
-                if (yearInput && option.dataset.year) {
-                        yearInput.value = option.dataset.year;
-                }
+                applySuggestionDetails(option);
         });
 })();
