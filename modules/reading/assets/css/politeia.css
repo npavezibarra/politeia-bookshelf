@@ -322,9 +322,16 @@
 
 .prs-add-book__mode-switch a,
 .prs-add-book__mode-button {
-        color: #0d6efd;
+        color: #4b5563;
         text-decoration: none;
-        font-weight: 600;
+        font-weight: 400;
+        transition: font-weight 0.2s ease;
+        background-color: transparent;
+        box-shadow: none;
+}
+
+.prs-add-book__mode-switch a:visited {
+        color: #4b5563;
 }
 
 .prs-add-book__mode-button {
@@ -335,22 +342,33 @@
         font: inherit;
 }
 
-.prs-add-book__mode-switch a:hover,
-.prs-add-book__mode-switch a:focus,
-.prs-add-book__mode-button:hover,
-.prs-add-book__mode-button:focus {
-        text-decoration: underline;
-}
-
 .prs-add-book__mode-button.is-active {
-        color: #1f2937;
+        color: #0d6efd;
+        font-weight: 700;
         cursor: default;
-        text-decoration: none;
+        background-color: transparent;
+        box-shadow: none;
 }
 
 .prs-add-book__mode-button.is-active:hover,
-.prs-add-book__mode-button.is-active:focus {
-        text-decoration: none;
+.prs-add-book__mode-button.is-active:focus,
+.prs-add-book__mode-button.is-active:active {
+        font-weight: 700;
+        background-color: transparent;
+        box-shadow: none;
+        color: #0d6efd;
+}
+
+.prs-add-book__mode-switch a:hover,
+.prs-add-book__mode-switch a:focus,
+.prs-add-book__mode-switch a:active,
+.prs-add-book__mode-button:hover,
+.prs-add-book__mode-button:focus,
+.prs-add-book__mode-button:active {
+        font-weight: 600;
+        background-color: transparent;
+        box-shadow: none;
+        color: #4b5563;
 }
 
 .prs-add-book__mode-separator {

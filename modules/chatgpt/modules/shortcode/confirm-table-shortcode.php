@@ -96,10 +96,64 @@ function politeia_confirm_table_shortcode() {
 		);
 	}
 
-	// --- Fusionar: efímeros (In Shelf, sin botón) + pendientes (confirmables) ---
-	$rows = array_merge( $ef_rows, $db_rows );
+        // --- Fusionar: efímeros (In Shelf, sin botón) + pendientes (confirmables) ---
+        $rows = array_merge( $ef_rows, $db_rows );
 
-	// Conteos para UI
+        // --- Prefill años para filas sin dato (usa misma lógica que AJAX) ---
+        if ( ! function_exists('politeia_lookup_book_years_for_items') ) {
+                if ( function_exists('politeia_chatgpt_safe_require') ) {
+                        politeia_chatgpt_safe_require('modules/book-detection/ajax-book-year-lookup.php');
+                } else {
+                        $maybe = dirname(__DIR__) . '/book-detection/ajax-book-year-lookup.php';
+                        if ( file_exists( $maybe ) ) {
+                                require_once $maybe;
+                        }
+                }
+        }
+
+        if ( function_exists('politeia_lookup_book_years_for_items') ) {
+                $lookup_payload = [];
+                $lookup_index   = [];
+
+                foreach ( $rows as $idx => $row ) {
+                        $current_year = null;
+                        if ( isset($row['matched_book_year']) && $row['matched_book_year'] !== '' && $row['matched_book_year'] !== null ) {
+                                $current_year = (int) $row['matched_book_year'];
+                        }
+
+                        if ( $current_year ) {
+                                $rows[ $idx ]['matched_book_year'] = $current_year;
+                                continue;
+                        }
+
+                        $title  = isset($row['title'])  ? trim( (string) $row['title'] )  : '';
+                        $author = isset($row['author']) ? trim( (string) $row['author'] ) : '';
+                        if ( $title === '' || $author === '' ) {
+                                $rows[ $idx ]['matched_book_year'] = null;
+                                continue;
+                        }
+
+                        $lookup_index[]   = $idx;
+                        $lookup_payload[] = [ 'title' => $title, 'author' => $author ];
+                        $rows[ $idx ]['matched_book_year'] = null;
+                }
+
+                if ( ! empty( $lookup_payload ) ) {
+                        try {
+                                $resolved_years = politeia_lookup_book_years_for_items( $lookup_payload );
+                                foreach ( $resolved_years as $pos => $year ) {
+                                        if ( ! isset( $lookup_index[ $pos ] ) ) continue;
+                                        if ( $year !== null && $year !== '' ) {
+                                                $rows[ $lookup_index[ $pos ] ]['matched_book_year'] = (int) $year;
+                                        }
+                                }
+                        } catch ( Throwable $e ) {
+                                error_log('[pol_confirm_table] year prefill failed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+                        }
+                }
+        }
+
+        // Conteos para UI
         $total_rows   = count($rows);
         $confirmables = 0;
         foreach ( $rows as $r ) {
@@ -206,12 +260,49 @@ function politeia_confirm_table_shortcode() {
                 .pol-btn-ghost:hover{background:#1b73e8;color:#fff}
                 .pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:8px;padding:4px 6px;cursor:pointer;color:#1b73e8}
                 .pol-edit:hover{background:#1b73e8;color:#fff}
-		.pol-input{width:100%;max-width:600px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font:inherit;}
-		.pol-row.saving{opacity:.6}
-		.pill{display:inline-block;padding:.25rem .6rem;border-radius:9999px;font-size:.85em;border:1px solid #bde5c8;background:#e7f7ec;color:#166534;margin-right:8px}
-		.link-shelf{font-weight:600;text-decoration:none}
-		.link-shelf:hover{text-decoration:underline}
-	</style>
+                .pol-input{width:100%;max-width:600px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font:inherit;}
+                button.pol-btn.pol-btn-ghost.pol-confirm-one{font-size:13px;border-radius:6px;padding:3px 8px}
+                button#pol-confirm-all{border-radius:6px;font-size:14px}
+                .pol-row.saving{opacity:.6}
+                .pill{display:inline-block;padding:.25rem .6rem;border-radius:9999px;font-size:.85em;border:1px solid #bde5c8;background:#e7f7ec;color:#166534;margin-right:8px}
+                .link-shelf{font-weight:600;text-decoration:none}
+                .link-shelf:hover{text-decoration:underline}
+                @media (max-width:797px){
+                        .pol-card{padding:20px 18px;}
+                        .pol-card__header{flex-direction:column;align-items:flex-start;gap:12px;}
+                        .pol-card__header .pol-btn{width:100%;}
+                        .pol-table-wrap{overflow:visible;}
+                        .pol-table{display:block;border-collapse:separate;}
+                        .pol-table thead{display:none;}
+                        .pol-table tbody{display:block;}
+                        .pol-table tbody tr.pol-row{display:flex;flex-direction:column;background:#f9f9f9;border:1px solid #dcdcdc;border-radius:16px;padding:18px 16px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,.05);}
+                        .pol-table tbody tr.pol-row:last-child{margin-bottom:0;}
+                        .pol-table tbody tr.pol-row .pol-td{display:block;width:100%;padding:0;border:0;}
+                        .pol-table tbody tr.pol-row .pol-td+.pol-td{margin-top:12px;}
+                        .pol-table tbody tr.pol-row .pol-cell{display:block;}
+                        .pol-table tbody tr.pol-row .pol-cell .pol-text{display:block;}
+                        .pol-table tbody tr.pol-row .pol-td:first-child .pol-text{font-weight:600;font-size:1.05rem;}
+                        .pol-table tbody tr.pol-row .pol-td:nth-child(2) .pol-text{color:#4d4d4d;}
+                        .pol-table tbody tr.pol-row .pol-td:nth-child(2) .pol-text::before{content:'By ';font-weight:500;color:#4d4d4d;}
+                        .pol-table tbody tr.pol-row .pol-year-text{display:block;font-weight:500;color:#4d4d4d;}
+                        .pol-table tbody tr.pol-row .pol-actions{margin-top:18px;}
+                        .pol-table tbody tr.pol-row .pol-actions .pol-btn{width:100%;}
+                        .pol-table tbody tr.pol-row .pol-actions .pill{width:100%;margin-right:0;text-align:center;}
+                        .pol-table tbody tr.pol-row .pol-actions .link-shelf{display:flex;justify-content:center;width:100%;}
+                        .pol-table tbody tr.pol-row .pol-edit{display:none;}
+                        .pol-table tbody tr.pol-empty{display:block;padding:16px;text-align:center;background:#f9f9f9;border-radius:12px;}
+                        .pol-table tbody tr.pol-empty td{display:block;padding:0;border:0;}
+                }
+                @media (max-width:767px){
+                        table#pol-table{border:none;}
+                        .pol-table tbody tr.pol-row{text-align:center;}
+                        .pol-table tbody tr.pol-row .pol-td,
+                        .pol-table tbody tr.pol-row .pol-cell,
+                        .pol-table tbody tr.pol-row .pol-text,
+                        .pol-table tbody tr.pol-row .pol-year-text{text-align:center;}
+                        .pol-table tbody tr.pol-row .pol-actions{text-align:center;}
+                }
+        </style>
 
 	<script>
 	(function(){
@@ -249,27 +340,43 @@ function politeia_confirm_table_shortcode() {
 		}
 
 		// -------- Lookup de años para las filas visibles --------
-		async function lookupYearsForVisible(){
-			const rows = qa('tr.pol-row', root);
-			if (!rows.length) return;
-			const items = rows.map(tr => ({
-				title:  q('[data-field="title"] .pol-text', tr)?.textContent?.trim() || '',
-				author: q('[data-field="author"] .pol-text', tr)?.textContent?.trim() || ''
-			}));
-			try{
-				const fd = new FormData();
-				fd.append('action','politeia_lookup_book_years');
-				fd.append('nonce', NONCE);
-				fd.append('items', JSON.stringify(items));
-				const resp = await postFD(fd);
-				if (resp && resp.success && resp.data && Array.isArray(resp.data.years)){
-					rows.forEach((tr, i) => {
-						const y = resp.data.years[i];
-						const cell = q('.pol-year-text', tr);
-						if (cell) cell.textContent = Number.isInteger(y) ? String(y) : '…';
-					});
-				}
-			} catch(e){
+                async function lookupYearsForVisible(){
+                        const allRows = qa('tr.pol-row', root);
+                        if (!allRows.length) return;
+
+                        const pendingRows = allRows.filter(tr => {
+                                const current = q('.pol-year-text', tr)?.textContent?.trim() || '';
+                                return !/^\d{3,4}$/.test(current);
+                        });
+                        if (!pendingRows.length) return;
+
+                        const items = pendingRows.map(tr => ({
+                                title:  q('[data-field="title"] .pol-text', tr)?.textContent?.trim() || '',
+                                author: q('[data-field="author"] .pol-text', tr)?.textContent?.trim() || ''
+                        }));
+                        try{
+                                const fd = new FormData();
+                                fd.append('action','politeia_lookup_book_years');
+                                fd.append('nonce', NONCE);
+                                fd.append('items', JSON.stringify(items));
+                                const resp = await postFD(fd);
+                                if (resp && resp.success && resp.data && Array.isArray(resp.data.years)){
+                                        pendingRows.forEach((tr, i) => {
+                                                const rawYear = resp.data.years[i];
+                                                const parsedYear = Number.isInteger(rawYear)
+                                                        ? rawYear
+                                                        : parseInt(rawYear, 10);
+                                                const cell = q('.pol-year-text', tr);
+                                                if (cell) {
+                                                        if (Number.isInteger(parsedYear)) {
+                                                                cell.textContent = String(parsedYear);
+                                                        } else if (!/^\d{3,4}$/.test(cell.textContent.trim())) {
+                                                                cell.textContent = '…';
+                                                        }
+                                                }
+                                        });
+                                }
+                        } catch(e){
 				console.warn('[Confirm Table] year lookup failed', e);
 			}
 		}
