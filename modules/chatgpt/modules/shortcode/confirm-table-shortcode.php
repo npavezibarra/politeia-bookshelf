@@ -206,12 +206,38 @@ function politeia_confirm_table_shortcode() {
                 .pol-btn-ghost:hover{background:#1b73e8;color:#fff}
                 .pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:8px;padding:4px 6px;cursor:pointer;color:#1b73e8}
                 .pol-edit:hover{background:#1b73e8;color:#fff}
-		.pol-input{width:100%;max-width:600px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font:inherit;}
-		.pol-row.saving{opacity:.6}
-		.pill{display:inline-block;padding:.25rem .6rem;border-radius:9999px;font-size:.85em;border:1px solid #bde5c8;background:#e7f7ec;color:#166534;margin-right:8px}
-		.link-shelf{font-weight:600;text-decoration:none}
-		.link-shelf:hover{text-decoration:underline}
-	</style>
+                .pol-input{width:100%;max-width:600px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font:inherit;}
+                .pol-row.saving{opacity:.6}
+                .pill{display:inline-block;padding:.25rem .6rem;border-radius:9999px;font-size:.85em;border:1px solid #bde5c8;background:#e7f7ec;color:#166534;margin-right:8px}
+                .link-shelf{font-weight:600;text-decoration:none}
+                .link-shelf:hover{text-decoration:underline}
+                @media (max-width:797px){
+                        .pol-card{padding:20px 18px;}
+                        .pol-card__header{flex-direction:column;align-items:flex-start;gap:12px;}
+                        .pol-card__header .pol-btn{width:100%;}
+                        .pol-table-wrap{overflow:visible;}
+                        .pol-table{display:block;border-collapse:separate;}
+                        .pol-table thead{display:none;}
+                        .pol-table tbody{display:block;}
+                        .pol-table tbody tr.pol-row{display:flex;flex-direction:column;background:#f9f9f9;border:1px solid #dcdcdc;border-radius:16px;padding:18px 16px;margin-bottom:18px;box-shadow:0 2px 10px rgba(0,0,0,.05);}
+                        .pol-table tbody tr.pol-row:last-child{margin-bottom:0;}
+                        .pol-table tbody tr.pol-row .pol-td{display:block;width:100%;padding:0;border:0;}
+                        .pol-table tbody tr.pol-row .pol-td+.pol-td{margin-top:12px;}
+                        .pol-table tbody tr.pol-row .pol-cell{display:block;}
+                        .pol-table tbody tr.pol-row .pol-cell .pol-text{display:block;}
+                        .pol-table tbody tr.pol-row .pol-td:first-child .pol-text{font-weight:600;font-size:1.05rem;}
+                        .pol-table tbody tr.pol-row .pol-td:nth-child(2) .pol-text{color:#4d4d4d;}
+                        .pol-table tbody tr.pol-row .pol-td:nth-child(2) .pol-text::before{content:'By ';font-weight:500;color:#4d4d4d;}
+                        .pol-table tbody tr.pol-row .pol-year-text{display:block;font-weight:500;color:#4d4d4d;}
+                        .pol-table tbody tr.pol-row .pol-actions{margin-top:18px;}
+                        .pol-table tbody tr.pol-row .pol-actions .pol-btn{width:100%;}
+                        .pol-table tbody tr.pol-row .pol-actions .pill{width:100%;margin-right:0;text-align:center;}
+                        .pol-table tbody tr.pol-row .pol-actions .link-shelf{display:flex;justify-content:center;width:100%;}
+                        .pol-table tbody tr.pol-row .pol-edit{display:none;}
+                        .pol-table tbody tr.pol-empty{display:block;padding:16px;text-align:center;background:#f9f9f9;border-radius:12px;}
+                        .pol-table tbody tr.pol-empty td{display:block;padding:0;border:0;}
+                }
+        </style>
 
 	<script>
 	(function(){
