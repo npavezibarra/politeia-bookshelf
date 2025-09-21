@@ -276,17 +276,29 @@
 }
 
 .prs-add-book__success-label {
-        font-size: 0.95rem;
+        font-size: 0.6rem;
         font-weight: 600;
         color: #4b5563;
         text-transform: uppercase;
-        letter-spacing: 0.04em;
+        letter-spacing: 0.44em;
 }
 
 .prs-add-book__success-value {
         font-size: 1.15rem;
         font-weight: 600;
         color: #111827;
+}
+
+.prs-add-book__success-cover {
+        display: flex;
+        justify-content: center;
+}
+
+.prs-add-book__success-cover img {
+        display: block;
+        max-height: 100px;
+        width: auto;
+        height: auto;
 }
 
 .prs-add-book__mode-switch {

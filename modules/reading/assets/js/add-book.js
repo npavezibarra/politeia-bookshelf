@@ -26,7 +26,7 @@
                         var currentUrl = new window.URL(window.location.href);
                         var params = currentUrl.searchParams;
                         var removed = false;
-                        var keys = ['prs_added', 'prs_added_title', 'prs_added_author', 'prs_added_year', 'prs_added_pages'];
+                        var keys = ['prs_added', 'prs_added_title', 'prs_added_author', 'prs_added_year', 'prs_added_pages', 'prs_added_cover'];
 
                         for (var i = 0; i < keys.length; i++) {
                                 if (params.has(keys[i])) {

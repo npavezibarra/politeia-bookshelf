@@ -14,11 +14,12 @@ add_shortcode(
 		wp_enqueue_style( 'politeia-reading' );
 		wp_enqueue_script( 'politeia-add-book' );
 
-		$success        = ! empty( $_GET['prs_added'] ) && '1' === $_GET['prs_added'];
-		$success_title  = '';
-		$success_author = '';
-		$success_year   = null;
-		$success_pages  = null;
+		$success           = ! empty( $_GET['prs_added'] ) && '1' === $_GET['prs_added'];
+		$success_title     = '';
+		$success_author    = '';
+		$success_year      = null;
+		$success_pages     = null;
+		$success_cover_url = '';
 
 		if ( $success ) {
 			if ( isset( $_GET['prs_added_title'] ) ) {
@@ -37,6 +38,15 @@ add_shortcode(
 				$pages = absint( $_GET['prs_added_pages'] );
 				if ( $pages > 0 ) {
 					$success_pages = $pages;
+				}
+			}
+			if ( isset( $_GET['prs_added_cover'] ) && '' !== $_GET['prs_added_cover'] ) {
+				$cover_id = absint( $_GET['prs_added_cover'] );
+				if ( $cover_id ) {
+					$cover_url = wp_get_attachment_image_url( $cover_id, 'medium' );
+					if ( $cover_url ) {
+						$success_cover_url = $cover_url;
+					}
 				}
 			}
 		}
@@ -80,6 +90,23 @@ add_shortcode(
 					&times;
 				</button>
 				<div id="prs-add-book-success" class="prs-add-book__success"<?php echo $success ? '' : ' hidden'; ?>>
+					<?php if ( $success_cover_url ) : ?>
+						<?php
+						$success_cover_alt = $success_title
+							? sprintf(
+								/* translators: %s: book title. */
+								__( 'Cover image for %s', 'politeia-reading' ),
+								$success_title
+							)
+							: __( 'Uploaded book cover image', 'politeia-reading' );
+						?>
+						<div class="prs-add-book__success-cover">
+							<img src="<?php echo esc_url( $success_cover_url ); ?>"
+								alt="<?php echo esc_attr( $success_cover_alt ); ?>"
+								loading="lazy"
+								decoding="async" />
+						</div>
+					<?php endif; ?>
 					<h2 id="prs-add-book-success-title" class="prs-add-book__success-heading">
 						<?php echo esc_html__( 'Book Added Successfully', 'politeia-reading' ); ?>
 					</h2>
@@ -384,6 +411,10 @@ function prs_add_book_submit_handler() {
 
 	if ( null !== $pages ) {
 		$query_args['prs_added_pages'] = $pages;
+	}
+
+	if ( $attachment_id ) {
+		$query_args['prs_added_cover'] = (int) $attachment_id;
 	}
 
 	$url = add_query_arg( $query_args, $redirect_url );
