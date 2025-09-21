@@ -96,10 +96,64 @@ function politeia_confirm_table_shortcode() {
 		);
 	}
 
-	// --- Fusionar: efímeros (In Shelf, sin botón) + pendientes (confirmables) ---
-	$rows = array_merge( $ef_rows, $db_rows );
+        // --- Fusionar: efímeros (In Shelf, sin botón) + pendientes (confirmables) ---
+        $rows = array_merge( $ef_rows, $db_rows );
 
-	// Conteos para UI
+        // --- Prefill años para filas sin dato (usa misma lógica que AJAX) ---
+        if ( ! function_exists('politeia_lookup_book_years_for_items') ) {
+                if ( function_exists('politeia_chatgpt_safe_require') ) {
+                        politeia_chatgpt_safe_require('modules/book-detection/ajax-book-year-lookup.php');
+                } else {
+                        $maybe = dirname(__DIR__) . '/book-detection/ajax-book-year-lookup.php';
+                        if ( file_exists( $maybe ) ) {
+                                require_once $maybe;
+                        }
+                }
+        }
+
+        if ( function_exists('politeia_lookup_book_years_for_items') ) {
+                $lookup_payload = [];
+                $lookup_index   = [];
+
+                foreach ( $rows as $idx => $row ) {
+                        $current_year = null;
+                        if ( isset($row['matched_book_year']) && $row['matched_book_year'] !== '' && $row['matched_book_year'] !== null ) {
+                                $current_year = (int) $row['matched_book_year'];
+                        }
+
+                        if ( $current_year ) {
+                                $rows[ $idx ]['matched_book_year'] = $current_year;
+                                continue;
+                        }
+
+                        $title  = isset($row['title'])  ? trim( (string) $row['title'] )  : '';
+                        $author = isset($row['author']) ? trim( (string) $row['author'] ) : '';
+                        if ( $title === '' || $author === '' ) {
+                                $rows[ $idx ]['matched_book_year'] = null;
+                                continue;
+                        }
+
+                        $lookup_index[]   = $idx;
+                        $lookup_payload[] = [ 'title' => $title, 'author' => $author ];
+                        $rows[ $idx ]['matched_book_year'] = null;
+                }
+
+                if ( ! empty( $lookup_payload ) ) {
+                        try {
+                                $resolved_years = politeia_lookup_book_years_for_items( $lookup_payload );
+                                foreach ( $resolved_years as $pos => $year ) {
+                                        if ( ! isset( $lookup_index[ $pos ] ) ) continue;
+                                        if ( $year !== null && $year !== '' ) {
+                                                $rows[ $lookup_index[ $pos ] ]['matched_book_year'] = (int) $year;
+                                        }
+                                }
+                        } catch ( Throwable $e ) {
+                                error_log('[pol_confirm_table] year prefill failed: ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+                        }
+                }
+        }
+
+        // Conteos para UI
         $total_rows   = count($rows);
         $confirmables = 0;
         foreach ( $rows as $r ) {
@@ -238,6 +292,7 @@ function politeia_confirm_table_shortcode() {
                         .pol-table tbody tr.pol-empty td{display:block;padding:0;border:0;}
                 }
                 @media (max-width:767px){
+                        table#pol-table{border:none;}
                         .pol-table tbody tr.pol-row{text-align:center;}
                         .pol-table tbody tr.pol-row .pol-td,
                         .pol-table tbody tr.pol-row .pol-cell,
@@ -283,30 +338,43 @@ function politeia_confirm_table_shortcode() {
 		}
 
 		// -------- Lookup de años para las filas visibles --------
-		async function lookupYearsForVisible(){
-			const rows = qa('tr.pol-row', root);
-			if (!rows.length) return;
-			const items = rows.map(tr => ({
-				title:  q('[data-field="title"] .pol-text', tr)?.textContent?.trim() || '',
-				author: q('[data-field="author"] .pol-text', tr)?.textContent?.trim() || ''
-			}));
-			try{
-				const fd = new FormData();
-				fd.append('action','politeia_lookup_book_years');
-				fd.append('nonce', NONCE);
-				fd.append('items', JSON.stringify(items));
-				const resp = await postFD(fd);
+                async function lookupYearsForVisible(){
+                        const allRows = qa('tr.pol-row', root);
+                        if (!allRows.length) return;
+
+                        const pendingRows = allRows.filter(tr => {
+                                const current = q('.pol-year-text', tr)?.textContent?.trim() || '';
+                                return !/^\d{3,4}$/.test(current);
+                        });
+                        if (!pendingRows.length) return;
+
+                        const items = pendingRows.map(tr => ({
+                                title:  q('[data-field="title"] .pol-text', tr)?.textContent?.trim() || '',
+                                author: q('[data-field="author"] .pol-text', tr)?.textContent?.trim() || ''
+                        }));
+                        try{
+                                const fd = new FormData();
+                                fd.append('action','politeia_lookup_book_years');
+                                fd.append('nonce', NONCE);
+                                fd.append('items', JSON.stringify(items));
+                                const resp = await postFD(fd);
                                 if (resp && resp.success && resp.data && Array.isArray(resp.data.years)){
-                                        rows.forEach((tr, i) => {
+                                        pendingRows.forEach((tr, i) => {
                                                 const rawYear = resp.data.years[i];
                                                 const parsedYear = Number.isInteger(rawYear)
                                                         ? rawYear
                                                         : parseInt(rawYear, 10);
                                                 const cell = q('.pol-year-text', tr);
-                                                if (cell) cell.textContent = Number.isInteger(parsedYear) ? String(parsedYear) : '…';
+                                                if (cell) {
+                                                        if (Number.isInteger(parsedYear)) {
+                                                                cell.textContent = String(parsedYear);
+                                                        } else if (!/^\d{3,4}$/.test(cell.textContent.trim())) {
+                                                                cell.textContent = '…';
+                                                        }
+                                                }
                                         });
                                 }
-			} catch(e){
+                        } catch(e){
 				console.warn('[Confirm Table] year lookup failed', e);
 			}
 		}
