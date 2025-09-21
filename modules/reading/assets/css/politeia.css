@@ -293,6 +293,11 @@ table.prs-form__table {
         gap: 4px;
 }
 
+.prs-form__label-text {
+        font-weight: 600;
+        color: #333;
+}
+
 .prs-form__label-note {
         font-size: 10px;
         line-height: 1.2;
@@ -320,7 +325,7 @@ table.prs-form__table {
         position: relative;
         display: flex;
         align-items: center;
-        gap: 14px;
+        gap: 16px;
         flex-wrap: wrap;
 }
 
@@ -386,10 +391,23 @@ table.prs-form__table {
         white-space: nowrap;
 }
 
-.prs-form__file-filename {
-        font-size: 0.85rem;
-        color: #4b5563;
-        word-break: break-word;
+.prs-form__file-preview {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        background: #f3f4f6;
+        border: 1px dashed #cbd5f5;
+        overflow: hidden;
+}
+
+.prs-form__file-preview img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        display: block;
 }
 
 .prs-form__table input[type="text"]:focus,
@@ -406,7 +424,7 @@ table.prs-form__table {
 }
 
 .prs-form__actions td {
-        text-align: center;
+        text-align: right;
         padding-top: 22px;
 }
 

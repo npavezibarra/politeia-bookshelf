@@ -97,46 +97,104 @@ add_shortcode(
 										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
 								</td>
 							</tr>
-                                                        <tr>
-                                                                <th scope="row">
-                                                                        <label class="prs-form__label" for="prs_cover">
-                                                                                <?php esc_html_e( 'Cover', 'politeia-reading' ); ?>
-                                                                                <span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
-                                                                        </label>
-                                                                </th>
-                                                                <td>
-                                                                        <div class="prs-form__file-control">
-                                                                                <input
-                                                                                        type="file"
-                                                                                        id="prs_cover"
-                                                                                        name="prs_cover"
-                                                                                        accept=".jpg,.jpeg,.png,.webp"
-                                                                                        class="prs-form__file-input"
-                                                                                        onchange="document.getElementById('prs_cover_filename').textContent = this.files.length ? this.files[0].name : '<?php echo esc_js( __( 'No file selected', 'politeia-reading' ) ); ?>';"
-                                                                                />
-                                                                                <button
-                                                                                        type="button"
-                                                                                        class="prs-form__file-trigger"
-                                                                                        onclick="document.getElementById('prs_cover').click();"
-                                                                                >
-                                                                                        <span class="prs-form__file-icon" aria-hidden="true"></span>
-                                                                                        <span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
-                                                                                </button>
-                                                                                <span id="prs_cover_filename" class="prs-form__file-filename" aria-live="polite"><?php esc_html_e( 'No file selected', 'politeia-reading' ); ?></span>
-                                                                        </div>
-                                                                </td>
-                                                        </tr>
+							<tr>
+								<th scope="row">
+									<label class="prs-form__label" for="prs_cover">
+										<span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?></span>
+										<span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
+									</label>
+								</th>
+								<td>
+									<div class="prs-form__file-control">
+										<input
+											type="file"
+											id="prs_cover"
+											name="prs_cover"
+											accept=".jpg,.jpeg,.png,.webp"
+											class="prs-form__file-input"
+										/>
+										<button
+											type="button"
+											id="prs_cover_trigger"
+											class="prs-form__file-trigger"
+											data-default-label="<?php echo esc_attr__( 'Upload Book Cover', 'politeia-reading' ); ?>"
+											data-change-label="<?php echo esc_attr__( 'Change Book Cover', 'politeia-reading' ); ?>"
+											onclick="document.getElementById('prs_cover').click();"
+										>
+											<span class="prs-form__file-icon" aria-hidden="true"></span>
+											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
+										</button>
+										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
+											<img src="" alt="<?php echo esc_attr__( 'Selected book cover preview', 'politeia-reading' ); ?>" />
+										</div>
+									</div>
+								</td>
+							</tr>
 							<tr class="prs-form__actions">
 								<td colspan="2">
 									<button class="prs-btn" type="submit"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></button>
 								</td>
 							</tr>
 						</tbody>
-					</table>
-				</form>
-			</div>
+						</table>
+						</form>
+						<script>
+							( function () {
+								var fileInput = document.getElementById('prs_cover');
+								if (!fileInput) {
+									return;
+								}
+
+								var trigger = document.getElementById('prs_cover_trigger');
+								var triggerText = trigger ? trigger.querySelector('.prs-form__file-text') : null;
+								var previewWrapper = document.getElementById('prs_cover_preview');
+								var previewImage = previewWrapper ? previewWrapper.querySelector('img') : null;
+								var defaultLabel = trigger ? trigger.getAttribute('data-default-label') : '';
+								var changeLabel = trigger ? trigger.getAttribute('data-change-label') : '';
+								var form = fileInput.form;
+
+								var resetPreview = function () {
+									if (previewWrapper) {
+										previewWrapper.setAttribute('hidden', 'hidden');
+									}
+									if (previewImage) {
+										previewImage.removeAttribute('src');
+									}
+									if (triggerText && defaultLabel) {
+										triggerText.textContent = defaultLabel;
+									}
+								};
+
+								if (form) {
+									form.addEventListener('reset', function () {
+										window.setTimeout(resetPreview);
+									});
+								}
+
+								fileInput.addEventListener('change', function () {
+									if (this.files && this.files[0]) {
+										var reader = new FileReader();
+										reader.onload = function (event) {
+											if (previewWrapper && previewImage) {
+												previewImage.src = event.target && event.target.result ? event.target.result : '';
+												previewWrapper.removeAttribute('hidden');
+											}
+										};
+										reader.readAsDataURL(this.files[0]);
+										if (triggerText && changeLabel) {
+											triggerText.textContent = changeLabel;
+										}
+									} else {
+										resetPreview();
+									}
+								});
+
+								resetPreview();
+							}() );
+						</script>
+						</div>
+				</div>
 		</div>
-	</div>
 		<?php
 		return ob_get_clean();
 	}
