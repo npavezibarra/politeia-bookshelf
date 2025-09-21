@@ -105,12 +105,26 @@ add_shortcode(
 			)
 		);
 
+		$add_book_shortcode = '';
+		if ( shortcode_exists( 'politeia_add_book' ) ) {
+			$add_book_shortcode = do_shortcode( '[politeia_add_book]' );
+		}
+
 		ob_start(); ?>
         <div class="prs-library">
                <table id="prs-library" class="prs-table">
                <thead>
                         <tr>
-                        <th scope="colgroup" colspan="2"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></th>
+                        <th scope="colgroup" colspan="2">
+                                <div class="prs-library__header">
+                                        <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
+                                        <?php if ( $add_book_shortcode ) : ?>
+                                                <div class="prs-library__header-actions">
+                                                        <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                                </div>
+                                        <?php endif; ?>
+                                </div>
+                        </th>
                         </tr>
                </thead>
                 <tbody>
