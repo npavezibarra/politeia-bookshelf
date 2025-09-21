@@ -223,6 +223,10 @@
         box-shadow: 0 18px 45px rgba(17, 24, 39, 0.25);
 }
 
+.prs-add-book__modal-content--multiple {
+        max-width: 820px;
+}
+
 .prs-add-book__modal-content--success {
         display: flex;
         flex-direction: column;

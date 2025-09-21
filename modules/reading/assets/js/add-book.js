@@ -71,6 +71,14 @@
         var updateModeVisibility = function () {
                 var pendingSuccess = successActive || (modal && modal.getAttribute('data-success') === '1');
 
+                if (modalContent) {
+                        if (pendingSuccess) {
+                                modalContent.classList.remove('prs-add-book__modal-content--multiple');
+                        } else {
+                                modalContent.classList.toggle('prs-add-book__modal-content--multiple', currentMode === 'multiple');
+                        }
+                }
+
                 if (modeSwitch) {
                         modeSwitch.hidden = pendingSuccess;
                 }
