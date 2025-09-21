@@ -28,40 +28,93 @@ add_shortcode(
 		}
 		?>
 	<div class="prs-add-book">
-		<button type="button" class="prs-btn" onclick="document.getElementById('prs-add-book-form').style.display='block'">
+		<button
+			type="button"
+			class="prs-btn"
+			aria-controls="prs-add-book-modal"
+			onclick="document.getElementById('prs-add-book-modal').style.display='flex'">
 			<?php echo esc_html__( 'Add Book', 'politeia-reading' ); ?>
 		</button>
 
-		<form id="prs-add-book-form"
-				class="prs-form"
-				method="post"
-				enctype="multipart/form-data"
-				action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"
-				style="display:none;">
-			<?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
-			<input type="hidden" name="action" value="prs_add_book_submit" />
+		<div id="prs-add-book-modal"
+			class="prs-add-book__modal"
+			style="display:none;"
+			role="dialog"
+			aria-modal="true"
+			aria-labelledby="prs-add-book-form-title"
+			onclick="this.style.display='none'">
+			<div class="prs-add-book__modal-content" onclick="event.stopPropagation();">
+				<button type="button"
+					class="prs-add-book__close"
+					aria-label="<?php echo esc_attr__( 'Close dialog', 'politeia-reading' ); ?>"
+					onclick="document.getElementById('prs-add-book-modal').style.display='none'">
+					&times;
+				</button>
+				<form id="prs-add-book-form"
+					class="prs-form"
+					method="post"
+					enctype="multipart/form-data"
+					action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
+					<h2 id="prs-add-book-form-title" class="prs-add-book__heading">
+						<?php echo esc_html__( 'Add Book', 'politeia-reading' ); ?>
+					</h2>
+					<?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
+					<input type="hidden" name="action" value="prs_add_book_submit" />
 
-			<label><?php _e( 'Title', 'politeia-reading' ); ?>*
-				<input type="text" name="prs_title" required />
-			</label>
-
-			<label><?php _e( 'Author', 'politeia-reading' ); ?>*
-				<input type="text" name="prs_author" required />
-			</label>
-
-			<label><?php _e( 'Year', 'politeia-reading' ); ?>
-				<input type="number"
-						name="prs_year"
-						min="1400"
-						max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
-			</label>
-
-			<label><?php _e( 'Cover (jpg/png/webp)', 'politeia-reading' ); ?>
-				<input type="file" name="prs_cover" accept=".jpg,.jpeg,.png,.webp" />
-			</label>
-
-			<button class="prs-btn" type="submit"><?php _e( 'Save to My Library', 'politeia-reading' ); ?></button>
-		</form>
+					<table class="prs-form__table">
+						<tbody>
+							<tr>
+								<th scope="row">
+									<label for="prs_title">
+										<?php esc_html_e( 'Title', 'politeia-reading' ); ?>
+										<span class="prs-form__required" aria-hidden="true">*</span>
+									</label>
+								</th>
+								<td>
+									<input type="text" id="prs_title" name="prs_title" required />
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="prs_author">
+										<?php esc_html_e( 'Author', 'politeia-reading' ); ?>
+										<span class="prs-form__required" aria-hidden="true">*</span>
+									</label>
+								</th>
+								<td>
+									<input type="text" id="prs_author" name="prs_author" required />
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
+								</th>
+								<td>
+									<input type="number"
+										id="prs_year"
+										name="prs_year"
+										min="1400"
+										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="prs_cover"><?php esc_html_e( 'Cover (jpg/png/webp)', 'politeia-reading' ); ?></label>
+								</th>
+								<td>
+									<input type="file" id="prs_cover" name="prs_cover" accept=".jpg,.jpeg,.png,.webp" />
+								</td>
+							</tr>
+							<tr class="prs-form__actions">
+								<td colspan="2">
+									<button class="prs-btn" type="submit"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></button>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</form>
+			</div>
+		</div>
 	</div>
 		<?php
 		return ob_get_clean();
