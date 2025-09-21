@@ -261,6 +261,8 @@ function politeia_confirm_table_shortcode() {
                 .pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:8px;padding:4px 6px;cursor:pointer;color:#1b73e8}
                 .pol-edit:hover{background:#1b73e8;color:#fff}
                 .pol-input{width:100%;max-width:600px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font:inherit;}
+                button.pol-btn.pol-btn-ghost.pol-confirm-one{font-size:13px;border-radius:6px;padding:3px 8px}
+                button#pol-confirm-all{border-radius:6px;font-size:14px}
                 .pol-row.saving{opacity:.6}
                 .pill{display:inline-block;padding:.25rem .6rem;border-radius:9999px;font-size:.85em;border:1px solid #bde5c8;background:#e7f7ec;color:#166534;margin-right:8px}
                 .link-shelf{font-weight:600;text-decoration:none}
