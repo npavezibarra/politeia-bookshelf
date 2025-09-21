@@ -11,42 +11,79 @@ function prs_current_user_id_or_die() {
 }
 
 function prs_find_or_create_book( $title, $author, $year = null, $attachment_id = null ) {
-	global $wpdb;
-	$table = $wpdb->prefix . 'politeia_books';
+        global $wpdb;
+        $table = $wpdb->prefix . 'politeia_books';
 
-	$title  = trim( wp_strip_all_tags( $title ) );
-	$author = trim( wp_strip_all_tags( $author ) );
+        $title  = trim( wp_strip_all_tags( $title ) );
+        $author = trim( wp_strip_all_tags( $author ) );
 
-	if ( $title === '' || $author === '' ) {
-		return new WP_Error( 'prs_invalid_book', 'Missing title/author' );
-	}
+        if ( $title === '' || $author === '' ) {
+                return new WP_Error( 'prs_invalid_book', 'Missing title/author' );
+        }
 
-	$slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
+        $normalized_title  = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $title ) : $title;
+        $normalized_author = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $author ) : $author;
 
-	// Try to find by slug
-	$existing_id = $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
-			$slug
-		)
-	);
-	if ( $existing_id ) {
-		return (int) $existing_id;
-	}
+        $normalized_title  = $normalized_title !== '' ? $normalized_title : null;
+        $normalized_author = $normalized_author !== '' ? $normalized_author : null;
 
-	$wpdb->insert(
-		$table,
-		array(
-			'title'               => $title,
-			'author'              => $author,
-			'year'                => $year ? (int) $year : null,
-			'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
-			'slug'                => $slug,
-			'created_at'          => current_time( 'mysql' ),
-			'updated_at'          => current_time( 'mysql' ),
-		)
-	);
-	return (int) $wpdb->insert_id;
+        if ( function_exists( 'politeia__title_author_hash' ) ) {
+                $hash = politeia__title_author_hash( $title, $author );
+        } else {
+                $hash = hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
+        }
+
+        if ( empty( $hash ) ) {
+                $hash = hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
+        }
+
+        $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
+
+        // Prefer lookup by unique hash to avoid duplicate key errors when slug differs.
+        $existing_id = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$table} WHERE title_author_hash = %s LIMIT 1",
+                        $hash
+                )
+        );
+        if ( $existing_id ) {
+                return (int) $existing_id;
+        }
+
+        // Fallback to slug match for legacy rows that might not yet have hashes populated.
+        if ( $slug ) {
+                $existing_id = $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
+                                $slug
+                        )
+                );
+                if ( $existing_id ) {
+                        return (int) $existing_id;
+                }
+        }
+
+        $inserted = $wpdb->insert(
+                $table,
+                array(
+                        'title'               => $title,
+                        'author'              => $author,
+                        'year'                => $year ? (int) $year : null,
+                        'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
+                        'slug'                => $slug,
+                        'normalized_title'    => $normalized_title,
+                        'normalized_author'   => $normalized_author,
+                        'title_author_hash'   => $hash,
+                        'created_at'          => current_time( 'mysql' ),
+                        'updated_at'          => current_time( 'mysql' ),
+                )
+        );
+
+        if ( false === $inserted ) {
+                return new WP_Error( 'prs_insert_failed', $wpdb->last_error ?: 'Could not insert book.' );
+        }
+
+        return (int) $wpdb->insert_id;
 }
 
 function prs_ensure_user_book( $user_id, $book_id ) {

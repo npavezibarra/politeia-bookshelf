@@ -232,17 +232,48 @@
         color: #111;
 }
 
+.prs-add-book__mode-switch {
+        margin-bottom: 16px;
+        text-align: center;
+        font-size: 0.95rem;
+        color: #4b5563;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 12px;
+}
+
+.prs-add-book__mode-switch a {
+        color: #0d6efd;
+        text-decoration: none;
+        font-weight: 600;
+}
+
+.prs-add-book__mode-switch a:hover,
+.prs-add-book__mode-switch a:focus {
+        text-decoration: underline;
+}
+
+.prs-add-book__mode-separator {
+        color: #9ca3af;
+        font-weight: 500;
+}
+
 .prs-add-book__close {
         position: absolute;
         top: 12px;
         right: 12px;
-        width: 36px;
-        height: 36px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 32px;
+        height: 32px;
+        padding: 0;
         border: none;
         border-radius: 50%;
-        background: transparent;
-        color: #555;
-        font-size: 1.6rem;
+        background: #f2f2f2;
+        color: #111;
+        font-size: 1.2rem;
         line-height: 1;
         cursor: pointer;
         transition: background 0.2s ease, color 0.2s ease;
@@ -250,13 +281,14 @@
 
 .prs-add-book__close:hover,
 .prs-add-book__close:focus {
-        background: rgba(0, 0, 0, 0.05);
-        color: #111;
+        background: #e3e3e3;
+        color: #000;
         outline: none;
 }
 
 #prs-add-book-form {
         width: 100%;
+        margin-bottom: 0;
 }
 
 .prs-form__table {
@@ -353,20 +385,18 @@ table.prs-form__table {
         padding: 12px 20px;
         border: none;
         border-radius: 6px;
-        background: #8ccfec;
+        background: #a8a8a8;
         color: #fff;
         font-size: 0.95rem;
         font-weight: 600;
         line-height: 1;
         cursor: pointer;
-        transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
-        box-shadow: 0 6px 16px rgba(140, 207, 236, 0.35);
+        transition: transform 0.15s ease, background 0.15s ease;
 }
 
 .prs-form__file-trigger:hover,
 .prs-form__file-trigger:focus {
-        background: #7dc8ea;
-        box-shadow: 0 10px 18px rgba(125, 200, 234, 0.45);
+        background: #9b9b9b;
         outline: none;
 }
 
