@@ -136,7 +136,7 @@ function politeia_confirm_table_shortcode() {
 							<th>Title</th>
 							<th>Author</th>
 							<th style="width:120px">Year</th>
-							<th style="width:220px">Action</th>
+                                                        <th style="width:120px">Action</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -202,6 +202,7 @@ function politeia_confirm_table_shortcode() {
                 .pol-btn[disabled]{opacity:.45;cursor:not-allowed}
                 .pol-btn-primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
                 .pol-btn-ghost{background:#eaf2fe;border-color:#1b73e8;color:#1b73e8;border:none}
+                .pol-actions{width:120px}
                 .pol-btn-ghost:hover{background:#1b73e8;color:#fff}
                 .pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:8px;padding:4px 6px;cursor:pointer;color:#1b73e8}
                 .pol-edit:hover{background:#1b73e8;color:#fff}

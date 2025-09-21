@@ -12,14 +12,20 @@ add_shortcode(
 		}
 
 		wp_enqueue_style( 'politeia-reading' );
-		wp_enqueue_script( 'politeia-add-book' );
+                wp_enqueue_script( 'politeia-add-book' );
 
-		$success           = ! empty( $_GET['prs_added'] ) && '1' === $_GET['prs_added'];
-		$success_title     = '';
-		$success_author    = '';
-		$success_year      = null;
-		$success_pages     = null;
-		$success_cover_url = '';
+                $success                = ! empty( $_GET['prs_added'] ) && '1' === $_GET['prs_added'];
+                $success_title          = '';
+                $success_author         = '';
+                $success_year           = null;
+                $success_pages          = null;
+                $success_cover_url      = '';
+                $multiple_mode_content  = '';
+                $multiple_shortcode_tag = 'politeia_chatgpt_input';
+
+                if ( shortcode_exists( $multiple_shortcode_tag ) ) {
+                        $multiple_mode_content = do_shortcode( '[' . $multiple_shortcode_tag . ']' );
+                }
 
 		if ( $success ) {
 			if ( isset( $_GET['prs_added_title'] ) ) {
@@ -83,8 +89,8 @@ add_shortcode(
 					onclick="document.getElementById('prs-add-book-modal').style.display='none'">
 					&times;
 				</button>
-				<div id="prs-add-book-success" class="prs-add-book__success"<?php echo $success ? '' : ' hidden'; ?>>
-					<?php if ( $success_cover_url ) : ?>
+                                <div id="prs-add-book-success" class="prs-add-book__success"<?php echo $success ? '' : ' hidden'; ?>>
+                                        <?php if ( $success_cover_url ) : ?>
 						<?php
 						$success_cover_alt = $success_title
 							? sprintf(
@@ -131,25 +137,31 @@ add_shortcode(
 						<?php endif; ?>
 					</ul>
 				</div>
-				<form id="prs-add-book-form"
-					class="prs-form"
-					method="post"
-					enctype="multipart/form-data"
-					action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $success ? ' hidden' : ''; ?>>
-					<h2 id="prs-add-book-form-title" class="prs-add-book__heading"<?php echo $success ? ' hidden' : ''; ?>>
-						<?php echo esc_html__( 'Add to Library', 'politeia-reading' ); ?>
-					</h2>
-					<div id="prs-add-book-mode-switch" class="prs-add-book__mode-switch">
-						<a href="#" onclick="return false;">
-							<?php esc_html_e( 'Single', 'politeia-reading' ); ?>
-						</a>
-						<span class="prs-add-book__mode-separator" aria-hidden="true">|</span>
-						<a href="#" onclick="return false;">
-							<?php esc_html_e( 'Multiple', 'politeia-reading' ); ?>
-						</a>
-					</div>
-					<?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
-					<input type="hidden" name="action" value="prs_add_book_submit" />
+                                <div id="prs-add-book-mode-switch" class="prs-add-book__mode-switch"<?php echo $success ? ' hidden' : ''; ?>>
+                                        <button type="button"
+                                                class="prs-add-book__mode-button is-active"
+                                                data-mode="single"
+                                                aria-pressed="true">
+                                                <?php esc_html_e( 'Single', 'politeia-reading' ); ?>
+                                        </button>
+                                        <span class="prs-add-book__mode-separator" aria-hidden="true">|</span>
+                                        <button type="button"
+                                                class="prs-add-book__mode-button"
+                                                data-mode="multiple"
+                                                aria-pressed="false">
+                                                <?php esc_html_e( 'Multiple', 'politeia-reading' ); ?>
+                                        </button>
+                                </div>
+                                <form id="prs-add-book-form"
+                                        class="prs-form"
+                                        method="post"
+                                        enctype="multipart/form-data"
+                                        action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $success ? ' hidden' : ''; ?>>
+                                        <h2 id="prs-add-book-form-title" class="prs-add-book__heading"<?php echo $success ? ' hidden' : ''; ?>>
+                                                <?php echo esc_html__( 'Add to Library', 'politeia-reading' ); ?>
+                                        </h2>
+                                        <?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
+                                        <input type="hidden" name="action" value="prs_add_book_submit" />
 
 					<table class="prs-form__table">
 						<tbody>
@@ -257,11 +269,23 @@ add_shortcode(
 									<button class="prs-btn" type="submit"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></button>
 								</td>
 							</tr>
-						</tbody>
-						</table>
-						</form>
-						<script>
-							( function () {
+                                                </tbody>
+                                                </table>
+                                                </form>
+                                                <div id="prs-add-book-multiple" class="prs-add-book__multiple" hidden>
+                                                        <h2 id="prs-add-book-multiple-title" class="prs-add-book__heading">
+                                                                <?php echo esc_html__( 'Add Multiple Books', 'politeia-reading' ); ?>
+                                                        </h2>
+                                                        <?php if ( $multiple_mode_content ) : ?>
+                                                                <?php echo $multiple_mode_content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                                        <?php else : ?>
+                                                                <p class="prs-add-book__mode-unavailable">
+                                                                        <?php echo esc_html__( 'The multiple entry mode is currently unavailable.', 'politeia-reading' ); ?>
+                                                                </p>
+                                                        <?php endif; ?>
+                                                </div>
+                                                <script>
+                                                        ( function () {
 								var fileInput = document.getElementById('prs_cover');
 								if (!fileInput) {
 									return;
