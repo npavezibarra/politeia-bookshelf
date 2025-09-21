@@ -45,8 +45,8 @@
                 }
         };
 
-        var resetToForm = function () {
-                if (!successActive) {
+        var resetToForm = function (force) {
+                if (!successActive && !force) {
                         return;
                 }
 
@@ -113,6 +113,15 @@
                                 resetToForm();
                         }
                 });
+        }
+
+        var openButtons = document.querySelectorAll('[aria-controls="prs-add-book-modal"]');
+        if (openButtons && openButtons.length) {
+                for (var i = 0; i < openButtons.length; i++) {
+                        openButtons[i].addEventListener('click', function () {
+                                resetToForm(true);
+                        });
+                }
         }
 
         activateSuccess();

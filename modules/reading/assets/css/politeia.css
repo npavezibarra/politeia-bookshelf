@@ -244,11 +244,15 @@
 
 .prs-add-book__success {
         width: 100%;
-        display: flex;
+        display: none;
         flex-direction: column;
         align-items: center;
         justify-content: center;
         gap: 20px;
+}
+
+.prs-add-book__modal-content--success .prs-add-book__success {
+        display: flex;
 }
 
 .prs-add-book__success-heading {
