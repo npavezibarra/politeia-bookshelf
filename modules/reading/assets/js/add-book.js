@@ -1,4 +1,131 @@
 (function () {
+        var modal = document.getElementById('prs-add-book-modal');
+        var modalContent = modal ? modal.querySelector('.prs-add-book__modal-content') : null;
+        var form = document.getElementById('prs-add-book-form');
+        var formHeading = document.getElementById('prs-add-book-form-title');
+        var successContainer = document.getElementById('prs-add-book-success');
+        var successHeading = successContainer ? successContainer.querySelector('.prs-add-book__success-heading') : null;
+        var closeButton = modal ? modal.querySelector('.prs-add-book__close') : null;
+        var successActive = false;
+
+        var updateAriaLabelledBy = function (id) {
+                if (!modal) {
+                        return;
+                }
+                if (id) {
+                        modal.setAttribute('aria-labelledby', id);
+                }
+        };
+
+        var clearSuccessParams = function () {
+                if (typeof window === 'undefined' || !window.history || typeof window.URL !== 'function') {
+                        return;
+                }
+
+                try {
+                        var currentUrl = new window.URL(window.location.href);
+                        var params = currentUrl.searchParams;
+                        var removed = false;
+                        var keys = ['prs_added', 'prs_added_title', 'prs_added_author', 'prs_added_year', 'prs_added_pages', 'prs_added_cover'];
+
+                        for (var i = 0; i < keys.length; i++) {
+                                if (params.has(keys[i])) {
+                                        params.delete(keys[i]);
+                                        removed = true;
+                                }
+                        }
+
+                        if (removed) {
+                                var newSearch = params.toString();
+                                var newUrl = currentUrl.pathname + (newSearch ? '?' + newSearch : '') + currentUrl.hash;
+                                window.history.replaceState({}, '', newUrl);
+                        }
+                } catch (error) {
+                        // Fallback silently if URL API is unavailable.
+                }
+        };
+
+        var resetToForm = function (force) {
+                if (!successActive && !force) {
+                        return;
+                }
+
+                successActive = false;
+
+                if (successContainer) {
+                        successContainer.hidden = true;
+                }
+
+                if (modalContent) {
+                        modalContent.classList.remove('prs-add-book__modal-content--success');
+                }
+
+                if (form) {
+                        form.hidden = false;
+                }
+
+                if (formHeading) {
+                        formHeading.hidden = false;
+                        updateAriaLabelledBy(formHeading.id);
+                }
+        };
+
+        var activateSuccess = function () {
+                if (!modal || !successContainer) {
+                        return;
+                }
+
+                if (modal.getAttribute('data-success') !== '1') {
+                        return;
+                }
+
+                successActive = true;
+                successContainer.hidden = false;
+
+                if (modalContent) {
+                        modalContent.classList.add('prs-add-book__modal-content--success');
+                }
+
+                if (form) {
+                        form.hidden = true;
+                }
+
+                if (formHeading) {
+                        formHeading.hidden = true;
+                }
+
+                if (successHeading && successHeading.id) {
+                        updateAriaLabelledBy(successHeading.id);
+                }
+
+                modal.style.display = 'flex';
+                clearSuccessParams();
+                modal.setAttribute('data-success', '0');
+        };
+
+        if (closeButton) {
+                closeButton.addEventListener('click', resetToForm);
+        }
+
+        if (modal) {
+                modal.addEventListener('click', function (event) {
+                        if (event.target === modal) {
+                                resetToForm();
+                        }
+                });
+        }
+
+        var openButtons = document.querySelectorAll('[aria-controls="prs-add-book-modal"]');
+        if (openButtons && openButtons.length) {
+                for (var i = 0; i < openButtons.length; i++) {
+                        openButtons[i].addEventListener('click', function () {
+                                resetToForm(true);
+                        });
+                }
+        }
+
+        activateSuccess();
+
         var titleInput = document.getElementById('prs_title');
         if (!titleInput) {
                 return;
