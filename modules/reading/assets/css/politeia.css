@@ -266,6 +266,7 @@
 
 table.prs-form__table {
         border: none;
+        margin-bottom: 0;
 }
 
 .prs-form__table th,
