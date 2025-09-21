@@ -97,14 +97,35 @@ add_shortcode(
 										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
 								</td>
 							</tr>
-							<tr>
-								<th scope="row">
-									<label for="prs_cover"><?php esc_html_e( 'Cover (jpg/png/webp)', 'politeia-reading' ); ?></label>
-								</th>
-								<td>
-									<input type="file" id="prs_cover" name="prs_cover" accept=".jpg,.jpeg,.png,.webp" />
-								</td>
-							</tr>
+                                                        <tr>
+                                                                <th scope="row">
+                                                                        <label class="prs-form__label" for="prs_cover">
+                                                                                <?php esc_html_e( 'Cover', 'politeia-reading' ); ?>
+                                                                                <span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
+                                                                        </label>
+                                                                </th>
+                                                                <td>
+                                                                        <div class="prs-form__file-control">
+                                                                                <input
+                                                                                        type="file"
+                                                                                        id="prs_cover"
+                                                                                        name="prs_cover"
+                                                                                        accept=".jpg,.jpeg,.png,.webp"
+                                                                                        class="prs-form__file-input"
+                                                                                        onchange="document.getElementById('prs_cover_filename').textContent = this.files.length ? this.files[0].name : '<?php echo esc_js( __( 'No file selected', 'politeia-reading' ) ); ?>';"
+                                                                                />
+                                                                                <button
+                                                                                        type="button"
+                                                                                        class="prs-form__file-trigger"
+                                                                                        onclick="document.getElementById('prs_cover').click();"
+                                                                                >
+                                                                                        <span class="prs-form__file-icon" aria-hidden="true"></span>
+                                                                                        <span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
+                                                                                </button>
+                                                                                <span id="prs_cover_filename" class="prs-form__file-filename" aria-live="polite"><?php esc_html_e( 'No file selected', 'politeia-reading' ); ?></span>
+                                                                        </div>
+                                                                </td>
+                                                        </tr>
 							<tr class="prs-form__actions">
 								<td colspan="2">
 									<button class="prs-btn" type="submit"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></button>
