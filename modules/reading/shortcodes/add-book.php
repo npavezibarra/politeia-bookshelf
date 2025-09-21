@@ -53,17 +53,11 @@ add_shortcode(
 
 		ob_start();
 
-		// Avisos dentro del buffer del shortcode
-		if ( $success ) {
-			echo '<div class="prs-notice prs-notice--success">' .
-			esc_html__( 'Book added to My Library.', 'politeia-reading' ) .
-			'</div>';
-		}
-		if ( ! empty( $_GET['prs_error'] ) && $_GET['prs_error'] === '1' ) {
-			echo '<div class="prs-notice prs-notice--error">' .
-			esc_html__( 'There was a problem adding the book.', 'politeia-reading' ) .
-			'</div>';
-		}
+                if ( ! empty( $_GET['prs_error'] ) && $_GET['prs_error'] === '1' ) {
+                        echo '<div class="prs-notice prs-notice--error">' .
+                        esc_html__( 'There was a problem adding the book.', 'politeia-reading' ) .
+                        '</div>';
+                }
 		?>
 	<div class="prs-add-book">
 		<button
