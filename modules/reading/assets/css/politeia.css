@@ -257,6 +257,7 @@
 
 #prs-add-book-form {
         width: 100%;
+        margin-bottom: 0px;
 }
 
 .prs-form__table {
