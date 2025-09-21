@@ -80,10 +80,18 @@ add_shortcode(
 										<span class="prs-form__required" aria-hidden="true">*</span>
 									</label>
 								</th>
-								<td>
-									<input type="text" id="prs_title" name="prs_title" list="prs_title_suggestions" required />
-									<datalist id="prs_title_suggestions"></datalist>
-								</td>
+                                                                <td>
+                                                                        <div class="prs-add-book__field prs-add-book__field--title">
+                                                                                <input type="text" id="prs_title" name="prs_title" autocomplete="off" required />
+                                                                                <div
+                                                                                        id="prs_title_suggestions"
+                                                                                        class="prs-add-book__suggestions"
+                                                                                        role="listbox"
+                                                                                        aria-label="<?php esc_attr_e( 'Book suggestions', 'politeia-reading' ); ?>"
+                                                                                        aria-hidden="true"
+                                                                                ></div>
+                                                                        </div>
+                                                                </td>
 							</tr>
 							<tr>
 								<th scope="row">
