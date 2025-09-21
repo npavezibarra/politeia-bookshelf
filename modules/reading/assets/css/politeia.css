@@ -316,20 +316,51 @@
         gap: 12px;
 }
 
-.prs-add-book__mode-switch a {
+.prs-add-book__mode-switch a,
+.prs-add-book__mode-button {
         color: #0d6efd;
         text-decoration: none;
         font-weight: 600;
 }
 
+.prs-add-book__mode-button {
+        background: none;
+        border: 0;
+        padding: 0;
+        cursor: pointer;
+        font: inherit;
+}
+
 .prs-add-book__mode-switch a:hover,
-.prs-add-book__mode-switch a:focus {
+.prs-add-book__mode-switch a:focus,
+.prs-add-book__mode-button:hover,
+.prs-add-book__mode-button:focus {
         text-decoration: underline;
+}
+
+.prs-add-book__mode-button.is-active {
+        color: #1f2937;
+        cursor: default;
+        text-decoration: none;
+}
+
+.prs-add-book__mode-button.is-active:hover,
+.prs-add-book__mode-button.is-active:focus {
+        text-decoration: none;
 }
 
 .prs-add-book__mode-separator {
         color: #9ca3af;
         font-weight: 500;
+}
+
+.prs-add-book__multiple {
+        margin-top: 16px;
+}
+
+.prs-add-book__mode-unavailable {
+        margin: 0;
+        text-align: center;
 }
 
 .prs-add-book__close {

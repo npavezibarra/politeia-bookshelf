@@ -6,7 +6,12 @@
         var successContainer = document.getElementById('prs-add-book-success');
         var successHeading = successContainer ? successContainer.querySelector('.prs-add-book__success-heading') : null;
         var closeButton = modal ? modal.querySelector('.prs-add-book__close') : null;
+        var modeSwitch = document.getElementById('prs-add-book-mode-switch');
+        var modeButtons = modeSwitch ? modeSwitch.querySelectorAll('.prs-add-book__mode-button') : null;
+        var multipleContainer = document.getElementById('prs-add-book-multiple');
+        var multipleHeading = multipleContainer ? multipleContainer.querySelector('.prs-add-book__heading') : null;
         var successActive = false;
+        var currentMode = 'single';
 
         var updateAriaLabelledBy = function (id) {
                 if (!modal) {
@@ -45,6 +50,114 @@
                 }
         };
 
+        var updateModeButtons = function () {
+                if (!modeButtons || !modeButtons.length) {
+                        return;
+                }
+
+                for (var i = 0; i < modeButtons.length; i++) {
+                        var button = modeButtons[i];
+                        var buttonMode = button.getAttribute('data-mode') || 'single';
+                        if (buttonMode === currentMode) {
+                                button.classList.add('is-active');
+                                button.setAttribute('aria-pressed', 'true');
+                        } else {
+                                button.classList.remove('is-active');
+                                button.setAttribute('aria-pressed', 'false');
+                        }
+                }
+        };
+
+        var updateModeVisibility = function () {
+                var pendingSuccess = successActive || (modal && modal.getAttribute('data-success') === '1');
+
+                if (modeSwitch) {
+                        modeSwitch.hidden = pendingSuccess;
+                }
+
+                if (pendingSuccess) {
+                        if (form) {
+                                form.hidden = true;
+                        }
+                        if (formHeading) {
+                                formHeading.hidden = true;
+                        }
+                        if (multipleContainer) {
+                                multipleContainer.hidden = true;
+                        }
+                        if (multipleHeading) {
+                                multipleHeading.hidden = true;
+                        }
+                        return;
+                }
+
+                if (currentMode === 'multiple' && multipleContainer) {
+                        if (form) {
+                                form.hidden = true;
+                        }
+                        if (formHeading) {
+                                formHeading.hidden = true;
+                        }
+                        multipleContainer.hidden = false;
+                        if (multipleHeading) {
+                                multipleHeading.hidden = false;
+                                if (multipleHeading.id) {
+                                        updateAriaLabelledBy(multipleHeading.id);
+                                }
+                        }
+                } else {
+                        currentMode = 'single';
+                        if (form) {
+                                form.hidden = false;
+                        }
+                        if (formHeading) {
+                                formHeading.hidden = false;
+                                if (formHeading.id) {
+                                        updateAriaLabelledBy(formHeading.id);
+                                }
+                        }
+                        if (multipleContainer) {
+                                multipleContainer.hidden = true;
+                        }
+                        if (multipleHeading) {
+                                multipleHeading.hidden = true;
+                        }
+                }
+        };
+
+        var setMode = function (mode) {
+                if (mode === 'multiple' && !multipleContainer) {
+                        mode = 'single';
+                } else if (mode !== 'multiple') {
+                        mode = 'single';
+                }
+
+                if (mode === currentMode) {
+                        updateModeButtons();
+                        updateModeVisibility();
+                        return;
+                }
+
+                currentMode = mode;
+                updateModeButtons();
+                updateModeVisibility();
+        };
+
+        if (modeButtons && modeButtons.length) {
+                for (var j = 0; j < modeButtons.length; j++) {
+                        modeButtons[j].addEventListener('click', function (event) {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                var buttonMode = event && event.currentTarget ? event.currentTarget.getAttribute('data-mode') : null;
+                                setMode(buttonMode);
+                        });
+                }
+        }
+
+        updateModeButtons();
+        updateModeVisibility();
+
         var resetToForm = function (force) {
                 if (!successActive && !force) {
                         return;
@@ -60,14 +173,7 @@
                         modalContent.classList.remove('prs-add-book__modal-content--success');
                 }
 
-                if (form) {
-                        form.hidden = false;
-                }
-
-                if (formHeading) {
-                        formHeading.hidden = false;
-                        updateAriaLabelledBy(formHeading.id);
-                }
+                setMode('single');
         };
 
         var activateSuccess = function () {
@@ -86,13 +192,7 @@
                         modalContent.classList.add('prs-add-book__modal-content--success');
                 }
 
-                if (form) {
-                        form.hidden = true;
-                }
-
-                if (formHeading) {
-                        formHeading.hidden = true;
-                }
+                setMode('single');
 
                 if (successHeading && successHeading.id) {
                         updateAriaLabelledBy(successHeading.id);
