@@ -760,7 +760,12 @@ table.prs-form__table {
 
 @media (max-width: 640px) {
         #prs-library thead {
-                display: none;
+                display: table-header-group;
+                width: 100%;
+        }
+
+        #prs-library thead th {
+                width: 100%;
         }
 
         #prs-library tbody tr {
