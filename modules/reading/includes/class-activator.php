@@ -78,6 +78,7 @@ class Politeia_Reading_Activator {
             rating TINYINT UNSIGNED NULL DEFAULT NULL,
             reading_status ENUM('not_started','started','finished') NOT NULL DEFAULT 'not_started',
             owning_status  ENUM('in_shelf','lost','borrowed','borrowing','sold') NOT NULL DEFAULT 'in_shelf',
+            type_book ENUM('p','d') NULL DEFAULT NULL,
             pages INT UNSIGNED NULL,
             purchase_date DATE NULL,
             purchase_channel ENUM('online','store') NULL,

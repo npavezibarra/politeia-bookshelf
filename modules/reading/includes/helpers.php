@@ -156,10 +156,18 @@ function prs_maybe_alter_user_books() {
 	);
 	$has  = array_map( 'strtolower', (array) $cols );
 
-	$alters = array();
-	if ( ! in_array( 'pages', $has, true ) ) {
-		$alters[] = 'ADD COLUMN pages INT UNSIGNED NULL AFTER owning_status';
-	}
+        $alters = array();
+
+        $has_type_book = in_array( 'type_book', $has, true );
+        if ( ! $has_type_book ) {
+                $alters[]     = "ADD COLUMN type_book ENUM('p','d') NULL DEFAULT NULL AFTER owning_status";
+                $has_type_book = true;
+        }
+
+        if ( ! in_array( 'pages', $has, true ) ) {
+                $after_column = $has_type_book ? 'type_book' : 'owning_status';
+                $alters[]     = sprintf( 'ADD COLUMN pages INT UNSIGNED NULL AFTER %s', $after_column );
+        }
 	if ( ! in_array( 'purchase_date', $has, true ) ) {
 		$alters[] = 'ADD COLUMN purchase_date DATE NULL';
 	}
