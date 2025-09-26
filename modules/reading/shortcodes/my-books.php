@@ -36,8 +36,9 @@ add_shortcode(
 		$offset = ( $paged - 1 ) * $per_page;
 
 		global $wpdb;
-		$ub = $wpdb->prefix . 'politeia_user_books';
-		$b  = $wpdb->prefix . 'politeia_books';
+                $ub = $wpdb->prefix . 'politeia_user_books';
+                $b  = $wpdb->prefix . 'politeia_books';
+                $l  = $wpdb->prefix . 'politeia_loans';
 
 		// Total para paginación
 		$total = (int) $wpdb->get_var(
@@ -71,6 +72,16 @@ add_shortcode(
               ub.reading_status,
               ub.owning_status,
               ub.pages,
+              ub.counterparty_name,
+              (
+                      SELECT start_date
+                      FROM $l l
+                      WHERE l.user_id = ub.user_id
+                        AND l.book_id = ub.book_id
+                        AND l.end_date IS NULL
+                      ORDER BY l.id DESC
+                      LIMIT 1
+              ) AS active_loan_start,
                b.id   AS book_id,
                b.title,
                b.author,
@@ -144,6 +155,18 @@ add_shortcode(
                                 $reading_id  = 'reading-status-' . (int) $r->user_book_id;
                                 $owning_id   = 'owning-status-' . (int) $r->user_book_id;
                                 $progress_id = 'reading-progress-' . (int) $r->user_book_id;
+
+                                $loan_contact_name = isset( $r->counterparty_name ) ? trim( (string) $r->counterparty_name ) : '';
+                                $loan_days         = null;
+
+                                if ( ! empty( $r->active_loan_start ) ) {
+                                        $start_timestamp = (int) get_date_from_gmt( $r->active_loan_start, 'U' );
+                                        if ( $start_timestamp ) {
+                                                $now       = current_time( 'timestamp' );
+                                                $diff      = max( 0, $now - $start_timestamp );
+                                                $loan_days = (int) floor( $diff / DAY_IN_SECONDS );
+                                        }
+                                }
 
                                 $year_text  = $year ? sprintf( __( 'Published: %s', 'politeia-reading' ), $year ) : __( 'Published: —', 'politeia-reading' );
                                 $pages_value    = $pages ? (int) $pages : '';
@@ -245,6 +268,22 @@ add_shortcode(
                                                 }
                                                 ?>
                                                 </select>
+                                                <?php if ( 'borrowing' === $r->owning_status && ( $loan_contact_name || null !== $loan_days ) ) : ?>
+                                                <div class="prs-owning-status-details">
+                                                        <?php if ( $loan_contact_name ) : ?>
+                                                                <div class="prs-owning-status-name"><?php echo esc_html( $loan_contact_name ); ?></div>
+                                                        <?php endif; ?>
+                                                        <?php if ( null !== $loan_days ) : ?>
+                                                                <?php
+                                                                $days_label = sprintf(
+                                                                        _n( '%s day', '%s days', $loan_days, 'politeia-reading' ),
+                                                                        number_format_i18n( $loan_days )
+                                                                );
+                                                                ?>
+                                                                <div class="prs-owning-status-days"><?php echo esc_html( $days_label ); ?></div>
+                                                        <?php endif; ?>
+                                                </div>
+                                                <?php endif; ?>
                                         </div>
                                 </div>
                                 <div class="prs-library__extras">

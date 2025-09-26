@@ -660,6 +660,20 @@ table.prs-form__table {
         color: #333;
 }
 
+#prs-library .prs-owning-status-details {
+        margin-top: 6px;
+        text-align: left;
+        color: #000;
+}
+
+#prs-library .prs-owning-status-name {
+        font-weight: 600;
+}
+
+#prs-library .prs-owning-status-days {
+        margin-top: 2px;
+}
+
 #prs-library .prs-library__extras {
         margin-left: auto;
         display: flex;
