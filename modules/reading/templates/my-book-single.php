@@ -81,7 +81,7 @@ wp_localize_script(
 	.prs-box{ background:#f9f9f9; padding:16px; min-height:120px; }
 	#prs-book-cover{ grid-column:1; grid-row:1 / span 2; }
 	#prs-book-info{ grid-column:2; grid-row:1; min-height:140px; }
-	#prs-session-recorder{ grid-column:3; grid-row:1; min-height:140px; background:#ffffff;
+	#prs-session-recorder{ grid-column:3; grid-row:1; min-height:auto; background:#ffffff;
 	padding: 16px; border: 1px solid #dddddd; }
 	#prs-reading-sessions{ grid-column:1 / 4; grid-row:3; min-height:320px; }
 
