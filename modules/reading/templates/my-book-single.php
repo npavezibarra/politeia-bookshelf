@@ -37,15 +37,17 @@ $has_contact = ( ! empty( $ub->counterparty_name ) ) || ( ! empty( $ub->counterp
 
 /** Préstamo activo (fecha local) */
 $active_start_gmt   = $wpdb->get_var(
-	$wpdb->prepare(
-		"SELECT start_date FROM {$tbl_loans}
+        $wpdb->prepare(
+                "SELECT start_date FROM {$tbl_loans}
    WHERE user_id=%d AND book_id=%d AND end_date IS NULL
    ORDER BY id DESC LIMIT 1",
-		$user_id,
-		$book->id
-	)
+                $user_id,
+                $book->id
+        )
 );
 $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 'Y-m-d' ) : '';
+
+$current_type = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
 
 /** Encolar assets */
 wp_enqueue_style( 'politeia-reading' );
@@ -53,17 +55,18 @@ wp_enqueue_script( 'politeia-my-book' ); // asegúrate de registrar este JS en t
 
 /** Datos al JS principal */
 wp_localize_script(
-	'politeia-my-book',
-	'PRS_BOOK',
-	array(
-		'ajax_url'      => admin_url( 'admin-ajax.php' ),
-		'nonce'         => wp_create_nonce( 'prs_update_user_book_meta' ),
-		'user_book_id'  => (int) $ub->id,
-		'book_id'       => (int) $book->id,
-		'owning_status' => (string) $ub->owning_status,
-		'has_contact'   => $has_contact ? 1 : 0,
-		'rating'        => isset( $ub->rating ) && $ub->rating !== null ? (int) $ub->rating : 0,
-	)
+        'politeia-my-book',
+        'PRS_BOOK',
+        array(
+                'ajax_url'      => admin_url( 'admin-ajax.php' ),
+                'nonce'         => wp_create_nonce( 'prs_update_user_book_meta' ),
+                'user_book_id'  => (int) $ub->id,
+                'book_id'       => (int) $book->id,
+                'owning_status' => (string) $ub->owning_status,
+                'has_contact'   => $has_contact ? 1 : 0,
+                'rating'        => isset( $ub->rating ) && $ub->rating !== null ? (int) $ub->rating : 0,
+                'type_book'     => (string) $current_type,
+        )
 );
 ?>
 <style>
@@ -171,7 +174,7 @@ wp_localize_script(
 
                 <?php
                 $current_rating = isset( $ub->rating ) && null !== $ub->rating ? (int) $ub->rating : 0;
-                $current_type   = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
+                $is_digital     = ( 'd' === $current_type );
                 ?>
                 <div class="prs-field prs-field--rating-type" id="fld-user-rating">
                         <div class="prs-rating-block">
@@ -277,7 +280,7 @@ wp_localize_script(
 		<div class="prs-field" id="fld-owning-status">
 		<hr style="margin-bottom:10px">
 		<label class="label" for="owning-status-select"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-		<select id="owning-status-select">
+                <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
 			<option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
 			<option value="borrowed"  <?php selected( $ub->owning_status, 'borrowed' ); ?>><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
 			<option value="borrowing" <?php selected( $ub->owning_status, 'borrowing' ); ?>><?php esc_html_e( 'Borrowing', 'politeia-reading' ); ?></option>
@@ -286,11 +289,14 @@ wp_localize_script(
 		</select>
 
 		<?php $show_return_btn = in_array( $ub->owning_status, array( 'borrowed', 'borrowing' ), true ); ?>
-		<button type="button" id="owning-return-shelf" class="prs-btn" style="margin-left:8px; <?php echo $show_return_btn ? '' : 'display:none;'; ?>">
+                <button type="button" id="owning-return-shelf" class="prs-btn" style="margin-left:8px; <?php echo $show_return_btn ? '' : 'display:none;'; ?>" <?php disabled( $is_digital ); ?>>
 			<?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
 		</button>
 
-		<span id="owning-status-status" class="prs-help" style="margin-left:8px;"></span>
+                <span id="owning-status-status" class="prs-help" style="margin-left:8px;"></span>
+                <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
+                        <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
+                </p>
 
 		<?php
 			// "In Shelf" es derivado solo cuando owning_status es NULL/''
@@ -304,20 +310,20 @@ wp_localize_script(
 		<?php
 			$needs_contact = in_array( $ub->owning_status, array( 'borrowed', 'borrowing', 'sold' ), true ) && ! $has_contact;
 		?>
-		<div id="owning-contact-form" class="prs-contact-form" style="display: <?php echo $needs_contact ? 'block' : 'none'; ?>;">
-			<label for="owning-contact-name" class="prs-contact-label"><?php esc_html_e( 'Name', 'politeia-reading' ); ?></label>
-			<input type="text" id="owning-contact-name" class="prs-contact-input"
-				value="<?php echo $ub->counterparty_name ? esc_attr( $ub->counterparty_name ) : ''; ?>" />
+                <div id="owning-contact-form" class="prs-contact-form" style="display: <?php echo ( $needs_contact && ! $is_digital ) ? 'block' : 'none'; ?>;">
+                        <label for="owning-contact-name" class="prs-contact-label"><?php esc_html_e( 'Name', 'politeia-reading' ); ?></label>
+                        <input type="text" id="owning-contact-name" class="prs-contact-input"
+                                value="<?php echo $ub->counterparty_name ? esc_attr( $ub->counterparty_name ) : ''; ?>" <?php disabled( $is_digital ); ?> />
 
-			<label for="owning-contact-email" class="prs-contact-label"><?php esc_html_e( 'Email', 'politeia-reading' ); ?></label>
-			<input type="email" id="owning-contact-email" class="prs-contact-input"
-				value="<?php echo $ub->counterparty_email ? esc_attr( $ub->counterparty_email ) : ''; ?>" />
+                        <label for="owning-contact-email" class="prs-contact-label"><?php esc_html_e( 'Email', 'politeia-reading' ); ?></label>
+                        <input type="email" id="owning-contact-email" class="prs-contact-input"
+                                value="<?php echo $ub->counterparty_email ? esc_attr( $ub->counterparty_email ) : ''; ?>" <?php disabled( $is_digital ); ?> />
 
-			<div class="prs-contact-actions">
-			<button type="button" id="owning-contact-save" class="prs-btn">Save</button>
-			<span id="owning-contact-status" class="prs-help"></span>
-			</div>
-		</div>
+                        <div class="prs-contact-actions">
+                        <button type="button" id="owning-contact-save" class="prs-btn" <?php disabled( $is_digital ); ?>>Save</button>
+                        <span id="owning-contact-status" class="prs-help"></span>
+                        </div>
+                </div>
 
 		<div id="owning-contact-view">
 			<?php

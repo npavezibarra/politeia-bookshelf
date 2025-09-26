@@ -410,6 +410,8 @@
         .then(json => {
           if (!json || !json.success) throw json;
           setStatus(status, "Saved.", true);
+          PRS_BOOK.type_book = val;
+          document.dispatchEvent(new CustomEvent("prs:type-book-changed", { detail: { type: val } }));
         })
         .catch(err => {
           const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving format.";
@@ -463,24 +465,59 @@
     const contactSave = qs("#owning-contact-save", wrap);
     const contactStatus = qs("#owning-contact-status", wrap);
     const contactView = qs("#owning-contact-view", wrap);
+    const note = qs("#owning-status-note", wrap);
+
+    function isDigitalType() {
+      const raw = (window.PRS_BOOK && typeof PRS_BOOK.type_book !== "undefined") ? PRS_BOOK.type_book : "";
+      return String(raw || "").trim().toLowerCase() === "d";
+    }
 
     function updateDerived(val) {
+      const locked = isDigitalType();
       const inShelf = !val; // NULL/'' => In Shelf
       setText(derivedText, inShelf ? "In Shelf" : "Not In Shelf");
       // botón "Mark as returned" visible solo si borrowed/borrowing
-      const showReturn = (val === "borrowed" || val === "borrowing");
-      returnBtn && (returnBtn.style.display = showReturn ? "" : "none");
+      const showReturn = (!locked) && (val === "borrowed" || val === "borrowing");
+      if (returnBtn) {
+        returnBtn.style.display = showReturn ? "" : "none";
+        returnBtn.disabled = locked;
+      }
 
       // contacto requerido si borrowed/borrowing/sold y faltan datos => mostramos form
-      const needsContact = (val === "borrowed" || val === "borrowing" || val === "sold");
-      if (needsContact) {
-        show(contactForm);
-      } else {
-        hide(contactForm);
+      const needsContact = (!locked) && (val === "borrowed" || val === "borrowing" || val === "sold");
+      if (contactForm) {
+        if (needsContact) {
+          show(contactForm);
+        } else {
+          hide(contactForm);
+        }
+      }
+
+      if (contactName) contactName.disabled = locked;
+      if (contactEmail) contactEmail.disabled = locked;
+      if (contactSave) contactSave.disabled = locked;
+    }
+
+    function applyTypeLock() {
+      const locked = isDigitalType();
+      if (select) {
+        select.disabled = locked;
+        if (locked) {
+          select.setAttribute("aria-disabled", "true");
+        } else {
+          select.removeAttribute("aria-disabled");
+        }
+        select.classList.toggle("is-disabled", locked);
+      }
+      if (note) {
+        note.style.display = locked ? "" : "none";
       }
     }
 
     function postOwning(val) {
+      if (isDigitalType()) {
+        return Promise.resolve();
+      }
       const fd = new FormData();
       fd.append("action", "prs_update_user_book_meta");
       fd.append("nonce", PRS_BOOK.nonce);
@@ -501,7 +538,11 @@
 
     if (select) {
       updateDerived(select.value || "");
+      applyTypeLock();
       select.addEventListener("change", () => {
+        if (select.disabled) {
+          return;
+        }
         const val = (select.value || "").trim(); // "", borrowed, borrowing, sold, lost
         postOwning(val);
       });
@@ -509,6 +550,9 @@
 
     if (returnBtn) {
       returnBtn.addEventListener("click", () => {
+        if (returnBtn.disabled) {
+          return;
+        }
         // Volver a In Shelf
         select && (select.value = "");
         postOwning("");
@@ -517,6 +561,9 @@
 
     if (contactSave) {
       contactSave.addEventListener("click", () => {
+        if (isDigitalType()) {
+          return;
+        }
         const name = (contactName && contactName.value || "").trim();
         const email = (contactEmail && contactEmail.value || "").trim();
 
@@ -545,6 +592,12 @@
           });
       });
     }
+
+    document.addEventListener("prs:type-book-changed", () => {
+      const val = select ? (select.value || "") : "";
+      updateDerived(val);
+      applyTypeLock();
+    });
   }
 
   // ---------- Sesiones: render parcial + paginación + SORTING ----------

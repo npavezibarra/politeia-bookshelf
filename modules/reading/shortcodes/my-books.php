@@ -71,6 +71,7 @@ add_shortcode(
        SELECT ub.id AS user_book_id,
               ub.reading_status,
               ub.owning_status,
+              ub.type_book,
               ub.pages,
               ub.counterparty_name,
               (
@@ -158,6 +159,7 @@ add_shortcode(
 
                                 $loan_contact_name = isset( $r->counterparty_name ) ? trim( (string) $r->counterparty_name ) : '';
                                 $loan_days         = null;
+                                $is_digital        = ( isset( $r->type_book ) && 'd' === $r->type_book );
 
                                 if ( ! empty( $r->active_loan_start ) ) {
                                         $start_timestamp = (int) get_date_from_gmt( $r->active_loan_start, 'U' );
@@ -249,7 +251,11 @@ add_shortcode(
                                         </div>
                                         <div class="prs-library__field">
                                                 <label for="<?php echo esc_attr( $owning_id ); ?>"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-                                                <select id="<?php echo esc_attr( $owning_id ); ?>" class="prs-owning-status">
+                                                <select
+                                                        id="<?php echo esc_attr( $owning_id ); ?>"
+                                                        class="prs-owning-status<?php echo $is_digital ? ' is-disabled' : ''; ?>"
+                                                        <?php echo $is_digital ? 'disabled="disabled" aria-disabled="true"' : ''; ?>
+                                                >
                                                 <?php
                                                 $owning = array(
                                                         'in_shelf'  => __( 'In Shelf', 'politeia-reading' ),
@@ -295,6 +301,9 @@ add_shortcode(
                                                 ?>
                                                 <?php if ( 'borrowing' === $r->owning_status && $loan_detail_text ) : ?>
                                                 <div class="prs-owning-status-details"><?php echo esc_html( $loan_detail_text ); ?></div>
+                                                <?php endif; ?>
+                                                <?php if ( $is_digital ) : ?>
+                                                <div class="prs-owning-status-note"><?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?></div>
                                                 <?php endif; ?>
                                         </div>
                                 </div>
