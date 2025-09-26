@@ -137,18 +137,28 @@ class Politeia_Reading_User_Books {
 			$d                       = sanitize_text_field( wp_unslash( $_POST['purchase_date'] ) );
 			$update['purchase_date'] = ( $d && preg_match( '/^\d{4}-\d{2}-\d{2}$/', $d ) ) ? $d : null;
 		}
-		if ( array_key_exists( 'purchase_channel', $_POST ) ) {
-			$pc                         = sanitize_key( $_POST['purchase_channel'] );
-			$update['purchase_channel'] = in_array( $pc, array( 'online', 'store' ), true ) ? $pc : null;
-		}
-		if ( array_key_exists( 'purchase_place', $_POST ) ) {
-			$update['purchase_place'] = sanitize_text_field( wp_unslash( $_POST['purchase_place'] ) );
-		}
-		if ( array_key_exists( 'reading_status', $_POST ) ) {
-			$rs = sanitize_key( wp_unslash( $_POST['reading_status'] ) );
-			if ( in_array( $rs, self::allowed_reading_status(), true ) ) {
-				$update['reading_status'] = $rs;
-			}
+                if ( array_key_exists( 'purchase_channel', $_POST ) ) {
+                        $pc                         = sanitize_key( $_POST['purchase_channel'] );
+                        $update['purchase_channel'] = in_array( $pc, array( 'online', 'store' ), true ) ? $pc : null;
+                }
+                if ( array_key_exists( 'purchase_place', $_POST ) ) {
+                        $update['purchase_place'] = sanitize_text_field( wp_unslash( $_POST['purchase_place'] ) );
+                }
+                if ( array_key_exists( 'type_book', $_POST ) ) {
+                        $raw = wp_unslash( $_POST['type_book'] );
+                        $tb  = sanitize_key( $raw );
+
+                        if ( in_array( $tb, array( 'p', 'd' ), true ) ) {
+                                $update['type_book'] = $tb;
+                        } elseif ( '' === $raw || null === $raw ) {
+                                $update['type_book'] = null;
+                        }
+                }
+                if ( array_key_exists( 'reading_status', $_POST ) ) {
+                        $rs = sanitize_key( wp_unslash( $_POST['reading_status'] ) );
+                        if ( in_array( $rs, self::allowed_reading_status(), true ) ) {
+                                $update['reading_status'] = $rs;
+                        }
 		}
 
 		// ====== RATING ======

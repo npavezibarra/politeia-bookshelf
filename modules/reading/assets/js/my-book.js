@@ -388,6 +388,36 @@
     });
   }
 
+  // ---------- Type of book ----------
+  function setupTypeBook() {
+    const wrap = qs("#fld-user-rating");
+    if (!wrap || !window.PRS_BOOK) return;
+
+    const select = qs("#prs-type-book", wrap);
+    const status = qs("#type-book-status", wrap);
+
+    if (!select) return;
+
+    select.addEventListener("change", () => {
+      const val = (select.value || "").trim();
+      const fd = new FormData();
+      fd.append("action", "prs_update_user_book_meta");
+      fd.append("nonce", PRS_BOOK.nonce);
+      fd.append("user_book_id", String(PRS_BOOK.user_book_id));
+      fd.append("type_book", val);
+
+      ajaxPost(PRS_BOOK.ajax_url, fd)
+        .then(json => {
+          if (!json || !json.success) throw json;
+          setStatus(status, "Saved.", true);
+        })
+        .catch(err => {
+          const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving format.";
+          setStatus(status, msg, false, 4000);
+        });
+    });
+  }
+
   // ---------- Reading Status ----------
   function setupReadingStatus() {
     const wrap = qs("#fld-reading-status");
@@ -605,6 +635,7 @@
     setupPurchaseDate();
     setupPurchaseChannel();
     setupRating();
+    setupTypeBook();
     setupReadingStatus();
     setupOwningStatus();
     setupSessionsAjax();

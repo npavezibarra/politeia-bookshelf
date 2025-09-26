@@ -858,16 +858,58 @@ span#purchase-channel-form {
 
 /* Container */
 .prs-stars {
-	display: inline-flex;
-	gap: 4px;
-	user-select: none;
-	-webkit-tap-highlight-color: transparent; /* mobile: no blue flash */
+        display: inline-flex;
+        gap: 4px;
+        user-select: none;
+        -webkit-tap-highlight-color: transparent; /* mobile: no blue flash */
+}
+
+.prs-field--rating-type {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+}
+
+.prs-field--rating-type .prs-rating-block {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex: 1 1 220px;
+}
+
+.prs-field--rating-type .prs-type-book {
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 8px;
+        flex: 1 1 200px;
+}
+
+.prs-field--rating-type .prs-type-book__label {
+        font-weight: 600;
+}
+
+.prs-field--rating-type .prs-type-book__select {
+        min-width: 150px;
+}
+
+@media (max-width: 600px) {
+        .prs-field--rating-type {
+                flex-direction: column;
+                align-items: flex-start;
+        }
+
+        .prs-field--rating-type .prs-type-book {
+                justify-content: flex-start;
+                width: 100%;
+        }
 }
 
 /* Full reset so no theme/UA button styles sneak in */
 .prs-star {
-	all: unset;                 /* wipe default <button> styles */
-	display: inline-block;
+        all: unset;                 /* wipe default <button> styles */
+        display: inline-block;
 	padding: 0 2px;
 	font-size: 22px;
 	line-height: 1;
