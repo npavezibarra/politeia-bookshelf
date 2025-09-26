@@ -268,21 +268,33 @@ add_shortcode(
                                                 }
                                                 ?>
                                                 </select>
-                                                <?php if ( 'borrowing' === $r->owning_status && ( $loan_contact_name || null !== $loan_days ) ) : ?>
-                                                <div class="prs-owning-status-details">
-                                                        <?php if ( $loan_contact_name ) : ?>
-                                                                <div class="prs-owning-status-name"><?php echo esc_html( $loan_contact_name ); ?></div>
-                                                        <?php endif; ?>
-                                                        <?php if ( null !== $loan_days ) : ?>
-                                                                <?php
-                                                                $days_label = sprintf(
-                                                                        _n( '%s day', '%s days', $loan_days, 'politeia-reading' ),
-                                                                        number_format_i18n( $loan_days )
-                                                                );
-                                                                ?>
-                                                                <div class="prs-owning-status-days"><?php echo esc_html( $days_label ); ?></div>
-                                                        <?php endif; ?>
-                                                </div>
+                                                <?php
+                                                $loan_days_text = null;
+                                                if ( null !== $loan_days ) {
+                                                        $loan_days_text = sprintf(
+                                                                _n( '%s day ago...', '%s days ago...', $loan_days, 'politeia-reading' ),
+                                                                number_format_i18n( $loan_days )
+                                                        );
+                                                }
+
+                                                $loan_detail_text = '';
+                                                $loan_detail_parts = array();
+
+                                                if ( $loan_contact_name ) {
+                                                        $loan_detail_parts[] = $loan_contact_name;
+                                                }
+
+                                                if ( $loan_days_text ) {
+                                                        $loan_detail_parts[] = $loan_days_text;
+                                                }
+
+                                                if ( $loan_detail_parts ) {
+                                                        array_unshift( $loan_detail_parts, __( 'To', 'politeia-reading' ) );
+                                                        $loan_detail_text = implode( ' ', $loan_detail_parts );
+                                                }
+                                                ?>
+                                                <?php if ( 'borrowing' === $r->owning_status && $loan_detail_text ) : ?>
+                                                <div class="prs-owning-status-details"><?php echo esc_html( $loan_detail_text ); ?></div>
                                                 <?php endif; ?>
                                         </div>
                                 </div>

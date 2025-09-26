@@ -664,14 +664,7 @@ table.prs-form__table {
         margin-top: 6px;
         text-align: left;
         color: #000;
-}
-
-#prs-library .prs-owning-status-name {
-        font-weight: 600;
-}
-
-#prs-library .prs-owning-status-days {
-        margin-top: 2px;
+        font-size: 12px;
 }
 
 #prs-library .prs-library__extras {
