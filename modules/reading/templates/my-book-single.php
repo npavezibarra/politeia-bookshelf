@@ -169,21 +169,35 @@ wp_localize_script(
 		<?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
 		</div>
 
-		<?php $current_rating = isset( $ub->rating ) && $ub->rating !== null ? (int) $ub->rating : 0; ?>
-		<div class="prs-field" id="fld-user-rating">
-		<div id="prs-user-rating" class="prs-stars" role="radiogroup" aria-label="<?php esc_attr_e( 'Your rating', 'politeia-reading' ); ?>">
-			<?php for ( $i = 1; $i <= 5; $i++ ) : ?>
-			<button type="button"
-				class="prs-star<?php echo ( $i <= $current_rating ) ? ' is-active' : ''; ?>"
-				data-value="<?php echo $i; ?>"
-				role="radio"
-				aria-checked="<?php echo ( $i === $current_rating ) ? 'true' : 'false'; ?>">
-				★
-			</button>
-			<?php endfor; ?>
-		</div>
-		<span id="rating-status" class="prs-help" style="margin-left:8px;"></span>
-		</div>
+                <?php
+                $current_rating = isset( $ub->rating ) && null !== $ub->rating ? (int) $ub->rating : 0;
+                $current_type   = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
+                ?>
+                <div class="prs-field prs-field--rating-type" id="fld-user-rating">
+                        <div class="prs-rating-block">
+                                <div id="prs-user-rating" class="prs-stars" role="radiogroup" aria-label="<?php esc_attr_e( 'Your rating', 'politeia-reading' ); ?>">
+                                        <?php for ( $i = 1; $i <= 5; $i++ ) : ?>
+                                                <button type="button"
+                                                        class="prs-star<?php echo ( $i <= $current_rating ) ? ' is-active' : ''; ?>"
+                                                        data-value="<?php echo $i; ?>"
+                                                        role="radio"
+                                                        aria-checked="<?php echo ( $i === $current_rating ) ? 'true' : 'false'; ?>">
+                                                        ★
+                                                </button>
+                                        <?php endfor; ?>
+                                </div>
+                                <span id="rating-status" class="prs-help" aria-live="polite"></span>
+                        </div>
+                        <div class="prs-type-book">
+                                <label for="prs-type-book" class="prs-type-book__label"><?php esc_html_e( 'Format', 'politeia-reading' ); ?></label>
+                                <select id="prs-type-book" class="prs-type-book__select">
+                                        <option value="" <?php selected( $current_type, '' ); ?>><?php esc_html_e( 'Not specified', 'politeia-reading' ); ?></option>
+                                        <option value="d" <?php selected( $current_type, 'd' ); ?>><?php esc_html_e( 'Digital', 'politeia-reading' ); ?></option>
+                                        <option value="p" <?php selected( $current_type, 'p' ); ?>><?php esc_html_e( 'Printed', 'politeia-reading' ); ?></option>
+                                </select>
+                                <span id="type-book-status" class="prs-help" aria-live="polite"></span>
+                        </div>
+                </div>
 
 		<!-- Pages -->
 		<div class="prs-field" id="fld-pages">
