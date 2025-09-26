@@ -36,8 +36,9 @@ add_shortcode(
 		$offset = ( $paged - 1 ) * $per_page;
 
 		global $wpdb;
-		$ub = $wpdb->prefix . 'politeia_user_books';
-		$b  = $wpdb->prefix . 'politeia_books';
+                $ub = $wpdb->prefix . 'politeia_user_books';
+                $b  = $wpdb->prefix . 'politeia_books';
+                $l  = $wpdb->prefix . 'politeia_loans';
 
 		// Total para paginación
 		$total = (int) $wpdb->get_var(
@@ -70,7 +71,18 @@ add_shortcode(
        SELECT ub.id AS user_book_id,
               ub.reading_status,
               ub.owning_status,
+              ub.type_book,
               ub.pages,
+              ub.counterparty_name,
+              (
+                      SELECT start_date
+                      FROM $l l
+                      WHERE l.user_id = ub.user_id
+                        AND l.book_id = ub.book_id
+                        AND l.end_date IS NULL
+                      ORDER BY l.id DESC
+                      LIMIT 1
+              ) AS active_loan_start,
                b.id   AS book_id,
                b.title,
                b.author,
@@ -144,6 +156,19 @@ add_shortcode(
                                 $reading_id  = 'reading-status-' . (int) $r->user_book_id;
                                 $owning_id   = 'owning-status-' . (int) $r->user_book_id;
                                 $progress_id = 'reading-progress-' . (int) $r->user_book_id;
+
+                                $loan_contact_name = isset( $r->counterparty_name ) ? trim( (string) $r->counterparty_name ) : '';
+                                $loan_days         = null;
+                                $is_digital        = ( isset( $r->type_book ) && 'd' === $r->type_book );
+
+                                if ( ! empty( $r->active_loan_start ) ) {
+                                        $start_timestamp = (int) get_date_from_gmt( $r->active_loan_start, 'U' );
+                                        if ( $start_timestamp ) {
+                                                $now       = current_time( 'timestamp' );
+                                                $diff      = max( 0, $now - $start_timestamp );
+                                                $loan_days = (int) floor( $diff / DAY_IN_SECONDS );
+                                        }
+                                }
 
                                 $year_text  = $year ? sprintf( __( 'Published: %s', 'politeia-reading' ), $year ) : __( 'Published: —', 'politeia-reading' );
                                 $pages_value    = $pages ? (int) $pages : '';
@@ -226,7 +251,11 @@ add_shortcode(
                                         </div>
                                         <div class="prs-library__field">
                                                 <label for="<?php echo esc_attr( $owning_id ); ?>"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-                                                <select id="<?php echo esc_attr( $owning_id ); ?>" class="prs-owning-status">
+                                                <select
+                                                        id="<?php echo esc_attr( $owning_id ); ?>"
+                                                        class="prs-owning-status<?php echo $is_digital ? ' is-disabled' : ''; ?>"
+                                                        <?php echo $is_digital ? 'disabled="disabled" aria-disabled="true"' : ''; ?>
+                                                >
                                                 <?php
                                                 $owning = array(
                                                         'in_shelf'  => __( 'In Shelf', 'politeia-reading' ),
@@ -245,6 +274,37 @@ add_shortcode(
                                                 }
                                                 ?>
                                                 </select>
+                                                <?php
+                                                $loan_days_text = null;
+                                                if ( null !== $loan_days ) {
+                                                        $loan_days_text = sprintf(
+                                                                _n( '%s day ago...', '%s days ago...', $loan_days, 'politeia-reading' ),
+                                                                number_format_i18n( $loan_days )
+                                                        );
+                                                }
+
+                                                $loan_detail_text = '';
+                                                $loan_detail_parts = array();
+
+                                                if ( $loan_contact_name ) {
+                                                        $loan_detail_parts[] = $loan_contact_name;
+                                                }
+
+                                                if ( $loan_days_text ) {
+                                                        $loan_detail_parts[] = $loan_days_text;
+                                                }
+
+                                                if ( $loan_detail_parts ) {
+                                                        array_unshift( $loan_detail_parts, __( 'To', 'politeia-reading' ) );
+                                                        $loan_detail_text = implode( ' ', $loan_detail_parts );
+                                                }
+                                                ?>
+                                                <?php if ( 'borrowing' === $r->owning_status && $loan_detail_text ) : ?>
+                                                <div class="prs-owning-status-details"><?php echo esc_html( $loan_detail_text ); ?></div>
+                                                <?php endif; ?>
+                                                <?php if ( $is_digital ) : ?>
+                                                <div class="prs-owning-status-note"><?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?></div>
+                                                <?php endif; ?>
                                         </div>
                                 </div>
                                 <div class="prs-library__extras">

@@ -50,11 +50,14 @@ class Politeia_Reading_User_Books {
 			}
 		}
 
-		// owning_status (DERIVADO: vacío => volver a In Shelf)
-		if ( array_key_exists( 'owning_status', $_POST ) ) {
-			$raw = wp_unslash( $_POST['owning_status'] );
-			$os  = sanitize_key( $raw );
-			$now = current_time( 'mysql', true );
+                // owning_status (DERIVADO: vacío => volver a In Shelf)
+                if ( array_key_exists( 'owning_status', $_POST ) ) {
+                        if ( 'd' === (string) $row->type_book ) {
+                                self::json_error( __( 'Owning status is available only for printed copies.', 'politeia-reading' ), 400 );
+                        }
+                        $raw = wp_unslash( $_POST['owning_status'] );
+                        $os  = sanitize_key( $raw );
+                        $now = current_time( 'mysql', true );
 
 			if ( $raw === '' || $raw === null ) {
 				// Volver a "In Shelf"
@@ -210,10 +213,13 @@ class Politeia_Reading_User_Books {
 			$effective_at = current_time( 'mysql', true );
 		}
 
-		// ====== OWNING STATUS (DERIVADO) ======
-		if ( array_key_exists( 'owning_status', $_POST ) ) {
-			$raw = wp_unslash( $_POST['owning_status'] );
-			$os  = sanitize_key( $raw );
+                // ====== OWNING STATUS (DERIVADO) ======
+                if ( array_key_exists( 'owning_status', $_POST ) ) {
+                        if ( 'd' === (string) $row->type_book ) {
+                                self::json_error( __( 'Owning status is available only for printed copies.', 'politeia-reading' ), 400 );
+                        }
+                        $raw = wp_unslash( $_POST['owning_status'] );
+                        $os  = sanitize_key( $raw );
 
 			if ( $raw === '' || $raw === null ) {
 				$update['owning_status']      = null;
