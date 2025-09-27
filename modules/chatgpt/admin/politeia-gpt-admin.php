@@ -98,7 +98,7 @@ function politeia_gpt_register_settings() {
         function () {
             $val = get_option('politeia_gpt_instruction_text', '');
             if ($val === '') {
-                $val = 'A partir del siguiente texto, extrae los libros mencionados y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta: { "books": [ { "title": "...", "author": "..." } ] }. No incluyas comentarios, notas ni markdown.';
+                $val = 'A partir del siguiente texto, extrae los libros mencionados y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta: { "books": [ { "title": "...", "authors": ["..."] } ] }. No incluyas comentarios, notas ni markdown.';
             }
             echo '<textarea name="politeia_gpt_instruction_text" rows="6" class="large-text" style="max-width: 900px;">' . esc_textarea($val) . '</textarea>';
             echo '<p class="description">Para prompts escritos (o transcripción de audio si no defines una instrucción específica de audio).</p>';
@@ -127,7 +127,7 @@ function politeia_gpt_register_settings() {
         function () {
             $val = get_option('politeia_gpt_instruction_image', '');
             if ($val === '') {
-                $val = 'Analiza esta imagen (estantería de libros). Extrae los títulos y autores visibles y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta: { "books": [ { "title": "...", "author": "..." } ] }. Omite elementos dudosos o parciales. Nada de markdown ni texto adicional.';
+                $val = 'Analiza esta imagen (estantería de libros). Extrae los títulos y autores visibles y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta: { "books": [ { "title": "...", "authors": ["..."] } ] }. Omite elementos dudosos o parciales. Nada de markdown ni texto adicional.';
             }
             echo '<textarea name="politeia_gpt_instruction_image" rows="6" class="large-text" style="max-width: 900px;">' . esc_textarea($val) . '</textarea>';
             echo '<p class="description">Para análisis de imágenes con visión.</p>';
