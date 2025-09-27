@@ -176,17 +176,36 @@ add_shortcode(
         									</div>
         								</td>
         							</tr>
-        							<tr>
-        								<th scope="row">
-        									<label for="prs_author">
-        										<?php esc_html_e( 'Author', 'politeia-reading' ); ?>
-        										<span class="prs-form__required" aria-hidden="true">*</span>
-        									</label>
-        								</th>
-        								<td>
-        									<input type="text" id="prs_author" name="prs_author" required />
-        								</td>
-        							</tr>
+                                                                <tr>
+                                                                        <th scope="row">
+                                                                                <label for="prs_author_0">
+                                                                                        <?php esc_html_e( 'Author', 'politeia-reading' ); ?>
+                                                                                        <span class="prs-form__required" aria-hidden="true">*</span>
+                                                                                </label>
+                                                                        </th>
+                                                                        <td>
+                                                                                <?php $remove_author_label = esc_attr__( 'Remove author', 'politeia-reading' ); ?>
+                                                                                <div id="prs_author_fields" class="prs-add-book__authors" data-remove-label="<?php echo $remove_author_label; ?>">
+                                                                                        <div class="prs-add-book__author" data-author-field>
+                                                                                                <input type="text" id="prs_author_0" class="prs-add-book__author-input" name="prs_author[]" autocomplete="off" required />
+                                                                                                <button type="button" class="prs-add-book__remove-author" data-remove-author aria-label="<?php echo esc_attr__( 'Remove author', 'politeia-reading' ); ?>" hidden>
+                                                                                                        <?php echo esc_html__( 'Remove', 'politeia-reading' ); ?>
+                                                                                                </button>
+                                                                                        </div>
+                                                                                </div>
+                                                                                <button type="button" id="prs_add_author" class="prs-add-book__add-author">
+                                                                                        <?php echo esc_html__( 'Add another author', 'politeia-reading' ); ?>
+                                                                                </button>
+                                                                                <template id="prs_author_template">
+                                                                                        <div class="prs-add-book__author" data-author-field>
+                                                                                                <input type="text" class="prs-add-book__author-input" name="prs_author[]" autocomplete="off" required />
+                                                                                                <button type="button" class="prs-add-book__remove-author" data-remove-author aria-label="<?php echo esc_attr__( 'Remove author', 'politeia-reading' ); ?>">
+                                                                                                        <?php echo esc_html__( 'Remove', 'politeia-reading' ); ?>
+                                                                                                </button>
+                                                                                        </div>
+                                                                                </template>
+                                                                        </td>
+                                                                </tr>
         							<tr>
         								<th scope="row">
         									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
@@ -386,15 +405,55 @@ function prs_add_book_submit_handler() {
 
 	$user_id = get_current_user_id();
 
-	// Sanitización
-	$title  = isset( $_POST['prs_title'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_title'] ) ) : '';
-	$author = isset( $_POST['prs_author'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_author'] ) ) : '';
-	$year   = null;
-	if ( isset( $_POST['prs_year'] ) && $_POST['prs_year'] !== '' ) {
-		$y   = absint( $_POST['prs_year'] );
-		$min = 1400;
-		$max = (int) date( 'Y' ) + 1;
-		if ( $y >= $min && $y <= $max ) {
+        // Sanitización
+        $title   = isset( $_POST['prs_title'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_title'] ) ) : '';
+        $authors = array();
+
+        if ( isset( $_POST['prs_author'] ) ) {
+                $raw_authors = wp_unslash( $_POST['prs_author'] );
+
+                if ( is_array( $raw_authors ) ) {
+                        foreach ( $raw_authors as $raw_author ) {
+                                $clean_author = sanitize_text_field( $raw_author );
+                                if ( '' !== $clean_author ) {
+                                        $authors[] = $clean_author;
+                                }
+                        }
+                } else {
+                        $single_author = sanitize_text_field( $raw_authors );
+                        if ( '' !== $single_author ) {
+                                $authors[] = $single_author;
+                        }
+                }
+        }
+
+        $primary_author = '';
+
+        if ( ! empty( $authors ) ) {
+                $normalized = array();
+                $unique     = array();
+
+                foreach ( $authors as $raw_author ) {
+                        $key = function_exists( 'mb_strtolower' ) ? mb_strtolower( $raw_author, 'UTF-8' ) : strtolower( $raw_author );
+                        if ( isset( $normalized[ $key ] ) ) {
+                                continue;
+                        }
+                        $normalized[ $key ] = true;
+                        $unique[]           = $raw_author;
+                }
+
+                if ( ! empty( $unique ) ) {
+                        $primary_author = array_shift( $unique );
+                        $authors        = array_values( $unique );
+                }
+        }
+
+        $year = null;
+        if ( isset( $_POST['prs_year'] ) && $_POST['prs_year'] !== '' ) {
+                $y   = absint( $_POST['prs_year'] );
+                $min = 1400;
+                $max = (int) date( 'Y' ) + 1;
+                if ( $y >= $min && $y <= $max ) {
 			$year = $y;
 		}
 	}
@@ -407,16 +466,16 @@ function prs_add_book_submit_handler() {
 		}
 	}
 
-	if ( $title === '' || $author === '' ) {
-		wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
-		exit;
-	}
+        if ( '' === $title || '' === $primary_author ) {
+                wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
+                exit;
+        }
 
-	// Upload opcional de portada
-	$attachment_id = prs_handle_cover_upload( 'prs_cover' );
+        // Upload opcional de portada
+        $attachment_id = prs_handle_cover_upload( 'prs_cover' );
 
-	// Crear o encontrar libro canónico
-	$book_id = prs_find_or_create_book( $title, $author, $year, $attachment_id );
+        // Crear o encontrar libro canónico
+        $book_id = prs_find_or_create_book( $title, $primary_author, $year, $attachment_id, $authors );
 	if ( is_wp_error( $book_id ) || ! $book_id ) {
 		wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
 		exit;
@@ -436,13 +495,14 @@ function prs_add_book_submit_handler() {
 		);
 	}
 
-	// Redirect back with success flag
-	$redirect_url = wp_get_referer() ?: home_url();
-	$query_args   = array(
-		'prs_added'        => 1,
-		'prs_added_title'  => $title,
-		'prs_added_author' => $author,
-	);
+        // Redirect back with success flag
+        $redirect_url    = wp_get_referer() ?: home_url();
+        $display_authors = array_merge( array( $primary_author ), $authors );
+        $query_args      = array(
+                'prs_added'        => 1,
+                'prs_added_title'  => $title,
+                'prs_added_author' => implode( ', ', $display_authors ),
+        );
 
 	if ( null !== $year ) {
 		$query_args['prs_added_year'] = $year;

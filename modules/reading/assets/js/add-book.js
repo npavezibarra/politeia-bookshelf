@@ -234,12 +234,210 @@
 
         activateSuccess();
 
+        var authorContainer = document.getElementById('prs_author_fields');
+        var authorTemplate = document.getElementById('prs_author_template');
+        var addAuthorButton = document.getElementById('prs_add_author');
+        var removeAuthorLabel = authorContainer ? authorContainer.getAttribute('data-remove-label') : '';
+
+        var getAuthorFields = function () {
+                if (!authorContainer) {
+                        return [];
+                }
+                var nodeList = authorContainer.querySelectorAll('[data-author-field]');
+                return Array.prototype.slice.call(nodeList || []);
+        };
+
+        var updateRemoveButtons = function () {
+                var fields = getAuthorFields();
+                for (var i = 0; i < fields.length; i++) {
+                        var removeButton = fields[i].querySelector('[data-remove-author]');
+                        if (!removeButton) {
+                                continue;
+                        }
+                        removeButton.hidden = fields.length <= 1;
+                }
+        };
+
+        var bindAuthorField = function (field) {
+                if (!field) {
+                        return field;
+                }
+                var removeButton = field.querySelector('[data-remove-author]');
+                if (removeButton && !removeButton.hasAttribute('data-author-bound')) {
+                        removeButton.setAttribute('data-author-bound', '1');
+                        removeButton.addEventListener('click', function (event) {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                if (!authorContainer) {
+                                        return;
+                                }
+                                var fields = getAuthorFields();
+                                if (fields.length <= 1) {
+                                        var primary = fields.length ? fields[0].querySelector('input') : null;
+                                        if (primary) {
+                                                primary.focus();
+                                        }
+                                        return;
+                                }
+                                if (field.parentNode === authorContainer) {
+                                        authorContainer.removeChild(field);
+                                } else if (field.parentNode) {
+                                        field.parentNode.removeChild(field);
+                                }
+                                updateRemoveButtons();
+                        });
+                }
+                return field;
+        };
+
+        var createAuthorField = function (value) {
+                var field = null;
+                if (authorTemplate && 'content' in authorTemplate && authorTemplate.content.firstElementChild) {
+                        field = authorTemplate.content.firstElementChild.cloneNode(true);
+                } else if (authorContainer) {
+                        field = document.createElement('div');
+                        field.className = 'prs-add-book__author';
+                        field.setAttribute('data-author-field', '');
+
+                        var input = document.createElement('input');
+                        input.type = 'text';
+                        input.name = 'prs_author[]';
+                        input.required = true;
+                        input.autocomplete = 'off';
+                        input.className = 'prs-add-book__author-input';
+                        field.appendChild(input);
+
+                        var removeButton = document.createElement('button');
+                        removeButton.type = 'button';
+                        removeButton.className = 'prs-add-book__remove-author';
+                        removeButton.setAttribute('data-remove-author', '');
+                        removeButton.textContent = removeAuthorLabel || 'Remove';
+                        if (removeAuthorLabel) {
+                                removeButton.setAttribute('aria-label', removeAuthorLabel);
+                        }
+                        field.appendChild(removeButton);
+                }
+
+                field = bindAuthorField(field);
+
+                var inputField = field ? field.querySelector('input') : null;
+                if (inputField) {
+                        inputField.value = value || '';
+                }
+
+                return field;
+        };
+
+        var ensureInitialAuthorField = function () {
+                if (!authorContainer) {
+                        return;
+                }
+                var fields = getAuthorFields();
+                if (!fields.length) {
+                        var newField = createAuthorField('');
+                        if (newField) {
+                                authorContainer.appendChild(newField);
+                        }
+                        fields = getAuthorFields();
+                }
+                for (var i = 0; i < fields.length; i++) {
+                        bindAuthorField(fields[i]);
+                }
+                updateRemoveButtons();
+        };
+
+        var getPrimaryAuthorInput = function () {
+                var fields = getAuthorFields();
+                if (!fields.length) {
+                        return null;
+                }
+                return fields[0].querySelector('input');
+        };
+
+        var setAuthors = function (authors) {
+                if (!authorContainer) {
+                        var legacyInput = document.getElementById('prs_author');
+                        if (legacyInput) {
+                                legacyInput.value = authors && authors.length ? authors[0] : '';
+                        }
+                        return;
+                }
+
+                var values = [];
+
+                if (Array.isArray(authors)) {
+                        for (var i = 0; i < authors.length; i++) {
+                                if (authors[i]) {
+                                        values.push(String(authors[i]));
+                                }
+                        }
+                } else if (typeof authors === 'string') {
+                        values.push(authors);
+                }
+
+                if (!values.length) {
+                        values.push('');
+                }
+
+                var existingFields = getAuthorFields();
+
+                for (var j = existingFields.length; j < values.length; j++) {
+                        var appended = createAuthorField('');
+                        if (appended) {
+                                authorContainer.appendChild(appended);
+                        }
+                }
+
+                existingFields = getAuthorFields();
+
+                for (var k = 0; k < existingFields.length; k++) {
+                        var input = existingFields[k].querySelector('input');
+                        if (!input) {
+                                continue;
+                        }
+                        input.value = values[k] || '';
+                }
+
+                for (var m = existingFields.length - 1; m >= values.length; m--) {
+                        if (existingFields.length <= 1) {
+                                break;
+                        }
+                        var field = existingFields[m];
+                        if (field && field.parentNode) {
+                                field.parentNode.removeChild(field);
+                        }
+                        existingFields = getAuthorFields();
+                }
+
+                updateRemoveButtons();
+        };
+
+        ensureInitialAuthorField();
+
+        if (addAuthorButton && authorContainer) {
+                addAuthorButton.addEventListener('click', function (event) {
+                        if (event && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
+                        }
+                        var newField = createAuthorField('');
+                        if (newField) {
+                                authorContainer.appendChild(newField);
+                                updateRemoveButtons();
+                                var input = newField.querySelector('input');
+                                if (input) {
+                                        input.focus();
+                                }
+                        }
+                });
+        }
+
         var titleInput = document.getElementById('prs_title');
         if (!titleInput) {
                 return;
         }
 
-        var authorInput = document.getElementById('prs_author');
+        var authorInput = getPrimaryAuthorInput();
         var yearInput = document.getElementById('prs_year');
         var suggestionContainer = document.getElementById('prs_title_suggestions');
 
@@ -324,8 +522,12 @@
                 }
 
                 titleInput.value = item.title;
-                if (authorInput) {
-                        authorInput.value = item.author;
+                if (item.authors && item.authors.length) {
+                        setAuthors(item.authors);
+                        authorInput = getPrimaryAuthorInput();
+                } else if (item.author) {
+                        setAuthors([item.author]);
+                        authorInput = getPrimaryAuthorInput();
                 }
                 if (yearInput) {
                         yearInput.value = item.year;
@@ -374,8 +576,16 @@
                         button.setAttribute('role', 'option');
                         button.dataset.title = items[i].title;
                         button.dataset.author = items[i].author;
+                        if (items[i].authors && items[i].authors.length) {
+                                try {
+                                        button.dataset.authors = JSON.stringify(items[i].authors);
+                                } catch (error) {
+                                        button.dataset.authors = '';
+                                }
+                        }
                         button.dataset.year = items[i].year;
-                        button.textContent = items[i].title + ' - ' + items[i].author + ' - ' + items[i].year;
+                        var authorsLabel = items[i].authors && items[i].authors.length ? items[i].authors.join(', ') : items[i].author;
+                        button.textContent = items[i].title + ' - ' + authorsLabel + ' - ' + items[i].year;
                         button.addEventListener('keydown', handleSuggestionKeydown);
                         button.addEventListener('click', (function (suggestion) {
                                 return function (clickEvent) {
@@ -457,10 +667,20 @@
                                                 continue;
                                         }
 
-                                        var author = '';
+                                        var authors = [];
                                         if (volumeInfo.authors && volumeInfo.authors.length) {
-                                                author = String(volumeInfo.authors[0]).trim();
+                                                for (var authorIndex = 0; authorIndex < volumeInfo.authors.length; authorIndex++) {
+                                                        var candidate = String(volumeInfo.authors[authorIndex]).trim();
+                                                        if (!candidate) {
+                                                                continue;
+                                                        }
+                                                        if (authors.indexOf(candidate) === -1) {
+                                                                authors.push(candidate);
+                                                        }
+                                                }
                                         }
+
+                                        var author = authors.length ? authors[0] : '';
 
                                         var year = '';
                                         if (volumeInfo.publishedDate) {
@@ -471,7 +691,7 @@
                                                 continue;
                                         }
 
-                                        var key = normalizeForComparison(title) + '|' + normalizeForComparison(author);
+                                        var key = normalizeForComparison(title) + '|' + normalizeForComparison(authors.join('|'));
                                         if (seen[key]) {
                                                 continue;
                                         }
@@ -480,6 +700,7 @@
                                         items.push({
                                                 title: title,
                                                 author: author,
+                                                authors: authors,
                                                 year: year
                                         });
 
