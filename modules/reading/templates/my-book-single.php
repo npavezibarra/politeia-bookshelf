@@ -129,7 +129,7 @@ wp_localize_script(
 </style>
 
 <div class="wrap">
-	<p><a href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
+        <p style="margin-top:10px; font-size:14px;"><a href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
 
 	<div class="prs-single-grid">
 
