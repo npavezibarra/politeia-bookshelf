@@ -4,9 +4,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 function politeia_book_dedup_table_shortcode() {
-        if ( ! current_user_can( 'manage_politeia_books' ) ) {
-                return '<p>' . esc_html__( 'You do not have permission to view this table.', 'politeia-reading' ) . '</p>';
-        }
+        $can_manage = current_user_can( 'manage_politeia_books' );
 
         global $wpdb;
         $table = $wpdb->prefix . 'politeia_book_candidates';
@@ -20,17 +18,20 @@ function politeia_book_dedup_table_shortcode() {
         }
 
         wp_enqueue_style( 'politeia-dedup' );
-        wp_enqueue_script( 'politeia-dedup' );
 
-        wp_localize_script(
-                'politeia-dedup',
-                'PoliteiaDedup',
-                array(
-                        'ajax_url'       => admin_url( 'admin-ajax.php' ),
-                        'nonce'          => wp_create_nonce( 'politeia_dedup_action' ),
-                        'error_message'  => __( 'Something went wrong. Please refresh and try again.', 'politeia-reading' ),
-                )
-        );
+        if ( $can_manage ) {
+                wp_enqueue_script( 'politeia-dedup' );
+
+                wp_localize_script(
+                        'politeia-dedup',
+                        'PoliteiaDedup',
+                        array(
+                                'ajax_url'      => admin_url( 'admin-ajax.php' ),
+                                'nonce'         => wp_create_nonce( 'politeia_dedup_action' ),
+                                'error_message' => __( 'Something went wrong. Please refresh and try again.', 'politeia-reading' ),
+                        )
+                );
+        }
 
         ob_start();
         ?>
@@ -64,12 +65,16 @@ function politeia_book_dedup_table_shortcode() {
                                                 <?php echo esc_html( max( 0, (int) $candidate->total_score ) ); ?>%
                                         </td>
                                         <td class="dedup-actions">
-                                                <button type="button" class="button button-primary dedup-confirm" data-candidate-id="<?php echo esc_attr( $candidate->id ); ?>" data-action="confirm">
-                                                        <?php esc_html_e( 'Confirm', 'politeia-reading' ); ?>
-                                                </button>
-                                                <button type="button" class="button button-secondary dedup-reject" data-candidate-id="<?php echo esc_attr( $candidate->id ); ?>" data-action="reject">
-                                                        <?php esc_html_e( 'Reject', 'politeia-reading' ); ?>
-                                                </button>
+                                                <?php if ( $can_manage ) : ?>
+                                                        <button type="button" class="button button-primary dedup-confirm" data-candidate-id="<?php echo esc_attr( $candidate->id ); ?>" data-action="confirm">
+                                                                <?php esc_html_e( 'Confirm', 'politeia-reading' ); ?>
+                                                        </button>
+                                                        <button type="button" class="button button-secondary dedup-reject" data-candidate-id="<?php echo esc_attr( $candidate->id ); ?>" data-action="reject">
+                                                                <?php esc_html_e( 'Reject', 'politeia-reading' ); ?>
+                                                        </button>
+                                                <?php else : ?>
+                                                        <span class="dedup-permission-note"><?php esc_html_e( 'Only editors can manage candidates.', 'politeia-reading' ); ?></span>
+                                                <?php endif; ?>
                                         </td>
                                 </tr>
                         <?php endforeach; ?>
