@@ -362,7 +362,9 @@ wp_localize_script(
 	</div>
 
         <!-- Arriba derecha: Book Stats placeholder -->
-        <div id="prs-book-stats" class="prs-box"></div>
+        <div id="prs-book-stats" class="prs-box">
+                <h2><?php esc_html_e( 'Book Stats', 'politeia-reading' ); ?></h2>
+        </div>
 
         <!-- Fila completa: Reading Sessions (AJAX) -->
         <div id="prs-reading-sessions" class="prs-box">
