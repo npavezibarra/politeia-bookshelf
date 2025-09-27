@@ -500,6 +500,102 @@ table.prs-form__table {
         position: relative;
 }
 
+.prs-add-book__field--authors {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+}
+
+.prs-add-book__author-input-wrapper {
+        position: relative;
+}
+
+.prs-add-book__author-input {
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        color: #333;
+        background-color: #fff;
+}
+
+.prs-add-book__field--authors.has-error .prs-add-book__author-input {
+        border-color: #dc2626;
+        box-shadow: 0 0 0 1px rgba(220, 38, 38, 0.12);
+}
+
+.prs-add-book__selected-authors {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 0;
+        margin: 0;
+        padding: 0;
+        list-style: none;
+}
+
+.prs-add-book__selected-authors.is-empty {
+        display: none;
+}
+
+.prs-add-book__author-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 10px;
+        border-radius: 9999px;
+        background: #eef2ff;
+        color: #1f2937;
+        font-size: 0.85rem;
+}
+
+.prs-add-book__author-chip-label {
+        line-height: 1.2;
+}
+
+.prs-add-book__author-chip-remove {
+        border: none;
+        background: transparent;
+        color: #4b5563;
+        font-size: 1rem;
+        line-height: 1;
+        cursor: pointer;
+        padding: 0;
+}
+
+.prs-add-book__author-chip-remove:hover,
+.prs-add-book__author-chip-remove:focus {
+        color: #111827;
+        outline: none;
+}
+
+.prs-add-book__field-help {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #6b7280;
+}
+
+.prs-add-book__field-error {
+        margin: 0;
+        font-size: 0.85rem;
+        color: #dc2626;
+}
+
+.prs-add-book__author-hidden {
+        display: none;
+}
+
+.prs-add-book__suggestion-message {
+        padding: 10px 14px;
+        font-size: 0.9rem;
+        color: #6b7280;
+}
+
+.prs-add-book__suggestion--create {
+        font-weight: 600;
+}
+
 .prs-add-book__suggestions {
         position: absolute;
         top: calc(100% + 4px);

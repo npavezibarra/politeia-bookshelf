@@ -11,12 +11,32 @@ add_shortcode(
 			return '<p>' . esc_html__( 'You must be logged in to add books.', 'politeia-reading' ) . '</p>';
 		}
 
-		wp_enqueue_style( 'politeia-reading' );
+                wp_enqueue_style( 'politeia-reading' );
                 wp_enqueue_script( 'politeia-add-book' );
+
+                wp_localize_script(
+                        'politeia-add-book',
+                        'prsAddBookSettings',
+                        array(
+                                'ajaxUrl'     => admin_url( 'admin-ajax.php' ),
+                                'authorNonce' => wp_create_nonce( 'prs_author_suggest' ),
+                                'i18n'        => array(
+                                        'noMatches'    => __( 'No authors found', 'politeia-reading' ),
+                                        'addAuthor'    => __( 'Press Enter to add the current author name', 'politeia-reading' ),
+                                        'duplicate'    => __( 'This author has already been added.', 'politeia-reading' ),
+                                        'removed'      => __( 'Author removed.', 'politeia-reading' ),
+                                        'added'        => __( 'Author added.', 'politeia-reading' ),
+                                        'typeMore'     => __( 'Type at least two characters to search.', 'politeia-reading' ),
+                                        'createLabel'  => __( 'Add “%s”', 'politeia-reading' ),
+                                        'removeAuthor' => __( 'Remove %s', 'politeia-reading' ),
+                                ),
+                        )
+                );
 
                 $success                = ! empty( $_GET['prs_added'] ) && '1' === $_GET['prs_added'];
                 $success_title          = '';
-                $success_author         = '';
+                $success_authors        = array();
+                $success_authors_text   = '';
                 $success_year           = null;
                 $success_pages          = null;
                 $success_cover_url      = '';
@@ -31,9 +51,34 @@ add_shortcode(
 			if ( isset( $_GET['prs_added_title'] ) ) {
 				$success_title = sanitize_text_field( wp_unslash( $_GET['prs_added_title'] ) );
 			}
-			if ( isset( $_GET['prs_added_author'] ) ) {
-				$success_author = sanitize_text_field( wp_unslash( $_GET['prs_added_author'] ) );
-			}
+                        if ( isset( $_GET['prs_added_authors'] ) ) {
+                                $raw_authors = wp_unslash( $_GET['prs_added_authors'] );
+                                if ( is_array( $raw_authors ) ) {
+                                        $raw_list = $raw_authors;
+                                } else {
+                                        $decoded = json_decode( (string) $raw_authors, true );
+                                        $raw_list = is_array( $decoded ) ? $decoded : array();
+                                }
+
+                                foreach ( $raw_list as $author_name ) {
+                                        $author_name = sanitize_text_field( $author_name );
+                                        if ( '' !== $author_name ) {
+                                                $success_authors[] = $author_name;
+                                        }
+                                }
+                        }
+
+                        if ( empty( $success_authors ) && isset( $_GET['prs_added_author'] ) ) {
+                                $fallback_author = sanitize_text_field( wp_unslash( $_GET['prs_added_author'] ) );
+                                if ( '' !== $fallback_author ) {
+                                        $success_authors[] = $fallback_author;
+                                }
+                        }
+
+                        if ( ! empty( $success_authors ) ) {
+                                $success_authors = array_values( array_unique( $success_authors ) );
+                                $success_authors_text = implode( ', ', $success_authors );
+                        }
 			if ( isset( $_GET['prs_added_year'] ) && '' !== $_GET['prs_added_year'] ) {
 				$year = absint( $_GET['prs_added_year'] );
 				if ( $year >= 1400 && $year <= ( (int) date( 'Y' ) + 1 ) ) {
@@ -108,12 +153,12 @@ add_shortcode(
         								<span class="prs-add-book__success-value"><?php echo esc_html( $success_title ); ?></span>
         							</li>
         						<?php endif; ?>
-        						<?php if ( $success_author ) : ?>
-        							<li class="prs-add-book__success-item">
-        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Author', 'politeia-reading' ); ?></span>
-        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_author ); ?></span>
-        							</li>
-        						<?php endif; ?>
+                                                        <?php if ( $success_authors_text ) : ?>
+                                                                <li class="prs-add-book__success-item">
+                                                                        <span class="prs-add-book__success-label"><?php esc_html_e( 'Authors', 'politeia-reading' ); ?></span>
+                                                                        <span class="prs-add-book__success-value"><?php echo esc_html( $success_authors_text ); ?></span>
+                                                                </li>
+                                                        <?php endif; ?>
         						<?php if ( null !== $success_year ) : ?>
         							<li class="prs-add-book__success-item">
         								<span class="prs-add-book__success-label"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></span>
@@ -176,17 +221,27 @@ add_shortcode(
         									</div>
         								</td>
         							</tr>
-        							<tr>
-        								<th scope="row">
-        									<label for="prs_author">
-        										<?php esc_html_e( 'Author', 'politeia-reading' ); ?>
-        										<span class="prs-form__required" aria-hidden="true">*</span>
-        									</label>
-        								</th>
-        								<td>
-        									<input type="text" id="prs_author" name="prs_author" required />
-        								</td>
-        							</tr>
+                                                                <tr>
+                                                                        <th scope="row">
+                                                                                <label for="prs_author_input">
+                                                                                        <?php esc_html_e( 'Authors', 'politeia-reading' ); ?>
+                                                                                        <span class="prs-form__required" aria-hidden="true">*</span>
+                                                                                </label>
+                                                                        </th>
+                                                                        <td>
+                                                                                <div class="prs-add-book__field prs-add-book__field--authors" id="prs_authors_field">
+                                                                                        <div id="prs_selected_authors" class="prs-add-book__selected-authors" role="list" aria-live="polite" aria-atomic="false"></div>
+                                                                                        <div class="prs-add-book__author-input-wrapper">
+                                                                                                <input type="text" id="prs_author_input" class="prs-add-book__author-input" autocomplete="off" aria-describedby="prs_authors_help" placeholder="<?php esc_attr_e( 'Start typing an author…', 'politeia-reading' ); ?>" />
+                                                                                                <div id="prs_author_suggestions" class="prs-add-book__suggestions" role="listbox" aria-label="<?php esc_attr_e( 'Author suggestions', 'politeia-reading' ); ?>" aria-hidden="true"></div>
+                                                                                        </div>
+                                                                                        <div id="prs_author_hidden_inputs" class="prs-add-book__author-hidden" aria-hidden="true"></div>
+                                                                                        <p id="prs_authors_help" class="prs-add-book__field-help"><?php esc_html_e( 'Select one or more authors. Use Enter to add custom names.', 'politeia-reading' ); ?></p>
+                                                                                        <p id="prs_authors_error" class="prs-add-book__field-error" hidden><?php esc_html_e( 'Please add at least one author.', 'politeia-reading' ); ?></p>
+                                                                                        <span id="prs_authors_live" class="screen-reader-text" aria-live="polite" aria-atomic="false"></span>
+                                                                                </div>
+                                                                        </td>
+                                                                </tr>
         							<tr>
         								<th scope="row">
         									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
@@ -376,6 +431,9 @@ add_shortcode(
 add_action( 'admin_post_prs_add_book_submit', 'prs_add_book_submit_handler' );
 add_action( 'admin_post_nopriv_prs_add_book_submit', 'prs_add_book_submit_handler' );
 
+add_action( 'wp_ajax_prs_author_suggestions', 'prs_author_suggestions_handler' );
+add_action( 'wp_ajax_nopriv_prs_author_suggestions', 'prs_author_suggestions_handler' );
+
 function prs_add_book_submit_handler() {
 	if ( ! is_user_logged_in() ) {
 		wp_die( 'Login required.' );
@@ -387,8 +445,32 @@ function prs_add_book_submit_handler() {
 	$user_id = get_current_user_id();
 
 	// Sanitización
-	$title  = isset( $_POST['prs_title'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_title'] ) ) : '';
-	$author = isset( $_POST['prs_author'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_author'] ) ) : '';
+        $title    = isset( $_POST['prs_title'] ) ? sanitize_text_field( wp_unslash( $_POST['prs_title'] ) ) : '';
+        $authors  = array();
+        $raw_auth = isset( $_POST['prs_authors'] ) ? wp_unslash( $_POST['prs_authors'] ) : array();
+
+        if ( is_array( $raw_auth ) ) {
+                foreach ( $raw_auth as $maybe_author ) {
+                        $maybe_author = sanitize_text_field( $maybe_author );
+                        if ( '' !== $maybe_author ) {
+                                $authors[] = $maybe_author;
+                        }
+                }
+        } elseif ( null !== $raw_auth ) {
+                $single_author = sanitize_text_field( (string) $raw_auth );
+                if ( '' !== $single_author ) {
+                        $authors[] = $single_author;
+                }
+        }
+
+        if ( empty( $authors ) && isset( $_POST['prs_author'] ) ) {
+                $legacy_author = sanitize_text_field( wp_unslash( $_POST['prs_author'] ) );
+                if ( '' !== $legacy_author ) {
+                        $authors[] = $legacy_author;
+                }
+        }
+
+        $authors = array_values( array_unique( $authors ) );
 	$year   = null;
 	if ( isset( $_POST['prs_year'] ) && $_POST['prs_year'] !== '' ) {
 		$y   = absint( $_POST['prs_year'] );
@@ -407,16 +489,16 @@ function prs_add_book_submit_handler() {
 		}
 	}
 
-	if ( $title === '' || $author === '' ) {
-		wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
-		exit;
-	}
+        if ( $title === '' || empty( $authors ) ) {
+                wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
+                exit;
+        }
 
 	// Upload opcional de portada
 	$attachment_id = prs_handle_cover_upload( 'prs_cover' );
 
 	// Crear o encontrar libro canónico
-	$book_id = prs_find_or_create_book( $title, array( $author ), $year, $attachment_id );
+        $book_id = prs_find_or_create_book( $title, $authors, $year, $attachment_id );
 	if ( is_wp_error( $book_id ) || ! $book_id ) {
 		wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
 		exit;
@@ -438,11 +520,21 @@ function prs_add_book_submit_handler() {
 
 	// Redirect back with success flag
 	$redirect_url = wp_get_referer() ?: home_url();
-	$query_args   = array(
-		'prs_added'        => 1,
-		'prs_added_title'  => $title,
-		'prs_added_author' => $author,
-	);
+        $query_args   = array(
+                'prs_added'       => 1,
+                'prs_added_title' => $title,
+        );
+
+        if ( ! empty( $authors ) ) {
+                $encoded_authors = wp_json_encode( $authors );
+                if ( $encoded_authors ) {
+                        $query_args['prs_added_authors'] = $encoded_authors;
+                }
+
+                if ( count( $authors ) === 1 ) {
+                        $query_args['prs_added_author'] = $authors[0];
+                }
+        }
 
 	if ( null !== $year ) {
 		$query_args['prs_added_year'] = $year;
@@ -459,4 +551,66 @@ function prs_add_book_submit_handler() {
 	$url = add_query_arg( $query_args, $redirect_url );
 	wp_safe_redirect( $url );
 	exit;
+}
+
+function prs_author_suggestions_handler() {
+        if ( ! isset( $_GET['nonce'] ) || ! wp_verify_nonce( wp_unslash( $_GET['nonce'] ), 'prs_author_suggest' ) ) {
+                wp_send_json_error( array( 'message' => __( 'Invalid nonce.', 'politeia-reading' ) ), 400 );
+        }
+
+        if ( ! is_user_logged_in() ) {
+                wp_send_json_error( array( 'message' => __( 'You must be logged in.', 'politeia-reading' ) ), 403 );
+        }
+
+        $search = isset( $_GET['q'] ) ? sanitize_text_field( wp_unslash( $_GET['q'] ) ) : '';
+
+        if ( '' === $search ) {
+                wp_send_json_success( array() );
+        }
+
+        global $wpdb;
+
+        $authors_table = $wpdb->prefix . 'politeia_authors';
+
+        if ( ! prs_table_exists( $authors_table ) ) {
+                wp_send_json_success( array() );
+        }
+
+        $like            = '%' . $wpdb->esc_like( $search ) . '%';
+        $normalized      = prs_normalize_author_name( $search );
+        $normalized_like = $normalized ? '%' . $wpdb->esc_like( $normalized ) . '%' : '';
+
+        if ( $normalized_like ) {
+                $query = $wpdb->prepare(
+                        "SELECT id, name FROM {$authors_table} WHERE name LIKE %s OR normalized_name LIKE %s ORDER BY name ASC LIMIT 20",
+                        $like,
+                        $normalized_like
+                );
+        } else {
+                $query = $wpdb->prepare(
+                        "SELECT id, name FROM {$authors_table} WHERE name LIKE %s ORDER BY name ASC LIMIT 20",
+                        $like
+                );
+        }
+
+        $rows = $wpdb->get_results( $query );
+
+        if ( ! $rows ) {
+                wp_send_json_success( array() );
+        }
+
+        $authors = array();
+
+        foreach ( $rows as $row ) {
+                if ( empty( $row->name ) ) {
+                        continue;
+                }
+
+                $authors[] = array(
+                        'id'   => isset( $row->id ) ? (int) $row->id : 0,
+                        'name' => $row->name,
+                );
+        }
+
+        wp_send_json_success( $authors );
 }
