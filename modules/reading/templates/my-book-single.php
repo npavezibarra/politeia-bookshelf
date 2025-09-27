@@ -104,10 +104,10 @@ wp_localize_script(
         .prs-session-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; padding:24px; }
         .prs-session-modal.is-active{ display:flex; }
         .prs-session-modal__content{ position:relative; max-width:440px; width:100%; max-height:90vh; overflow-y:auto; background:#ffffff; padding:24px; border:1px solid #dddddd; border-radius:12px; }
-        .prs-session-modal__close{ position:absolute; top:12px; right:12px; border:none; background:none; color:#000000; cursor:pointer; font-size:20px; line-height:1; padding:4px; }
+        .prs-session-modal__close{ position:absolute; top:12px; right:12px; border:none; background:none; color:#000000; cursor:pointer; font-size:20px; line-height:1; padding:4px; outline:none; box-shadow:none; }
         .prs-session-modal__close:hover,
-        .prs-session-modal__close:focus{ background:none; box-shadow:none; color:#000000; }
-        .prs-session-modal__close:focus{ outline:2px solid #000000; outline-offset:2px; }
+        .prs-session-modal__close:focus,
+        .prs-session-modal__close:focus-visible{ background:none; box-shadow:none; color:#000000; outline:none; }
         .prs-meta{ color:#555; margin-top:6px; }
 	.prs-table{ width:100%; border-collapse:collapse; background:#fff; }
 	.prs-table th, .prs-table td{ padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
