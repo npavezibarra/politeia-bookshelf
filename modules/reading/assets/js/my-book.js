@@ -680,7 +680,59 @@
     });
   }
 
+  // ---------- Session recorder modal ----------
+  function setupSessionRecorderModal() {
+    const trigger = qs("#prs-session-recorder-open");
+    const modal = qs("#prs-session-modal");
+    if (!trigger || !modal) return;
 
+    const closeBtn = qs("#prs-session-recorder-close", modal);
+
+    function handleKeydown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        close();
+      }
+    }
+
+    function open() {
+      modal.classList.add("is-active");
+      trigger.setAttribute("aria-expanded", "true");
+      modal.setAttribute("aria-hidden", "false");
+      document.addEventListener("keydown", handleKeydown);
+      if (closeBtn) {
+        setTimeout(() => closeBtn.focus(), 0);
+      }
+    }
+
+    function close() {
+      modal.classList.remove("is-active");
+      trigger.setAttribute("aria-expanded", "false");
+      modal.setAttribute("aria-hidden", "true");
+      document.removeEventListener("keydown", handleKeydown);
+      setTimeout(() => trigger.focus(), 0);
+    }
+
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      open();
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        close();
+      });
+    }
+
+    modal.addEventListener("click", (event) => {
+      if (event.target === modal) {
+        close();
+      }
+    });
+  }
+
+  
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     setupPages();
@@ -692,5 +744,6 @@
     setupReadingStatus();
     setupOwningStatus();
     setupSessionsAjax();
+    setupSessionRecorderModal();
   });
 })();
