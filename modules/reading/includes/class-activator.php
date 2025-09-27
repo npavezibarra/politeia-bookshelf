@@ -43,10 +43,12 @@ class Politeia_Reading_Activator {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$books_table      = $wpdb->prefix . 'politeia_books';
-		$user_books_table = $wpdb->prefix . 'politeia_user_books';
-		$sessions_table   = $wpdb->prefix . 'politeia_reading_sessions';
-		$loans_table      = $wpdb->prefix . 'politeia_loans';
+                $books_table        = $wpdb->prefix . 'politeia_books';
+                $user_books_table   = $wpdb->prefix . 'politeia_user_books';
+                $sessions_table     = $wpdb->prefix . 'politeia_reading_sessions';
+                $loans_table        = $wpdb->prefix . 'politeia_loans';
+                $authors_table      = $wpdb->prefix . 'politeia_authors';
+                $book_authors_table = $wpdb->prefix . 'politeia_book_authors';
 
 		// 1) Canonical books table (con hash único)
 		$sql_books = "CREATE TABLE {$books_table} (
@@ -129,10 +131,33 @@ class Politeia_Reading_Activator {
             KEY idx_book (book_id)
         ) {$charset_collate};";
 
-		dbDelta( $sql_books );
-		dbDelta( $sql_user_books );
-		dbDelta( $sql_sessions );
-		dbDelta( $sql_loans );
+                $sql_authors = "CREATE TABLE {$authors_table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            name VARCHAR(255) NOT NULL,
+            normalized_name VARCHAR(255) NULL,
+            birth_year SMALLINT NULL,
+            birth_country VARCHAR(120) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_normalized_name (normalized_name)
+        ) {$charset_collate};";
+
+                $sql_book_authors = "CREATE TABLE {$book_authors_table} (
+            book_id BIGINT UNSIGNED NOT NULL,
+            author_id BIGINT UNSIGNED NOT NULL,
+            display_order SMALLINT UNSIGNED NULL DEFAULT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (book_id, author_id),
+            KEY idx_author (author_id)
+        ) {$charset_collate};";
+
+                dbDelta( $sql_books );
+                dbDelta( $sql_user_books );
+                dbDelta( $sql_sessions );
+                dbDelta( $sql_loans );
+                dbDelta( $sql_authors );
+                dbDelta( $sql_book_authors );
 	}
 
 	/**
@@ -147,8 +172,9 @@ class Politeia_Reading_Activator {
 		$books = $wpdb->prefix . 'politeia_books';
 		self::maybe_add_column( $books, 'cover_url', 'VARCHAR(800) NULL' );
 
-		self::migrate_books_hash_and_unique(); // <-- mantiene tu migración de hash/unique
-		self::ensure_unique_user_book();       // robustez por si faltara el UNIQUE
+                self::migrate_books_hash_and_unique(); // <-- mantiene tu migración de hash/unique
+                self::ensure_unique_user_book();       // robustez por si faltara el UNIQUE
+                self::migrate_legacy_authors();        // poblar tablas nuevas de autores
 	}
 
 	/* ======================== MIGRACIONES NUEVAS ======================== */
@@ -223,10 +249,10 @@ class Politeia_Reading_Activator {
 	/**
 	 * Reapunta vínculos de user_books al "keeper" y elimina duplicados de books por hash.
 	 */
-	private static function dedupe_books_and_fix_links( $table_books, $table_user_books ) {
-		global $wpdb;
+        private static function dedupe_books_and_fix_links( $table_books, $table_user_books ) {
+                global $wpdb;
 
-		// ¿Hay duplicados?
+                // ¿Hay duplicados?
 		$dupes = (int) $wpdb->get_var(
 			"
             SELECT COUNT(*) FROM (
@@ -272,8 +298,158 @@ class Politeia_Reading_Activator {
             WHERE k.keep_id IS NULL
               AND b.title_author_hash IS NOT NULL AND b.title_author_hash <> ''
         "
-		);
-	}
+                );
+        }
+
+        private static function migrate_legacy_authors() {
+                global $wpdb;
+
+                $authors_table      = $wpdb->prefix . 'politeia_authors';
+                $book_authors_table = $wpdb->prefix . 'politeia_book_authors';
+                $books_table        = $wpdb->prefix . 'politeia_books';
+
+                if ( ! self::table_exists( $authors_table ) || ! self::table_exists( $book_authors_table ) || ! self::table_exists( $books_table ) ) {
+                        return;
+                }
+
+                self::maybe_add_column( $authors_table, 'normalized_name', 'VARCHAR(255) NULL' );
+                self::maybe_add_unique( $authors_table, 'uniq_normalized_name', array( 'normalized_name' ) );
+
+                $rows = $wpdb->get_results(
+                        "
+            SELECT b.id, b.author
+            FROM {$books_table} b
+            LEFT JOIN {$book_authors_table} ba ON ba.book_id = b.id
+            WHERE ba.book_id IS NULL AND b.author IS NOT NULL AND b.author <> ''
+        "
+                );
+
+                if ( empty( $rows ) ) {
+                        return;
+                }
+
+                foreach ( $rows as $row ) {
+                        $authors = self::split_author_names( $row->author );
+                        if ( empty( $authors ) ) {
+                                continue;
+                        }
+
+                        $order = 1;
+                        foreach ( $authors as $name ) {
+                                $normalized = self::normalize_author_name( $name );
+                                if ( '' === $normalized ) {
+                                        continue;
+                                }
+
+                                $author_id = $wpdb->get_var(
+                                        $wpdb->prepare(
+                                                "SELECT id FROM {$authors_table} WHERE normalized_name = %s LIMIT 1",
+                                                $normalized
+                                        )
+                                );
+
+                                if ( ! $author_id ) {
+                                        $inserted = $wpdb->insert(
+                                                $authors_table,
+                                                array(
+                                                        'name'            => $name,
+                                                        'normalized_name' => $normalized,
+                                                        'created_at'      => current_time( 'mysql' ),
+                                                        'updated_at'      => current_time( 'mysql' ),
+                                                )
+                                        );
+
+                                        if ( false === $inserted ) {
+                                                continue;
+                                        }
+
+                                        $author_id = (int) $wpdb->insert_id;
+                                }
+
+                                $exists = $wpdb->get_var(
+                                        $wpdb->prepare(
+                                                "SELECT 1 FROM {$book_authors_table} WHERE book_id = %d AND author_id = %d LIMIT 1",
+                                                $row->id,
+                                                $author_id
+                                        )
+                                );
+
+                                if ( $exists ) {
+                                        $order++;
+                                        continue;
+                                }
+
+                                $wpdb->insert(
+                                        $book_authors_table,
+                                        array(
+                                                'book_id'       => (int) $row->id,
+                                                'author_id'     => (int) $author_id,
+                                                'display_order' => $order,
+                                                'created_at'    => current_time( 'mysql' ),
+                                        )
+                                );
+
+                                $order++;
+                        }
+                }
+        }
+
+        private static function split_author_names( $raw_author ) {
+                $raw = wp_strip_all_tags( (string) $raw_author );
+                $raw = trim( $raw );
+
+                if ( '' === $raw ) {
+                        return array();
+                }
+
+                $parts = preg_split( '/\s*(?:,|&| and )\s*/i', $raw );
+                if ( ! is_array( $parts ) ) {
+                        $parts = array( $raw );
+                }
+
+                $clean = array();
+                foreach ( $parts as $part ) {
+                        $part = trim( $part );
+                        if ( $part !== '' ) {
+                                $clean[] = $part;
+                        }
+                }
+
+                if ( empty( $clean ) ) {
+                        $clean[] = $raw;
+                }
+
+                return array_values( array_unique( $clean ) );
+        }
+
+        private static function normalize_author_name( $name ) {
+                $n = wp_strip_all_tags( (string) $name );
+                $n = trim( $n );
+                if ( '' === $n ) {
+                        return '';
+                }
+
+                if ( function_exists( 'remove_accents' ) ) {
+                        $n = remove_accents( $n );
+                }
+
+                $n = mb_strtolower( $n, 'UTF-8' );
+                $n = preg_replace( '/[^a-z0-9\s\-\']+/u', ' ', $n );
+                $n = preg_replace( '/\s+/u', ' ', $n );
+
+                return trim( $n );
+        }
+
+        private static function table_exists( $table ) {
+                global $wpdb;
+
+                return (bool) $wpdb->get_var(
+                        $wpdb->prepare(
+                                'SELECT 1 FROM information_schema.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s LIMIT 1',
+                                $table
+                        )
+                );
+        }
 
 	/* =========================== LEGADO =========================== */
 
