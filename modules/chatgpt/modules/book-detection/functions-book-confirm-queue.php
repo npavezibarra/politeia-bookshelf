@@ -286,18 +286,39 @@ if ( ! function_exists('politeia__normalize_text') ) {
  * - Fallback compatible (por si se carga este archivo antes del schema).
  */
 if ( ! function_exists('politeia__title_author_hash') ) {
-	function politeia__title_author_hash( $title, $author ) {
-		if ( class_exists('Politeia_Book_Confirm_Schema') ) {
-			return Politeia_Book_Confirm_Schema::compute_title_author_hash( $title, $author );
-		}
-		// Fallback aproximado
-		$t = strtolower( remove_accents( trim( politeia__normalize_text( $title ) ) ) );
-		$a = strtolower( remove_accents( trim( politeia__normalize_text( $author ) ) ) );
-		$clean = ' ' . preg_replace('/\s+/', ' ', $t.' '.$a) . ' ';
-		$clean = preg_replace('/\b(el|la|los|las|un|una|unos|unas|de|del|y|e|a|en|the|of|and|to|for)\b/u', ' ', $clean);
-		$clean = preg_replace('/[^a-z0-9\s]/u', ' ', $clean);
-		$tokens = array_values(array_filter(explode(' ', preg_replace('/\s+/', ' ', trim($clean)))));
-		sort($tokens, SORT_STRING);
-		return hash('sha256', implode(' ', $tokens));
-	}
+        function politeia__title_author_hash( $title, $authors ) {
+                if ( class_exists('Politeia_Book_Confirm_Schema') ) {
+                        return Politeia_Book_Confirm_Schema::compute_title_author_hash( $title, $authors );
+                }
+
+                $normalize = static function ( $value ) {
+                        $value = strtolower( remove_accents( trim( politeia__normalize_text( $value ) ) ) );
+                        $value = ' ' . preg_replace( '/\s+/', ' ', $value ) . ' ';
+                        $value = preg_replace( '/\b(el|la|los|las|un|una|unos|unas|de|del|y|e|a|en|the|of|and|to|for)\b/u', ' ', $value );
+                        $value = preg_replace( '/[^a-z0-9\s]/u', ' ', $value );
+                        $value = preg_replace( '/\s+/', ' ', trim( $value ) );
+                        return $value;
+                };
+
+                $title_normalized = $normalize( $title );
+
+                if ( is_string( $authors ) ) {
+                        $authors = array( $authors );
+                } elseif ( ! is_array( $authors ) ) {
+                        $authors = array();
+                }
+
+                $author_tokens = array();
+                foreach ( $authors as $author ) {
+                        $normalized = $normalize( $author );
+                        if ( '' !== $normalized ) {
+                                $author_tokens[] = $normalized;
+                        }
+                }
+
+                $author_tokens = array_values( array_unique( $author_tokens ) );
+                sort( $author_tokens, SORT_STRING );
+
+                return hash( 'sha256', $title_normalized . '|' . implode( '|', $author_tokens ) );
+        }
 }

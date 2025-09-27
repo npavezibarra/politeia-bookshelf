@@ -416,7 +416,7 @@ function prs_add_book_submit_handler() {
 	$attachment_id = prs_handle_cover_upload( 'prs_cover' );
 
 	// Crear o encontrar libro canónico
-	$book_id = prs_find_or_create_book( $title, $author, $year, $attachment_id );
+	$book_id = prs_find_or_create_book( $title, array( $author ), $year, $attachment_id );
 	if ( is_wp_error( $book_id ) || ! $book_id ) {
 		wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
 		exit;
