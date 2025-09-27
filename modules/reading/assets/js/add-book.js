@@ -12,6 +12,10 @@
         var multipleHeading = multipleContainer ? multipleContainer.querySelector('.prs-add-book__heading') : null;
         var successActive = false;
         var currentMode = 'single';
+        var settings = window.prsAddBookSettings || {};
+        var authorAjaxUrl = settings.ajaxUrl || '';
+        var authorNonce = settings.authorNonce || '';
+        var i18n = settings.i18n || {};
 
         var updateAriaLabelledBy = function (id) {
                 if (!modal) {
@@ -31,7 +35,7 @@
                         var currentUrl = new window.URL(window.location.href);
                         var params = currentUrl.searchParams;
                         var removed = false;
-                        var keys = ['prs_added', 'prs_added_title', 'prs_added_author', 'prs_added_year', 'prs_added_pages', 'prs_added_cover'];
+                        var keys = ['prs_added', 'prs_added_title', 'prs_added_author', 'prs_added_authors', 'prs_added_year', 'prs_added_pages', 'prs_added_cover'];
 
                         for (var i = 0; i < keys.length; i++) {
                                 if (params.has(keys[i])) {
@@ -239,8 +243,513 @@
                 return;
         }
 
-        var authorInput = document.getElementById('prs_author');
         var yearInput = document.getElementById('prs_year');
+
+        var authorsField = document.getElementById('prs_authors_field');
+        var authorsInput = document.getElementById('prs_author_input');
+        var authorsSuggestionContainer = document.getElementById('prs_author_suggestions');
+        var selectedAuthorsContainer = document.getElementById('prs_selected_authors');
+        var hiddenAuthorsContainer = document.getElementById('prs_author_hidden_inputs');
+        var authorsError = document.getElementById('prs_authors_error');
+        var authorsLive = document.getElementById('prs_authors_live');
+        var selectedAuthors = [];
+
+        var authorSupportsAbort = typeof window.AbortController === 'function';
+        var authorAbortController = null;
+        var authorDebounceTimer = null;
+        var lastAuthorQuery = '';
+
+        var normalizeAuthorForCompare = function (value) {
+                if (!value) {
+                        return '';
+                }
+                return String(value).toLowerCase().replace(/\s+/g, ' ').trim();
+        };
+
+        var formatRemoveLabel = function (name) {
+                if (typeof i18n.removeAuthor === 'string') {
+                        if (i18n.removeAuthor.indexOf('%s') !== -1) {
+                                return i18n.removeAuthor.replace('%s', name);
+                        }
+                        return i18n.removeAuthor;
+                }
+                return 'Remove ' + name;
+        };
+
+        var announceAuthorsChange = function (message) {
+                if (!authorsLive) {
+                        return;
+                }
+                authorsLive.textContent = '';
+                if (message) {
+                        authorsLive.textContent = message;
+                }
+        };
+
+        var hideAuthorsError = function () {
+                if (authorsError) {
+                        authorsError.hidden = true;
+                }
+                if (authorsField) {
+                        authorsField.classList.remove('has-error');
+                }
+        };
+
+        var showAuthorsError = function () {
+                if (authorsError) {
+                        authorsError.hidden = false;
+                }
+                if (authorsField) {
+                        authorsField.classList.add('has-error');
+                }
+        };
+
+        var updateHiddenAuthorInputs = function () {
+                if (!hiddenAuthorsContainer) {
+                        return;
+                }
+                hiddenAuthorsContainer.innerHTML = '';
+                for (var i = 0; i < selectedAuthors.length; i++) {
+                        var input = document.createElement('input');
+                        input.type = 'hidden';
+                        input.name = 'prs_authors[]';
+                        input.value = selectedAuthors[i].name;
+                        hiddenAuthorsContainer.appendChild(input);
+                }
+        };
+
+        var hasAuthor = function (name) {
+                var normalized = normalizeAuthorForCompare(name);
+                if (!normalized) {
+                        return false;
+                }
+                for (var i = 0; i < selectedAuthors.length; i++) {
+                        if (normalizeAuthorForCompare(selectedAuthors[i].name) === normalized) {
+                                return true;
+                        }
+                }
+                return false;
+        };
+
+        var removeAuthor = function (index) {
+                if (index < 0 || index >= selectedAuthors.length) {
+                        return;
+                }
+                selectedAuthors.splice(index, 1);
+                renderSelectedAuthors();
+                updateHiddenAuthorInputs();
+                if (!selectedAuthors.length) {
+                        showAuthorsError();
+                }
+                announceAuthorsChange(i18n.removed || 'Author removed.');
+                if (authorsInput) {
+                        authorsInput.focus();
+                }
+        };
+
+        var renderSelectedAuthors = function () {
+                if (!selectedAuthorsContainer) {
+                        return;
+                }
+                selectedAuthorsContainer.innerHTML = '';
+
+                if (!selectedAuthors.length) {
+                        selectedAuthorsContainer.classList.add('is-empty');
+                        return;
+                }
+
+                selectedAuthorsContainer.classList.remove('is-empty');
+
+                for (var i = 0; i < selectedAuthors.length; i++) {
+                        var item = document.createElement('span');
+                        item.className = 'prs-add-book__author-chip';
+                        item.setAttribute('role', 'listitem');
+
+                        var label = document.createElement('span');
+                        label.className = 'prs-add-book__author-chip-label';
+                        label.textContent = selectedAuthors[i].name;
+                        item.appendChild(label);
+
+                        var removeButton = document.createElement('button');
+                        removeButton.type = 'button';
+                        removeButton.className = 'prs-add-book__author-chip-remove';
+                        removeButton.textContent = '×';
+                        removeButton.setAttribute('aria-label', formatRemoveLabel(selectedAuthors[i].name));
+                        removeButton.addEventListener('click', (function (removeIndex) {
+                                return function (event) {
+                                        event.preventDefault();
+                                        removeAuthor(removeIndex);
+                                };
+                        })(i));
+                        item.appendChild(removeButton);
+
+                        selectedAuthorsContainer.appendChild(item);
+                }
+        };
+
+        renderSelectedAuthors();
+
+        var hideAuthorSuggestions = function () {
+                if (!authorsSuggestionContainer) {
+                        return;
+                }
+                authorsSuggestionContainer.innerHTML = '';
+                authorsSuggestionContainer.classList.remove('is-visible');
+                authorsSuggestionContainer.setAttribute('aria-hidden', 'true');
+                if (authorsInput) {
+                        authorsInput.setAttribute('aria-expanded', 'false');
+                }
+        };
+
+        var focusAuthorSuggestionAtIndex = function (index) {
+                if (!authorsSuggestionContainer) {
+                        return;
+                }
+                var buttons = authorsSuggestionContainer.querySelectorAll('.prs-add-book__suggestion');
+                if (!buttons.length) {
+                        return;
+                }
+                if (index < 0) {
+                        index = 0;
+                }
+                if (index >= buttons.length) {
+                        index = buttons.length - 1;
+                }
+                buttons[index].focus();
+        };
+
+        var handleAuthorSuggestionKeydown = function (event) {
+                var target = event.currentTarget;
+                var index = parseInt(target.getAttribute('data-index'), 10);
+                if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        focusAuthorSuggestionAtIndex(index + 1);
+                } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        if (index <= 0) {
+                                if (authorsInput) {
+                                        authorsInput.focus();
+                                }
+                        } else {
+                                focusAuthorSuggestionAtIndex(index - 1);
+                        }
+                } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        hideAuthorSuggestions();
+                        if (authorsInput) {
+                                authorsInput.focus();
+                        }
+                }
+        };
+
+        var formatCreateLabel = function (value) {
+                if (typeof i18n.createLabel === 'string') {
+                        if (i18n.createLabel.indexOf('%s') !== -1) {
+                                return i18n.createLabel.replace('%s', value);
+                        }
+                        return i18n.createLabel;
+                }
+                return 'Add "' + value + '"';
+        };
+
+        var addAuthor = function (name, options) {
+                options = options || {};
+                if (!name) {
+                        return;
+                }
+                var cleaned = String(name).replace(/\s+/g, ' ').trim();
+                if (!cleaned) {
+                        return;
+                }
+                if (hasAuthor(cleaned)) {
+                        announceAuthorsChange(i18n.duplicate || 'This author has already been added.');
+                        hideAuthorSuggestions();
+                        if (authorsInput) {
+                                authorsInput.value = '';
+                                authorsInput.focus();
+                        }
+                        return;
+                }
+
+                selectedAuthors.push({ name: cleaned });
+                renderSelectedAuthors();
+                updateHiddenAuthorInputs();
+                hideAuthorsError();
+                hideAuthorSuggestions();
+
+                if (authorsInput) {
+                        authorsInput.value = '';
+                        authorsInput.focus();
+                }
+
+                if (!options.silent) {
+                        var message = options.announceMessage || i18n.added || 'Author added.';
+                        announceAuthorsChange(message);
+                }
+        };
+
+        var showAuthorSuggestions = function (items, query) {
+                if (!authorsSuggestionContainer || !authorsInput) {
+                        return;
+                }
+
+                authorsSuggestionContainer.innerHTML = '';
+                var visibleOptions = 0;
+                var hasMessage = false;
+                var normalizedQuery = normalizeAuthorForCompare(query);
+
+                if (Array.isArray(items)) {
+                        for (var i = 0; i < items.length; i++) {
+                                var suggestion = items[i];
+                                if (!suggestion || !suggestion.name) {
+                                        continue;
+                                }
+                                var label = String(suggestion.name).trim();
+                                if (!label || hasAuthor(label)) {
+                                        continue;
+                                }
+
+                                var button = document.createElement('button');
+                                button.type = 'button';
+                                button.className = 'prs-add-book__suggestion';
+                                button.setAttribute('data-index', visibleOptions);
+                                button.setAttribute('role', 'option');
+                                button.dataset.value = label;
+                                button.textContent = label;
+                                button.addEventListener('keydown', handleAuthorSuggestionKeydown);
+                                button.addEventListener('click', function (event) {
+                                        event.preventDefault();
+                                        var value = event.currentTarget ? event.currentTarget.dataset.value : '';
+                                        addAuthor(value);
+                                });
+                                authorsSuggestionContainer.appendChild(button);
+                                visibleOptions++;
+                        }
+                }
+
+                var shouldOfferCreate = normalizedQuery && !hasAuthor(query);
+
+                if (!visibleOptions) {
+                        var message = document.createElement('div');
+                        message.className = 'prs-add-book__suggestion-message';
+                        message.setAttribute('role', 'presentation');
+                        if (!query || query.length < 2) {
+                                message.textContent = i18n.typeMore || 'Type at least two characters to search.';
+                        } else {
+                                message.textContent = i18n.noMatches || 'No authors found';
+                        }
+                        authorsSuggestionContainer.appendChild(message);
+                        hasMessage = true;
+                }
+
+                if (shouldOfferCreate && query) {
+                        var createButton = document.createElement('button');
+                        createButton.type = 'button';
+                        createButton.className = 'prs-add-book__suggestion prs-add-book__suggestion--create';
+                        createButton.setAttribute('data-index', visibleOptions);
+                        createButton.setAttribute('role', 'option');
+                        createButton.dataset.value = query;
+                        createButton.textContent = formatCreateLabel(query);
+                        createButton.addEventListener('keydown', handleAuthorSuggestionKeydown);
+                        createButton.addEventListener('click', function (event) {
+                                event.preventDefault();
+                                if (authorsInput) {
+                                        addAuthor(authorsInput.value);
+                                }
+                        });
+                        authorsSuggestionContainer.appendChild(createButton);
+                        visibleOptions++;
+                }
+
+                if (!visibleOptions && !hasMessage) {
+                        authorsSuggestionContainer.classList.remove('is-visible');
+                        authorsSuggestionContainer.setAttribute('aria-hidden', 'true');
+                        authorsInput.setAttribute('aria-expanded', 'false');
+                        return;
+                }
+
+                authorsSuggestionContainer.classList.add('is-visible');
+                authorsSuggestionContainer.setAttribute('aria-hidden', 'false');
+                authorsInput.setAttribute('aria-expanded', 'true');
+        };
+
+        var cancelAuthorRequest = function () {
+                if (authorDebounceTimer) {
+                        window.clearTimeout(authorDebounceTimer);
+                        authorDebounceTimer = null;
+                }
+                if (authorSupportsAbort && authorAbortController) {
+                        authorAbortController.abort();
+                        authorAbortController = null;
+                }
+        };
+
+        var fetchAuthorSuggestions = function (query) {
+                cancelAuthorRequest();
+
+                if (!query) {
+                        hideAuthorSuggestions();
+                        return;
+                }
+
+                if (!authorAjaxUrl) {
+                        showAuthorSuggestions([], query);
+                        return;
+                }
+
+                authorAbortController = authorSupportsAbort ? new AbortController() : null;
+                lastAuthorQuery = query;
+
+                var params = new window.URLSearchParams();
+                params.append('action', 'prs_author_suggestions');
+                if (authorNonce) {
+                        params.append('nonce', authorNonce);
+                }
+                params.append('q', query);
+
+                var fetchOptions = { credentials: 'same-origin' };
+                var currentController = authorAbortController;
+                if (currentController) {
+                        fetchOptions.signal = currentController.signal;
+                }
+
+                fetch(authorAjaxUrl + '?' + params.toString(), fetchOptions)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                if (query !== lastAuthorQuery) {
+                                        return;
+                                }
+                                var items = [];
+                                if (data && typeof data === 'object') {
+                                        if (Array.isArray(data.data)) {
+                                                items = data.data;
+                                        } else if (Array.isArray(data)) {
+                                                items = data;
+                                        }
+                                }
+                                showAuthorSuggestions(items, query);
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        return;
+                                }
+                                showAuthorSuggestions([], query);
+                        })
+                        .then(function () {
+                                if (authorAbortController === currentController) {
+                                        authorAbortController = null;
+                                }
+                        });
+        };
+
+        var scheduleAuthorFetch = function (query) {
+                if (authorDebounceTimer) {
+                        window.clearTimeout(authorDebounceTimer);
+                }
+                authorDebounceTimer = window.setTimeout(function () {
+                        fetchAuthorSuggestions(query);
+                }, 220);
+        };
+
+        var setAuthorsFromSuggestion = function (authorName) {
+                if (!authorName) {
+                        return;
+                }
+                if (hasAuthor(authorName)) {
+                        return;
+                }
+                addAuthor(authorName);
+        };
+
+        if (authorsInput) {
+                authorsInput.setAttribute('role', 'combobox');
+                authorsInput.setAttribute('aria-autocomplete', 'list');
+                authorsInput.setAttribute('autocomplete', 'off');
+                if (authorsSuggestionContainer && !authorsInput.getAttribute('aria-controls')) {
+                        authorsInput.setAttribute('aria-controls', authorsSuggestionContainer.id);
+                }
+                authorsInput.setAttribute('aria-expanded', 'false');
+
+                authorsInput.addEventListener('focus', hideAuthorsError);
+
+                authorsInput.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter') {
+                                event.preventDefault();
+                                var active = document.activeElement;
+                                if (authorsSuggestionContainer && authorsSuggestionContainer.contains(active) && active.classList.contains('prs-add-book__suggestion')) {
+                                        active.click();
+                                } else {
+                                        addAuthor(authorsInput.value);
+                                }
+                        } else if (event.key === ',') {
+                                event.preventDefault();
+                                addAuthor(authorsInput.value);
+                        } else if (event.key === 'Tab' && authorsInput.value.trim() !== '') {
+                                addAuthor(authorsInput.value);
+                        } else if (event.key === 'Backspace' && authorsInput.value === '' && selectedAuthors.length) {
+                                event.preventDefault();
+                                removeAuthor(selectedAuthors.length - 1);
+                        } else if (event.key === 'ArrowDown') {
+                                if (authorsSuggestionContainer && authorsSuggestionContainer.classList.contains('is-visible')) {
+                                        event.preventDefault();
+                                        focusAuthorSuggestionAtIndex(0);
+                                }
+                        } else if (event.key === 'Escape') {
+                                hideAuthorSuggestions();
+                        }
+                });
+
+                authorsInput.addEventListener('input', function (event) {
+                        var query = event.target.value.trim();
+                        if (!query) {
+                                cancelAuthorRequest();
+                                hideAuthorSuggestions();
+                                return;
+                        }
+                        if (query.length < 2) {
+                                cancelAuthorRequest();
+                                showAuthorSuggestions([], query);
+                                return;
+                        }
+                        scheduleAuthorFetch(query);
+                });
+
+                authorsInput.addEventListener('blur', function () {
+                        window.setTimeout(function () {
+                                if (!authorsSuggestionContainer) {
+                                        return;
+                                }
+                                var active = document.activeElement;
+                                if (active === authorsInput) {
+                                        return;
+                                }
+                                if (authorsSuggestionContainer.contains(active)) {
+                                        return;
+                                }
+                                hideAuthorSuggestions();
+                        }, 120);
+                });
+        }
+
+        if (form) {
+                form.addEventListener('submit', function (event) {
+                        if (!selectedAuthors.length) {
+                                event.preventDefault();
+                                showAuthorsError();
+                                if (authorsInput) {
+                                        authorsInput.focus();
+                                }
+                        } else {
+                                hideAuthorsError();
+                        }
+                });
+        }
+
         var suggestionContainer = document.getElementById('prs_title_suggestions');
 
         if (!suggestionContainer) {
@@ -260,12 +769,12 @@
         }
         titleInput.setAttribute('aria-expanded', 'false');
 
-        var supportsAbortController = typeof window.AbortController === 'function';
-        var abortController = null;
-        var debounceTimer = null;
-        var lastFetchedQuery = '';
+        var titleSupportsAbort = typeof window.AbortController === 'function';
+        var titleAbortController = null;
+        var titleDebounceTimer = null;
+        var lastTitleQuery = '';
 
-        var resetSuggestions = function () {
+        var resetTitleSuggestions = function () {
                 if (!suggestionContainer) {
                         return;
                 }
@@ -275,17 +784,17 @@
                 titleInput.setAttribute('aria-expanded', 'false');
         };
 
-        var cancelPendingRequest = function () {
-                if (supportsAbortController && abortController) {
-                        abortController.abort();
-                        abortController = null;
+        var cancelTitleRequest = function () {
+                if (titleSupportsAbort && titleAbortController) {
+                        titleAbortController.abort();
+                        titleAbortController = null;
                 }
         };
 
-        var clearSuggestions = function () {
-                cancelPendingRequest();
-                lastFetchedQuery = '';
-                resetSuggestions();
+        var clearTitleSuggestions = function () {
+                cancelTitleRequest();
+                lastTitleQuery = '';
+                resetTitleSuggestions();
         };
 
         var normalizeForComparison = function (value) {
@@ -301,7 +810,7 @@
                 return str;
         };
 
-        var focusSuggestionAtIndex = function (index) {
+        var focusTitleSuggestionAtIndex = function (index) {
                 if (!suggestionContainer) {
                         return;
                 }
@@ -318,43 +827,41 @@
                 buttons[index].focus();
         };
 
-        var selectSuggestion = function (item) {
+        var selectTitleSuggestion = function (item) {
                 if (!item) {
                         return;
                 }
 
                 titleInput.value = item.title;
-                if (authorInput) {
-                        authorInput.value = item.author;
-                }
                 if (yearInput) {
                         yearInput.value = item.year;
                 }
-                resetSuggestions();
+                setAuthorsFromSuggestion(item.author);
+                resetTitleSuggestions();
                 titleInput.focus();
         };
 
-        var handleSuggestionKeydown = function (event) {
+        var handleTitleSuggestionKeydown = function (event) {
                 var target = event.currentTarget;
                 var index = parseInt(target.getAttribute('data-index'), 10);
                 if (event.key === 'ArrowDown') {
                         event.preventDefault();
-                        focusSuggestionAtIndex(index + 1);
+                        focusTitleSuggestionAtIndex(index + 1);
                 } else if (event.key === 'ArrowUp') {
                         event.preventDefault();
                         if (index <= 0) {
                                 titleInput.focus();
                         } else {
-                                focusSuggestionAtIndex(index - 1);
+                                focusTitleSuggestionAtIndex(index - 1);
                         }
                 } else if (event.key === 'Escape') {
                         event.preventDefault();
-                        resetSuggestions();
+                        resetTitleSuggestions();
                         titleInput.focus();
                 }
         };
 
-        var showSuggestions = function (items) {
+        var showTitleSuggestions = function (items) {
                 if (!suggestionContainer) {
                         return;
                 }
@@ -362,7 +869,7 @@
                 suggestionContainer.innerHTML = '';
 
                 if (!items || !items.length) {
-                        resetSuggestions();
+                        resetTitleSuggestions();
                         return;
                 }
 
@@ -376,11 +883,11 @@
                         button.dataset.author = items[i].author;
                         button.dataset.year = items[i].year;
                         button.textContent = items[i].title + ' - ' + items[i].author + ' - ' + items[i].year;
-                        button.addEventListener('keydown', handleSuggestionKeydown);
+                        button.addEventListener('keydown', handleTitleSuggestionKeydown);
                         button.addEventListener('click', (function (suggestion) {
                                 return function (clickEvent) {
                                         clickEvent.preventDefault();
-                                        selectSuggestion(suggestion);
+                                        selectTitleSuggestion(suggestion);
                                 };
                         })(items[i]));
                         suggestionContainer.appendChild(button);
@@ -400,17 +907,17 @@
                 return match ? match[0] : '';
         };
 
-        var fetchSuggestions = function (query) {
+        var fetchTitleSuggestions = function (query) {
                 if (!query) {
-                        clearSuggestions();
+                        clearTitleSuggestions();
                         return;
                 }
 
-                cancelPendingRequest();
-                resetSuggestions();
+                cancelTitleRequest();
+                resetTitleSuggestions();
 
-                abortController = supportsAbortController ? new AbortController() : null;
-                lastFetchedQuery = query;
+                titleAbortController = titleSupportsAbort ? new AbortController() : null;
+                lastTitleQuery = query;
                 var requestedQuery = query;
 
                 var baseUrl = 'https://www.googleapis.com/books/v1/volumes';
@@ -423,7 +930,7 @@
                 ];
                 var url = baseUrl + '?' + params.join('&');
                 var fetchOptions = {};
-                var currentController = abortController;
+                var currentController = titleAbortController;
                 if (currentController) {
                         fetchOptions.signal = currentController.signal;
                 }
@@ -437,7 +944,7 @@
                         })
                         .then(function (data) {
                                 if (!data || !data.items || !data.items.length) {
-                                        resetSuggestions();
+                                        resetTitleSuggestions();
                                         return;
                                 }
 
@@ -489,7 +996,7 @@
                                 }
 
                                 if (!items.length) {
-                                        resetSuggestions();
+                                        resetTitleSuggestions();
                                         return;
                                 }
 
@@ -497,17 +1004,17 @@
                                         return;
                                 }
 
-                                showSuggestions(items);
+                                showTitleSuggestions(items);
                         })
                         .catch(function (error) {
                                 if (error && error.name === 'AbortError') {
                                         return;
                                 }
-                                resetSuggestions();
+                                resetTitleSuggestions();
                         })
                         .then(function () {
-                                if (abortController === currentController) {
-                                        abortController = null;
+                                if (titleAbortController === currentController) {
+                                        titleAbortController = null;
                                 }
                         });
         };
@@ -515,37 +1022,37 @@
         titleInput.addEventListener('input', function (event) {
                 var query = event.target.value.trim();
 
-                if (debounceTimer) {
-                        window.clearTimeout(debounceTimer);
+                if (titleDebounceTimer) {
+                        window.clearTimeout(titleDebounceTimer);
                 }
 
                 if (query.length < 3) {
-                        clearSuggestions();
+                        clearTitleSuggestions();
                         return;
                 }
 
-                debounceTimer = window.setTimeout(function () {
-                        if (query === lastFetchedQuery) {
+                titleDebounceTimer = window.setTimeout(function () {
+                        if (query === lastTitleQuery) {
                                 return;
                         }
-                        fetchSuggestions(query);
+                        fetchTitleSuggestions(query);
                 }, 250);
         });
 
         titleInput.addEventListener('keydown', function (event) {
                 if (!suggestionContainer || !suggestionContainer.classList.contains('is-visible')) {
                         if (event.key === 'Escape') {
-                                resetSuggestions();
+                                resetTitleSuggestions();
                         }
                         return;
                 }
 
                 if (event.key === 'ArrowDown') {
                         event.preventDefault();
-                        focusSuggestionAtIndex(0);
+                        focusTitleSuggestionAtIndex(0);
                 } else if (event.key === 'Escape') {
                         event.preventDefault();
-                        resetSuggestions();
+                        resetTitleSuggestions();
                 }
         });
 
@@ -561,11 +1068,17 @@
                         if (suggestionContainer.contains(active)) {
                                 return;
                         }
-                        resetSuggestions();
+                        resetTitleSuggestions();
                 }, 100);
         });
 
         document.addEventListener('click', function (event) {
+                if (authorsSuggestionContainer && authorsSuggestionContainer.classList.contains('is-visible')) {
+                        if (event.target !== authorsInput && (!authorsSuggestionContainer.contains(event.target))) {
+                                hideAuthorSuggestions();
+                        }
+                }
+
                 if (!suggestionContainer) {
                         return;
                 }
@@ -575,6 +1088,7 @@
                 if (suggestionContainer.contains(event.target)) {
                         return;
                 }
-                resetSuggestions();
+                resetTitleSuggestions();
         });
+
 })();

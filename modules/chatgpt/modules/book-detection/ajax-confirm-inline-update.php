@@ -50,21 +50,38 @@ function politeia_confirm_update_field_ajax() {
 				return $s;
 			}
 		}
-		if ( ! function_exists('politeia__title_author_hash') ) {
-			function politeia__title_author_hash( $title, $author ) {
-				$t = strtolower( trim( politeia__normalize_text( $title ) ) );
-				$a = strtolower( trim( politeia__normalize_text( $author ) ) );
-				return hash( 'sha256', $t . '|' . $a );
-			}
-		}
+                if ( ! function_exists('politeia__title_author_hash') ) {
+                        function politeia__title_author_hash( $title, $authors ) {
+                                $t = strtolower( trim( politeia__normalize_text( $title ) ) );
+
+                                if ( is_string( $authors ) ) {
+                                        $authors = array( $authors );
+                                } elseif ( ! is_array( $authors ) ) {
+                                        $authors = array();
+                                }
+
+                                $normalized_authors = array();
+                                foreach ( $authors as $author ) {
+                                        $a = strtolower( trim( politeia__normalize_text( $author ) ) );
+                                        if ( '' !== $a ) {
+                                                $normalized_authors[] = $a;
+                                        }
+                                }
+
+                                $normalized_authors = array_values( array_unique( $normalized_authors ) );
+                                sort( $normalized_authors, SORT_STRING );
+
+                                return hash( 'sha256', $t . '|' . implode( '|', $normalized_authors ) );
+                        }
+                }
 
 		// Compose new values and recompute hash/normalized
 		$title  = ($field === 'title')  ? $value : $row['title'];
-		$author = ($field === 'author') ? $value : $row['author'];
+                $author = ($field === 'author') ? $value : $row['author'];
 
 		$norm_title  = politeia__normalize_text( $title );
 		$norm_author = politeia__normalize_text( $author );
-		$hash        = politeia__title_author_hash( $title, $author );
+                $hash        = politeia__title_author_hash( $title, $author );
 
 		// Avoid duplicate pending for same user+hash (merge by deleting the OTHER duplicate)
 		$dup_id = (int) $wpdb->get_var(

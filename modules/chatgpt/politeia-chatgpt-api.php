@@ -25,7 +25,7 @@ function politeia_chatgpt_get_api_token() {
  *  Structured Output (JSON Schema)
  *  ====================================================================== */
 
-/** JSON Schema reutilizable para forzar la salida: { "books": [ { "title", "author" } ] } */
+/** JSON Schema reutilizable para forzar la salida: { "books": [ { "title", "authors": [] } ] } */
 function politeia_chatgpt_books_schema() {
 	return [
 		'type'   => 'json_schema',
@@ -37,18 +37,24 @@ function politeia_chatgpt_books_schema() {
 				'additionalProperties' => false,
 				'required'             => [ 'books' ],
 				'properties'           => [
-					'books' => [
-						'type'  => 'array',
-						'items' => [
-							'type'                 => 'object',
-							'additionalProperties' => false,
-							'required'             => [ 'title', 'author' ],
-							'properties'           => [
-								'title'  => [ 'type' => 'string' ],
-								'author' => [ 'type' => 'string' ],
-							],
-						],
-					],
+                                        'books' => [
+                                                'type'  => 'array',
+                                                'items' => [
+                                                        'type'                 => 'object',
+                                                        'additionalProperties' => false,
+                                                        'required'             => [ 'title', 'authors' ],
+                                                        'properties'           => [
+                                                                'title'   => [ 'type' => 'string' ],
+                                                                'authors' => [
+                                                                        'type'     => 'array',
+                                                                        'minItems' => 1,
+                                                                        'items'    => [ 'type' => 'string' ],
+                                                                ],
+                                                                // Back-compat: allow legacy single-author payloads if provider sends both fields.
+                                                                'author'  => [ 'type' => 'string' ],
+                                                        ],
+                                                ],
+                                        ],
 				],
 			],
 		],
@@ -77,19 +83,42 @@ function politeia_file_to_data_url( $file ) {
 	return 'data:' . $mime . ';base64,' . base64_encode($raw);
 }
 
-/** Normaliza la lista de libros {books:[...]} o array directo → [{title,author}]. */
+/** Normaliza la lista de libros {books:[...]} o array directo → [{title,authors[]}]. */
 function politeia_normalize_books_array( $decoded ) {
-	$out = [];
-	$items = [];
-	if ( is_array($decoded) && isset($decoded['books']) && is_array($decoded['books']) )      $items = $decoded['books'];
-	elseif ( is_array($decoded) )                                                               $items = $decoded;
+        $out = [];
+        $items = [];
+        if ( is_array($decoded) && isset($decoded['books']) && is_array($decoded['books']) )      $items = $decoded['books'];
+        elseif ( is_array($decoded) )                                                               $items = $decoded;
 
-	foreach ( $items as $b ) {
-		$t = isset($b['title'])  ? trim((string)$b['title'])  : '';
-		$a = isset($b['author']) ? trim((string)$b['author']) : '';
-		if ( $t !== '' && $a !== '' ) $out[] = [ 'title' => $t, 'author' => $a ];
-	}
-	return $out;
+        foreach ( $items as $b ) {
+                $t = isset($b['title'])  ? trim((string)$b['title'])  : '';
+                $authors = [];
+
+                if ( isset( $b['authors'] ) && is_array( $b['authors'] ) ) {
+                        foreach ( $b['authors'] as $entry ) {
+                                $entry = trim( (string) $entry );
+                                if ( '' !== $entry ) {
+                                        $authors[] = $entry;
+                                }
+                        }
+                } elseif ( isset( $b['author'] ) ) {
+                        $single = trim( (string) $b['author'] );
+                        if ( '' !== $single ) {
+                                $authors[] = $single;
+                        }
+                }
+
+                $authors = array_values( array_unique( $authors ) );
+
+                if ( $t !== '' && ! empty( $authors ) ) {
+                        $out[] = [
+                                'title'   => $t,
+                                'authors' => $authors,
+                                'author'  => implode( ', ', $authors ),
+                        ];
+                }
+        }
+        return $out;
 }
 
 /** ======================================================================
@@ -143,10 +172,10 @@ function politeia_chatgpt_send_query( $prompt ) {
 function politeia_chatgpt_process_image( $base64_image, $instruction = '' ) {
 	$prompt = $instruction ?: (
 		"Analiza esta imagen de una estantería de libros. " .
-		"Extrae los libros visibles y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:\n" .
-		"{ \"books\": [ { \"title\": \"...\", \"author\": \"...\" } ] }\n" .
-		"No incluyas comentarios, ni markdown, ni texto adicional."
-	);
+                "Extrae los libros visibles y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:\n" .
+                "{ \"books\": [ { \"title\": \"...\", \"authors\": [\"...\"] } ] }\n" .
+                "No incluyas comentarios, ni markdown, ni texto adicional."
+        );
 
 	$messages = [[
 		'role' => 'user',
@@ -292,8 +321,8 @@ if ( ! function_exists('politeia_process_input_ajax') ) {
 				if (empty($_POST['prompt'])) wp_send_json_error(['message'=>'empty_text'], 400);
 				// Instrucción por defecto (puedes sustituirla por una opción de admin)
 				$user_text = sanitize_textarea_field($_POST['prompt']);
-				$prompt = 'A partir del siguiente texto, extrae los libros y devuelve SOLO un JSON con la forma { "books": [ { "title": "...", "author": "..."} ] }.' .
-						  "\n\nTexto:\n\"{$user_text}\"";
+                                $prompt = 'A partir del siguiente texto, extrae los libros y devuelve SOLO un JSON con la forma { "books": [ { "title": "...", "authors": ["..."]} ] }.' .
+                                                  "\n\nTexto:\n\"{$user_text}\"";
 				$raw_from_api = politeia_chatgpt_send_query($prompt);
 			} elseif ($type === 'audio') {
 				// (Opcional) Implementar transcripción si lo deseas

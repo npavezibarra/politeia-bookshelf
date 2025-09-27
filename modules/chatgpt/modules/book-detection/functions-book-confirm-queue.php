@@ -71,8 +71,8 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 	$in_shelf  = [];
 
 	// --------- Pre-cargar librería del usuario para fuzzy (una sola vez) ----------
-	$user_lib_hash  = []; // hash -> ['id','year','slug']
-	$user_lib_fuzzy = []; // ['id','year','slug','key']
+        $user_lib_hash  = []; // hash -> ['id','year','slug','authors']
+        $user_lib_fuzzy = []; // ['id','year','slug','key','authors']
 
 	if ( class_exists('Politeia_Book_Confirm_Schema') ) {
 		// Trae la biblioteca del usuario
@@ -83,37 +83,66 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		", $user_id);
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$rows = $wpdb->get_results($sql, ARRAY_A);
-		foreach ($rows as $r) {
-			$h = !empty($r['title_author_hash']) ? strtolower((string)$r['title_author_hash']) : '';
-			if ($h) $user_lib_hash[$h] = ['id'=>(int)$r['id'],'year'=>$r['year']? (int)$r['year']:null,'slug'=>$r['slug']];
-			$key = Politeia_Book_Confirm_Schema::compute_title_author_hash($r['title'] ?? '', $r['author'] ?? '');
-			$user_lib_fuzzy[] = [
-				'id'   => (int)$r['id'],
-				'year' => $r['year']? (int)$r['year']:null,
-				'slug' => (string)$r['slug'],
-				// para comparar usamos la misma normalización que usa el hash: norm_title_author -> sha256,
-				// pero para fuzzy comparamos strings "norm" (distancia relativa)
-				'key'  => strtolower(Politeia_Book_Confirm_Schema::compute_title_author_hash($r['title'] ?? '', $r['author'] ?? '')),
-			];
-		}
-	}
+                foreach ($rows as $r) {
+                        $authors_for_hash = politeia__extract_authors_array( $r['author'] ?? [] );
+                        $h = !empty($r['title_author_hash']) ? strtolower((string)$r['title_author_hash']) : '';
+                        if ($h) {
+                                $user_lib_hash[$h] = [
+                                        'id'      => (int) $r['id'],
+                                        'year'    => $r['year'] ? (int) $r['year'] : null,
+                                        'slug'    => (string) $r['slug'],
+                                        'authors' => $authors_for_hash,
+                                ];
+                        }
+
+                        if ( method_exists( 'Politeia_Book_Confirm_Schema', 'normalize_pair_key' ) ) {
+                                $key = strtolower( Politeia_Book_Confirm_Schema::normalize_pair_key( $r['title'] ?? '', $authors_for_hash ) );
+                        } else {
+                                $key = strtolower( Politeia_Book_Confirm_Schema::compute_title_author_hash( $r['title'] ?? '', $authors_for_hash ) );
+                        }
+
+                        $user_lib_fuzzy[] = [
+                                'id'      => (int) $r['id'],
+                                'year'    => $r['year'] ? (int) $r['year'] : null,
+                                'slug'    => (string) $r['slug'],
+                                'authors' => $authors_for_hash,
+                                'key'     => $key,
+                        ];
+                }
+        }
 
 	// --------- Deduplicación dentro del mismo lote ----------
 	$seen_hashes = [];
 
-	foreach ( (array) $candidates as $b ) {
-		$title  = isset($b['title'])  ? trim((string) $b['title'])  : '';
-		$author = isset($b['author']) ? trim((string) $b['author']) : '';
-		if ( $title === '' || $author === '' ) { $skipped++; continue; }
+        foreach ( (array) $candidates as $b ) {
+                $title   = isset($b['title']) ? trim((string) $b['title']) : '';
+                $authors = [];
 
-		$norm_title  = politeia__normalize_text( $title );
-		$norm_author = politeia__normalize_text( $author );
-		$hash        = politeia__title_author_hash( $title, $author );
-		$hash_lc     = strtolower($hash);
+                if ( isset( $b['authors'] ) ) {
+                        $authors = politeia__extract_authors_array( $b['authors'] );
+                } elseif ( isset( $b['author'] ) ) {
+                        $authors = politeia__extract_authors_array( $b['author'] );
+                }
 
-		// Lote: si ya vimos el mismo hash en esta misma respuesta, saltar
-		if ( isset($seen_hashes[$hash_lc]) ) { $skipped++; continue; }
-		$seen_hashes[$hash_lc] = true;
+                if ( $title === '' || empty( $authors ) ) { $skipped++; continue; }
+
+                $author_display = implode( ', ', $authors );
+
+                $norm_title = politeia__normalize_text( $title );
+                $norm_parts = [];
+                foreach ( $authors as $author_name ) {
+                        $clean = politeia__normalize_text( $author_name );
+                        if ( '' !== $clean ) {
+                                $norm_parts[] = $clean;
+                        }
+                }
+                $norm_author = ! empty( $norm_parts ) ? implode( ', ', $norm_parts ) : null;
+                $hash        = politeia__title_author_hash( $title, $authors );
+                $hash_lc     = strtolower($hash);
+
+                // Lote: si ya vimos el mismo hash en esta misma respuesta, saltar
+                if ( isset($seen_hashes[$hash_lc]) ) { $skipped++; continue; }
+                $seen_hashes[$hash_lc] = true;
 
 		// -----------------------------------------------
 		// 1) ¿YA está en librería? (match por hash exacto)
@@ -138,18 +167,28 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 			if ($owned) $owned_year = $owned['year'] !== null && $owned['year'] !== '' ? (int)$owned['year'] : null;
 		}
 
-		if ( $owned_year !== null || isset($user_lib_hash[$hash_lc]) ) {
-			// EFÍMERO (no insertamos en cola)
-			$item = [
-				'title'    => $title,
-				'author'   => $author,
-				'year'     => $owned_year,
-				'in_shelf' => true,
-			];
-			$in_shelf[] = $item;
-			$skipped++;
-			continue;
-		}
+                if ( $owned_year !== null || isset($user_lib_hash[$hash_lc]) ) {
+                        $library_entry = isset( $user_lib_hash[ $hash_lc ] ) ? $user_lib_hash[ $hash_lc ] : null;
+                        $authors_for_response = $library_entry && ! empty( $library_entry['authors'] ) ? $library_entry['authors'] : $authors;
+                        $author_display       = implode( ', ', $authors_for_response );
+                        // EFÍMERO (no insertamos en cola)
+                        $item = [
+                                'title'    => $title,
+                                'author'   => $author_display,
+                                'authors'  => $authors_for_response,
+                                'year'     => $owned_year,
+                                'in_shelf' => true,
+                        ];
+                        if ( $library_entry && isset( $library_entry['slug'] ) ) {
+                                $item['slug'] = $library_entry['slug'];
+                        }
+                        if ( $library_entry && isset( $library_entry['id'] ) ) {
+                                $item['book_id'] = $library_entry['id'];
+                        }
+                        $in_shelf[] = $item;
+                        $skipped++;
+                        continue;
+                }
 
 		// -------------------------------------------------------
 		// 1.bis) Fallback FUZZY contra la librería del usuario
@@ -158,32 +197,37 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		$fuzzy_hit = null; $fuzzy_best = 1.0;
 		if ( !empty($user_lib_fuzzy) && class_exists('Politeia_Book_Confirm_Schema') ) {
 			// clave "normalizada" para comparar (usamos el mismo pipeline)
-			$probe = strtolower(Politeia_Book_Confirm_Schema::compute_title_author_hash($title, $author));
-			foreach ($user_lib_fuzzy as $row) {
-				// distancia relativa sobre la string normalizada (sha256 no sirve para distancia)
-				// usamos la "rel_levenshtein" del schema sobre el "norm" no cifrado:
-				// truco: el compute_title_author_hash del schema es sha256(norm), necesitamos norm,
-				// así que reconstruimos norm con normalize_key+concat (igual que schema).
-				$norm_probe = method_exists('Politeia_Book_Confirm_Schema','norm_title_author')
-					? Politeia_Book_Confirm_Schema::compute_title_author_hash($title,$author) // usa mismo norm internamente
-					: $probe;
+                        $probe = strtolower(Politeia_Book_Confirm_Schema::compute_title_author_hash($title, $authors));
+                        foreach ($user_lib_fuzzy as $row) {
+                                $norm_probe = method_exists('Politeia_Book_Confirm_Schema','normalize_pair_key')
+                                        ? Politeia_Book_Confirm_Schema::normalize_pair_key($title, $authors)
+                                        : $probe;
 
-				$rel = levenshtein($norm_probe, $row['key']) / max(1, max(strlen($norm_probe), strlen($row['key'])));
-				if ($rel < $fuzzy_best) { $fuzzy_best = $rel; $fuzzy_hit = $row; }
-			}
-		}
+                                $rel = levenshtein($norm_probe, $row['key']) / max(1, max(strlen($norm_probe), strlen($row['key'])));
+                                if ($rel < $fuzzy_best) { $fuzzy_best = $rel; $fuzzy_hit = $row; }
+                        }
+                }
 
-		if ( $fuzzy_hit && $fuzzy_best <= 0.25 ) {
-			$item = [
-				'title'    => $title,
-				'author'   => $author,
-				'year'     => $fuzzy_hit['year'] ?? null,
-				'in_shelf' => true,
-			];
-			$in_shelf[] = $item;
-			$skipped++;
-			continue;
-		}
+                if ( $fuzzy_hit && $fuzzy_best <= 0.25 ) {
+                        $fuzzy_authors = ! empty( $fuzzy_hit['authors'] ) ? (array) $fuzzy_hit['authors'] : $authors;
+                        $author_display = implode( ', ', $fuzzy_authors );
+                        $item = [
+                                'title'    => $title,
+                                'author'   => $author_display,
+                                'authors'  => $fuzzy_authors,
+                                'year'     => $fuzzy_hit['year'] ?? null,
+                                'in_shelf' => true,
+                        ];
+                        if ( isset( $fuzzy_hit['slug'] ) ) {
+                                $item['slug'] = $fuzzy_hit['slug'];
+                        }
+                        if ( isset( $fuzzy_hit['id'] ) ) {
+                                $item['book_id'] = $fuzzy_hit['id'];
+                        }
+                        $in_shelf[] = $item;
+                        $skipped++;
+                        continue;
+                }
 
 		// -----------------------------------------------
 		// 2) ¿Ya pending en la cola para este usuario+hash?
@@ -199,31 +243,32 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 			ARRAY_A
 		);
 
-		if ( $pending_row ) {
-			$pending[] = [
-				'id'     => (int) $pending_row['id'],
-				'title'  => (string) $pending_row['title'],
-				'author' => (string) $pending_row['author'],
-				'year'   => null,
-			];
-			$skipped++;
-			continue;
-		}
+                if ( $pending_row ) {
+                        $pending[] = [
+                                'id'     => (int) $pending_row['id'],
+                                'title'  => (string) $pending_row['title'],
+                                'author' => (string) $pending_row['author'],
+                                'authors'=> politeia__extract_authors_array( $pending_row['author'] ?? [] ),
+                                'year'   => null,
+                        ];
+                        $skipped++;
+                        continue;
+                }
 
 		// -----------------------------------------------
 		// 3) Insertar en cola (status='pending')
 		// -----------------------------------------------
-		$data = [
-			'user_id'           => $user_id,
-			'input_type'        => $input_type,
-			'source_note'       => $source_note,
-			'title'             => $title,
-			'author'            => $author,
-			'normalized_title'  => $norm_title,
-			'normalized_author' => $norm_author,
-			'title_author_hash' => $hash,
-			'status'            => 'pending',
-		];
+                $data = [
+                        'user_id'           => $user_id,
+                        'input_type'        => $input_type,
+                        'source_note'       => $source_note,
+                        'title'             => $title,
+                        'author'            => $author_display,
+                        'normalized_title'  => $norm_title,
+                        'normalized_author' => $norm_author !== null ? $norm_author : '',
+                        'title_author_hash' => $hash,
+                        'status'            => 'pending',
+                ];
 		$fmt  = [ '%d','%s','%s','%s','%s','%s','%s','%s','%s' ];
 
 		if ( isset($b['isbn']) )         { $data['external_isbn']         = sanitize_text_field((string)$b['isbn']);         $fmt[]='%s'; }
@@ -238,14 +283,15 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		$ok = $wpdb->insert( $tbl_confirm, $data, $fmt );
 		if ( ! $ok ) { $skipped++; continue; }
 
-		$pending[] = [
-			'id'     => (int) $wpdb->insert_id,
-			'title'  => $title,
-			'author' => $author,
-			'year'   => null,
-		];
-		$queued++;
-	}
+                $pending[] = [
+                        'id'     => (int) $wpdb->insert_id,
+                        'title'  => $title,
+                        'author' => $author_display,
+                        'authors'=> $authors,
+                        'year'   => null,
+                ];
+                $queued++;
+        }
 
 	// Opcional defensivo: empuja efímeros al transient (para sobrevivir al render)
 	if ( !empty($in_shelf) ) {
@@ -270,14 +316,37 @@ endif; // function_exists
 
 /* =========================== Helpers =========================== */
 if ( ! function_exists('politeia__normalize_text') ) {
-	function politeia__normalize_text( $s ) {
-		$s = (string) $s;
-		$s = wp_strip_all_tags( $s );
-		$s = html_entity_decode( $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-		$s = preg_replace( '/\s+/u', ' ', $s );
-		$s = trim( $s );
-		return $s;
-	}
+        function politeia__normalize_text( $s ) {
+                $s = (string) $s;
+                $s = wp_strip_all_tags( $s );
+                $s = html_entity_decode( $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+                $s = preg_replace( '/\s+/u', ' ', $s );
+                $s = trim( $s );
+                return $s;
+        }
+}
+
+if ( ! function_exists( 'politeia__extract_authors_array' ) ) {
+        function politeia__extract_authors_array( $authors ) {
+                if ( is_array( $authors ) ) {
+                        $candidates = $authors;
+                } elseif ( is_string( $authors ) ) {
+                        $normalized = str_replace( [ ' & ', ' and ', ' y ' ], ',', $authors );
+                        $candidates = preg_split( '/[,;\|]+/u', (string) $normalized );
+                } else {
+                        $candidates = [];
+                }
+
+                $clean = [];
+                foreach ( $candidates as $entry ) {
+                        $entry = trim( wp_strip_all_tags( (string) $entry ) );
+                        if ( '' !== $entry ) {
+                                $clean[] = $entry;
+                        }
+                }
+
+                return array_values( array_unique( $clean ) );
+        }
 }
 
 /**
@@ -286,18 +355,35 @@ if ( ! function_exists('politeia__normalize_text') ) {
  * - Fallback compatible (por si se carga este archivo antes del schema).
  */
 if ( ! function_exists('politeia__title_author_hash') ) {
-	function politeia__title_author_hash( $title, $author ) {
-		if ( class_exists('Politeia_Book_Confirm_Schema') ) {
-			return Politeia_Book_Confirm_Schema::compute_title_author_hash( $title, $author );
-		}
-		// Fallback aproximado
-		$t = strtolower( remove_accents( trim( politeia__normalize_text( $title ) ) ) );
-		$a = strtolower( remove_accents( trim( politeia__normalize_text( $author ) ) ) );
-		$clean = ' ' . preg_replace('/\s+/', ' ', $t.' '.$a) . ' ';
-		$clean = preg_replace('/\b(el|la|los|las|un|una|unos|unas|de|del|y|e|a|en|the|of|and|to|for)\b/u', ' ', $clean);
-		$clean = preg_replace('/[^a-z0-9\s]/u', ' ', $clean);
-		$tokens = array_values(array_filter(explode(' ', preg_replace('/\s+/', ' ', trim($clean)))));
-		sort($tokens, SORT_STRING);
-		return hash('sha256', implode(' ', $tokens));
-	}
+        function politeia__title_author_hash( $title, $authors ) {
+                if ( class_exists('Politeia_Book_Confirm_Schema') ) {
+                        return Politeia_Book_Confirm_Schema::compute_title_author_hash( $title, $authors );
+                }
+
+                $normalize = static function ( $value ) {
+                        $value = strtolower( remove_accents( trim( politeia__normalize_text( $value ) ) ) );
+                        $value = ' ' . preg_replace( '/\s+/', ' ', $value ) . ' ';
+                        $value = preg_replace( '/\b(el|la|los|las|un|una|unos|unas|de|del|y|e|a|en|the|of|and|to|for)\b/u', ' ', $value );
+                        $value = preg_replace( '/[^a-z0-9\s]/u', ' ', $value );
+                        $value = preg_replace( '/\s+/', ' ', trim( $value ) );
+                        return $value;
+                };
+
+                $title_normalized = $normalize( $title );
+
+                $author_list = politeia__extract_authors_array( $authors );
+
+                $author_tokens = array();
+                foreach ( $author_list as $author ) {
+                        $normalized = $normalize( $author );
+                        if ( '' !== $normalized ) {
+                                $author_tokens[] = $normalized;
+                        }
+                }
+
+                $author_tokens = array_values( array_unique( $author_tokens ) );
+                sort( $author_tokens, SORT_STRING );
+
+                return hash( 'sha256', $title_normalized . '|' . implode( '|', $author_tokens ) );
+        }
 }

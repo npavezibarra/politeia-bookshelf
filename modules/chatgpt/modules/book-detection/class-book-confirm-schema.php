@@ -135,14 +135,43 @@ class Politeia_Book_Confirm_Schema {
         return implode( ' ', $tokens );
     }
 
-    /** Build normalized composite key from Title + Author (plain string) */
-    protected static function norm_title_author($title, $author) {
-        return self::normalize_key( trim((string)$title . ' ' . (string)$author) );
+    /** Normalize each author entry and return a sorted unique list */
+    protected static function normalize_authors_list($authors) {
+        if ( is_string($authors) ) {
+            $authors = [$authors];
+        } elseif ( ! is_array($authors) ) {
+            $authors = [];
+        }
+
+        $normalized = [];
+        foreach ( $authors as $author ) {
+            $author = trim( (string) $author );
+            if ( '' === $author ) {
+                continue;
+            }
+            $norm = self::normalize_key( $author );
+            if ( '' !== $norm ) {
+                $normalized[] = $norm;
+            }
+        }
+
+        $normalized = array_values( array_unique( $normalized ) );
+        sort( $normalized, SORT_STRING );
+
+        return $normalized;
+    }
+
+    /** Build normalized composite key from Title + Author list */
+    protected static function norm_title_author($title, $authors) {
+        $normalized_title = self::normalize_key( $title );
+        $normalized_authors = self::normalize_authors_list( $authors );
+
+        return $normalized_title . '|' . implode( '|', $normalized_authors );
     }
 
     /** Public helper: normalized pair key (plain, for fuzzy) */
-    public static function normalize_pair_key($title, $author) {
-        return self::norm_title_author($title, $author);
+    public static function normalize_pair_key($title, $authors) {
+        return self::norm_title_author($title, $authors);
     }
 
     /** Relative Levenshtein distance (0=identical, 1=completely different) */
@@ -156,8 +185,8 @@ class Politeia_Book_Confirm_Schema {
     }
 
     /** Deterministic hash for Title+Author (used across system) */
-    public static function compute_title_author_hash($title, $author) {
-        return hash('sha256', self::norm_title_author($title, $author));
+    public static function compute_title_author_hash($title, $authors) {
+        return hash('sha256', self::norm_title_author($title, $authors));
     }
 
     /** Fill normalized fields/hash in-memory; optionally persist back */
@@ -167,7 +196,10 @@ class Politeia_Book_Confirm_Schema {
             $title  = $r['title']  ?? '';
             $author = $r['author'] ?? '';
             if (empty($r['normalized_title']))  $r['normalized_title']  = self::normalize_key($title);
-            if (empty($r['normalized_author'])) $r['normalized_author'] = self::normalize_key($author);
+            if (empty($r['normalized_author'])) {
+                $author_string = is_array($author) ? implode(' ', $author) : $author;
+                $r['normalized_author'] = self::normalize_key($author_string);
+            }
             if (empty($r['title_author_hash'])) $r['title_author_hash'] = self::compute_title_author_hash($title, $author);
 
             if ($persist && !empty($r['id'])) {
