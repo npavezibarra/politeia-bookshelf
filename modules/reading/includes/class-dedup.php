@@ -8,6 +8,175 @@ class Politeia_Reading_Book_Dedup {
                 add_action( 'wp_ajax_politeia_dedup_action', array( __CLASS__, 'handle_ajax' ) );
         }
 
+        /**
+         * Scan the canonical books table for likely duplicates and record them as
+         * pending candidates so the review UI can surface them.
+         *
+         * @return array{inserted:int,updated:int,removed:int,groups:int} Summary of the sync.
+         */
+        public static function sync_internal_duplicates() {
+                global $wpdb;
+
+                $books_table      = $wpdb->prefix . 'politeia_books';
+                $candidates_table = $wpdb->prefix . 'politeia_book_candidates';
+
+                $books = $wpdb->get_results(
+                        "SELECT id, title, author, year, normalized_title, normalized_author FROM {$books_table}"
+                );
+
+                if ( empty( $books ) ) {
+                        return array(
+                                'inserted' => 0,
+                                'updated'  => 0,
+                                'removed'  => 0,
+                                'groups'   => 0,
+                        );
+                }
+
+                $groups = array();
+
+                foreach ( $books as $book ) {
+                        $title_key  = self::normalize_for_match( $book->normalized_title ?: $book->title );
+                        $author_key = self::normalize_for_match( $book->normalized_author ?: $book->author );
+
+                        if ( '' === $title_key ) {
+                                continue;
+                        }
+
+                        $group_key = $title_key . '|' . $author_key;
+
+                        if ( ! isset( $groups[ $group_key ] ) ) {
+                                $groups[ $group_key ] = array();
+                        }
+
+                        $groups[ $group_key ][] = $book;
+                }
+
+                $inserted = 0;
+                $updated  = 0;
+                $processed_keys = array();
+
+                foreach ( $groups as $group ) {
+                        if ( count( $group ) < 2 ) {
+                                continue;
+                        }
+
+                        usort(
+                                $group,
+                                static function ( $a, $b ) {
+                                        return (int) $a->id - (int) $b->id;
+                                }
+                        );
+
+                        $canonical       = array_shift( $group );
+                        $original_title  = sanitize_text_field( $canonical->title );
+                        $original_author = sanitize_text_field( $canonical->author );
+
+                        foreach ( $group as $candidate ) {
+                                $candidate_book_id = (string) (int) $candidate->id;
+                                if ( '' === $candidate_book_id || (int) $candidate->id === (int) $canonical->id ) {
+                                        continue;
+                                }
+
+                                $processed_keys[ $canonical->id . '|' . $candidate_book_id ] = true;
+
+                                $title_score  = self::similarity_score( $canonical->title, $candidate->title );
+                                $author_score = self::similarity_score( $canonical->author, $candidate->author );
+                                $year_score   = self::year_score( $canonical->year, $candidate->year );
+
+                                $score_components = array();
+                                foreach ( array( $title_score, $author_score, $year_score ) as $score ) {
+                                        if ( null !== $score ) {
+                                                $score_components[] = (int) $score;
+                                        }
+                                }
+
+                                $total_score = null;
+                                if ( ! empty( $score_components ) ) {
+                                        $total_score = (int) round( array_sum( $score_components ) / count( $score_components ) );
+                                }
+
+                                $data = array(
+                                        'book_id'           => (int) $canonical->id,
+                                        'candidate_book_id' => $candidate_book_id,
+                                        'original_title'    => $original_title,
+                                        'original_authors'  => $original_author,
+                                        'candidate_title'   => sanitize_text_field( $candidate->title ),
+                                        'candidate_authors' => sanitize_text_field( $candidate->author ),
+                                        'title_score'       => null === $title_score ? 0 : (int) $title_score,
+                                        'author_score'      => null === $author_score ? 0 : (int) $author_score,
+                                        'year_score'        => null === $year_score ? 0 : (int) $year_score,
+                                        'total_score'       => null === $total_score ? 0 : (int) $total_score,
+                                );
+
+                                $formats = array( '%d', '%s', '%s', '%s', '%s', '%s', '%d', '%d', '%d', '%d' );
+
+                                $existing = $wpdb->get_row(
+                                        $wpdb->prepare(
+                                                "SELECT id, status FROM {$candidates_table} WHERE book_id = %d AND candidate_book_id = %s",
+                                                (int) $canonical->id,
+                                                $candidate_book_id
+                                        )
+                                );
+
+                                if ( $existing ) {
+                                        if ( 'pending' !== $existing->status ) {
+                                                continue;
+                                        }
+
+                                        $result = $wpdb->update(
+                                                $candidates_table,
+                                                $data,
+                                                array( 'id' => (int) $existing->id ),
+                                                $formats,
+                                                array( '%d' )
+                                        );
+
+                                        if ( false !== $result ) {
+                                                $updated++;
+                                        }
+                                } else {
+                                        $data['status']     = 'pending';
+                                        $data['created_at'] = current_time( 'mysql' );
+
+                                        $insert_formats = array_merge( $formats, array( '%s', '%s' ) );
+
+                                        $result = $wpdb->insert( $candidates_table, $data, $insert_formats );
+
+                                        if ( false !== $result ) {
+                                                $inserted++;
+                                        }
+                                }
+                        }
+                }
+
+                $removed = 0;
+
+                $pending_rows = $wpdb->get_results( "SELECT id, book_id, candidate_book_id FROM {$candidates_table} WHERE status = 'pending'" );
+                foreach ( $pending_rows as $row ) {
+                        $key = $row->book_id . '|' . $row->candidate_book_id;
+
+                        if ( ! isset( $processed_keys[ $key ] ) && ctype_digit( (string) $row->candidate_book_id ) ) {
+                                $deleted = $wpdb->delete(
+                                        $candidates_table,
+                                        array( 'id' => (int) $row->id ),
+                                        array( '%d' )
+                                );
+
+                                if ( false !== $deleted ) {
+                                        $removed++;
+                                }
+                        }
+                }
+
+                return array(
+                        'inserted' => $inserted,
+                        'updated'  => $updated,
+                        'removed'  => $removed,
+                        'groups'   => count( $groups ),
+                );
+        }
+
         public static function handle_ajax() {
                 if ( ! current_user_can( 'manage_politeia_books' ) ) {
                         wp_send_json_error( array( 'message' => __( 'You are not allowed to perform this action.', 'politeia-reading' ) ), 403 );
@@ -224,6 +393,74 @@ class Politeia_Reading_Book_Dedup {
                         $authors
                 );
         }
+
+        private static function normalize_for_match( $value ) {
+                $value = (string) $value;
+
+                if ( function_exists( 'politeia__normalize_text' ) ) {
+                        $value = politeia__normalize_text( $value );
+                }
+
+                if ( function_exists( 'remove_accents' ) ) {
+                        $value = remove_accents( $value );
+                }
+
+                $value = strtolower( trim( $value ) );
+                $value = preg_replace( '/\s+/u', ' ', $value );
+
+                return (string) $value;
+        }
+
+        private static function similarity_score( $first, $second ) {
+                $first  = trim( (string) $first );
+                $second = trim( (string) $second );
+
+                if ( '' === $first || '' === $second ) {
+                        return null;
+                }
+
+                if ( function_exists( 'politeia__normalize_text' ) ) {
+                        $first  = politeia__normalize_text( $first );
+                        $second = politeia__normalize_text( $second );
+                }
+
+                if ( function_exists( 'remove_accents' ) ) {
+                        $first  = remove_accents( $first );
+                        $second = remove_accents( $second );
+                }
+
+                $first  = strtolower( $first );
+                $second = strtolower( $second );
+
+                similar_text( $first, $second, $percent );
+
+                return (int) round( $percent );
+        }
+
+        private static function year_score( $first, $second ) {
+                $first  = (int) $first;
+                $second = (int) $second;
+
+                if ( $first <= 0 || $second <= 0 ) {
+                        return null;
+                }
+
+                $diff = abs( $first - $second );
+
+                if ( 0 === $diff ) {
+                        return 100;
+                }
+
+                if ( 1 === $diff ) {
+                        return 80;
+                }
+
+                if ( 2 === $diff ) {
+                        return 60;
+                }
+
+                return max( 0, 40 - ( $diff - 3 ) * 20 );
+        }
 }
 
 Politeia_Reading_Book_Dedup::register();
@@ -300,6 +537,22 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
                         }
 
                         WP_CLI::success( sprintf( 'Inserted or updated %d candidate rows.', $inserted ) );
+                }
+
+                /**
+                 * Scan wp_politeia_books for internal duplicates and generate pending candidates.
+                 */
+                public function scan() {
+                        $result = Politeia_Reading_Book_Dedup::sync_internal_duplicates();
+
+                        WP_CLI::success(
+                                sprintf(
+                                        'Duplicate sync complete. Inserted: %d, updated: %d, removed: %d.',
+                                        (int) $result['inserted'],
+                                        (int) $result['updated'],
+                                        (int) $result['removed']
+                                )
+                        );
                 }
         }
 

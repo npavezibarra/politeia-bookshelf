@@ -9,6 +9,10 @@ function politeia_book_dedup_table_shortcode() {
         global $wpdb;
         $table = $wpdb->prefix . 'politeia_book_candidates';
 
+        if ( class_exists( 'Politeia_Reading_Book_Dedup' ) ) {
+                Politeia_Reading_Book_Dedup::sync_internal_duplicates();
+        }
+
         $candidates = $wpdb->get_results(
                 "SELECT * FROM {$table} WHERE status = 'pending' ORDER BY total_score DESC, id ASC"
         );
