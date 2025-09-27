@@ -234,12 +234,248 @@
 
         activateSuccess();
 
+        var authorContainer = document.getElementById('prs_author_fields');
+        var authorInputField = document.getElementById('prs_author_input');
+        var authorList = document.getElementById('prs_author_list');
+        var authorHiddenContainer = document.getElementById('prs_author_hidden');
+        var removeAuthorLabel = authorContainer ? authorContainer.getAttribute('data-remove-label') : '';
+        var authorValues = [];
+        var authorLookup = Object.create(null);
+
+        var normalizeAuthorValue = function (value) {
+                if (value === null || typeof value === 'undefined') {
+                        return '';
+                }
+                var str = String(value);
+                str = str.replace(/\s+/g, ' ');
+                return str.trim();
+        };
+
+        var getAuthorKey = function (value) {
+                var normalized = normalizeAuthorValue(value);
+                return normalized ? normalized.toLowerCase() : '';
+        };
+
+        var syncAuthorRequirement = function () {
+                if (!authorInputField) {
+                        return;
+                }
+                if (authorValues.length) {
+                        authorInputField.required = false;
+                        authorInputField.setAttribute('aria-required', 'false');
+                } else {
+                        authorInputField.required = true;
+                        authorInputField.setAttribute('aria-required', 'true');
+                }
+        };
+
+        var refreshAuthors = function () {
+                if (authorList) {
+                        authorList.innerHTML = '';
+                        authorList.hidden = authorValues.length === 0;
+                }
+
+                if (authorHiddenContainer) {
+                        authorHiddenContainer.innerHTML = '';
+                }
+
+                for (var i = 0; i < authorValues.length; i++) {
+                        var value = authorValues[i];
+
+                        if (authorList) {
+                                var chip = document.createElement('span');
+                                chip.className = 'prs-add-book__author-chip';
+                                chip.setAttribute('role', 'listitem');
+
+                                var label = document.createElement('span');
+                                label.className = 'prs-add-book__author-chip-label';
+                                label.textContent = value;
+                                chip.appendChild(label);
+
+                                var removeButton = document.createElement('button');
+                                removeButton.type = 'button';
+                                removeButton.className = 'prs-add-book__author-chip-remove';
+                                removeButton.textContent = '×';
+                                if (removeAuthorLabel) {
+                                        removeButton.setAttribute('aria-label', removeAuthorLabel + ' ' + value);
+                                } else {
+                                        removeButton.setAttribute('aria-label', 'Remove ' + value);
+                                }
+                                removeButton.dataset.index = String(i);
+                                removeButton.addEventListener('click', function (event) {
+                                        if (event && typeof event.preventDefault === 'function') {
+                                                event.preventDefault();
+                                        }
+                                        var target = event.currentTarget;
+                                        var index = typeof target.dataset.index !== 'undefined' ? parseInt(target.dataset.index, 10) : -1;
+                                        if (!isNaN(index)) {
+                                                removeAuthorAt(index);
+                                        }
+                                });
+                                chip.appendChild(removeButton);
+
+                                authorList.appendChild(chip);
+                        }
+
+                        if (authorHiddenContainer) {
+                                var hiddenInput = document.createElement('input');
+                                hiddenInput.type = 'hidden';
+                                hiddenInput.name = 'prs_author[]';
+                                hiddenInput.value = value;
+                                authorHiddenContainer.appendChild(hiddenInput);
+                        }
+                }
+
+                syncAuthorRequirement();
+        };
+
+        var addAuthorValue = function (value) {
+                var normalized = normalizeAuthorValue(value);
+                if (!normalized) {
+                        return false;
+                }
+                var key = getAuthorKey(normalized);
+                if (!key || authorLookup[key]) {
+                        return false;
+                }
+                authorLookup[key] = true;
+                authorValues.push(normalized);
+                return true;
+        };
+
+        var removeAuthorAt = function (index) {
+                if (index < 0 || index >= authorValues.length) {
+                        return;
+                }
+
+                var value = authorValues[index];
+                authorValues.splice(index, 1);
+
+                var key = getAuthorKey(value);
+                if (key && authorLookup[key]) {
+                        delete authorLookup[key];
+                }
+
+                refreshAuthors();
+
+                if (authorInputField) {
+                        authorInputField.focus();
+                }
+        };
+
+        var processAuthorInputValue = function (value, commitRemainder) {
+                if (!authorInputField) {
+                        return;
+                }
+
+                var str = typeof value === 'string' ? value : '';
+                if (!str) {
+                        if (commitRemainder) {
+                                authorInputField.value = '';
+                        }
+                        refreshAuthors();
+                        return;
+                }
+
+                var segments = str.split(',');
+                if (!segments.length) {
+                        refreshAuthors();
+                        return;
+                }
+
+                var remainder = segments.pop();
+
+                for (var i = 0; i < segments.length; i++) {
+                        addAuthorValue(segments[i]);
+                }
+
+                if (commitRemainder) {
+                        addAuthorValue(remainder);
+                        remainder = '';
+                }
+
+                authorInputField.value = remainder ? remainder.replace(/^\s+/, '') : '';
+
+                refreshAuthors();
+        };
+
+        var getPrimaryAuthorInput = function () {
+                return authorInputField || document.getElementById('prs_author');
+        };
+
+        var setAuthors = function (authors) {
+                if (!authorContainer || !authorInputField) {
+                        var legacyInput = document.getElementById('prs_author');
+                        if (legacyInput) {
+                                if (Array.isArray(authors) && authors.length) {
+                                        legacyInput.value = String(authors[0]);
+                                } else if (typeof authors === 'string') {
+                                        legacyInput.value = authors;
+                                } else {
+                                        legacyInput.value = '';
+                                }
+                        }
+                        return;
+                }
+
+                authorValues = [];
+                authorLookup = Object.create(null);
+
+                if (Array.isArray(authors)) {
+                        for (var i = 0; i < authors.length; i++) {
+                                addAuthorValue(authors[i]);
+                        }
+                } else if (typeof authors === 'string') {
+                        addAuthorValue(authors);
+                }
+
+                if (authorInputField) {
+                        authorInputField.value = '';
+                }
+
+                refreshAuthors();
+        };
+
+        if (authorInputField) {
+                authorInputField.addEventListener('input', function (event) {
+                        processAuthorInputValue(event.target.value, false);
+                });
+
+                authorInputField.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter') {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                processAuthorInputValue(authorInputField.value, true);
+                        } else if (event.key === 'Backspace' && !authorInputField.value && authorValues.length) {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                removeAuthorAt(authorValues.length - 1);
+                        }
+                });
+
+                authorInputField.addEventListener('blur', function () {
+                        processAuthorInputValue(authorInputField.value, true);
+                });
+        }
+
+        if (form && authorInputField) {
+                form.addEventListener('submit', function () {
+                        processAuthorInputValue(authorInputField.value, true);
+                });
+        }
+
+        if (authorContainer && authorInputField) {
+                refreshAuthors();
+        }
+
         var titleInput = document.getElementById('prs_title');
         if (!titleInput) {
                 return;
         }
 
-        var authorInput = document.getElementById('prs_author');
+        var authorInput = getPrimaryAuthorInput();
         var yearInput = document.getElementById('prs_year');
         var suggestionContainer = document.getElementById('prs_title_suggestions');
 
@@ -324,8 +560,12 @@
                 }
 
                 titleInput.value = item.title;
-                if (authorInput) {
-                        authorInput.value = item.author;
+                if (item.authors && item.authors.length) {
+                        setAuthors(item.authors);
+                        authorInput = getPrimaryAuthorInput();
+                } else if (item.author) {
+                        setAuthors([item.author]);
+                        authorInput = getPrimaryAuthorInput();
                 }
                 if (yearInput) {
                         yearInput.value = item.year;
@@ -374,8 +614,16 @@
                         button.setAttribute('role', 'option');
                         button.dataset.title = items[i].title;
                         button.dataset.author = items[i].author;
+                        if (items[i].authors && items[i].authors.length) {
+                                try {
+                                        button.dataset.authors = JSON.stringify(items[i].authors);
+                                } catch (error) {
+                                        button.dataset.authors = '';
+                                }
+                        }
                         button.dataset.year = items[i].year;
-                        button.textContent = items[i].title + ' - ' + items[i].author + ' - ' + items[i].year;
+                        var authorsLabel = items[i].authors && items[i].authors.length ? items[i].authors.join(', ') : items[i].author;
+                        button.textContent = items[i].title + ' - ' + authorsLabel + ' - ' + items[i].year;
                         button.addEventListener('keydown', handleSuggestionKeydown);
                         button.addEventListener('click', (function (suggestion) {
                                 return function (clickEvent) {
@@ -457,10 +705,20 @@
                                                 continue;
                                         }
 
-                                        var author = '';
+                                        var authors = [];
                                         if (volumeInfo.authors && volumeInfo.authors.length) {
-                                                author = String(volumeInfo.authors[0]).trim();
+                                                for (var authorIndex = 0; authorIndex < volumeInfo.authors.length; authorIndex++) {
+                                                        var candidate = String(volumeInfo.authors[authorIndex]).trim();
+                                                        if (!candidate) {
+                                                                continue;
+                                                        }
+                                                        if (authors.indexOf(candidate) === -1) {
+                                                                authors.push(candidate);
+                                                        }
+                                                }
                                         }
+
+                                        var author = authors.length ? authors[0] : '';
 
                                         var year = '';
                                         if (volumeInfo.publishedDate) {
@@ -471,7 +729,7 @@
                                                 continue;
                                         }
 
-                                        var key = normalizeForComparison(title) + '|' + normalizeForComparison(author);
+                                        var key = normalizeForComparison(title) + '|' + normalizeForComparison(authors.join('|'));
                                         if (seen[key]) {
                                                 continue;
                                         }
@@ -480,6 +738,7 @@
                                         items.push({
                                                 title: title,
                                                 author: author,
+                                                authors: authors,
                                                 year: year
                                         });
 

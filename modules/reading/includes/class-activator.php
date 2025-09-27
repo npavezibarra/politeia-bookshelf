@@ -43,10 +43,12 @@ class Politeia_Reading_Activator {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$books_table      = $wpdb->prefix . 'politeia_books';
-		$user_books_table = $wpdb->prefix . 'politeia_user_books';
-		$sessions_table   = $wpdb->prefix . 'politeia_reading_sessions';
-		$loans_table      = $wpdb->prefix . 'politeia_loans';
+		$books_table         = $wpdb->prefix . 'politeia_books';
+		$user_books_table    = $wpdb->prefix . 'politeia_user_books';
+		$sessions_table      = $wpdb->prefix . 'politeia_reading_sessions';
+		$loans_table         = $wpdb->prefix . 'politeia_loans';
+		$authors_table       = $wpdb->prefix . 'politeia_authors';
+		$book_authors_table  = $wpdb->prefix . 'politeia_book_authors';
 
 		// 1) Canonical books table (con hash único)
 		$sql_books = "CREATE TABLE {$books_table} (
@@ -129,10 +131,38 @@ class Politeia_Reading_Activator {
             KEY idx_book (book_id)
         ) {$charset_collate};";
 
+		$sql_authors = "CREATE TABLE {$authors_table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            display_name VARCHAR(255) NOT NULL,
+            normalized_name VARCHAR(255) NULL,
+            name_hash CHAR(64) NOT NULL,
+            slug VARCHAR(255) NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_name_hash (name_hash),
+            UNIQUE KEY uniq_slug (slug)
+        ) {$charset_collate};";
+
+		$sql_book_authors = "CREATE TABLE {$book_authors_table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            book_id BIGINT UNSIGNED NOT NULL,
+            author_id BIGINT UNSIGNED NOT NULL,
+            sort_order SMALLINT UNSIGNED NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_book_author (book_id, author_id),
+            KEY idx_book (book_id),
+            KEY idx_author (author_id)
+        ) {$charset_collate};";
+
 		dbDelta( $sql_books );
 		dbDelta( $sql_user_books );
 		dbDelta( $sql_sessions );
 		dbDelta( $sql_loans );
+		dbDelta( $sql_authors );
+		dbDelta( $sql_book_authors );
 	}
 
 	/**

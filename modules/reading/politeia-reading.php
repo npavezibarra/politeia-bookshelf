@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Politeia Reading
  * Description: Manage "My Library" and Reading Sessions with custom tables and shortcodes.
- * Version: 0.2.2
+ * Version: 0.2.3
  * Author: Politeia
  * Text Domain: politeia-reading
  */
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // ===== Constants =====
 if ( ! defined( 'POLITEIA_READING_VERSION' ) ) {
 	// ⬆️ Incrementa esta versión cuando cambies estructuras/flujo global del plugin
-	define( 'POLITEIA_READING_VERSION', '0.2.1' );
+        define( 'POLITEIA_READING_VERSION', '0.2.3' );
 }
 if ( ! defined( 'POLITEIA_READING_PATH' ) ) {
 	define( 'POLITEIA_READING_PATH', plugin_dir_path( __FILE__ ) );
@@ -127,6 +127,52 @@ add_action(
 
 		// Importante: los assets del módulo Post Reading (post-reading.css/js)
 		// los encola automáticamente Politeia_Post_Reading_Render solo en single posts.
+        }
+);
+
+// ===== Admin notices =====
+add_action(
+	'admin_notices',
+	static function () {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		global $wpdb;
+		$schema = defined( 'DB_NAME' ) ? DB_NAME : $wpdb->dbname;
+		$tables = array(
+			$wpdb->prefix . 'politeia_books',
+			$wpdb->prefix . 'politeia_user_books',
+			$wpdb->prefix . 'politeia_authors',
+			$wpdb->prefix . 'politeia_book_authors',
+		);
+
+		$missing = array();
+		foreach ( $tables as $table ) {
+			$exists = $wpdb->get_var(
+				$wpdb->prepare(
+					'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s',
+					$schema,
+					$table
+				)
+			);
+
+			if ( ! $exists ) {
+				$missing[] = $table;
+			}
+		}
+
+		if ( empty( $missing ) ) {
+			return;
+		}
+
+		$missing_list = implode( ', ', array_map( 'esc_html', $missing ) );
+		$message      = sprintf(
+			__( 'Politeia Reading is missing the following database tables: %s. Reactivate the plugin to recreate them.', 'politeia-reading' ),
+			$missing_list
+		);
+
+		echo '<div class="notice notice-error"><p>' . esc_html( $message ) . '</p></div>';
 	}
 );
 
