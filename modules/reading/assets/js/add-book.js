@@ -235,201 +235,239 @@
         activateSuccess();
 
         var authorContainer = document.getElementById('prs_author_fields');
-        var authorTemplate = document.getElementById('prs_author_template');
-        var addAuthorButton = document.getElementById('prs_add_author');
+        var authorInputField = document.getElementById('prs_author_input');
+        var authorList = document.getElementById('prs_author_list');
+        var authorHiddenContainer = document.getElementById('prs_author_hidden');
         var removeAuthorLabel = authorContainer ? authorContainer.getAttribute('data-remove-label') : '';
+        var authorValues = [];
+        var authorLookup = Object.create(null);
 
-        var getAuthorFields = function () {
-                if (!authorContainer) {
-                        return [];
+        var normalizeAuthorValue = function (value) {
+                if (value === null || typeof value === 'undefined') {
+                        return '';
                 }
-                var nodeList = authorContainer.querySelectorAll('[data-author-field]');
-                return Array.prototype.slice.call(nodeList || []);
+                var str = String(value);
+                str = str.replace(/\s+/g, ' ');
+                return str.trim();
         };
 
-        var updateRemoveButtons = function () {
-                var fields = getAuthorFields();
-                for (var i = 0; i < fields.length; i++) {
-                        var removeButton = fields[i].querySelector('[data-remove-author]');
-                        if (!removeButton) {
-                                continue;
-                        }
-                        removeButton.hidden = fields.length <= 1;
-                }
+        var getAuthorKey = function (value) {
+                var normalized = normalizeAuthorValue(value);
+                return normalized ? normalized.toLowerCase() : '';
         };
 
-        var bindAuthorField = function (field) {
-                if (!field) {
-                        return field;
-                }
-                var removeButton = field.querySelector('[data-remove-author]');
-                if (removeButton && !removeButton.hasAttribute('data-author-bound')) {
-                        removeButton.setAttribute('data-author-bound', '1');
-                        removeButton.addEventListener('click', function (event) {
-                                if (event && typeof event.preventDefault === 'function') {
-                                        event.preventDefault();
-                                }
-                                if (!authorContainer) {
-                                        return;
-                                }
-                                var fields = getAuthorFields();
-                                if (fields.length <= 1) {
-                                        var primary = fields.length ? fields[0].querySelector('input') : null;
-                                        if (primary) {
-                                                primary.focus();
-                                        }
-                                        return;
-                                }
-                                if (field.parentNode === authorContainer) {
-                                        authorContainer.removeChild(field);
-                                } else if (field.parentNode) {
-                                        field.parentNode.removeChild(field);
-                                }
-                                updateRemoveButtons();
-                        });
-                }
-                return field;
-        };
-
-        var createAuthorField = function (value) {
-                var field = null;
-                if (authorTemplate && 'content' in authorTemplate && authorTemplate.content.firstElementChild) {
-                        field = authorTemplate.content.firstElementChild.cloneNode(true);
-                } else if (authorContainer) {
-                        field = document.createElement('div');
-                        field.className = 'prs-add-book__author';
-                        field.setAttribute('data-author-field', '');
-
-                        var input = document.createElement('input');
-                        input.type = 'text';
-                        input.name = 'prs_author[]';
-                        input.required = true;
-                        input.autocomplete = 'off';
-                        input.className = 'prs-add-book__author-input';
-                        field.appendChild(input);
-
-                        var removeButton = document.createElement('button');
-                        removeButton.type = 'button';
-                        removeButton.className = 'prs-add-book__remove-author';
-                        removeButton.setAttribute('data-remove-author', '');
-                        removeButton.textContent = removeAuthorLabel || 'Remove';
-                        if (removeAuthorLabel) {
-                                removeButton.setAttribute('aria-label', removeAuthorLabel);
-                        }
-                        field.appendChild(removeButton);
-                }
-
-                field = bindAuthorField(field);
-
-                var inputField = field ? field.querySelector('input') : null;
-                if (inputField) {
-                        inputField.value = value || '';
-                }
-
-                return field;
-        };
-
-        var ensureInitialAuthorField = function () {
-                if (!authorContainer) {
+        var syncAuthorRequirement = function () {
+                if (!authorInputField) {
                         return;
                 }
-                var fields = getAuthorFields();
-                if (!fields.length) {
-                        var newField = createAuthorField('');
-                        if (newField) {
-                                authorContainer.appendChild(newField);
+                if (authorValues.length) {
+                        authorInputField.required = false;
+                        authorInputField.setAttribute('aria-required', 'false');
+                } else {
+                        authorInputField.required = true;
+                        authorInputField.setAttribute('aria-required', 'true');
+                }
+        };
+
+        var refreshAuthors = function () {
+                if (authorList) {
+                        authorList.innerHTML = '';
+                        authorList.hidden = authorValues.length === 0;
+                }
+
+                if (authorHiddenContainer) {
+                        authorHiddenContainer.innerHTML = '';
+                }
+
+                for (var i = 0; i < authorValues.length; i++) {
+                        var value = authorValues[i];
+
+                        if (authorList) {
+                                var chip = document.createElement('span');
+                                chip.className = 'prs-add-book__author-chip';
+                                chip.setAttribute('role', 'listitem');
+
+                                var label = document.createElement('span');
+                                label.className = 'prs-add-book__author-chip-label';
+                                label.textContent = value;
+                                chip.appendChild(label);
+
+                                var removeButton = document.createElement('button');
+                                removeButton.type = 'button';
+                                removeButton.className = 'prs-add-book__author-chip-remove';
+                                removeButton.textContent = '×';
+                                if (removeAuthorLabel) {
+                                        removeButton.setAttribute('aria-label', removeAuthorLabel + ' ' + value);
+                                } else {
+                                        removeButton.setAttribute('aria-label', 'Remove ' + value);
+                                }
+                                removeButton.dataset.index = String(i);
+                                removeButton.addEventListener('click', function (event) {
+                                        if (event && typeof event.preventDefault === 'function') {
+                                                event.preventDefault();
+                                        }
+                                        var target = event.currentTarget;
+                                        var index = typeof target.dataset.index !== 'undefined' ? parseInt(target.dataset.index, 10) : -1;
+                                        if (!isNaN(index)) {
+                                                removeAuthorAt(index);
+                                        }
+                                });
+                                chip.appendChild(removeButton);
+
+                                authorList.appendChild(chip);
                         }
-                        fields = getAuthorFields();
+
+                        if (authorHiddenContainer) {
+                                var hiddenInput = document.createElement('input');
+                                hiddenInput.type = 'hidden';
+                                hiddenInput.name = 'prs_author[]';
+                                hiddenInput.value = value;
+                                authorHiddenContainer.appendChild(hiddenInput);
+                        }
                 }
-                for (var i = 0; i < fields.length; i++) {
-                        bindAuthorField(fields[i]);
+
+                syncAuthorRequirement();
+        };
+
+        var addAuthorValue = function (value) {
+                var normalized = normalizeAuthorValue(value);
+                if (!normalized) {
+                        return false;
                 }
-                updateRemoveButtons();
+                var key = getAuthorKey(normalized);
+                if (!key || authorLookup[key]) {
+                        return false;
+                }
+                authorLookup[key] = true;
+                authorValues.push(normalized);
+                return true;
+        };
+
+        var removeAuthorAt = function (index) {
+                if (index < 0 || index >= authorValues.length) {
+                        return;
+                }
+
+                var value = authorValues[index];
+                authorValues.splice(index, 1);
+
+                var key = getAuthorKey(value);
+                if (key && authorLookup[key]) {
+                        delete authorLookup[key];
+                }
+
+                refreshAuthors();
+
+                if (authorInputField) {
+                        authorInputField.focus();
+                }
+        };
+
+        var processAuthorInputValue = function (value, commitRemainder) {
+                if (!authorInputField) {
+                        return;
+                }
+
+                var str = typeof value === 'string' ? value : '';
+                if (!str) {
+                        if (commitRemainder) {
+                                authorInputField.value = '';
+                        }
+                        refreshAuthors();
+                        return;
+                }
+
+                var segments = str.split(',');
+                if (!segments.length) {
+                        refreshAuthors();
+                        return;
+                }
+
+                var remainder = segments.pop();
+
+                for (var i = 0; i < segments.length; i++) {
+                        addAuthorValue(segments[i]);
+                }
+
+                if (commitRemainder) {
+                        addAuthorValue(remainder);
+                        remainder = '';
+                }
+
+                authorInputField.value = remainder ? remainder.replace(/^\s+/, '') : '';
+
+                refreshAuthors();
         };
 
         var getPrimaryAuthorInput = function () {
-                var fields = getAuthorFields();
-                if (!fields.length) {
-                        return null;
-                }
-                return fields[0].querySelector('input');
+                return authorInputField || document.getElementById('prs_author');
         };
 
         var setAuthors = function (authors) {
-                if (!authorContainer) {
+                if (!authorContainer || !authorInputField) {
                         var legacyInput = document.getElementById('prs_author');
                         if (legacyInput) {
-                                legacyInput.value = authors && authors.length ? authors[0] : '';
+                                if (Array.isArray(authors) && authors.length) {
+                                        legacyInput.value = String(authors[0]);
+                                } else if (typeof authors === 'string') {
+                                        legacyInput.value = authors;
+                                } else {
+                                        legacyInput.value = '';
+                                }
                         }
                         return;
                 }
 
-                var values = [];
+                authorValues = [];
+                authorLookup = Object.create(null);
 
                 if (Array.isArray(authors)) {
                         for (var i = 0; i < authors.length; i++) {
-                                if (authors[i]) {
-                                        values.push(String(authors[i]));
-                                }
+                                addAuthorValue(authors[i]);
                         }
                 } else if (typeof authors === 'string') {
-                        values.push(authors);
+                        addAuthorValue(authors);
                 }
 
-                if (!values.length) {
-                        values.push('');
+                if (authorInputField) {
+                        authorInputField.value = '';
                 }
 
-                var existingFields = getAuthorFields();
-
-                for (var j = existingFields.length; j < values.length; j++) {
-                        var appended = createAuthorField('');
-                        if (appended) {
-                                authorContainer.appendChild(appended);
-                        }
-                }
-
-                existingFields = getAuthorFields();
-
-                for (var k = 0; k < existingFields.length; k++) {
-                        var input = existingFields[k].querySelector('input');
-                        if (!input) {
-                                continue;
-                        }
-                        input.value = values[k] || '';
-                }
-
-                for (var m = existingFields.length - 1; m >= values.length; m--) {
-                        if (existingFields.length <= 1) {
-                                break;
-                        }
-                        var field = existingFields[m];
-                        if (field && field.parentNode) {
-                                field.parentNode.removeChild(field);
-                        }
-                        existingFields = getAuthorFields();
-                }
-
-                updateRemoveButtons();
+                refreshAuthors();
         };
 
-        ensureInitialAuthorField();
+        if (authorInputField) {
+                authorInputField.addEventListener('input', function (event) {
+                        processAuthorInputValue(event.target.value, false);
+                });
 
-        if (addAuthorButton && authorContainer) {
-                addAuthorButton.addEventListener('click', function (event) {
-                        if (event && typeof event.preventDefault === 'function') {
-                                event.preventDefault();
-                        }
-                        var newField = createAuthorField('');
-                        if (newField) {
-                                authorContainer.appendChild(newField);
-                                updateRemoveButtons();
-                                var input = newField.querySelector('input');
-                                if (input) {
-                                        input.focus();
+                authorInputField.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter') {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
                                 }
+                                processAuthorInputValue(authorInputField.value, true);
+                        } else if (event.key === 'Backspace' && !authorInputField.value && authorValues.length) {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                removeAuthorAt(authorValues.length - 1);
                         }
                 });
+
+                authorInputField.addEventListener('blur', function () {
+                        processAuthorInputValue(authorInputField.value, true);
+                });
+        }
+
+        if (form && authorInputField) {
+                form.addEventListener('submit', function () {
+                        processAuthorInputValue(authorInputField.value, true);
+                });
+        }
+
+        if (authorContainer && authorInputField) {
+                refreshAuthors();
         }
 
         var titleInput = document.getElementById('prs_title');

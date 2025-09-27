@@ -178,32 +178,40 @@ add_shortcode(
         							</tr>
                                                                 <tr>
                                                                         <th scope="row">
-                                                                                <label for="prs_author_0">
+                                                                                <label for="prs_author_input">
                                                                                         <?php esc_html_e( 'Author', 'politeia-reading' ); ?>
                                                                                         <span class="prs-form__required" aria-hidden="true">*</span>
                                                                                 </label>
                                                                         </th>
                                                                         <td>
-                                                                                <?php $remove_author_label = esc_attr__( 'Remove author', 'politeia-reading' ); ?>
-                                                                                <div id="prs_author_fields" class="prs-add-book__authors" data-remove-label="<?php echo $remove_author_label; ?>">
-                                                                                        <div class="prs-add-book__author" data-author-field>
-                                                                                                <input type="text" id="prs_author_0" class="prs-add-book__author-input" name="prs_author[]" autocomplete="off" required />
-                                                                                                <button type="button" class="prs-add-book__remove-author" data-remove-author aria-label="<?php echo esc_attr__( 'Remove author', 'politeia-reading' ); ?>" hidden>
-                                                                                                        <?php echo esc_html__( 'Remove', 'politeia-reading' ); ?>
-                                                                                                </button>
+                                                                        <?php $remove_author_label = esc_attr__( 'Remove author', 'politeia-reading' ); ?>
+                                                                        <div
+                                                                                        id="prs_author_fields"
+                                                                                        class="prs-add-book__authors"
+                                                                                        data-remove-label="<?php echo $remove_author_label; ?>">
+                                                                                        <div
+                                                                                                        id="prs_author_list"
+                                                                                                        class="prs-add-book__author-list"
+                                                                                                        role="list"
+                                                                                                        aria-live="polite"
+                                                                                                        aria-relevant="additions removals"
+                                                                                        ></div>
+                                                                                        <div class="prs-add-book__author-input-wrapper">
+                                                                                                <input
+                                                                                                                type="text"
+                                                                                                                id="prs_author_input"
+                                                                                                                name="prs_author[]"
+                                                                                                                class="prs-add-book__author-input"
+                                                                                                                autocomplete="off"
+                                                                                                                required
+                                                                                                                aria-describedby="prs_author_hint"
+                                                                                                />
                                                                                         </div>
+                                                                                        <div id="prs_author_hidden" class="prs-add-book__author-hidden" aria-hidden="true"></div>
+                                                                                        <p id="prs_author_hint" class="prs-add-book__author-hint">
+                                                                                                <?php echo esc_html__( 'Separate multiple authors with commas.', 'politeia-reading' ); ?>
+                                                                                        </p>
                                                                                 </div>
-                                                                                <button type="button" id="prs_add_author" class="prs-add-book__add-author">
-                                                                                        <?php echo esc_html__( 'Add another author', 'politeia-reading' ); ?>
-                                                                                </button>
-                                                                                <template id="prs_author_template">
-                                                                                        <div class="prs-add-book__author" data-author-field>
-                                                                                                <input type="text" class="prs-add-book__author-input" name="prs_author[]" autocomplete="off" required />
-                                                                                                <button type="button" class="prs-add-book__remove-author" data-remove-author aria-label="<?php echo esc_attr__( 'Remove author', 'politeia-reading' ); ?>">
-                                                                                                        <?php echo esc_html__( 'Remove', 'politeia-reading' ); ?>
-                                                                                                </button>
-                                                                                        </div>
-                                                                                </template>
                                                                         </td>
                                                                 </tr>
         							<tr>
@@ -412,18 +420,34 @@ function prs_add_book_submit_handler() {
         if ( isset( $_POST['prs_author'] ) ) {
                 $raw_authors = wp_unslash( $_POST['prs_author'] );
 
-                if ( is_array( $raw_authors ) ) {
-                        foreach ( $raw_authors as $raw_author ) {
-                                $clean_author = sanitize_text_field( $raw_author );
+                $collect_authors = static function( $value ) use ( &$authors ) {
+                        if ( null === $value || '' === $value ) {
+                                return;
+                        }
+
+                        $candidates = explode( ',', (string) $value );
+
+                        foreach ( $candidates as $candidate ) {
+                                $clean_author = sanitize_text_field( $candidate );
+                                if ( '' === $clean_author ) {
+                                        continue;
+                                }
+
+                                $clean_author = preg_replace( '/\s+/', ' ', $clean_author );
+                                $clean_author = trim( (string) $clean_author );
+
                                 if ( '' !== $clean_author ) {
                                         $authors[] = $clean_author;
                                 }
                         }
-                } else {
-                        $single_author = sanitize_text_field( $raw_authors );
-                        if ( '' !== $single_author ) {
-                                $authors[] = $single_author;
+                };
+
+                if ( is_array( $raw_authors ) ) {
+                        foreach ( $raw_authors as $raw_author ) {
+                                $collect_authors( $raw_author );
                         }
+                } else {
+                        $collect_authors( $raw_authors );
                 }
         }
 

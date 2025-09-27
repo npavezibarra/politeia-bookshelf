@@ -401,13 +401,56 @@
 .prs-add-book__authors {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 8px;
 }
 
-.prs-add-book__author {
+.prs-add-book__author-list {
         display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0;
+        padding: 0;
+}
+
+.prs-add-book__author-chip {
+        display: inline-flex;
         align-items: center;
-        gap: 12px;
+        gap: 6px;
+        background-color: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        color: #1f2937;
+        border-radius: 9999px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 4px 10px;
+}
+
+.prs-add-book__author-chip-label {
+        line-height: 1.2;
+        white-space: nowrap;
+}
+
+.prs-add-book__author-chip-remove {
+        background: transparent;
+        border: 0;
+        color: #6b7280;
+        cursor: pointer;
+        font-size: 1rem;
+        line-height: 1;
+        padding: 2px 4px;
+        border-radius: 50%;
+        transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.prs-add-book__author-chip-remove:hover,
+.prs-add-book__author-chip-remove:focus {
+        color: #dc2626;
+        background-color: rgba(220, 38, 38, 0.12);
+        outline: none;
+}
+
+.prs-add-book__author-input-wrapper {
+        display: flex;
 }
 
 .prs-add-book__author-input {
@@ -415,45 +458,14 @@
         min-width: 0;
 }
 
-.prs-add-book__remove-author {
-        background: none;
-        border: 0;
-        color: #dc2626;
-        cursor: pointer;
+.prs-add-book__author-hidden {
+        display: none;
+}
+
+.prs-add-book__author-hint {
+        color: #6b7280;
         font-size: 0.85rem;
-        font-weight: 600;
-        padding: 4px 8px;
-        border-radius: 6px;
-        transition: background-color 0.2s ease, color 0.2s ease;
-}
-
-.prs-add-book__remove-author:hover,
-.prs-add-book__remove-author:focus {
-        background-color: rgba(220, 38, 38, 0.08);
-        color: #b91c1c;
-        outline: none;
-}
-
-.prs-add-book__add-author {
-        margin-top: 12px;
-        background: none;
-        border: 0;
-        color: #0d6efd;
-        cursor: pointer;
-        font-size: 0.95rem;
-        font-weight: 600;
-        padding: 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        transition: color 0.2s ease;
-}
-
-.prs-add-book__add-author:hover,
-.prs-add-book__add-author:focus {
-        color: #0a58ca;
-        text-decoration: underline;
-        outline: none;
+        margin: 0;
 }
 
 .prs-add-book__multiple {
