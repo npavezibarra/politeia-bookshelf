@@ -18,10 +18,26 @@ class Politeia_Reading_Book_Dedup {
                 global $wpdb;
 
                 $books_table      = $wpdb->prefix . 'politeia_books';
+                $user_books_table = $wpdb->prefix . 'politeia_user_books';
                 $candidates_table = $wpdb->prefix . 'politeia_book_candidates';
 
                 $books = $wpdb->get_results(
-                        "SELECT id, title, author, year, normalized_title, normalized_author FROM {$books_table}"
+                        "SELECT b.id, b.title, b.author, b.year, b.cover_attachment_id, b.cover_url, b.slug,
+                                b.normalized_title, b.normalized_author, b.created_at, b.updated_at,
+                                COALESCE(stats.user_count, 0) AS user_count,
+                                COALESCE(stats.with_pages, 0) AS with_pages,
+                                COALESCE(stats.with_notes, 0) AS with_notes,
+                                COALESCE(stats.user_covers, 0) AS user_covers
+                         FROM {$books_table} b
+                         LEFT JOIN (
+                                SELECT book_id,
+                                        COUNT(*) AS user_count,
+                                        SUM(CASE WHEN pages IS NOT NULL AND pages > 0 THEN 1 ELSE 0 END) AS with_pages,
+                                        SUM(CASE WHEN notes IS NOT NULL AND notes <> '' THEN 1 ELSE 0 END) AS with_notes,
+                                        SUM(CASE WHEN cover_attachment_id_user IS NOT NULL AND cover_attachment_id_user > 0 THEN 1 ELSE 0 END) AS user_covers
+                                FROM {$user_books_table}
+                                GROUP BY book_id
+                         ) stats ON stats.book_id = b.id"
                 );
 
                 if ( empty( $books ) ) {
@@ -33,8 +49,9 @@ class Politeia_Reading_Book_Dedup {
                         );
                 }
 
-		$groups_by_author = array();
-		$title_groups     = array();
+                $groups_by_author  = array();
+                $title_groups      = array();
+                $loose_title_group = array();
 
 		foreach ( $books as $book ) {
 			$title_source = $book->normalized_title ?: $book->title;
@@ -44,11 +61,23 @@ class Politeia_Reading_Book_Dedup {
 				continue;
 			}
 
-			if ( ! isset( $title_groups[ $title_key ] ) ) {
-				$title_groups[ $title_key ] = array();
-			}
+                        if ( ! isset( $title_groups[ $title_key ] ) ) {
+                                $title_groups[ $title_key ] = array();
+                        }
 
-			$title_groups[ $title_key ][] = $book;
+                        $title_groups[ $title_key ][] = $book;
+
+                        $loose_key = preg_replace( '/[\p{P}\p{S}]+/u', ' ', $title_key );
+                        $loose_key = trim( preg_replace( '/\s+/u', ' ', $loose_key ) );
+                        $loose_len = function_exists( 'mb_strlen' ) ? mb_strlen( $loose_key, 'UTF-8' ) : strlen( $loose_key );
+
+                        if ( $loose_len >= 6 ) {
+                                if ( ! isset( $loose_title_group[ $loose_key ] ) ) {
+                                        $loose_title_group[ $loose_key ] = array();
+                                }
+
+                                $loose_title_group[ $loose_key ][] = $book;
+                        }
 
 			$author_source = $book->normalized_author ?: $book->author;
 			$author_key    = self::normalize_for_match( $author_source );
@@ -65,13 +94,17 @@ class Politeia_Reading_Book_Dedup {
 		$updated        = 0;
 		$processed_keys = array();
 
-		foreach ( $groups_by_author as $group ) {
-			self::process_group_candidates( $group, $candidates_table, $processed_keys, $inserted, $updated );
-		}
+                foreach ( $groups_by_author as $group ) {
+                        self::process_group_candidates( $group, $candidates_table, $processed_keys, $inserted, $updated );
+                }
 
-		foreach ( $title_groups as $group ) {
-			self::process_group_candidates( $group, $candidates_table, $processed_keys, $inserted, $updated );
-		}
+                foreach ( $title_groups as $group ) {
+                        self::process_group_candidates( $group, $candidates_table, $processed_keys, $inserted, $updated );
+                }
+
+                foreach ( $loose_title_group as $group ) {
+                        self::process_group_candidates( $group, $candidates_table, $processed_keys, $inserted, $updated );
+                }
 
                 $removed = 0;
 
@@ -105,19 +138,89 @@ class Politeia_Reading_Book_Dedup {
 			return;
 		}
 
-		usort(
-			$group,
-			static function ( $a, $b ) {
-				return (int) $a->id - (int) $b->id;
-			}
-		);
+                usort(
+                        $group,
+                        function ( $a, $b ) {
+                                $score_a = self::completeness_score( $a );
+                                $score_b = self::completeness_score( $b );
 
-		$canonical = array_shift( $group );
+                                if ( $score_a !== $score_b ) {
+                                        return $score_b <=> $score_a;
+                                }
 
-		foreach ( $group as $candidate ) {
-			self::queue_candidate_pair( $canonical, $candidate, $candidates_table, $processed_keys, $inserted, $updated );
-		}
-	}
+                                $created_a = isset( $a->created_at ) ? strtotime( (string) $a->created_at ) : 0;
+                                $created_b = isset( $b->created_at ) ? strtotime( (string) $b->created_at ) : 0;
+
+                                if ( $created_a !== $created_b ) {
+                                        return $created_a <=> $created_b;
+                                }
+
+                                return (int) $a->id <=> (int) $b->id;
+                        }
+                );
+
+                $canonical = array_shift( $group );
+
+                foreach ( $group as $candidate ) {
+                        self::queue_candidate_pair( $canonical, $candidate, $candidates_table, $processed_keys, $inserted, $updated );
+                }
+        }
+
+        private static function completeness_score( $book ) {
+                if ( isset( $book->dedup_completeness ) ) {
+                        return (int) $book->dedup_completeness;
+                }
+
+                $score = 0;
+
+                if ( ! empty( $book->slug ) ) {
+                        $score += 6;
+                }
+
+                if ( ! empty( $book->cover_attachment_id ) ) {
+                        $score += 5;
+                }
+
+                if ( ! empty( $book->cover_url ) ) {
+                        $score += 4;
+                }
+
+                if ( ! empty( $book->normalized_title ) ) {
+                        $score += 3;
+                }
+
+                if ( ! empty( $book->normalized_author ) ) {
+                        $score += 3;
+                }
+
+                if ( (int) $book->year > 0 ) {
+                        $score += 2;
+                }
+
+                $user_count = isset( $book->user_count ) ? (int) $book->user_count : 0;
+                if ( $user_count > 0 ) {
+                        $score += min( 6, $user_count );
+                }
+
+                $with_pages = isset( $book->with_pages ) ? (int) $book->with_pages : 0;
+                if ( $with_pages > 0 ) {
+                        $score += 2;
+                }
+
+                $user_covers = isset( $book->user_covers ) ? (int) $book->user_covers : 0;
+                if ( $user_covers > 0 ) {
+                        $score += 1;
+                }
+
+                $with_notes = isset( $book->with_notes ) ? (int) $book->with_notes : 0;
+                if ( $with_notes > 0 ) {
+                        $score += 1;
+                }
+
+                $book->dedup_completeness = (int) $score;
+
+                return $book->dedup_completeness;
+        }
 
 	private static function queue_candidate_pair( $canonical, $candidate, $candidates_table, array &$processed_keys, &$inserted, &$updated ) {
 		global $wpdb;
