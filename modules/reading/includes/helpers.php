@@ -10,7 +10,7 @@ function prs_current_user_id_or_die() {
 	return get_current_user_id();
 }
 
-function prs_find_or_create_book( $title, $author, $year = null, $attachment_id = null ) {
+function prs_find_or_create_book( $title, $author, $year = null, $attachment_id = null, $all_authors = null ) {
         global $wpdb;
         $table = $wpdb->prefix . 'politeia_books';
 
@@ -46,8 +46,22 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                         $hash
                 )
         );
+        $authors_payload = $all_authors;
+        if ( $authors_payload instanceof \Traversable ) {
+                $authors_payload = iterator_to_array( $authors_payload, false );
+        }
+        if ( empty( $authors_payload ) ) {
+                $authors_payload = array( $author );
+        } elseif ( is_array( $authors_payload ) ) {
+                $authors_payload[] = $author;
+        } else {
+                $authors_payload = array( $authors_payload, $author );
+        }
+
         if ( $existing_id ) {
-                return (int) $existing_id;
+                $book_id = (int) $existing_id;
+                prs_sync_book_author_links( $book_id, $authors_payload );
+                return $book_id;
         }
 
         // Fallback to slug match for legacy rows that might not yet have hashes populated.
@@ -59,7 +73,9 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                         )
                 );
                 if ( $existing_id ) {
-                        return (int) $existing_id;
+                        $book_id = (int) $existing_id;
+                        prs_sync_book_author_links( $book_id, $authors_payload );
+                        return $book_id;
                 }
         }
 
@@ -83,7 +99,10 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 return new WP_Error( 'prs_insert_failed', $wpdb->last_error ?: 'Could not insert book.' );
         }
 
-        return (int) $wpdb->insert_id;
+        $book_id = (int) $wpdb->insert_id;
+        prs_sync_book_author_links( $book_id, $authors_payload );
+
+        return $book_id;
 }
 
 function prs_ensure_user_book( $user_id, $book_id ) {
@@ -117,9 +136,9 @@ function prs_ensure_user_book( $user_id, $book_id ) {
 }
 
 function prs_handle_cover_upload( $field_name = 'prs_cover' ) {
-	if ( empty( $_FILES[ $field_name ]['name'] ) ) {
-		return null;
-	}
+        if ( empty( $_FILES[ $field_name ]['name'] ) ) {
+                return null;
+        }
 
 	require_once ABSPATH . 'wp-admin/includes/file.php';
 	require_once ABSPATH . 'wp-admin/includes/image.php';
@@ -138,8 +157,231 @@ function prs_handle_cover_upload( $field_name = 'prs_cover' ) {
 	);
 	$attach_id   = wp_insert_attachment( $attachment, $file['file'] );
 	$attach_data = wp_generate_attachment_metadata( $attach_id, $file['file'] );
-	wp_update_attachment_metadata( $attach_id, $attach_data );
-	return (int) $attach_id;
+        wp_update_attachment_metadata( $attach_id, $attach_data );
+        return (int) $attach_id;
+}
+
+/**
+ * Synchronize canonical author entries and the pivot table that links books to authors.
+ *
+ * @param int          $book_id Book identifier from wp_politeia_books.
+ * @param array|string $authors Array of author names or a delimited string.
+ *
+ * @return int[] Ordered list of author IDs linked to the book.
+ */
+function prs_sync_book_author_links( $book_id, $authors ) {
+        global $wpdb;
+
+        $book_id = (int) $book_id;
+        if ( $book_id <= 0 ) {
+                return array();
+        }
+
+        if ( null === $authors ) {
+                $authors = array();
+        } elseif ( is_string( $authors ) ) {
+                // Split on common delimiters while preserving names that include commas via JSON/array input.
+                $parts   = preg_split( '/[;,\|]+/', $authors );
+                $authors = is_array( $parts ) ? $parts : array( $authors );
+        } elseif ( $authors instanceof \Traversable ) {
+                $authors = iterator_to_array( $authors, false );
+        } elseif ( ! is_array( $authors ) ) {
+                $authors = array( $authors );
+        }
+
+        $canonical = array();
+        $position  = 0;
+
+        foreach ( $authors as $raw_author ) {
+                $name = trim( wp_strip_all_tags( (string) $raw_author ) );
+                if ( '' === $name ) {
+                        continue;
+                }
+
+                $normalized = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $name ) : strtolower( $name );
+                $normalized = ( '' !== trim( (string) $normalized ) ) ? $normalized : null;
+
+                $hash_source = $normalized ?: strtolower( $name );
+                if ( '' === $hash_source ) {
+                        continue;
+                }
+
+                $hash = hash( 'sha256', $hash_source );
+
+                if ( isset( $canonical[ $hash ] ) ) {
+                        continue; // Mantén el primer orden declarado.
+                }
+
+                $canonical[ $hash ] = array(
+                        'name'       => $name,
+                        'normalized' => $normalized,
+                        'hash'       => $hash,
+                        'position'   => $position,
+                );
+                $position++;
+        }
+
+        $book_author_table = $wpdb->prefix . 'politeia_book_authors';
+        if ( empty( $canonical ) ) {
+                // Sin autores => limpia vínculos existentes.
+                $wpdb->delete( $book_author_table, array( 'book_id' => $book_id ) );
+                return array();
+        }
+
+        uasort(
+                $canonical,
+                static function ( $a, $b ) {
+                        return $a['position'] <=> $b['position'];
+                }
+        );
+
+        $authors_table = $wpdb->prefix . 'politeia_authors';
+        $hashes        = array_keys( $canonical );
+        $existing      = array();
+
+        if ( ! empty( $hashes ) ) {
+                $placeholders = implode( ', ', array_fill( 0, count( $hashes ), '%s' ) );
+                $sql          = "SELECT id, name_hash FROM {$authors_table} WHERE name_hash IN ({$placeholders})";
+                $rows         = $wpdb->get_results( $wpdb->prepare( $sql, $hashes ) );
+
+                foreach ( $rows as $row ) {
+                        $existing[ $row->name_hash ] = (int) $row->id;
+                }
+        }
+
+        $now = current_time( 'mysql', true );
+
+        foreach ( $canonical as $hash => &$author ) {
+                if ( isset( $existing[ $hash ] ) ) {
+                        $author['id'] = $existing[ $hash ];
+                        continue;
+                }
+
+                $slug_base = sanitize_title( $author['name'] );
+                $slug      = prs_generate_unique_author_slug( $slug_base, $authors_table, $hash );
+
+                $wpdb->insert(
+                        $authors_table,
+                        array(
+                                'display_name'    => $author['name'],
+                                'normalized_name' => $author['normalized'],
+                                'name_hash'       => $author['hash'],
+                                'slug'            => $slug,
+                                'created_at'      => $now,
+                                'updated_at'      => $now,
+                        ),
+                        array( '%s', '%s', '%s', '%s', '%s', '%s' )
+                );
+
+                if ( $wpdb->last_error ) {
+                        continue;
+                }
+
+                $author['id'] = (int) $wpdb->insert_id;
+        }
+        unset( $author );
+
+        $author_ids = array();
+        foreach ( $canonical as $author ) {
+                if ( empty( $author['id'] ) ) {
+                        continue;
+                }
+                $author_ids[] = (int) $author['id'];
+        }
+
+        $existing_links = $wpdb->get_results(
+                $wpdb->prepare( "SELECT id, author_id FROM {$book_author_table} WHERE book_id = %d", $book_id )
+        );
+        $existing_map   = array();
+
+        foreach ( $existing_links as $link ) {
+                $existing_map[ (int) $link->author_id ] = (int) $link->id;
+        }
+
+        $position = 0;
+        foreach ( $canonical as $author ) {
+                if ( empty( $author['id'] ) ) {
+                        continue;
+                }
+
+                $author_id = (int) $author['id'];
+
+                if ( isset( $existing_map[ $author_id ] ) ) {
+                        $wpdb->update(
+                                $book_author_table,
+                                array(
+                                        'sort_order' => $position,
+                                        'updated_at' => $now,
+                                ),
+                                array( 'id' => $existing_map[ $author_id ] ),
+                                array( '%d', '%s' ),
+                                array( '%d' )
+                        );
+
+                        unset( $existing_map[ $author_id ] );
+                } else {
+                        $wpdb->insert(
+                                $book_author_table,
+                                array(
+                                        'book_id'    => $book_id,
+                                        'author_id'  => $author_id,
+                                        'sort_order' => $position,
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                ),
+                                array( '%d', '%d', '%d', '%s', '%s' )
+                        );
+                }
+
+                $position++;
+        }
+
+        if ( ! empty( $existing_map ) ) {
+                $ids_to_delete = array_values( $existing_map );
+                $placeholders  = implode( ', ', array_fill( 0, count( $ids_to_delete ), '%d' ) );
+                $wpdb->query(
+                        $wpdb->prepare(
+                                "DELETE FROM {$book_author_table} WHERE id IN ({$placeholders})",
+                                $ids_to_delete
+                        )
+                );
+        }
+
+        return $author_ids;
+}
+
+/**
+ * Generate a unique slug for an author entry.
+ */
+function prs_generate_unique_author_slug( $base_slug, $table, $hash_source = '' ) {
+        global $wpdb;
+
+        $slug = $base_slug;
+        if ( '' === $slug ) {
+                $slug      = 'author-' . substr( $hash_source ?: hash( 'sha256', microtime( true ) ), 0, 8 );
+                $base_slug = $slug;
+        }
+
+        $candidate = $slug;
+        $suffix    = 2;
+
+        while ( $wpdb->get_var( $wpdb->prepare( "SELECT id FROM {$table} WHERE slug = %s LIMIT 1", $candidate ) ) ) {
+                $candidate = $base_slug . '-' . $suffix;
+
+                if ( strlen( $candidate ) > 191 ) {
+                        $candidate = substr( $base_slug, 0, max( 1, 191 - strlen( (string) $suffix ) - 1 ) ) . '-' . $suffix;
+                }
+
+                $suffix++;
+
+                if ( $suffix > 20 ) {
+                        $fallback  = $hash_source ?: hash( 'crc32', $base_slug . microtime( true ) );
+                        $candidate = substr( $base_slug, 0, 180 ) . '-' . substr( $fallback, 0, 8 );
+                        break;
+                }
+        }
+
+        return $candidate;
 }
 
 function prs_maybe_alter_user_books() {
