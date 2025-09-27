@@ -43,12 +43,13 @@ class Politeia_Reading_Activator {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$books_table         = $wpdb->prefix . 'politeia_books';
-		$user_books_table    = $wpdb->prefix . 'politeia_user_books';
-		$sessions_table      = $wpdb->prefix . 'politeia_reading_sessions';
-		$loans_table         = $wpdb->prefix . 'politeia_loans';
-		$authors_table       = $wpdb->prefix . 'politeia_authors';
-		$book_authors_table  = $wpdb->prefix . 'politeia_book_authors';
+                $books_table            = $wpdb->prefix . 'politeia_books';
+                $user_books_table       = $wpdb->prefix . 'politeia_user_books';
+                $sessions_table         = $wpdb->prefix . 'politeia_reading_sessions';
+                $loans_table            = $wpdb->prefix . 'politeia_loans';
+                $authors_table          = $wpdb->prefix . 'politeia_authors';
+                $book_authors_table     = $wpdb->prefix . 'politeia_book_authors';
+                $book_candidates_table  = $wpdb->prefix . 'politeia_book_candidates';
 
 		// 1) Canonical books table (con hash único)
 		$sql_books = "CREATE TABLE {$books_table} (
@@ -157,12 +158,33 @@ class Politeia_Reading_Activator {
             KEY idx_author (author_id)
         ) {$charset_collate};";
 
-		dbDelta( $sql_books );
-		dbDelta( $sql_user_books );
-		dbDelta( $sql_sessions );
-		dbDelta( $sql_loans );
-		dbDelta( $sql_authors );
-		dbDelta( $sql_book_authors );
+                $sql_book_candidates = "CREATE TABLE {$book_candidates_table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            book_id BIGINT UNSIGNED NOT NULL,
+            candidate_book_id VARCHAR(255) NULL,
+            original_title VARCHAR(255) NOT NULL,
+            original_authors TEXT NULL,
+            candidate_title VARCHAR(255) NULL,
+            candidate_authors TEXT NULL,
+            title_score INT NULL,
+            author_score INT NULL,
+            year_score INT NULL,
+            total_score INT NULL,
+            status ENUM('pending','confirmed','rejected') NOT NULL DEFAULT 'pending',
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_book_candidate (book_id, candidate_book_id),
+            KEY idx_book (book_id),
+            KEY idx_status (status)
+        ) {$charset_collate};";
+
+                dbDelta( $sql_books );
+                dbDelta( $sql_user_books );
+                dbDelta( $sql_sessions );
+                dbDelta( $sql_loans );
+                dbDelta( $sql_authors );
+                dbDelta( $sql_book_authors );
+                dbDelta( $sql_book_candidates );
 	}
 
 	/**
