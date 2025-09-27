@@ -80,10 +80,10 @@ wp_localize_script(
 	}
 	.prs-box{ background:#f9f9f9; padding:16px; min-height:120px; }
 	#prs-book-cover{ grid-column:1; grid-row:1 / span 2; }
-	#prs-book-info{ grid-column:2; grid-row:1; min-height:140px; }
-        #prs-session-recorder{ grid-column:3; grid-row:1; min-height:auto; background:#ffffff;
+        #prs-book-info{ grid-column:2; grid-row:1; min-height:140px; }
+        #prs-book-stats{ grid-column:3; grid-row:1; min-height:auto; background:#ffffff;
         padding: 16px; border: 1px solid #dddddd; align-self:start; }
-	#prs-reading-sessions{ grid-column:1 / 4; grid-row:3; min-height:320px; }
+        #prs-reading-sessions{ grid-column:1 / 4; grid-row:3; min-height:320px; }
 
 	/* Frame portada */
 	.prs-cover-frame{
@@ -94,8 +94,21 @@ wp_localize_script(
 	.prs-cover-placeholder{ width:100%; height:100%; background:#ddd; }
 
 	/* Tipos y tablas */
-	.prs-box h2{ margin:0 0 8px; }
-	.prs-meta{ color:#555; margin-top:6px; }
+        .prs-box h2{ margin:0 0 8px; }
+        .prs-book-title{ display:flex; align-items:center; gap:12px; margin:0; }
+        .prs-book-title__text{ flex:1 1 auto; }
+        .prs-session-recorder-trigger{ display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#000; color:#fff; border:none; border-radius:6px; cursor:pointer; padding:0; font-size:18px; line-height:1; }
+        .prs-session-recorder-trigger:hover,
+        .prs-session-recorder-trigger:focus{ background:#222; }
+        .prs-session-recorder-trigger:focus{ outline:2px solid #fff; outline-offset:2px; }
+        .prs-session-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; padding:24px; }
+        .prs-session-modal.is-active{ display:flex; }
+        .prs-session-modal__content{ position:relative; max-width:440px; width:100%; max-height:90vh; overflow-y:auto; background:#ffffff; padding:24px; border:1px solid #dddddd; border-radius:12px; }
+        .prs-session-modal__close{ position:absolute; top:12px; right:12px; border:none; background:none; color:#000000; cursor:pointer; font-size:20px; line-height:1; padding:4px; outline:none; box-shadow:none; }
+        .prs-session-modal__close:hover,
+        .prs-session-modal__close:focus,
+        .prs-session-modal__close:focus-visible{ background:none; box-shadow:none; color:#000000; outline:none; }
+        .prs-meta{ color:#555; margin-top:6px; }
 	.prs-table{ width:100%; border-collapse:collapse; background:#fff; }
 	.prs-table th, .prs-table td{ padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
 
@@ -122,7 +135,7 @@ wp_localize_script(
 	@media (max-width: 900px){
 	.prs-single-grid{ grid-template-columns: 1fr; grid-template-rows:auto; }
 	#prs-book-cover{ grid-row:auto; }
-	#prs-book-info, #prs-session-recorder, #prs-reading-sessions{ grid-column:1; }
+        #prs-book-info, #prs-book-stats, #prs-reading-sessions{ grid-column:1; }
 	.prs-contact-form{ grid-template-columns:1fr; margin-left:0; }
 	.prs-contact-actions{ grid-column:1; }
 	}
@@ -165,12 +178,18 @@ wp_localize_script(
 	</div>
 
 	<!-- Arriba centro: título/info y metacampos -->
-	<div id="prs-book-info" class="prs-box">
-		<h2 style="margin:0;"><?php echo esc_html( $book->title ); ?></h2>
-		<div class="prs-meta">
-		<strong><?php echo esc_html( $book->author ); ?></strong>
-		<?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
-		</div>
+        <div id="prs-book-info" class="prs-box">
+                <h2 class="prs-book-title">
+                        <span class="prs-book-title__text"><?php echo esc_html( $book->title ); ?></span>
+                        <button type="button" id="prs-session-recorder-open" class="prs-session-recorder-trigger" aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>" aria-controls="prs-session-modal" aria-expanded="false">
+                                <span aria-hidden="true">▶</span>
+                                <span class="screen-reader-text"><?php esc_html_e( 'Open session recorder', 'politeia-reading' ); ?></span>
+                        </button>
+                </h2>
+                <div class="prs-meta">
+                <strong><?php echo esc_html( $book->author ); ?></strong>
+                <?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
+                </div>
 
                 <?php
                 $current_rating = isset( $ub->rating ) && null !== $ub->rating ? (int) $ub->rating : 0;
@@ -343,13 +362,13 @@ wp_localize_script(
 		</div>
 	</div>
 
-	<!-- Arriba derecha: session recorder -->
-	<div id="prs-session-recorder" class="prs-box">
-		<?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $book->id . '"]' ); ?>
-	</div>
+        <!-- Arriba derecha: Book Stats placeholder -->
+        <div id="prs-book-stats" class="prs-box">
+                <h2><?php esc_html_e( 'Book Stats', 'politeia-reading' ); ?></h2>
+        </div>
 
-	<!-- Fila completa: Reading Sessions (AJAX) -->
-	<div id="prs-reading-sessions" class="prs-box">
+        <!-- Fila completa: Reading Sessions (AJAX) -->
+        <div id="prs-reading-sessions" class="prs-box">
 		<h2><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></h2>
 		<?php
 		$prs_sess_nonce = wp_create_nonce( 'prs_sessions_nonce' );
@@ -366,9 +385,16 @@ wp_localize_script(
 			param:    "prs_sess"
 		};
 		</script>
-	</div>
+        </div>
 
-	</div>
+        <div id="prs-session-modal" class="prs-session-modal" role="dialog" aria-modal="true" aria-hidden="true" aria-label="<?php esc_attr_e( 'Session recorder', 'politeia-reading' ); ?>">
+                <div class="prs-session-modal__content prs-box">
+                        <button type="button" id="prs-session-recorder-close" class="prs-session-modal__close" aria-label="<?php esc_attr_e( 'Close session recorder', 'politeia-reading' ); ?>">×</button>
+                        <?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $book->id . '"]' ); ?>
+                </div>
+        </div>
+
+        </div>
 </div>
 <?php
 get_footer();
