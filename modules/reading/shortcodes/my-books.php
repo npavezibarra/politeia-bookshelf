@@ -65,15 +65,30 @@ add_shortcode(
 		}
 
 		// Traer fila sólo de la página actual
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"
+               static $books_table_has_pages_column = null;
+               if ( null === $books_table_has_pages_column ) {
+                       $books_table_has_pages_column = (bool) $wpdb->get_var(
+                               $wpdb->prepare(
+                                       "SHOW COLUMNS FROM {$b} LIKE %s",
+                                       'pages'
+                               )
+                       );
+               }
+
+               $canonical_pages_select = $books_table_has_pages_column
+                       ? "              b.pages AS canonical_pages,\n"
+                       : "              NULL AS canonical_pages,\n";
+
+               $rows = $wpdb->get_results(
+                       $wpdb->prepare(
+                               "
        SELECT ub.id AS user_book_id,
               ub.reading_status,
               ub.owning_status,
               ub.type_book,
               ub.pages,
               ub.counterparty_name,
+{$canonical_pages_select}
               (
                       SELECT start_date
                       FROM $l l
@@ -117,12 +132,14 @@ add_shortcode(
 			)
 		);
 
-		$add_book_shortcode = '';
-		if ( shortcode_exists( 'politeia_add_book' ) ) {
-			$add_book_shortcode = do_shortcode( '[politeia_add_book]' );
-		}
+               $add_book_shortcode = '';
+               if ( shortcode_exists( 'politeia_add_book' ) ) {
+                       $add_book_shortcode = do_shortcode( '[politeia_add_book]' );
+               }
 
-		ob_start(); ?>
+               $coverage_cache = array();
+
+               ob_start(); ?>
         <div class="prs-library">
                <table id="prs-library" class="prs-table">
                <thead>
@@ -143,15 +160,65 @@ add_shortcode(
                         <?php foreach ( (array) $rows as $r ) :
                                 $slug     = $r->slug ?: sanitize_title( $r->title . '-' . $r->author . ( $r->year ? '-' . $r->year : '' ) );
                                 $url      = home_url( '/my-books/my-book-' . $slug );
-                                $year     = $r->year ? (int) $r->year : null;
-                                $pages    = $r->pages ? (int) $r->pages : null;
-                                $progress = 0;
+                               $year             = $r->year ? (int) $r->year : null;
+                               $canonical_pages  = isset( $r->canonical_pages ) ? (int) $r->canonical_pages : 0;
+                               $pages            = $r->pages ? (int) $r->pages : null;
+                               $total_pages_calc = $canonical_pages > 0 ? $canonical_pages : ( $pages ?? 0 );
+                               $covered_pages    = 0;
+                               $progress_percent = 0.0;
 
-                                if ( 'finished' === $r->reading_status ) {
-                                        $progress = 100;
-                                } elseif ( 'started' === $r->reading_status ) {
-                                        $progress = 50;
-                                }
+                               if ( $total_pages_calc > 0 && class_exists( 'Politeia_Reading_Sessions' ) ) {
+                                       $book_id_int = (int) $r->book_id;
+                                       if ( ! isset( $coverage_cache[ $book_id_int ] ) ) {
+                                               $coverage_cache[ $book_id_int ] = Politeia_Reading_Sessions::coverage_stats(
+                                                       $user_id,
+                                                       $book_id_int,
+                                                       $total_pages_calc
+                                               );
+                                       }
+
+                                       $coverage = $coverage_cache[ $book_id_int ];
+                                       if ( is_array( $coverage ) ) {
+                                               $covered_pages = isset( $coverage['covered'] ) ? (int) $coverage['covered'] : 0;
+                                       }
+
+                                       if ( $covered_pages < 0 ) {
+                                               $covered_pages = 0;
+                                       }
+
+                                       if ( $total_pages_calc > 0 ) {
+                                               $covered_pages = min( $covered_pages, $total_pages_calc );
+                                               $progress_percent = ( $covered_pages / $total_pages_calc ) * 100;
+                                       }
+                               }
+
+                               $progress_percent = max( 0, min( 100, $progress_percent ) );
+                               $progress_value_attr           = number_format( $progress_percent, 2, '.', '' );
+                               $progress_display              = (int) round( $progress_percent );
+                               $progress_percent_display_text = number_format_i18n( $progress_display );
+                               $covered_pages_display         = number_format_i18n( $covered_pages );
+                               $total_pages_display           = number_format_i18n( max( 0, $total_pages_calc ) );
+
+                               if ( $total_pages_calc > 0 ) {
+                                       $progress_summary = sprintf(
+                                               /* translators: 1: pages read, 2: total pages, 3: percent complete */
+                                               __( 'Read: %1$s / %2$s (%3$s%%)', 'politeia-reading' ),
+                                               $covered_pages_display,
+                                               $total_pages_display,
+                                               $progress_percent_display_text
+                                       );
+
+                                       $progress_label = sprintf(
+                                               /* translators: 1: pages read, 2: total pages, 3: percent complete */
+                                               __( 'Read %1$s of %2$s pages (%3$s%% complete)', 'politeia-reading' ),
+                                               $covered_pages_display,
+                                               $total_pages_display,
+                                               $progress_percent_display_text
+                                       );
+                               } else {
+                                       $progress_summary = __( 'Read: 0 / 0 (0%)', 'politeia-reading' );
+                                       $progress_label   = __( 'Progress unavailable', 'politeia-reading' );
+                               }
 
                                 $reading_id  = 'reading-status-' . (int) $r->user_book_id;
                                 $owning_id   = 'owning-status-' . (int) $r->user_book_id;
@@ -175,9 +242,7 @@ add_shortcode(
                                 $pages_display  = $pages ? (string) (int) $pages : '';
                                 $pages_input_id = 'prs-pages-input-' . (int) $r->user_book_id;
 
-                                /* translators: %s: percentage of reading progress. */
-                                $progress_label = sprintf( __( '%s%% complete', 'politeia-reading' ), $progress );
-                                ?>
+                               ?>
                         <tr data-user-book-id="<?php echo (int) $r->user_book_id; ?>">
                                 <td class="prs-library__info">
                                 <div class="prs-library__cover">
@@ -314,15 +379,16 @@ add_shortcode(
                                                         <div
                                                                 class="prs-library__progress-track"
                                                                 role="progressbar"
-                                                                aria-valuenow="<?php echo esc_attr( $progress ); ?>"
+                                                                aria-valuenow="<?php echo esc_attr( $progress_value_attr ); ?>"
                                                                 aria-valuemin="0"
                                                                 aria-valuemax="100"
                                                                 aria-valuetext="<?php echo esc_attr( $progress_label ); ?>"
                                                                 aria-labelledby="<?php echo esc_attr( $progress_id ); ?>"
                                                         >
-                                                                <div class="prs-library__progress-fill" style="width: <?php echo (int) $progress; ?>%;"></div>
+                                                                <div class="prs-library__progress-fill" style="width: <?php echo esc_attr( $progress_value_attr ); ?>%;"></div>
                                                         </div>
-                                                        <span class="prs-library__progress-value"><?php echo (int) $progress; ?>%</span>
+                                                        <span class="prs-library__progress-value"><?php echo esc_html( $progress_percent_display_text ); ?>%</span>
+                                                        <span class="prs-library__progress-summary"><?php echo esc_html( $progress_summary ); ?></span>
                                                 </div>
                                         </div>
                                         <button type="button" class="prs-library__remove" aria-label="<?php esc_attr_e( 'Remove book', 'politeia-reading' ); ?>">

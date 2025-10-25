@@ -276,7 +276,7 @@ class Politeia_Reading_Sessions {
 	=========================
 	 * Cobertura: unión de intervalos
 	 * ========================= */
-	private static function coverage_stats( $user_id, $book_id, $total_pages ) {
+       public static function coverage_stats( $user_id, $book_id, $total_pages ) {
 		$total_pages = (int) $total_pages;
 		if ( $total_pages <= 0 ) {
 			return array(
