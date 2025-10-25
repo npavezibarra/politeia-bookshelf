@@ -70,34 +70,124 @@
 
 /* Footer */
 .prs-cover-modal__footer{
-	display: flex;
-	align-items: center;
-	justify-content: flex-end;
-	gap: 10px;
-	margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 10px;
 }
 .prs-cover-status{
-	margin-right: auto;
-	color: #666;
-	font-size: 12px;
+        margin-right: auto;
+        color: #666;
+        font-size: 12px;
 }
 
 /* Botón del overlay sobre la portada */
+.prs-cover-actions{
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        gap:12px;
+        width:100%;
+        max-width:220px;
+}
+.prs-cover-actions .prs-cover-btn{
+        width:100%;
+}
 .prs-cover-btn{
-	padding: 8px 14px;
-	background: #222;
-	color: #fff;
-	border-radius: 10px;
-	border: none;
-	cursor: pointer;
+        padding: 8px 14px;
+        background: #222;
+        color: #fff;
+        border-radius: 10px;
+        border: none;
+        cursor: pointer;
 }
 .prs-cover-btn:hover{ background:#000; }
 
 /* Botón base ya usado en tu tema */
 .prs-btn{
-	background:#111; color:#fff; border:none; border-radius:10px;
-	padding:8px 14px; cursor:pointer;
+        background:#111; color:#fff; border:none; border-radius:10px;
+        padding:8px 14px; cursor:pointer;
 }
 .prs-btn--ghost{
-	background:#eee; color:#111;
+        background:#eee; color:#111;
+}
+
+/* Modal de búsqueda de portadas */
+.prs-cover-search-modal{
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.6);
+        z-index:100001;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:24px;
+}
+.prs-cover-search-modal__content{
+        background:#fff;
+        border-radius:12px;
+        width:560px;
+        max-width:calc(100vw - 32px);
+        max-height:calc(100vh - 32px);
+        display:flex;
+        flex-direction:column;
+        padding:20px;
+        box-shadow:0 10px 30px rgba(0,0,0,.2);
+}
+.prs-cover-search-modal__title{
+        font-size:20px;
+        font-weight:700;
+        margin:0 0 12px;
+}
+.prs-cover-search-modal__message{
+        margin:0;
+        color:#444;
+        font-size:14px;
+        min-height:20px;
+}
+.prs-cover-search-modal__grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+        gap:16px;
+        margin:20px 0 12px;
+}
+.prs-cover-search-modal__thumb{
+        border:none;
+        background:#f7f7f7;
+        padding:0;
+        border-radius:12px;
+        overflow:hidden;
+        cursor:pointer;
+        position:relative;
+        transition:box-shadow .2s ease, transform .2s ease;
+}
+.prs-cover-search-modal__thumb img{
+        width:100%;
+        display:block;
+        aspect-ratio:2 / 3;
+        object-fit:cover;
+}
+.prs-cover-search-modal__thumb:hover{
+        box-shadow:0 6px 20px rgba(0,0,0,.18);
+        transform:translateY(-2px);
+}
+.prs-cover-search-modal__thumb.is-selected{
+        box-shadow:0 0 0 2px #111 inset;
+}
+.prs-cover-search-modal__footer{
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        margin-top:auto;
+}
+.prs-cover-search-modal__footer .prs-btn{
+        min-width:110px;
+}
+.prs-cover-search-modal__empty{
+        margin:20px 0;
+        color:#555;
+        text-align:center;
+        font-size:14px;
 }

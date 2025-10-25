@@ -90,12 +90,13 @@ add_shortcode(
                       ORDER BY l.id DESC
                       LIMIT 1
               ) AS active_loan_start,
-               b.id   AS book_id,
-               b.title,
-              b.author,
-              b.year,
-              b.cover_attachment_id,
-              b.slug,
+              b.id   AS book_id,
+              b.title,
+             b.author,
+             b.year,
+             b.cover_attachment_id,
+             b.cover_url,
+             b.slug,
               {$book_pages_select} AS book_total_pages
         FROM $ub ub
         JOIN $b b ON b.id = ub.book_id
@@ -200,6 +201,8 @@ add_shortcode(
                                                         'alt'   => sanitize_text_field( $r->title ),
                                                 )
                                         );
+                                } elseif ( ! empty( $r->cover_url ) ) {
+                                        echo '<img class="prs-library__cover-image" src="' . esc_url( $r->cover_url ) . '" alt="' . esc_attr( $r->title ) . '" />';
                                 } else {
                                         echo '<div class="prs-library__cover-placeholder" aria-hidden="true"></div>';
                                 }
