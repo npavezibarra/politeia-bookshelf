@@ -66,6 +66,9 @@ wp_localize_script(
                 'has_contact'   => $has_contact ? 1 : 0,
                 'rating'        => isset( $ub->rating ) && $ub->rating !== null ? (int) $ub->rating : 0,
                 'type_book'     => (string) $current_type,
+                'title'         => (string) $book->title,
+                'author'        => (string) $book->author,
+                'cover_url'     => isset( $book->cover_url ) ? (string) $book->cover_url : '',
         )
 );
 ?>
@@ -151,26 +154,37 @@ wp_localize_script(
 		<?php
 		$user_cover_id  = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
 		$canon_cover_id = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
-		$final_cover_id = $user_cover_id ?: $canon_cover_id;
-		$has_image      = $final_cover_id > 0;
-		?>
-		<div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
-		<?php if ( $has_image ) : ?>
-			<?php
-			echo wp_get_attachment_image(
-				$final_cover_id,
-				'large',
-				false,
-				array(
-					'class' => 'prs-cover-img',
-					'alt'   => esc_attr( $book->title ),
-					'id'    => 'prs-cover-img',
-				)
-			);
-			?>
-		<?php else : ?>
-			<div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
-		<?php endif; ?>
+                $final_cover_id = $user_cover_id ?: $canon_cover_id;
+                $cover_url      = isset( $book->cover_url ) ? trim( (string) $book->cover_url ) : '';
+                $has_image      = $final_cover_id > 0 || ! empty( $cover_url );
+                ?>
+                <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
+                <?php if ( $has_image ) : ?>
+                        <?php
+                        if ( $final_cover_id ) {
+                                echo wp_get_attachment_image(
+                                        $final_cover_id,
+                                        'large',
+                                        false,
+                                        array(
+                                                'class' => 'prs-cover-img',
+                                                'alt'   => esc_attr( $book->title ),
+                                                'id'    => 'prs-cover-img',
+                                        )
+                                );
+                        } elseif ( $cover_url ) {
+                                ?>
+                                <img
+                                        src="<?php echo esc_url( $cover_url ); ?>"
+                                        class="prs-cover-img"
+                                        id="prs-cover-img"
+                                        alt="<?php echo esc_attr( $book->title ); ?>" />
+                                <?php
+                        }
+                        ?>
+                <?php else : ?>
+                        <div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
+                <?php endif; ?>
 		<div class="prs-cover-overlay">
 			<?php echo do_shortcode( '[prs_cover_button]' ); ?>
 		</div>
