@@ -85,70 +85,86 @@
     return normalizeLanguageCode(inferred) || 'eng';
   }
 
-  function createTitleVariants(title) {
-    const variants = new Set();
-    const clean = (title || '').trim();
-    if (!clean) return [];
+  function normalizeTitle(title) {
+    if (!title) return '';
+    return title
+      .toLowerCase()
+      .replace(/[\u2018\u2019\u201C\u201D"'`]/g, '')
+      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
 
-    variants.add(clean);
+  function titlesMatchExact(a, b) {
+    return normalizeTitle(a) === normalizeTitle(b);
+  }
 
-    const separators = [':', '-', '—', '('];
-    separators.forEach((sep) => {
-      if (clean.includes(sep)) {
-        const part = clean.split(sep)[0].trim();
-        if (part.length > 3) {
-          variants.add(part);
-        }
+  function titleSimilarity(a, b) {
+    const normA = normalizeTitle(a);
+    const normB = normalizeTitle(b);
+    if (!normA || !normB) return 0;
+    const wordsA = new Set(normA.split(' '));
+    const wordsB = new Set(normB.split(' '));
+    if (!wordsA.size || !wordsB.size) return 0;
+    let overlap = 0;
+    wordsA.forEach((word) => {
+      if (wordsB.has(word)) {
+        overlap += 1;
       }
     });
-
-    // Remove extra whitespace and punctuation for broader searches.
-    const simplified = clean.replace(/["'“”‘’]/g, '').trim();
-    if (simplified && simplified !== clean) {
-      variants.add(simplified);
-    }
-
-    return Array.from(variants);
+    return overlap / Math.max(wordsA.size, wordsB.size);
   }
 
-  function languageMatches(doc, language) {
-    if (!language) return true;
-    const docLangs = Array.isArray(doc?.language) ? doc.language : [];
-    if (!docLangs.length) return true;
-    return docLangs.some((code) => normalizeLanguageCode(code) === language);
+  function languageFromEdition(entry) {
+    if (!entry) return '';
+    const languages = Array.isArray(entry.languages) ? entry.languages : [];
+    for (const candidate of languages) {
+      if (candidate) {
+        if (typeof candidate === 'string') {
+          const normalized = normalizeLanguageCode(candidate);
+          if (normalized) return normalized;
+        } else if (candidate && typeof candidate === 'object') {
+          const normalized = normalizeLanguageCode(candidate.key || candidate.id || '');
+          if (normalized) return normalized;
+        }
+      }
+    }
+    return '';
   }
 
-  function buildCoverFromDoc(doc) {
-    if (!doc || typeof doc !== 'object') return null;
+  function collectEditionCovers(editions, preferredLanguage) {
+    const seen = new Set();
+    const prioritized = [];
+    const fallback = [];
 
-    if (typeof doc.cover_i === 'number') {
-      return {
-        id: `cover:${doc.cover_i}`,
-        url: `https://covers.openlibrary.org/b/id/${doc.cover_i}-L.jpg`,
-      };
-    }
-
-    if (Array.isArray(doc.isbn) && doc.isbn.length) {
-      const isbn = doc.isbn.find((value) => typeof value === 'string' && value.trim());
-      if (isbn) {
-        return {
-          id: `isbn:${isbn}`,
-          url: `https://covers.openlibrary.org/b/isbn/${encodeURIComponent(isbn)}-L.jpg`,
-        };
+    editions.forEach((entry) => {
+      if (!entry || !Array.isArray(entry.covers)) {
+        return;
       }
-    }
+      const editionLang = languageFromEdition(entry);
+      const matchesPreferred = preferredLanguage && editionLang
+        ? editionLang === preferredLanguage
+        : false;
 
-    if (Array.isArray(doc.oclc) && doc.oclc.length) {
-      const oclc = doc.oclc.find((value) => typeof value === 'string' && value.trim());
-      if (oclc) {
-        return {
-          id: `oclc:${oclc}`,
-          url: `https://covers.openlibrary.org/b/oclc/${encodeURIComponent(oclc)}-L.jpg`,
+      entry.covers.forEach((coverId) => {
+        if (typeof coverId !== 'number' || seen.has(coverId)) {
+          return;
+        }
+        const item = {
+          id: coverId,
+          url: `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`,
+          language: editionLang || '',
         };
-      }
-    }
+        seen.add(coverId);
+        if (matchesPreferred) {
+          prioritized.push(item);
+        } else {
+          fallback.push(item);
+        }
+      });
+    });
 
-    return null;
+    return prioritized.concat(fallback).slice(0, 3);
   }
 
   // ====== Upload & crop modal ======
@@ -380,14 +396,49 @@
   let searchGridEl;
   let searchSetBtn;
   let selectedSearchOption = null;
+  let searchPrevFocus = null;
+  let searchKeydownListener = null;
+
+  function getSearchFocusableElements() {
+    if (!searchModal) return [];
+    const selectors = [
+      'button',
+      '[href]',
+      'input',
+      'select',
+      'textarea',
+      '[tabindex]:not([tabindex="-1"])'
+    ];
+    return Array.from(searchModal.querySelectorAll(selectors.join(','))).filter((node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      if (node.hasAttribute('disabled')) return false;
+      if (node.getAttribute('aria-hidden') === 'true') return false;
+      return true;
+    });
+  }
+
+  function setSearchLoadingState(isLoading) {
+    if (isLoading) {
+      document.body.classList.add('prs-cover-search--loading');
+    } else {
+      document.body.classList.remove('prs-cover-search--loading');
+    }
+  }
 
   function openSearchModal() {
     closeSearchModal();
 
+    searchPrevFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
     searchModal = el('div', 'prs-cover-search-modal');
     const panel = el('div', 'prs-cover-search-modal__content');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', 'prs-cover-search-modal-title');
+    panel.setAttribute('tabindex', '-1');
 
     const title = el('h2', 'prs-cover-search-modal__title');
+    title.id = 'prs-cover-search-modal-title';
     title.textContent = 'Select a Cover';
 
     searchMessageEl = el('p', 'prs-cover-search-modal__message');
@@ -416,15 +467,55 @@
     });
     cancel.addEventListener('click', closeSearchModal);
     searchSetBtn.addEventListener('click', onSearchSetCover);
+
+    panel.focus();
+
+    searchKeydownListener = (event) => {
+      if (!searchModal) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSearchModal();
+        return;
+      }
+      if (event.key === 'Tab') {
+        const focusable = getSearchFocusableElements();
+        if (!focusable.length) {
+          event.preventDefault();
+          return;
+        }
+        const currentIndex = focusable.indexOf(document.activeElement);
+        let nextIndex = currentIndex;
+        if (event.shiftKey) {
+          nextIndex = currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
+        } else {
+          nextIndex = currentIndex === focusable.length - 1 ? 0 : currentIndex + 1;
+        }
+        event.preventDefault();
+        focusable[nextIndex].focus();
+      }
+    };
+
+    document.addEventListener('keydown', searchKeydownListener, true);
   }
 
   function closeSearchModal() {
-    if (searchModal) searchModal.remove();
+    if (searchModal) {
+      searchModal.remove();
+    }
     searchModal = null;
     searchMessageEl = null;
     searchGridEl = null;
     searchSetBtn = null;
     selectedSearchOption = null;
+    setSearchLoadingState(false);
+    if (searchKeydownListener) {
+      document.removeEventListener('keydown', searchKeydownListener, true);
+    }
+    searchKeydownListener = null;
+    if (searchPrevFocus && typeof searchPrevFocus.focus === 'function') {
+      searchPrevFocus.focus();
+    }
+    searchPrevFocus = null;
   }
 
   function setSearchMessage(message) {
@@ -490,108 +581,133 @@
     return Array.isArray(data?.docs) ? data.docs : [];
   }
 
-  async function fetchCovers(title, author, language) {
+  async function fetchWorkAndEditions(title, author, language) {
     const cleanTitle = (title || '').trim();
     if (!cleanTitle) return [];
 
     const lang = normalizeLanguageCode(language);
-    const variants = createTitleVariants(cleanTitle);
-    const attempts = [];
-
-    const baseParams = (queryTitle, withLang) => {
-      const params = { title: queryTitle, limit: '8' };
-      if (author) {
-        params.author = author;
-      }
-      if (withLang && lang) {
-        params.language = lang;
-      }
-      return params;
+    const params = {
+      title: cleanTitle,
+      limit: '10'
     };
-
-    // Priority 1: exact title with language.
+    if (author) {
+      params.author = author;
+    }
     if (lang) {
-      attempts.push({ params: baseParams(cleanTitle, true), priority: 1 });
+      params.language = lang;
     }
 
-    // Priority 2: exact title without language.
-    attempts.push({ params: baseParams(cleanTitle, false), priority: lang ? 2 : 1 });
-
-    // Priority 3: partial matches with language.
-    if (lang && variants.length > 1) {
-      variants
-        .filter((variant) => variant !== cleanTitle)
-        .forEach((variant, index) => {
-          attempts.push({ params: baseParams(variant, true), priority: 3 + index / 10 });
-        });
+    let docs = [];
+    try {
+      docs = await fetchOpenLibrary(params);
+    } catch (error) {
+      console.error('[PRS] open library search failed', error);
+      return [];
     }
 
-    // Priority 4: partial matches without language.
-    variants
-      .filter((variant) => variant !== cleanTitle)
-      .forEach((variant, index) => {
-        attempts.push({ params: baseParams(variant, false), priority: 4 + index / 10 });
-      });
+    if (!docs.length) {
+      return [];
+    }
 
-    const collected = [];
-    const seen = new Set();
+    const normalizedAuthor = (author || '').toLowerCase();
+    const exactTitleLang = [];
+    const exactTitleAuthor = [];
+    const partialLang = [];
+    const fallback = [];
 
-    for (const attempt of attempts) {
-      try {
-        const docs = await fetchOpenLibrary(attempt.params);
-        docs.forEach((doc, docIndex) => {
-          if (!languageMatches(doc, attempt.params.language || '')) {
-            return;
-          }
-          const cover = buildCoverFromDoc(doc);
-          if (!cover) return;
-          if (seen.has(cover.id)) return;
-          seen.add(cover.id);
-          collected.push({
-            url: cover.url,
-            id: cover.id,
-            priority: attempt.priority,
-            order: docIndex,
-            source: 'openlibrary',
-            language: attempt.params.language || '',
-          });
-        });
-      } catch (error) {
-        console.error('[PRS] open library search failed', error);
+    docs.forEach((doc, index) => {
+      if (!doc || typeof doc !== 'object') {
+        return;
+      }
+      const workKey = typeof doc.key === 'string' ? doc.key : '';
+      if (!workKey || !workKey.startsWith('/works/')) {
+        return;
       }
 
-      if (collected.length >= 3) {
+      const docTitle = doc.title || '';
+      const docLanguages = Array.isArray(doc.language)
+        ? doc.language.map((code) => normalizeLanguageCode(code)).filter(Boolean)
+        : [];
+      const hasLanguage = lang && docLanguages.includes(lang);
+      const docAuthors = Array.isArray(doc.author_name)
+        ? doc.author_name.map((name) => (name || '').toLowerCase())
+        : [];
+      const hasAuthor = normalizedAuthor
+        ? docAuthors.some((name) => name.includes(normalizedAuthor))
+        : false;
+      const isExact = titlesMatchExact(cleanTitle, docTitle);
+      const similarity = titleSimilarity(cleanTitle, docTitle);
+
+      const bucketItem = {
+        doc,
+        index,
+      };
+
+      if (isExact && hasLanguage) {
+        exactTitleLang.push(bucketItem);
+      } else if (isExact && hasAuthor) {
+        exactTitleAuthor.push(bucketItem);
+      } else if (similarity >= 0.6 && hasLanguage) {
+        partialLang.push(bucketItem);
+      } else {
+        fallback.push(bucketItem);
+      }
+    });
+
+    const orderedBuckets = [exactTitleLang, exactTitleAuthor, partialLang, fallback];
+    let chosenDoc = null;
+    for (const bucket of orderedBuckets) {
+      if (bucket.length) {
+        bucket.sort((a, b) => a.index - b.index);
+        chosenDoc = bucket[0].doc;
         break;
       }
     }
 
-    const sorted = collected
-      .sort((a, b) => {
-        if (a.priority !== b.priority) {
-          return a.priority - b.priority;
-        }
-        return a.order - b.order;
-      })
-      .slice(0, 3);
+    if (!chosenDoc) {
+      return [];
+    }
 
-    return sorted;
+    const workKey = chosenDoc.key;
+
+    let editions = [];
+    try {
+      const editionResp = await fetch(`https://openlibrary.org${workKey}/editions.json?limit=10`);
+      if (!editionResp.ok) {
+        throw new Error('editions_failed');
+      }
+      const editionData = await editionResp.json();
+      editions = Array.isArray(editionData?.entries) ? editionData.entries : [];
+    } catch (error) {
+      console.error('[PRS] open library editions fetch failed', error);
+      return [];
+    }
+
+    if (!editions.length) {
+      return [];
+    }
+
+    return collectEditionCovers(editions, lang);
   }
 
   async function handleSearchClick() {
     openSearchModal();
+    setSearchLoadingState(true);
     setSearchMessage('Searching for covers…');
     renderSearchResults([]);
 
     const details = getBookDetails();
     const { title, author } = details;
     if (!title) {
+      setSearchLoadingState(false);
       setSearchMessage('No book title available. Add a title to search or upload a cover manually.');
       return;
     }
 
     try {
       const language = resolveBookLanguage(details);
-      const results = await fetchCovers(title, author, language);
+      const results = await fetchWorkAndEditions(title, author, language);
+      setSearchLoadingState(false);
       if (!results.length) {
         setSearchMessage('No covers found. You can upload your own image instead.');
         return;
@@ -604,6 +720,7 @@
       }
     } catch (error) {
       console.error('[PRS] cover search error', error);
+      setSearchLoadingState(false);
       setSearchMessage('There was an error searching for covers. Please try again later.');
     }
   }
