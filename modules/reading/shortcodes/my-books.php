@@ -64,10 +64,17 @@ add_shortcode(
 			$offset = ( $paged - 1 ) * $per_page;
 		}
 
-		// Traer fila sólo de la página actual
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"
+                static $books_has_total_pages = null;
+                if ( null === $books_has_total_pages ) {
+                        $books_has_total_pages = (bool) $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$b} LIKE %s", 'total_pages' ) );
+                }
+
+                $book_pages_select = $books_has_total_pages ? 'b.total_pages' : 'NULL';
+
+                // Traer fila sólo de la página actual
+                $rows = $wpdb->get_results(
+                        $wpdb->prepare(
+                                "
        SELECT ub.id AS user_book_id,
               ub.reading_status,
               ub.owning_status,
@@ -85,10 +92,11 @@ add_shortcode(
               ) AS active_loan_start,
                b.id   AS book_id,
                b.title,
-               b.author,
-               b.year,
-               b.cover_attachment_id,
-               b.slug
+              b.author,
+              b.year,
+              b.cover_attachment_id,
+              b.slug,
+              {$book_pages_select} AS book_total_pages
         FROM $ub ub
         JOIN $b b ON b.id = ub.book_id
         WHERE ub.user_id = %d
@@ -144,13 +152,13 @@ add_shortcode(
                                 $slug     = $r->slug ?: sanitize_title( $r->title . '-' . $r->author . ( $r->year ? '-' . $r->year : '' ) );
                                 $url      = home_url( '/my-books/my-book-' . $slug );
                                 $year     = $r->year ? (int) $r->year : null;
-                                $pages    = $r->pages ? (int) $r->pages : null;
-                                $progress = 0;
+                                $pages             = $r->pages ? (int) $r->pages : null;
+                                $book_total_pages  = isset( $r->book_total_pages ) ? (int) $r->book_total_pages : 0;
+                                $effective_pages   = $book_total_pages > 0 ? $book_total_pages : ( $pages ?? 0 );
+                                $progress          = 0;
 
-                                if ( 'finished' === $r->reading_status ) {
-                                        $progress = 100;
-                                } elseif ( 'started' === $r->reading_status ) {
-                                        $progress = 50;
+                                if ( class_exists( 'Politeia_Reading_Sessions' ) && $effective_pages > 0 ) {
+                                        $progress = Politeia_Reading_Sessions::calculate_progress_percent( $user_id, (int) $r->book_id, $effective_pages );
                                 }
 
                                 $reading_id  = 'reading-status-' . (int) $r->user_book_id;
@@ -176,7 +184,7 @@ add_shortcode(
                                 $pages_input_id = 'prs-pages-input-' . (int) $r->user_book_id;
 
                                 /* translators: %s: percentage of reading progress. */
-                                $progress_label = sprintf( __( '%s%% complete', 'politeia-reading' ), $progress );
+                                $progress_label = sprintf( __( '%s%% complete', 'politeia-reading' ), (int) $progress );
                                 ?>
                         <tr data-user-book-id="<?php echo (int) $r->user_book_id; ?>">
                                 <td class="prs-library__info">
@@ -314,7 +322,7 @@ add_shortcode(
                                                         <div
                                                                 class="prs-library__progress-track"
                                                                 role="progressbar"
-                                                                aria-valuenow="<?php echo esc_attr( $progress ); ?>"
+                                                                aria-valuenow="<?php echo esc_attr( (int) $progress ); ?>"
                                                                 aria-valuemin="0"
                                                                 aria-valuemax="100"
                                                                 aria-valuetext="<?php echo esc_attr( $progress_label ); ?>"

@@ -276,12 +276,12 @@ class Politeia_Reading_Sessions {
 	=========================
 	 * Cobertura: unión de intervalos
 	 * ========================= */
-	private static function coverage_stats( $user_id, $book_id, $total_pages ) {
-		$total_pages = (int) $total_pages;
-		if ( $total_pages <= 0 ) {
-			return array(
-				'covered' => 0,
-				'total'   => 0,
+        public static function coverage_stats( $user_id, $book_id, $total_pages ) {
+                $total_pages = (int) $total_pages;
+                if ( $total_pages <= 0 ) {
+                        return array(
+                                'covered' => 0,
+                                'total'   => 0,
 				'full'    => false,
 			);
 		}
@@ -333,16 +333,16 @@ class Politeia_Reading_Sessions {
 		}
 		$covered = max( 0, min( $covered, $total_pages ) );
 
-		return array(
-			'covered' => $covered,
-			'total'   => $total_pages,
-			'full'    => ( $covered >= $total_pages ),
-		);
-	}
+                return array(
+                        'covered' => $covered,
+                        'total'   => $total_pages,
+                        'full'    => ( $covered >= $total_pages ),
+                );
+        }
 
-	private static function fetch_intervals( $user_id, $book_id ) {
-		global $wpdb;
-		$t    = $wpdb->prefix . 'politeia_reading_sessions';
+        private static function fetch_intervals( $user_id, $book_id ) {
+                global $wpdb;
+                $t    = $wpdb->prefix . 'politeia_reading_sessions';
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT start_page, end_page FROM {$t}
@@ -366,8 +366,45 @@ class Politeia_Reading_Sessions {
 				);
 			}
 		}
-		return $out;
-	}
+                return $out;
+        }
+
+        /**
+         * Calculates a rounded progress percentage (0-100) for the given user/book.
+         *
+         * @param int $user_id
+         * @param int $book_id
+         * @param int $total_pages
+         * @return int
+         */
+        public static function calculate_progress_percent( $user_id, $book_id, $total_pages ) {
+                $total_pages = (int) $total_pages;
+                if ( $total_pages <= 0 ) {
+                        return 0;
+                }
+
+                $coverage = self::coverage_stats( $user_id, $book_id, $total_pages );
+
+                $covered = isset( $coverage['covered'] ) ? (int) $coverage['covered'] : 0;
+                $total   = isset( $coverage['total'] ) ? (int) $coverage['total'] : $total_pages;
+
+                if ( $total <= 0 ) {
+                        return 0;
+                }
+
+                $percent = ( $covered / $total ) * 100;
+                $percent = round( $percent );
+
+                if ( $percent < 0 ) {
+                        return 0;
+                }
+
+                if ( $percent > 100 ) {
+                        return 100;
+                }
+
+                return (int) $percent;
+        }
 
 	/*
 	=========================
