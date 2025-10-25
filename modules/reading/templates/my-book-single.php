@@ -69,6 +69,7 @@ wp_localize_script(
                 'title'         => (string) $book->title,
                 'author'        => (string) $book->author,
                 'cover_url'     => isset( $book->cover_url ) ? (string) $book->cover_url : '',
+                'language'      => isset( $book->language ) ? (string) $book->language : '',
         )
 );
 ?>
