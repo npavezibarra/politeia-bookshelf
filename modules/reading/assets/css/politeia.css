@@ -1426,16 +1426,18 @@ button#owning-contact-save {
         margin-bottom: 6px;
 }
 
-/* Align input groups neatly */
-.prs-purchase-field .prs-inline-actions {
+/* === INLINE ACTIONS RESET === */
+.prs-inline-actions {
         display: block;
-        margin-top: 4px;
+        margin-top: 6px;
+        margin-left: 0; /* reset unwanted indentation */
 }
 
-/* Date and select input styles */
+/* === INPUTS === */
 .prs-purchase-field input[type="date"],
 .prs-purchase-field select,
 .prs-purchase-field input[type="text"] {
+        width: 100%;
         padding: 6px 8px;
         font-size: 14px;
         border: 1px solid #ccc;
@@ -1443,22 +1445,25 @@ button#owning-contact-save {
         box-sizing: border-box;
 }
 
-/* Inline group for select + input */
+/* === PURCHASE CHANNEL SPECIFIC === */
 #fld-purchase-channel .prs-inline-actions div {
         display: flex;
-        align-items: center;
+        flex-direction: column;
+        align-items: stretch;
         gap: 8px;
-        margin-bottom: 8px;
+        margin-bottom: 10px;
 }
 
-/* Buttons tidy and uniform */
+/* === BUTTONS === */
 .prs-purchase-field .prs-btn {
+        display: inline-block;
         font-size: 13px;
         border-radius: 4px;
         border: none;
         margin-right: 6px;
         margin-top: 6px;
         cursor: pointer;
+        padding: 6px 12px;
 }
 
 #purchase-date-save,
