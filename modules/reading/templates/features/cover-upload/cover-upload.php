@@ -268,6 +268,29 @@ class PRS_Cover_Upload_Feature {
 
                 $user_books_table = $wpdb->prefix . 'politeia_user_books';
 
+                $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $user_books_table ) );
+
+                if ( $table_exists !== $user_books_table ) {
+                        error_log( sprintf( '[PRS_COVER] Table %s missing when attempting to save cover.', $user_books_table ) );
+                        wp_send_json_error( array( 'message' => 'missing_table' ), 500 );
+                }
+
+                $columns = $wpdb->get_col( "DESC {$user_books_table}", 0 );
+
+                if ( ! in_array( 'cover_url', $columns, true ) || ! in_array( 'cover_source', $columns, true ) ) {
+                        error_log( '[PRS_COVER] Missing columns detected at runtime, attempting fix.' );
+
+                        if ( function_exists( 'politeia_bookshelf_check_cover_columns' ) ) {
+                                politeia_bookshelf_check_cover_columns();
+                                $columns = $wpdb->get_col( "DESC {$user_books_table}", 0 );
+                        }
+
+                        if ( ! in_array( 'cover_url', $columns, true ) || ! in_array( 'cover_source', $columns, true ) ) {
+                                error_log( '[PRS_COVER] Required cover columns still missing after attempted fix.' );
+                                wp_send_json_error( array( 'message' => 'missing_cover_columns' ), 500 );
+                        }
+                }
+
                 $row = $wpdb->get_var(
                         $wpdb->prepare(
                                 "SELECT id FROM {$user_books_table} WHERE id=%d AND user_id=%d AND book_id=%d LIMIT 1",

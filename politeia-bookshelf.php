@@ -19,6 +19,45 @@ Politeia\Reading\Init::register();
 Politeia\ChatGPT\Init::register();
 
 /**
+ * Ensure Google Books cover columns exist on activation.
+ */
+if ( ! function_exists( 'politeia_bookshelf_check_cover_columns' ) ) {
+    /**
+     * Checks and adds missing cover columns to the politeia_user_books table.
+     *
+     * @return void
+     */
+    function politeia_bookshelf_check_cover_columns() {
+        global $wpdb;
+
+        $table_name = $wpdb->prefix . 'politeia_user_books';
+
+        $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table_name ) );
+
+        if ( $table_exists !== $table_name ) {
+            error_log( sprintf( '[PRS_COVER] Table %s not found during schema check.', $table_name ) );
+            return;
+        }
+
+        $columns = $wpdb->get_col( "DESC {$table_name}", 0 );
+
+        if ( ! in_array( 'cover_url', $columns, true ) ) {
+            $wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN cover_url VARCHAR(255) NULL AFTER cover_attachment_id_user" );
+            error_log( '[PRS_COVER] Added missing column: cover_url' );
+        }
+
+        if ( ! in_array( 'cover_source', $columns, true ) ) {
+            $wpdb->query( "ALTER TABLE {$table_name} ADD COLUMN cover_source VARCHAR(255) NULL AFTER cover_url" );
+            error_log( '[PRS_COVER] Added missing column: cover_source' );
+        }
+
+        error_log( '[PRS_COVER] Database schema check completed successfully.' );
+    }
+}
+
+register_activation_hook( __FILE__, 'politeia_bookshelf_check_cover_columns' );
+
+/**
  * Register Politeia Bookshelf admin menu.
  */
 function politeia_bookshelf_register_menu() {
