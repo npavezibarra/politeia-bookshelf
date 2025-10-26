@@ -67,10 +67,10 @@
   }
 
   // ====== Upload & crop modal ======
-  const STAGE_W = 280;
-  const STAGE_H = 450;
+  const STAGE_W = 220;
+  const STAGE_H = 350;
 
-  let modal, stage, imgEl, slider, saveBtn, cancelBtn, fileInput, statusEl;
+  let modal, stage, imgEl, slider, saveBtn, cancelBtn, fileInput, statusEl, placeholderEl;
   let naturalW = 0;
   let naturalH = 0;
   let scale = 1;
@@ -83,109 +83,226 @@
     }
 
     modal = el('div', 'prs-cover-modal');
-    const panel = el('div', 'prs-cover-modal__content');
 
-    const title = el('div', 'prs-cover-modal__title');
-    title.textContent = 'Upload Book Cover';
+    let panel = null;
+    const template = document.getElementById('prs-cover-modal-template');
+    if (template && 'content' in template) {
+      const fragment = template.content.cloneNode(true);
+      const found = fragment.querySelector('.prs-cover-modal__content');
+      if (found) {
+        panel = found;
+        modal.appendChild(panel);
+      }
+    }
 
-    const topBar = el('div', 'prs-cover-modal__topbar');
-    fileInput = el('input');
-    fileInput.type = 'file';
-    fileInput.accept = 'image/*';
-    topBar.appendChild(fileInput);
+    if (!panel) {
+      panel = el('div', 'prs-cover-modal__content');
+      panel.innerHTML = `
+        <div class="prs-cover-modal__title">Upload Book Cover</div>
 
-    const wrap = el('div', 'prs-crop-wrap');
-    stage = el('div', 'prs-crop-stage');
-    stage.style.width = `${STAGE_W}px`;
-    stage.style.height = `${STAGE_H}px`;
-    wrap.appendChild(stage);
+        <div class="prs-cover-modal__grid">
+          <div class="prs-crop-wrap" id="drag-drop-area">
+            <div id="cropStage" class="prs-crop-stage" title="Drop JPEG or PNG file here">
+              <div id="cropPlaceholder" class="prs-crop-placeholder">
+                <svg class="prs-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 14.9V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3.1" />
+                  <path d="M16 16l-4-4-4 4" />
+                  <path d="M12 12v9" />
+                </svg>
+                <p>Drag JPEG or PNG here (220x350 Preview)</p>
+                <span>or click upload</span>
+              </div>
+              <img id="previewImage" src="" alt="Book Cover Preview" style="display:none;">
+            </div>
+          </div>
 
-    const controls = el('div', 'prs-crop-controls');
-    const label = el('span', 'prs-crop-label');
-    label.textContent = 'Zoom';
-    slider = el('input', 'prs-crop-slider');
-    slider.type = 'range';
-    slider.min = '1';
-    slider.max = '4';
-    slider.step = '0.01';
-    slider.value = '1';
-    controls.appendChild(label);
-    controls.appendChild(slider);
+          <div class="prs-cover-controls" id="upload-settings-setting">
 
-    const footer = el('div', 'prs-cover-modal__footer');
-    statusEl = el('span', 'prs-cover-status');
-    cancelBtn = el('button', 'prs-btn prs-btn--ghost');
-    cancelBtn.type = 'button';
-    cancelBtn.textContent = 'Cancel';
-    saveBtn = el('button', 'prs-btn');
-    saveBtn.type = 'button';
-    saveBtn.textContent = 'Save';
-    footer.append(statusEl, cancelBtn, saveBtn);
+            <div class="prs-file-input">
+              <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
+              <label for="fileInput" class="prs-btn prs-btn--ghost">Choose File</label>
+            </div>
 
-    panel.append(title, topBar, wrap, controls, footer);
-    modal.appendChild(panel);
+            <div class="prs-crop-controls">
+              <div class="prs-zoom-group">
+                <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
+                <label for="zoomSlider" class="prs-zoom-label">Zoom (1x – 4x)</label>
+              </div>
+            </div>
+
+            <span id="statusMessage" class="prs-cover-status">Awaiting file upload.</span>
+
+            <div class="prs-btn-group">
+              <button class="prs-btn prs-btn--ghost" type="button" id="prs-cover-cancel">Cancel</button>
+              <button class="prs-btn" type="button" id="prs-cover-save">Save</button>
+            </div>
+          </div>
+        </div>
+      `;
+      modal.appendChild(panel);
+    }
+
+    stage = panel.querySelector('#cropStage');
+    placeholderEl = panel.querySelector('#cropPlaceholder');
+    fileInput = panel.querySelector('#fileInput');
+    slider = panel.querySelector('#zoomSlider');
+    statusEl = panel.querySelector('#statusMessage');
+    cancelBtn = panel.querySelector('#prs-cover-cancel');
+    saveBtn = panel.querySelector('#prs-cover-save');
+    imgEl = panel.querySelector('#previewImage');
     document.body.appendChild(modal);
 
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
     });
     cancelBtn.addEventListener('click', closeModal);
-    fileInput.addEventListener('change', onPickFile);
-    slider.addEventListener('input', onZoomChange);
     saveBtn.addEventListener('click', onSave);
+
+    if (statusEl) {
+      setStatus(statusEl.textContent || 'Awaiting file upload.');
+    }
+
+    document.dispatchEvent(new CustomEvent('prsCoverModal:ready', {
+      detail: {
+        stage,
+        placeholder: placeholderEl,
+        status: statusEl,
+        fileInput,
+        previewImage: imgEl,
+        zoomSlider: slider,
+        onFiles: handleFiles,
+        onZoomChange,
+      }
+    }));
   }
 
   function closeModal() {
     if (modal) modal.remove();
     modal = null;
+    stage = null;
     imgEl = null;
+    slider = null;
+    saveBtn = null;
+    cancelBtn = null;
+    fileInput = null;
+    statusEl = null;
+    placeholderEl = null;
     naturalW = 0;
     naturalH = 0;
     scale = 1;
     minScale = 1;
   }
 
-  function setStatus(txt) {
-    if (statusEl) statusEl.textContent = txt || '';
+  function resetStatusClasses() {
+    if (!statusEl) return;
+    statusEl.className = 'prs-cover-status';
+    statusEl.style.color = '#6b7280';
   }
 
-  function onPickFile(event) {
-    const file = event.target.files && event.target.files[0];
-    if (!file) return;
+  function setStatus(txt, color) {
+    if (!statusEl) return;
+    resetStatusClasses();
+    if (color) {
+      statusEl.style.color = color;
+    }
+    statusEl.textContent = txt || '';
+  }
+
+  function handleFiles(fileList) {
+    if (!fileList || !fileList.length) {
+      return;
+    }
+
+    const file = fileList[0];
+    const allowed = ['image/jpeg', 'image/png'];
+
+    if (stage) {
+      stage.classList.remove('error');
+      stage.classList.remove('drag-active');
+    }
+
+    resetStatusClasses();
+
+    if (!allowed.includes(file.type)) {
+      if (stage) {
+        stage.classList.add('error');
+      }
+      setStatus('Error: Only JPEG and PNG images are accepted.', '#ef4444');
+      if (imgEl) {
+        imgEl.style.display = 'none';
+        imgEl.removeAttribute('src');
+      }
+      if (placeholderEl) {
+        placeholderEl.style.opacity = '1';
+        placeholderEl.style.pointerEvents = 'auto';
+      }
+      if (slider) {
+        slider.disabled = true;
+        slider.value = '1';
+      }
+      if (imgEl) {
+        imgEl.style.transform = 'translate(-50%, -50%) scale(1)';
+      }
+      naturalW = 0;
+      naturalH = 0;
+      scale = 1;
+      minScale = 1;
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = () => loadIntoStage(reader.result);
+    reader.onload = (event) => {
+      if (!event.target) return;
+      const dataUrl = event.target.result;
+      loadIntoStage(dataUrl, () => {
+        const sizeKb = (file.size / 1024).toFixed(1);
+        setStatus(`File loaded: ${file.name} (${sizeKb} KB)`, '#16a34a');
+      });
+    };
     reader.readAsDataURL(file);
   }
 
-  function loadIntoStage(dataUrl) {
-    stage.innerHTML = '';
-    imgEl = el('img', 'prs-crop-img');
+  function loadIntoStage(dataUrl, onReady) {
+    if (!imgEl) return;
+
     imgEl.onload = () => {
       naturalW = imgEl.naturalWidth;
       naturalH = imgEl.naturalHeight;
       const sX = STAGE_W / naturalW;
       const sY = STAGE_H / naturalH;
-      minScale = Math.max(sX, sY);
+      minScale = Math.min(sX, sY);
       scale = minScale;
-      slider.value = '1';
-      applyTransform();
+
+      if (slider) {
+        slider.disabled = false;
+        slider.value = '1';
+      }
+
+      updatePreviewTransform();
+
+      if (placeholderEl) {
+        placeholderEl.style.opacity = '0';
+        placeholderEl.style.pointerEvents = 'none';
+      }
+
+      imgEl.style.display = 'block';
+
+      if (typeof onReady === 'function') {
+        onReady();
+      }
     };
     imgEl.src = dataUrl;
-    stage.appendChild(imgEl);
   }
 
-  function applyTransform() {
-    if (!imgEl) return;
-    imgEl.style.width = `${naturalW}px`;
-    imgEl.style.height = `${naturalH}px`;
-    imgEl.style.transformOrigin = 'center center';
-    imgEl.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  function updatePreviewTransform() {
+    if (!imgEl || !slider) return;
+    const zoomValue = parseFloat(slider.value || '1');
+    imgEl.style.transform = `translate(-50%, -50%) scale(${zoomValue})`;
+    scale = minScale * zoomValue;
   }
 
   function onZoomChange() {
-    const value = parseFloat(slider.value || '1');
-    scale = minScale * value;
-    applyTransform();
+    updatePreviewTransform();
   }
 
   function updateCoverAttribution(source) {
@@ -243,8 +360,8 @@
   }
 
   function onSave() {
-    if (!imgEl) {
-      setStatus('Choose an image');
+    if (!imgEl || naturalW <= 0 || naturalH <= 0) {
+      setStatus('Choose an image', '#ef4444');
       return;
     }
 
@@ -267,7 +384,7 @@
 
     canvas.toBlob(async (blob) => {
       if (!blob) {
-        setStatus('Render error');
+        setStatus('Render error', '#ef4444');
         return;
       }
       setStatus('Saving…');
@@ -296,11 +413,11 @@
         });
         const out = await resp.json();
         if (!out || !out.success) {
-          setStatus(out?.data?.message || out?.message || 'Error');
+          setStatus(out?.data?.message || out?.message || 'Error', '#ef4444');
           return;
         }
 
-        setStatus('Saved');
+        setStatus('Saved', '#16a34a');
         const src = out.data.src;
         replaceCover(src, true, '');
         if (window.PRS_BOOK) {
@@ -309,7 +426,7 @@
         }
         closeModal();
       } catch (error) {
-        setStatus('Error');
+        setStatus('Error', '#ef4444');
         console.error('[PRS] cover save error', error);
       }
     }, 'image/jpeg', 0.9);

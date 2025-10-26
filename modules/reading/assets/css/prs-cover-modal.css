@@ -1,0 +1,225 @@
+/* === Upload Book Cover Modal === */
+
+.prs-cover-modal__content {
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 520px;
+  margin: 0 auto;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+.prs-cover-modal__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 20px;
+}
+
+
+.prs-cover-modal__grid {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+}
+
+.prs-crop-wrap {
+  flex: 0 0 220px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.prs-cover-modal__content input[type="file"],
+.prs-cover-modal__content .prs-hidden-input {
+  appearance: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+}
+
+.prs-crop-stage,
+#cropStage {
+  width: 220px;
+  height: 350px;
+  border: 2px dashed #9ca3af;
+  border-radius: 8px;
+  background-color: #fafafa;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.prs-crop-stage.drag-active,
+#cropStage.drag-active {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.prs-crop-stage.error,
+#cropStage.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.prs-crop-placeholder,
+#cropPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  padding: 10px;
+  transition: opacity 0.2s ease;
+}
+
+.prs-crop-placeholder span,
+#cropPlaceholder span {
+  display: block;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.prs-upload-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+  color: #9ca3af;
+}
+
+#previewImage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: auto;
+  height: 100%;
+  transform: translate(-50%, -50%) scale(1);
+  object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
+  pointer-events: none;
+}
+
+.prs-cover-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#upload-settings-setting {
+  flex: 1;
+  max-width: 50%;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.prs-crop-controls {
+  display: flex;
+  justify-content: center;
+}
+
+.prs-zoom-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.prs-zoom-group input[type="range"] {
+  width: 80%;
+  margin-bottom: 4px;
+}
+
+.prs-zoom-label {
+  font-size: 0.85rem;
+  color: #4b5563;
+  text-align: center;
+}
+
+.prs-cover-status {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.prs-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border: none;
+}
+
+.prs-btn--ghost {
+  background-color: transparent;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.prs-btn--ghost:hover {
+  background-color: #f3f4f6;
+}
+
+.prs-btn:not(.prs-btn--ghost) {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+.prs-btn:not(.prs-btn--ghost):hover {
+  background-color: #2563eb;
+}
+
+.prs-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.prs-file-input {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .prs-cover-modal__grid {
+    flex-direction: column;
+  }
+
+  .prs-crop-stage,
+  #cropStage {
+    margin: 0 auto 16px;
+  }
+
+  #upload-settings-setting {
+    max-width: 100%;
+    width: 100%;
+  }
+}
