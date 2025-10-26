@@ -663,12 +663,19 @@
       return;
     }
 
+    console.log('Attempting to save cover:', {
+      coverUrl: payload.cover_url,
+      coverSource: payload.cover_source,
+      bookId
+    });
+
     jq.ajax({
       url: ajax.ajaxUrl,
       method: 'POST',
       dataType: 'json',
       data: payload,
     }).done((res) => {
+      console.log('AJAX response:', res);
       if (!res || !res.success) {
         const errorMessage = res && res.data ? String(res.data) : 'Could not save the selected cover. Please try again.';
         setSearchMessage(errorMessage);
@@ -690,8 +697,15 @@
         searchSetBtn.textContent = originalText;
       }
       closeSearchModal();
-    }).fail(() => {
-      setSearchMessage('Server error. Please try again later.');
+    }).fail((xhr, status, error) => {
+      console.error('AJAX ERROR:', { xhr, status, error });
+      const responseText = xhr && typeof xhr.responseText === 'string' ? xhr.responseText : '';
+      if (responseText) {
+        console.error('Server Response:', responseText);
+      }
+      const responseJSON = xhr && xhr.responseJSON ? xhr.responseJSON : null;
+      const message = responseJSON && responseJSON.data ? responseJSON.data : (responseText || 'Server error. Please try again later.');
+      setSearchMessage(String(message));
       searchSetBtn.disabled = false;
       searchSetBtn.textContent = originalText;
     });

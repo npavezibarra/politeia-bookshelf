@@ -317,10 +317,12 @@ class PRS_Cover_Upload_Feature {
          */
         public static function ajax_save_cover_url() {
                 if ( ! is_user_logged_in() ) {
+                        error_log( '[PRS_COVER] Unauthorized attempt to save Google cover.' );
                         wp_send_json_error( 'User not logged in.', 401 );
                 }
 
                 if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'prs_cover_nonce' ) ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid nonce for user %d.', get_current_user_id() ) );
                         wp_send_json_error( 'Invalid nonce.', 403 );
                 }
 
@@ -330,35 +332,42 @@ class PRS_Cover_Upload_Feature {
                 $cover_source  = isset( $_POST['cover_source'] ) ? esc_url_raw( wp_unslash( $_POST['cover_source'] ) ) : '';
 
                 if ( ! $book_id || '' === $cover_url ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid payload for user %d. book_id=%d cover_url=%s', $user_id, $book_id, $cover_url ) );
                         wp_send_json_error( 'Invalid data.', 400 );
                 }
 
                 if ( ! filter_var( $cover_url, FILTER_VALIDATE_URL ) ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid cover URL for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
                         wp_send_json_error( 'Invalid cover URL.', 400 );
                 }
 
                 $scheme = wp_parse_url( $cover_url, PHP_URL_SCHEME );
                 if ( ! in_array( strtolower( (string) $scheme ), array( 'http', 'https' ), true ) ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid cover URL scheme for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
                         wp_send_json_error( 'Invalid cover URL scheme.', 400 );
                 }
 
                 $host = wp_parse_url( $cover_url, PHP_URL_HOST );
                 if ( ! $host || false === stripos( $host, 'books.google' ) ) {
+                        error_log( sprintf( '[PRS_COVER] Cover host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
                         wp_send_json_error( 'Cover host not permitted.', 400 );
                 }
 
                 if ( $cover_source ) {
                         if ( ! filter_var( $cover_source, FILTER_VALIDATE_URL ) ) {
+                                error_log( sprintf( '[PRS_COVER] Invalid source URL for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
                                 wp_send_json_error( 'Invalid source URL.', 400 );
                         }
 
                         $source_scheme = wp_parse_url( $cover_source, PHP_URL_SCHEME );
                         if ( ! in_array( strtolower( (string) $source_scheme ), array( 'http', 'https' ), true ) ) {
+                                error_log( sprintf( '[PRS_COVER] Invalid source URL scheme for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
                                 wp_send_json_error( 'Invalid source URL scheme.', 400 );
                         }
 
                         $source_host = wp_parse_url( $cover_source, PHP_URL_HOST );
                         if ( ! $source_host || false === stripos( $source_host, 'books.google' ) ) {
+                                error_log( sprintf( '[PRS_COVER] Source host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
                                 wp_send_json_error( 'Source host not permitted.', 400 );
                         }
                 }
@@ -377,6 +386,7 @@ class PRS_Cover_Upload_Feature {
                 );
 
                 if ( ! $owns_book ) {
+                        error_log( sprintf( '[PRS_COVER] Permission denied for user %d attempting to update book %d.', $user_id, $book_id ) );
                         wp_send_json_error( 'Permission denied.', 403 );
                 }
 
@@ -402,8 +412,12 @@ class PRS_Cover_Upload_Feature {
                 $updated = $wpdb->query( $sql );
 
                 if ( false === $updated ) {
-                        wp_send_json_error( 'Database update failed.', 500 );
+                        $db_error = $wpdb->last_error;
+                        error_log( sprintf( '[PRS_COVER] Database update failed for user %d, book %d: %s', $user_id, $book_id, $db_error ) );
+                        wp_send_json_error( 'Database update failed: ' . $db_error, 500 );
                 }
+
+                error_log( sprintf( '[PRS_COVER] Cover saved successfully for user %d, book %d.', $user_id, $book_id ) );
 
                 wp_send_json_success(
                         array(
