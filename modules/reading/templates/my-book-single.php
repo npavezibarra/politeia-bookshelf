@@ -409,55 +409,56 @@ wp_localize_script(
 		</span>
 		</div>
 
-		<!-- Purchase Date -->
-		<div class="prs-field" id="fld-purchase-date">
-		<hr style="margin-bottom:10px">
-		<span class="label"><?php esc_html_e( 'Purchase Date', 'politeia-reading' ); ?></span>
-		<span id="purchase-date-view"><?php echo $ub->purchase_date ? esc_html( $ub->purchase_date ) : '—'; ?></span>
-		<a href="#" id="purchase-date-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
-		<span id="purchase-date-form" style="display:none;" class="prs-inline-actions">
-			<input type="date" id="purchase-date-input" value="<?php echo $ub->purchase_date ? esc_attr( $ub->purchase_date ) : ''; ?>" />
-			<button type="button" id="purchase-date-save" class="prs-btn" style="padding:4px 10px;">Save</button>
-			<button type="button" id="purchase-date-cancel" class="prs-btn" style="padding:4px 10px;background:#777;">Cancel</button>
-			<span id="purchase-date-status" class="prs-help"></span>
-		</span>
-		</div>
+                <!-- Purchase Date & Channel -->
+                <hr style="margin-bottom:10px">
+                <div class="prs-purchase-row">
+                        <div class="prs-field prs-purchase-field" id="fld-purchase-date">
+                                <label class="label"><?php esc_html_e( 'Purchase Date', 'politeia-reading' ); ?></label>
+                                <span id="purchase-date-view"><?php echo $ub->purchase_date ? esc_html( $ub->purchase_date ) : '—'; ?></span>
+                                <a href="#" id="purchase-date-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
+                                <span id="purchase-date-form" style="display:none;" class="prs-inline-actions">
+                                        <input type="date" id="purchase-date-input" value="<?php echo $ub->purchase_date ? esc_attr( $ub->purchase_date ) : ''; ?>" />
+                                        <button type="button" id="purchase-date-save" class="prs-btn" style="padding:4px 10px;">Save</button>
+                                        <button type="button" id="purchase-date-cancel" class="prs-btn" style="padding:4px 10px;background:#777;">Cancel</button>
+                                        <span id="purchase-date-status" class="prs-help"></span>
+                                </span>
+                        </div>
 
-		<!-- Purchase Channel + Which? -->
-		<div class="prs-field" id="fld-purchase-channel">
-		<hr style="margin-bottom:10px">
-		<span class="label"><?php esc_html_e( 'Purchase Channel', 'politeia-reading' ); ?></span>
-		<span id="purchase-channel-view">
-			<?php
-			$label = '—';
-			if ( $ub->purchase_channel ) {
-				$label = ucfirst( $ub->purchase_channel );
-				if ( $ub->purchase_place ) {
-					$label .= ' — ' . $ub->purchase_place;
-				}
-			}
-			echo esc_html( $label );
-			?>
-		</span>
-		<a href="#" id="purchase-channel-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
-		<span id="purchase-channel-form" style="display:none;" class="prs-inline-actions">
-			<div>
-			<select id="purchase-channel-select">
-				<option value=""><?php esc_html_e( 'Select…', 'politeia-reading' ); ?></option>
-				<option value="online" <?php selected( $ub->purchase_channel, 'online' ); ?>><?php esc_html_e( 'Online', 'politeia-reading' ); ?></option>
-				<option value="store"  <?php selected( $ub->purchase_channel, 'store' ); ?>><?php esc_html_e( 'Store', 'politeia-reading' ); ?></option>
-			</select>
-			<input type="text" id="purchase-place-input" placeholder="<?php esc_attr_e( 'Which?', 'politeia-reading' ); ?>"
-					value="<?php echo $ub->purchase_place ? esc_attr( $ub->purchase_place ) : ''; ?>"
-					style="display: <?php echo $ub->purchase_channel ? 'inline-block' : 'none'; ?>; margin-left:8px; width:220px;" />
-			</div>
-			<button type="button" id="purchase-channel-save" class="prs-btn" style="padding:4px 10px;">Save</button>
-			<button type="button" id="purchase-channel-cancel" class="prs-btn" style="padding:4px 10px;background:#777;">Cancel</button>
-			<span id="purchase-channel-status" class="prs-help"></span>
-		</span>
-		</div>
+                        <!-- Purchase Channel + Which? -->
+                        <div class="prs-field prs-purchase-field" id="fld-purchase-channel">
+                                <label class="label"><?php esc_html_e( 'Purchase Channel', 'politeia-reading' ); ?></label>
+                                <span id="purchase-channel-view">
+                                        <?php
+                                        $label = '—';
+                                        if ( $ub->purchase_channel ) {
+                                                $label = ucfirst( $ub->purchase_channel );
+                                                if ( $ub->purchase_place ) {
+                                                        $label .= ' — ' . $ub->purchase_place;
+                                                }
+                                        }
+                                        echo esc_html( $label );
+                                        ?>
+                                </span>
+                                <a href="#" id="purchase-channel-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
+                                <span id="purchase-channel-form" style="display:none;" class="prs-inline-actions">
+                                        <div>
+                                        <select id="purchase-channel-select">
+                                                <option value=""><?php esc_html_e( 'Select…', 'politeia-reading' ); ?></option>
+                                                <option value="online" <?php selected( $ub->purchase_channel, 'online' ); ?>><?php esc_html_e( 'Online', 'politeia-reading' ); ?></option>
+                                                <option value="store"  <?php selected( $ub->purchase_channel, 'store' ); ?>><?php esc_html_e( 'Store', 'politeia-reading' ); ?></option>
+                                        </select>
+                                        <input type="text" id="purchase-place-input" placeholder="<?php esc_attr_e( 'Which?', 'politeia-reading' ); ?>"
+                                                        value="<?php echo $ub->purchase_place ? esc_attr( $ub->purchase_place ) : ''; ?>"
+                                                        style="display: <?php echo $ub->purchase_channel ? 'inline-block' : 'none'; ?>; margin-left:8px; width:220px;" />
+                                        </div>
+                                        <button type="button" id="purchase-channel-save" class="prs-btn" style="padding:4px 10px;">Save</button>
+                                        <button type="button" id="purchase-channel-cancel" class="prs-btn" style="padding:4px 10px;background:#777;">Cancel</button>
+                                        <span id="purchase-channel-status" class="prs-help"></span>
+                                </span>
+                        </div>
+                </div>
 
-		<!-- Reading Status -->
+                <!-- Reading Status -->
 		<div class="prs-field" id="fld-reading-status">
 		<hr style="margin-bottom:10px">
 		<label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
