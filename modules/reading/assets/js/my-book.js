@@ -50,11 +50,16 @@
     const localizedTitle = (window.PRS_BOOK && typeof PRS_BOOK.title === "string") ? PRS_BOOK.title.trim() : "";
     const localizedAuthor = (window.PRS_BOOK && typeof PRS_BOOK.author === "string") ? PRS_BOOK.author.trim() : "";
 
-    const titleText = domTitle && domTitle.textContent ? domTitle.textContent.trim() : localizedTitle;
-    const authorText = domAuthor && domAuthor.textContent ? domAuthor.textContent.trim() : localizedAuthor;
+    const sourceTitle = domTitle && domTitle.textContent ? domTitle.textContent.trim() : localizedTitle;
+    const sourceAuthor = domAuthor && domAuthor.textContent ? domAuthor.textContent.trim() : localizedAuthor;
 
-    titlePlaceholder.textContent = titleText || "Untitled Book";
-    authorPlaceholder.textContent = authorText || "Unknown Author";
+    if (sourceTitle) {
+      titlePlaceholder.textContent = sourceTitle;
+    }
+
+    if (sourceAuthor) {
+      authorPlaceholder.textContent = sourceAuthor;
+    }
   }
 
   // ---------- Edición: Pages ----------

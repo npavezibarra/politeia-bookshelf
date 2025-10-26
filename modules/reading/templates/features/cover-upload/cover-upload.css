@@ -86,21 +86,35 @@
 .prs-cover-actions{
         display:flex;
         flex-direction:column;
-        gap:10px;
-        pointer-events:all;
         align-items:center;
+        gap:10px;
+        margin-top:18px;
+        opacity:0;
+        transform:translateY(10px);
+        transition:opacity 0.25s ease, transform 0.25s ease;
+}
+.prs-cover-placeholder:hover .prs-cover-actions,
+.prs-cover-placeholder:focus-within .prs-cover-actions,
+.prs-cover-frame.has-image:hover .prs-cover-actions,
+.prs-cover-frame.has-image:focus-within .prs-cover-actions{
+        opacity:1;
+        transform:translateY(0);
+}
+.prs-cover-overlay .prs-cover-actions{
+        margin-top:0;
 }
 .prs-cover-btn{
-        background:#1a1a1a;
+        background:#111;
         color:#fff;
-        border-radius:12px;
-        padding:8px 20px;
-        font-weight:600;
         border:none;
+        border-radius:14px;
+        padding:10px 20px;
+        font-weight:600;
         cursor:pointer;
         transition:background 0.2s ease-in-out;
 }
-.prs-cover-btn:hover{ background:#333; }
+.prs-cover-btn:hover,
+.prs-cover-btn:focus-visible{ background:#2a2a2a; }
 
 /* Botón base ya usado en tu tema */
 .prs-btn{
