@@ -25,8 +25,13 @@ add_shortcode(
                         )
                 );
 
-		$user_id  = get_current_user_id();
-		$per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
+                $user_id  = get_current_user_id();
+                if ( ! $user_id ) {
+                        wp_get_current_user();
+                        $user_id = get_current_user_id();
+                }
+                error_log( '[PRS_MY_BOOKS] Current user: ' . $user_id );
+                $per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
 		if ( $per_page < 1 ) {
 			$per_page = 15;
 		}
@@ -73,9 +78,9 @@ add_shortcode(
                 $book_pages_select = $books_has_total_pages ? 'b.total_pages' : 'NULL';
 
                 // Traer fila sólo de la página actual
-               $rows = $wpdb->get_results(
-                       $wpdb->prepare(
-                               "
+                $books = $wpdb->get_results(
+                        $wpdb->prepare(
+                                "
        SELECT ub.id AS user_book_id,
               ub.reading_status,
               ub.owning_status,
@@ -114,8 +119,7 @@ add_shortcode(
                         )
                 );
 
-               error_log( '[PRS_MY_BOOKS] Query executed for user ' . $user_id );
-               error_log( '[PRS_MY_BOOKS] Returned ' . count( $rows ) . ' rows.' );
+                error_log( '[PRS_MY_BOOKS] Found ' . count( $books ) . ' books for user ' . $user_id );
 
 		// Helper de enlaces de paginación
 		$base_url = remove_query_arg( 'prs_page' );
@@ -156,7 +160,7 @@ add_shortcode(
                         </tr>
                </thead>
                 <tbody>
-                        <?php foreach ( (array) $rows as $r ) :
+                        <?php foreach ( (array) $books as $r ) :
                                 $slug     = $r->slug ?: sanitize_title( $r->title . '-' . $r->author . ( $r->year ? '-' . $r->year : '' ) );
                                 $url      = home_url( '/my-books/my-book-' . $slug );
                                 $year     = $r->year ? (int) $r->year : null;
