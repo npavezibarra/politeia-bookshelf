@@ -1430,6 +1430,10 @@ table.prs-form__table {
         padding: 6px 12px;
 }
 
+button#purchase-date-save {
+        margin-top: 16px;
+}
+
 #purchase-date-save,
 #purchase-channel-save {
         background: #4a73ff;

@@ -265,12 +265,15 @@ wp_localize_script(
 
 	/* Contact form (3 filas) */
 	.prs-contact-form{
-	display:grid; grid-template-columns:120px minmax(240px,1fr);
-	gap:10px 12px; max-width:600px; margin:0 !important;
+	display:flex;
+	flex-direction:column;
+	gap:10px;
+	max-width:600px;
+	margin:0 !important;
 	}
 	.prs-contact-label{ align-self:center; font-weight:600; }
 	.prs-contact-input{ width:100%; }
-	.prs-contact-actions{ grid-column:2; display:flex; align-items:center; gap:10px; }
+	.prs-contact-actions{ display:flex; align-items:center; gap:10px; }
 	#owning-contact-view{ margin:6px 0 0 10px; color:#555; }
 
 	/* Paginación (parcial AJAX) */
@@ -280,9 +283,8 @@ wp_localize_script(
 	@media (max-width: 900px){
 	.prs-single-grid{ grid-template-columns: 1fr; grid-template-rows:auto; }
 	#prs-book-cover{ grid-row:auto; }
-        #prs-book-info, #prs-book-stats, #prs-reading-sessions{ grid-column:1; }
-	.prs-contact-form{ grid-template-columns:1fr; margin-left:0; }
-	.prs-contact-actions{ grid-column:1; }
+	#prs-book-info, #prs-book-stats, #prs-reading-sessions{ grid-column:1; }
+	.prs-contact-form{ flex-direction:column; margin-left:0; }
 	}
 </style>
 
