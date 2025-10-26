@@ -36,6 +36,34 @@
     return Number.isFinite(n) ? n : defVal;
   }
 
+  function setupCoverPlaceholder() {
+    const placeholder = qs("#prs-cover-placeholder");
+    if (!placeholder) return;
+
+    const hasCover = qs("#prs-book-cover-figure img");
+    if (hasCover) return;
+
+    const titleEl = qs("#prs-book-title");
+    const authorEl = qs("#prs-book-author");
+
+    const titleText = titleEl && titleEl.textContent ? titleEl.textContent.trim() : "";
+    const authorText = authorEl && authorEl.textContent ? authorEl.textContent.trim() : "";
+
+    const placeholderTitle = titleText || "Untitled Book";
+    const placeholderAuthor = authorText || "Unknown Author";
+
+    placeholder.innerHTML = "";
+
+    const titleNode = document.createElement("h3");
+    titleNode.textContent = placeholderTitle;
+
+    const authorNode = document.createElement("p");
+    authorNode.textContent = placeholderAuthor;
+
+    placeholder.appendChild(titleNode);
+    placeholder.appendChild(authorNode);
+  }
+
   // ---------- Edición: Pages ----------
   function setupPages() {
     const wrap = qs("#fld-pages");
@@ -1013,6 +1041,7 @@
 
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
+    setupCoverPlaceholder();
     setupPages();
     setupLibraryPagesInlineEdit();
     setupPurchaseDate();

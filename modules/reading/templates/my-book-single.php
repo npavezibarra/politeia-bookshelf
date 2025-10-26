@@ -137,7 +137,31 @@ wp_localize_script(
 	background:#eee; border-radius:12px;
 	}
 	.prs-cover-img{ width:100%; height:100%; object-fit:cover; display:block; }
-	.prs-cover-placeholder{ width:100%; height:100%; background:#ddd; }
+        .prs-cover-placeholder{
+        width:100%;
+        height:100%;
+        min-height:180px;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        justify-content:center;
+        text-align:center;
+        background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
+        color:#fff;
+        font-family:'Inter', sans-serif;
+        border-radius:8px;
+        padding:10px;
+        }
+        .prs-cover-placeholder h3{
+        font-size:1.2rem;
+        font-weight:700;
+        margin:0;
+        }
+        .prs-cover-placeholder p{
+        font-size:1rem;
+        font-style:italic;
+        margin:5px 0 0 0;
+        }
 
 	/* Tipos y tablas */
         .prs-box h2{ margin:0 0 8px; }
