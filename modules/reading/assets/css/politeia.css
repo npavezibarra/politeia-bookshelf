@@ -1095,14 +1095,6 @@ button#owning-contact-save {
 	margin-top: 15px;
 }
 
-span#purchase-channel-form {
-	margin: 0px;
-}
-
-#purchase-channel-form>div {
-	margin-bottom:5px;
-}
-
 
 /* Container */
 .prs-stars {
@@ -1411,29 +1403,80 @@ span#purchase-channel-form {
         opacity: 1;
 }
 
+/* === PURCHASE ROW LAYOUT === */
 .prs-purchase-row {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 2rem;
-        margin-top: 1rem;
-        margin-bottom: 1rem;
+        gap: 3rem;
+        margin-top: 1.5rem;
+        margin-bottom: 2rem;
 }
 
+/* Each field takes equal width */
 .prs-purchase-field {
         flex: 1;
 }
 
-.prs-purchase-field label {
+/* Labels consistent with the rest of the form */
+.prs-purchase-field .label {
         display: block;
         font-weight: 600;
-        color: #555;
-        margin-bottom: 4px;
+        color: #333;
+        margin-bottom: 6px;
 }
 
-@media (max-width: 600px) {
+/* Align input groups neatly */
+.prs-purchase-field .prs-inline-actions {
+        display: block;
+        margin-top: 4px;
+}
+
+/* Date and select input styles */
+.prs-purchase-field input[type="date"],
+.prs-purchase-field select,
+.prs-purchase-field input[type="text"] {
+        padding: 6px 8px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+}
+
+/* Inline group for select + input */
+#fld-purchase-channel .prs-inline-actions div {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+}
+
+/* Buttons tidy and uniform */
+.prs-purchase-field .prs-btn {
+        font-size: 13px;
+        border-radius: 4px;
+        border: none;
+        margin-right: 6px;
+        margin-top: 6px;
+        cursor: pointer;
+}
+
+#purchase-date-save,
+#purchase-channel-save {
+        background: #4a73ff;
+        color: #fff;
+}
+
+#purchase-date-cancel,
+#purchase-channel-cancel {
+        background: #777;
+        color: #fff;
+}
+
+/* Responsive stacking */
+@media (max-width: 768px) {
         .prs-purchase-row {
                 flex-direction: column;
-                gap: 1rem;
+                gap: 2rem;
         }
 }

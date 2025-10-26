@@ -418,8 +418,8 @@ wp_localize_script(
                                 <a href="#" id="purchase-date-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
                                 <span id="purchase-date-form" style="display:none;" class="prs-inline-actions">
                                         <input type="date" id="purchase-date-input" value="<?php echo $ub->purchase_date ? esc_attr( $ub->purchase_date ) : ''; ?>" />
-                                        <button type="button" id="purchase-date-save" class="prs-btn" style="padding:4px 10px;">Save</button>
-                                        <button type="button" id="purchase-date-cancel" class="prs-btn" style="padding:4px 10px;background:#777;">Cancel</button>
+                                        <button type="button" id="purchase-date-save" class="prs-btn">Save</button>
+                                        <button type="button" id="purchase-date-cancel" class="prs-btn">Cancel</button>
                                         <span id="purchase-date-status" class="prs-help"></span>
                                 </span>
                         </div>
@@ -449,10 +449,10 @@ wp_localize_script(
                                         </select>
                                         <input type="text" id="purchase-place-input" placeholder="<?php esc_attr_e( 'Which?', 'politeia-reading' ); ?>"
                                                         value="<?php echo $ub->purchase_place ? esc_attr( $ub->purchase_place ) : ''; ?>"
-                                                        style="display: <?php echo $ub->purchase_channel ? 'inline-block' : 'none'; ?>; margin-left:8px; width:220px;" />
+                                                        style="display: <?php echo $ub->purchase_channel ? 'inline-block' : 'none'; ?>;" />
                                         </div>
-                                        <button type="button" id="purchase-channel-save" class="prs-btn" style="padding:4px 10px;">Save</button>
-                                        <button type="button" id="purchase-channel-cancel" class="prs-btn" style="padding:4px 10px;background:#777;">Cancel</button>
+                                        <button type="button" id="purchase-channel-save" class="prs-btn">Save</button>
+                                        <button type="button" id="purchase-channel-cancel" class="prs-btn">Cancel</button>
                                         <span id="purchase-channel-status" class="prs-help"></span>
                                 </span>
                         </div>
