@@ -49,12 +49,28 @@ $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 
 
 $current_type = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
 
-$user_cover_id  = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
-$canon_cover_id = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
-$final_cover_id = $user_cover_id ?: $canon_cover_id;
-$cover_url      = isset( $book->cover_url ) ? trim( (string) $book->cover_url ) : '';
-$cover_source   = $final_cover_id ? '' : ( isset( $book->cover_source ) ? trim( (string) $book->cover_source ) : '' );
-$has_image      = $final_cover_id > 0 || ! empty( $cover_url );
+$user_cover_id      = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
+$canon_cover_id     = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
+$user_cover_url     = isset( $ub->cover_url ) ? trim( (string) $ub->cover_url ) : '';
+$user_cover_source  = $user_cover_url ? trim( isset( $ub->cover_source ) ? (string) $ub->cover_source : '' ) : '';
+$book_cover_url     = isset( $book->cover_url ) ? trim( (string) $book->cover_url ) : '';
+$book_cover_source  = $book_cover_url ? trim( isset( $book->cover_source ) ? (string) $book->cover_source : '' ) : '';
+$cover_url          = '';
+$cover_source       = '';
+$final_cover_id     = 0;
+
+if ( $user_cover_url ) {
+        $cover_url     = $user_cover_url;
+        $cover_source  = $user_cover_source;
+} else {
+        $final_cover_id = $user_cover_id ?: $canon_cover_id;
+        if ( 0 === $final_cover_id && $book_cover_url ) {
+                $cover_url    = $book_cover_url;
+                $cover_source = $book_cover_source;
+        }
+}
+
+$has_image = ( $final_cover_id > 0 ) || '' !== $cover_url;
 
 /** Encolar assets */
 wp_enqueue_style( 'politeia-reading' );

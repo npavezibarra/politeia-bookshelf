@@ -194,6 +194,8 @@ class PRS_Cover_Upload_Feature {
                         $t,
                         array(
                                 'cover_attachment_id_user' => (int) $att_id,
+                                'cover_url'                => null,
+                                'cover_source'             => null,
                                 'updated_at'               => current_time( 'mysql', true ),
                         ),
                         array( 'id' => $user_book_id )
@@ -265,7 +267,6 @@ class PRS_Cover_Upload_Feature {
                 global $wpdb;
 
                 $user_books_table = $wpdb->prefix . 'politeia_user_books';
-                $books_table      = $wpdb->prefix . 'politeia_books';
 
                 $row = $wpdb->get_var(
                         $wpdb->prepare(
@@ -283,18 +284,18 @@ class PRS_Cover_Upload_Feature {
                 $now = current_time( 'mysql', true );
                 if ( $source_link ) {
                         $sql = $wpdb->prepare(
-                                "UPDATE {$books_table} SET cover_url = %s, cover_source = %s, updated_at = %s WHERE id = %d",
+                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = %s, cover_attachment_id_user = NULL, updated_at = %s WHERE id = %d",
                                 $image_url,
                                 $source_link,
                                 $now,
-                                $book_id
+                                $user_book_id
                         );
                 } else {
                         $sql = $wpdb->prepare(
-                                "UPDATE {$books_table} SET cover_url = %s, cover_source = NULL, updated_at = %s WHERE id = %d",
+                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = NULL, cover_attachment_id_user = NULL, updated_at = %s WHERE id = %d",
                                 $image_url,
                                 $now,
-                                $book_id
+                                $user_book_id
                         );
                 }
 
@@ -375,7 +376,6 @@ class PRS_Cover_Upload_Feature {
                 global $wpdb;
 
                 $user_books_table = $wpdb->prefix . 'politeia_user_books';
-                $books_table      = $wpdb->prefix . 'politeia_books';
 
                 $owns_book = $wpdb->get_var(
                         $wpdb->prepare(
@@ -394,18 +394,20 @@ class PRS_Cover_Upload_Feature {
 
                 if ( $cover_source ) {
                         $sql = $wpdb->prepare(
-                                "UPDATE {$books_table} SET cover_url = %s, cover_source = %s, updated_at = %s WHERE id = %d",
+                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = %s, cover_attachment_id_user = NULL, updated_at = %s WHERE book_id = %d AND user_id = %d",
                                 $cover_url,
                                 $cover_source,
                                 $now,
-                                $book_id
+                                $book_id,
+                                $user_id
                         );
                 } else {
                         $sql = $wpdb->prepare(
-                                "UPDATE {$books_table} SET cover_url = %s, cover_source = NULL, updated_at = %s WHERE id = %d",
+                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = NULL, cover_attachment_id_user = NULL, updated_at = %s WHERE book_id = %d AND user_id = %d",
                                 $cover_url,
                                 $now,
-                                $book_id
+                                $book_id,
+                                $user_id
                         );
                 }
 

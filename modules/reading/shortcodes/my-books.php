@@ -81,6 +81,9 @@ add_shortcode(
               ub.type_book,
               ub.pages,
               ub.counterparty_name,
+              ub.cover_attachment_id_user,
+              ub.cover_url AS user_cover_url,
+              ub.cover_source AS user_cover_source,
               (
                       SELECT start_date
                       FROM $l l
@@ -192,9 +195,21 @@ add_shortcode(
                                 <td class="prs-library__info">
                                 <div class="prs-library__cover">
                                 <?php
-                                if ( $r->cover_attachment_id ) {
+                                $user_cover_id     = isset( $r->cover_attachment_id_user ) ? (int) $r->cover_attachment_id_user : 0;
+                                $user_cover_url    = isset( $r->user_cover_url ) ? trim( (string) $r->user_cover_url ) : '';
+                                $user_cover_source = $user_cover_url ? trim( isset( $r->user_cover_source ) ? (string) $r->user_cover_source : '' ) : '';
+                                $book_cover_id     = isset( $r->cover_attachment_id ) ? (int) $r->cover_attachment_id : 0;
+                                $book_cover_url    = isset( $r->cover_url ) ? trim( (string) $r->cover_url ) : '';
+                                $book_cover_source = $book_cover_url ? trim( isset( $r->cover_source ) ? (string) $r->cover_source : '' ) : '';
+
+                                if ( $user_cover_url ) {
+                                        echo '<img class="prs-library__cover-image" src="' . esc_url( $user_cover_url ) . '" alt="' . esc_attr( $r->title ) . '" />';
+                                        if ( $user_cover_source ) {
+                                                echo '<div class="prs-library__cover-attribution"><a href="' . esc_url( $user_cover_source ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'View on Google Books', 'politeia-reading' ) . '</a></div>';
+                                        }
+                                } elseif ( $user_cover_id ) {
                                         echo wp_get_attachment_image(
-                                                (int) $r->cover_attachment_id,
+                                                $user_cover_id,
                                                 'thumbnail',
                                                 false,
                                                 array(
@@ -202,10 +217,20 @@ add_shortcode(
                                                         'alt'   => sanitize_text_field( $r->title ),
                                                 )
                                         );
-                                } elseif ( ! empty( $r->cover_url ) ) {
-                                        echo '<img class="prs-library__cover-image" src="' . esc_url( $r->cover_url ) . '" alt="' . esc_attr( $r->title ) . '" />';
-                                        if ( ! empty( $r->cover_source ) ) {
-                                                echo '<div class="prs-library__cover-attribution"><a href="' . esc_url( $r->cover_source ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'View on Google Books', 'politeia-reading' ) . '</a></div>';
+                                } elseif ( $book_cover_id ) {
+                                        echo wp_get_attachment_image(
+                                                $book_cover_id,
+                                                'thumbnail',
+                                                false,
+                                                array(
+                                                        'class' => 'prs-library__cover-image',
+                                                        'alt'   => sanitize_text_field( $r->title ),
+                                                )
+                                        );
+                                } elseif ( $book_cover_url ) {
+                                        echo '<img class="prs-library__cover-image" src="' . esc_url( $book_cover_url ) . '" alt="' . esc_attr( $r->title ) . '" />';
+                                        if ( $book_cover_source ) {
+                                                echo '<div class="prs-library__cover-attribution"><a href="' . esc_url( $book_cover_source ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'View on Google Books', 'politeia-reading' ) . '</a></div>';
                                         }
                                 } else {
                                         echo '<div class="prs-library__cover-placeholder" aria-hidden="true"></div>';
