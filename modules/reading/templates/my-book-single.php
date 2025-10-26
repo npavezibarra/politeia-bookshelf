@@ -118,7 +118,7 @@ wp_localize_script(
 <style>
         /* Maqueta general */
         .prs-back-link-wrap{
-        margin-top:10px;
+        margin-top:20px;
         font-size:14px;
         }
         .prs-back-link{
@@ -161,7 +161,7 @@ wp_localize_script(
         width:100%;
         height:400px;
         padding:24px;
-        border-radius:20px;
+        border-radius:8px;
         background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
         color:#111;
         font-family:'Inter', sans-serif;
