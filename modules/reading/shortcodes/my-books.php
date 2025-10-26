@@ -96,6 +96,7 @@ add_shortcode(
              b.year,
              b.cover_attachment_id,
              b.cover_url,
+             b.cover_source,
              b.slug,
               {$book_pages_select} AS book_total_pages
         FROM $ub ub
@@ -203,6 +204,9 @@ add_shortcode(
                                         );
                                 } elseif ( ! empty( $r->cover_url ) ) {
                                         echo '<img class="prs-library__cover-image" src="' . esc_url( $r->cover_url ) . '" alt="' . esc_attr( $r->title ) . '" />';
+                                        if ( ! empty( $r->cover_source ) ) {
+                                                echo '<div class="prs-library__cover-attribution"><a href="' . esc_url( $r->cover_source ) . '" target="_blank" rel="noopener noreferrer">' . esc_html__( 'View on Google Books', 'politeia-reading' ) . '</a></div>';
+                                        }
                                 } else {
                                         echo '<div class="prs-library__cover-placeholder" aria-hidden="true"></div>';
                                 }

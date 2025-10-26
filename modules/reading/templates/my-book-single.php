@@ -49,6 +49,13 @@ $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 
 
 $current_type = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
 
+$user_cover_id  = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
+$canon_cover_id = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
+$final_cover_id = $user_cover_id ?: $canon_cover_id;
+$cover_url      = isset( $book->cover_url ) ? trim( (string) $book->cover_url ) : '';
+$cover_source   = $final_cover_id ? '' : ( isset( $book->cover_source ) ? trim( (string) $book->cover_source ) : '' );
+$has_image      = $final_cover_id > 0 || ! empty( $cover_url );
+
 /** Encolar assets */
 wp_enqueue_style( 'politeia-reading' );
 wp_enqueue_script( 'politeia-my-book' ); // asegúrate de registrar este JS en tu plugin/tema
@@ -68,8 +75,9 @@ wp_localize_script(
                 'type_book'     => (string) $current_type,
                 'title'         => (string) $book->title,
                 'author'        => (string) $book->author,
-                'cover_url'     => isset( $book->cover_url ) ? (string) $book->cover_url : '',
+                'cover_url'     => $cover_url,
                 'language'      => isset( $book->language ) ? (string) $book->language : '',
+                'cover_source'  => $cover_source,
         )
 );
 ?>
@@ -152,14 +160,8 @@ wp_localize_script(
 
 	<!-- Columna izquierda: portada -->
 	<div id="prs-book-cover" class="prs-box">
-		<?php
-		$user_cover_id  = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
-		$canon_cover_id = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
-                $final_cover_id = $user_cover_id ?: $canon_cover_id;
-                $cover_url      = isset( $book->cover_url ) ? trim( (string) $book->cover_url ) : '';
-                $has_image      = $final_cover_id > 0 || ! empty( $cover_url );
-                ?>
                 <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
+                <figure class="prs-book-cover" id="prs-book-cover-figure">
                 <?php if ( $has_image ) : ?>
                         <?php
                         if ( $final_cover_id ) {
@@ -186,10 +188,24 @@ wp_localize_script(
                 <?php else : ?>
                         <div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
                 <?php endif; ?>
-		<div class="prs-cover-overlay">
-			<?php echo do_shortcode( '[prs_cover_button]' ); ?>
-		</div>
-		</div>
+                        <figcaption
+                                id="prs-cover-attribution-wrap"
+                                class="prs-book-cover__caption <?php echo $cover_source ? '' : 'is-hidden'; ?>"
+                                aria-hidden="<?php echo $cover_source ? 'false' : 'true'; ?>">
+                                <a
+                                        id="prs-cover-attribution"
+                                        class="prs-book-cover__link <?php echo $cover_source ? '' : 'is-hidden'; ?>"
+                                        <?php echo $cover_source ? 'href="' . esc_url( $cover_source ) . '"' : ''; ?>
+                                        target="_blank"
+                                        rel="noopener noreferrer">
+                                        <?php esc_html_e( 'View on Google Books', 'politeia-reading' ); ?>
+                                </a>
+                        </figcaption>
+                </figure>
+                <div class="prs-cover-overlay">
+                        <?php echo do_shortcode( '[prs_cover_button]' ); ?>
+                </div>
+                </div>
 	</div>
 
 	<!-- Arriba centro: título/info y metacampos -->

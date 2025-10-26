@@ -29,142 +29,41 @@
     if (!normalized) return '';
     normalized = normalized.replace(/^\/?languages\//, '');
     normalized = normalized.replace(/^\/?lang\//, '');
-    normalized = normalized.replace(/[^a-z]/g, '');
-    if (!normalized) return '';
-    if (normalized.length === 3) return normalized;
-    // Handle unexpected formats like `eng-US` or `en`.
+    normalized = normalized.replace(/_/g, '-');
+
     if (normalized.length === 2) {
-      const map = {
-        en: 'eng',
-        es: 'spa',
-        fr: 'fre',
-        pt: 'por',
-        de: 'ger',
-        it: 'ita',
-        ca: 'cat',
-        gl: 'glg',
-      };
-      return map[normalized] || '';
+      return normalized;
     }
-    if (normalized.length > 3) {
-      return normalized.slice(0, 3);
+
+    const map = {
+      eng: 'en',
+      spa: 'es',
+      esl: 'es',
+      fre: 'fr',
+      fra: 'fr',
+      por: 'pt',
+      ger: 'de',
+      deu: 'de',
+      ita: 'it',
+      cat: 'ca',
+      glg: 'gl',
+    };
+
+    if (map[normalized]) {
+      return map[normalized];
     }
+
+    if (normalized.length > 2) {
+      return normalized.slice(0, 2);
+    }
+
     return normalized;
-  }
-
-  function detectLanguageFromTitle(title) {
-    if (!title || typeof title !== 'string') {
-      return '';
-    }
-
-    const lower = title.toLowerCase();
-    const checks = [
-      { code: 'spa', pattern: /[áéíóúñü¿¡]/i },
-      { code: 'fre', pattern: /[àâçéèêëîïôûùüÿœæ]/i },
-      { code: 'por', pattern: /[ãõáâàéêíóôúç]/i },
-      { code: 'ita', pattern: /[àèéìíîòóùú]/i },
-      { code: 'ger', pattern: /[äöüß]/i },
-      { code: 'cat', pattern: /[àèéíïòóú·]/i },
-      { code: 'glg', pattern: /[áéíóúñ]/i },
-    ];
-
-    for (const { code, pattern } of checks) {
-      if (pattern.test(lower)) {
-        return code;
-      }
-    }
-
-    // Default fallback.
-    return 'eng';
   }
 
   function resolveBookLanguage(details) {
     const metaCode = normalizeLanguageCode(details.language);
     if (metaCode) return metaCode;
-    const inferred = detectLanguageFromTitle(details.title || '');
-    return normalizeLanguageCode(inferred) || 'eng';
-  }
-
-  function normalizeTitle(title) {
-    if (!title) return '';
-    return title
-      .toLowerCase()
-      .replace(/[\u2018\u2019\u201C\u201D"'`]/g, '')
-      .replace(/[^\p{L}\p{N}\s]/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  function titlesMatchExact(a, b) {
-    return normalizeTitle(a) === normalizeTitle(b);
-  }
-
-  function titleSimilarity(a, b) {
-    const normA = normalizeTitle(a);
-    const normB = normalizeTitle(b);
-    if (!normA || !normB) return 0;
-    const wordsA = new Set(normA.split(' '));
-    const wordsB = new Set(normB.split(' '));
-    if (!wordsA.size || !wordsB.size) return 0;
-    let overlap = 0;
-    wordsA.forEach((word) => {
-      if (wordsB.has(word)) {
-        overlap += 1;
-      }
-    });
-    return overlap / Math.max(wordsA.size, wordsB.size);
-  }
-
-  function languageFromEdition(entry) {
-    if (!entry) return '';
-    const languages = Array.isArray(entry.languages) ? entry.languages : [];
-    for (const candidate of languages) {
-      if (candidate) {
-        if (typeof candidate === 'string') {
-          const normalized = normalizeLanguageCode(candidate);
-          if (normalized) return normalized;
-        } else if (candidate && typeof candidate === 'object') {
-          const normalized = normalizeLanguageCode(candidate.key || candidate.id || '');
-          if (normalized) return normalized;
-        }
-      }
-    }
-    return '';
-  }
-
-  function collectEditionCovers(editions, preferredLanguage) {
-    const seen = new Set();
-    const prioritized = [];
-    const fallback = [];
-
-    editions.forEach((entry) => {
-      if (!entry || !Array.isArray(entry.covers)) {
-        return;
-      }
-      const editionLang = languageFromEdition(entry);
-      const matchesPreferred = preferredLanguage && editionLang
-        ? editionLang === preferredLanguage
-        : false;
-
-      entry.covers.forEach((coverId) => {
-        if (typeof coverId !== 'number' || seen.has(coverId)) {
-          return;
-        }
-        const item = {
-          id: coverId,
-          url: `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`,
-          language: editionLang || '',
-        };
-        seen.add(coverId);
-        if (matchesPreferred) {
-          prioritized.push(item);
-        } else {
-          fallback.push(item);
-        }
-      });
-    });
-
-    return prioritized.concat(fallback).slice(0, 3);
+    return 'en';
   }
 
   // ====== Upload & crop modal ======
@@ -289,7 +188,29 @@
     applyTransform();
   }
 
-  function replaceCover(src, bustCache) {
+  function updateCoverAttribution(source) {
+    const wrap = document.getElementById('prs-cover-attribution-wrap');
+    const link = document.getElementById('prs-cover-attribution');
+    if (!wrap || !link) {
+      return;
+    }
+
+    if (source) {
+      link.href = source;
+      wrap.classList.remove('is-hidden');
+      link.classList.remove('is-hidden');
+      wrap.setAttribute('aria-hidden', 'false');
+      link.setAttribute('aria-hidden', 'false');
+    } else {
+      wrap.classList.add('is-hidden');
+      link.classList.add('is-hidden');
+      wrap.setAttribute('aria-hidden', 'true');
+      link.setAttribute('aria-hidden', 'true');
+      link.removeAttribute('href');
+    }
+  }
+
+  function replaceCover(src, bustCache, source) {
     if (!src) return;
     const frame = document.getElementById('prs-cover-frame');
     if (!frame) return;
@@ -316,6 +237,9 @@
     if (title) img.alt = title;
 
     frame.classList.add('has-image');
+    if (typeof source === 'string') {
+      updateCoverAttribution(source);
+    }
   }
 
   function onSave() {
@@ -378,9 +302,10 @@
 
         setStatus('Saved');
         const src = out.data.src;
-        replaceCover(src, true);
+        replaceCover(src, true, '');
         if (window.PRS_BOOK) {
           window.PRS_BOOK.cover_url = '';
+          window.PRS_BOOK.cover_source = '';
         }
         closeModal();
       } catch (error) {
@@ -524,7 +449,7 @@
     }
   }
 
-  function renderSearchResults(items) {
+  function renderSearchResults(items, preferredLanguage) {
     if (!searchGridEl) return;
     searchGridEl.innerHTML = '';
     selectedSearchOption = null;
@@ -533,26 +458,69 @@
       searchSetBtn.textContent = 'Set Cover';
     }
 
+    if (!items.length) {
+      const empty = el('div', 'prs-cover-search-modal__empty');
+      empty.textContent = 'No covers found. You can upload your own image instead.';
+      searchGridEl.appendChild(empty);
+      return;
+    }
+
     items.forEach((item) => {
       if (!item || !item.url) return;
-      const thumb = el('button', 'prs-cover-search-modal__thumb');
-      thumb.type = 'button';
+      const option = el('div', 'prs-cover-option');
+      option.dataset.coverUrl = item.url;
+      if (item.source) option.dataset.sourceLink = item.source;
+      if (item.language) option.dataset.language = item.language;
+
+      const selectBtn = el('button', 'prs-cover-option__select');
+      selectBtn.type = 'button';
       const img = el('img');
       img.src = item.url;
-      img.alt = 'Book cover option';
-      thumb.appendChild(img);
+      img.alt = item.title ? `Cover for ${item.title}` : 'Book cover option';
+      img.loading = 'lazy';
+      selectBtn.appendChild(img);
+
       if (item.language) {
         const badge = el('span', 'prs-cover-search-modal__lang');
         badge.textContent = item.language.toUpperCase();
-        thumb.appendChild(badge);
+        if (preferredLanguage && item.language.toLowerCase() !== preferredLanguage.toLowerCase()) {
+          badge.classList.add('is-mismatch');
+        }
+        selectBtn.appendChild(badge);
       }
-      thumb.addEventListener('click', () => selectSearchResult(item, thumb));
-      searchGridEl.appendChild(thumb);
+
+      selectBtn.addEventListener('click', (event) => {
+        event.preventDefault();
+        selectSearchResult(item, option);
+      });
+
+      option.appendChild(selectBtn);
+
+      const attribution = el('a', 'prs-cover-attribution');
+      attribution.textContent = 'View on Google Books';
+      attribution.target = '_blank';
+      attribution.rel = 'noopener noreferrer';
+      if (item.source) {
+        attribution.href = item.source;
+        attribution.setAttribute('aria-hidden', 'false');
+      } else {
+        attribution.classList.add('is-hidden');
+        attribution.setAttribute('aria-hidden', 'true');
+      }
+      option.appendChild(attribution);
+
+      searchGridEl.appendChild(option);
     });
   }
 
   function selectSearchResult(option, node) {
-    selectedSearchOption = option;
+    const dataset = (node && node.dataset) || {};
+    selectedSearchOption = {
+      url: option?.url || dataset.coverUrl || '',
+      source: option?.source || dataset.sourceLink || '',
+      language: option?.language || dataset.language || '',
+      title: option?.title || ''
+    };
     if (searchGridEl) {
       Array.from(searchGridEl.children).forEach((child) => {
         child.classList.toggle('is-selected', child === node);
@@ -564,130 +532,44 @@
     setSearchMessage('Click “Set Cover” to use the selected image.');
   }
 
-  async function fetchOpenLibrary(params) {
-    const urlParams = new URLSearchParams();
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) {
-        urlParams.append(key, value);
-      }
-    });
-    urlParams.set('limit', params.limit || '5');
+  document.addEventListener('DOMContentLoaded', () => {
+    const initialSource = (window.PRS_BOOK && typeof window.PRS_BOOK.cover_source === 'string')
+      ? window.PRS_BOOK.cover_source
+      : '';
+    updateCoverAttribution(initialSource || '');
+  });
 
-    const response = await fetch(`https://openlibrary.org/search.json?${urlParams.toString()}`);
-    if (!response.ok) {
-      throw new Error('search_failed');
-    }
-    const data = await response.json();
-    return Array.isArray(data?.docs) ? data.docs : [];
-  }
-
-  async function fetchWorkAndEditions(title, author, language) {
-    const cleanTitle = (title || '').trim();
-    if (!cleanTitle) return [];
-
-    const lang = normalizeLanguageCode(language);
-    const params = {
-      title: cleanTitle,
-      limit: '10'
-    };
-    if (author) {
-      params.author = author;
-    }
-    if (lang) {
-      params.language = lang;
-    }
-
-    let docs = [];
-    try {
-      docs = await fetchOpenLibrary(params);
-    } catch (error) {
-      console.error('[PRS] open library search failed', error);
-      return [];
-    }
-
-    if (!docs.length) {
-      return [];
-    }
-
-    const normalizedAuthor = (author || '').toLowerCase();
-    const exactTitleLang = [];
-    const exactTitleAuthor = [];
-    const partialLang = [];
-    const fallback = [];
-
-    docs.forEach((doc, index) => {
-      if (!doc || typeof doc !== 'object') {
-        return;
-      }
-      const workKey = typeof doc.key === 'string' ? doc.key : '';
-      if (!workKey || !workKey.startsWith('/works/')) {
-        return;
-      }
-
-      const docTitle = doc.title || '';
-      const docLanguages = Array.isArray(doc.language)
-        ? doc.language.map((code) => normalizeLanguageCode(code)).filter(Boolean)
-        : [];
-      const hasLanguage = lang && docLanguages.includes(lang);
-      const docAuthors = Array.isArray(doc.author_name)
-        ? doc.author_name.map((name) => (name || '').toLowerCase())
-        : [];
-      const hasAuthor = normalizedAuthor
-        ? docAuthors.some((name) => name.includes(normalizedAuthor))
-        : false;
-      const isExact = titlesMatchExact(cleanTitle, docTitle);
-      const similarity = titleSimilarity(cleanTitle, docTitle);
-
-      const bucketItem = {
-        doc,
-        index,
-      };
-
-      if (isExact && hasLanguage) {
-        exactTitleLang.push(bucketItem);
-      } else if (isExact && hasAuthor) {
-        exactTitleAuthor.push(bucketItem);
-      } else if (similarity >= 0.6 && hasLanguage) {
-        partialLang.push(bucketItem);
-      } else {
-        fallback.push(bucketItem);
-      }
+  async function fetchGoogleCovers(title, author, language) {
+    const body = new URLSearchParams({
+      action: 'prs_cover_search_google',
+      nonce: (window.PRS_COVER && PRS_COVER.searchNonce) || '',
+      title,
+      author: author || '',
+      language: language || ''
     });
 
-    const orderedBuckets = [exactTitleLang, exactTitleAuthor, partialLang, fallback];
-    let chosenDoc = null;
-    for (const bucket of orderedBuckets) {
-      if (bucket.length) {
-        bucket.sort((a, b) => a.index - b.index);
-        chosenDoc = bucket[0].doc;
-        break;
-      }
+    const response = await fetch((window.PRS_COVER && PRS_COVER.ajax) || '', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      credentials: 'same-origin',
+      body
+    });
+
+    const out = await response.json();
+    if (!out || !out.success) {
+      const message = (out && out.data && out.data.message) || out?.message || 'search_failed';
+      const error = new Error(message);
+      error.code = message;
+      throw error;
     }
 
-    if (!chosenDoc) {
-      return [];
-    }
-
-    const workKey = chosenDoc.key;
-
-    let editions = [];
-    try {
-      const editionResp = await fetch(`https://openlibrary.org${workKey}/editions.json?limit=10`);
-      if (!editionResp.ok) {
-        throw new Error('editions_failed');
-      }
-      const editionData = await editionResp.json();
-      editions = Array.isArray(editionData?.entries) ? editionData.entries : [];
-    } catch (error) {
-      console.error('[PRS] open library editions fetch failed', error);
-      return [];
-    }
-
-    if (!editions.length) {
-      return [];
-    }
-
-    return collectEditionCovers(editions, lang);
+    const items = Array.isArray(out.data?.items) ? out.data.items : [];
+    return items.slice(0, 3).map((item) => ({
+      url: item.url || '',
+      language: item.language || '',
+      source: item.source || '',
+      title: item.title || ''
+    })).filter((item) => !!item.url);
   }
 
   async function handleSearchClick() {
@@ -706,22 +588,29 @@
 
     try {
       const language = resolveBookLanguage(details);
-      const results = await fetchWorkAndEditions(title, author, language);
+      const results = await fetchGoogleCovers(title, author, language);
       setSearchLoadingState(false);
       if (!results.length) {
         setSearchMessage('No covers found. You can upload your own image instead.');
         return;
       }
-      renderSearchResults(results);
+      renderSearchResults(results, language);
       if (language) {
-        setSearchMessage(`Select a cover below and click “Set Cover”. Showing ${language.toUpperCase()} editions when possible.`);
+        setSearchMessage(`Select a cover below and click “Set Cover”. Showing ${language.toUpperCase()} results when possible.`);
       } else {
         setSearchMessage('Select a cover below and click “Set Cover”.');
       }
     } catch (error) {
       console.error('[PRS] cover search error', error);
       setSearchLoadingState(false);
-      setSearchMessage('There was an error searching for covers. Please try again later.');
+      const msg = error?.code || error?.message;
+      if (msg === 'missing_api_key') {
+        setSearchMessage('Google Books API key is missing. Add it in the plugin settings.');
+      } else if (msg === 'no_results') {
+        setSearchMessage('No covers found. You can upload your own image instead.');
+      } else {
+        setSearchMessage('There was an error searching for covers. Please try again later.');
+      }
     }
   }
 
@@ -740,7 +629,8 @@
       nonce: (window.PRS_COVER && PRS_COVER.externalNonce) || '',
       user_book_id,
       book_id,
-      image_url: selectedSearchOption.url
+      image_url: selectedSearchOption.url,
+      source_link: selectedSearchOption.source || ''
     });
 
     try {
@@ -756,9 +646,11 @@
       }
 
       const src = out.data.src || selectedSearchOption.url;
-      replaceCover(src, false);
+      const sourceLink = out.data.source || selectedSearchOption.source || '';
+      replaceCover(src, false, sourceLink);
       if (window.PRS_BOOK) {
         window.PRS_BOOK.cover_url = src;
+        window.PRS_BOOK.cover_source = sourceLink;
       }
       closeSearchModal();
     } catch (error) {
