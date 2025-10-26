@@ -41,17 +41,18 @@ add_shortcode(
                 $l  = $wpdb->prefix . 'politeia_loans';
 
 		// Total para paginación
-		$total = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"
+               $total = (int) $wpdb->get_var(
+                       $wpdb->prepare(
+                               "
         SELECT COUNT(*)
         FROM $ub ub
         JOIN $b  b ON b.id = ub.book_id
         WHERE ub.user_id = %d
+          AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
     ",
-				$user_id
-			)
-		);
+                               $user_id
+                       )
+               );
 
 		if ( $total === 0 ) {
 			return '<p>' . esc_html__( 'Your library is empty. Add a book first.', 'politeia-reading' ) . '</p>';
@@ -72,9 +73,9 @@ add_shortcode(
                 $book_pages_select = $books_has_total_pages ? 'b.total_pages' : 'NULL';
 
                 // Traer fila sólo de la página actual
-                $rows = $wpdb->get_results(
-                        $wpdb->prepare(
-                                "
+               $rows = $wpdb->get_results(
+                       $wpdb->prepare(
+                               "
        SELECT ub.id AS user_book_id,
               ub.reading_status,
               ub.owning_status,
@@ -103,14 +104,18 @@ add_shortcode(
         FROM $ub ub
         JOIN $b b ON b.id = ub.book_id
         WHERE ub.user_id = %d
+          AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
         ORDER BY b.title ASC
         LIMIT %d OFFSET %d
     ",
-				$user_id,
-				$per_page,
-				$offset
-			)
-		);
+                                $user_id,
+                                $per_page,
+                                $offset
+                        )
+                );
+
+               error_log( '[PRS_MY_BOOKS] Query executed for user ' . $user_id );
+               error_log( '[PRS_MY_BOOKS] Returned ' . count( $rows ) . ' rows.' );
 
 		// Helper de enlaces de paginación
 		$base_url = remove_query_arg( 'prs_page' );
