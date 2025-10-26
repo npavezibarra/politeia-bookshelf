@@ -33,13 +33,17 @@ class PRS_Cover_Upload_Feature {
                 wp_register_script(
                         'prs-cover-upload',
                         plugins_url( 'templates/features/cover-upload/cover-upload.js', dirname( __DIR__, 2 ) ),
-                        array( 'jquery' ),
+                        array( 'jquery', 'prs-cover-modal' ),
                         '0.1.0',
                         true
                 );
 
-		wp_enqueue_style( 'prs-cover-upload' );
-		wp_enqueue_script( 'prs-cover-upload' );
+                wp_enqueue_style( 'prs-cover-upload' );
+                wp_enqueue_script( 'prs-cover-upload' );
+
+                if ( ! has_action( 'wp_footer', array( __CLASS__, 'render_modal_template' ) ) ) {
+                        add_action( 'wp_footer', array( __CLASS__, 'render_modal_template' ) );
+                }
 
 		// Datos para AJAX
 		global $wpdb;
@@ -67,6 +71,18 @@ class PRS_Cover_Upload_Feature {
                                 'nonce'   => wp_create_nonce( 'prs_cover_nonce' ),
                         )
                 );
+        }
+
+        public static function render_modal_template() {
+                if ( ! get_query_var( 'prs_book_slug' ) ) {
+                        return;
+                }
+
+                $template = trailingslashit( POLITEIA_READING_PATH ) . 'templates/partials/prs-cover-modal.php';
+
+                if ( file_exists( $template ) ) {
+                        include $template;
+                }
         }
 
         public static function shortcode_button( $atts ) {

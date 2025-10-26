@@ -7,47 +7,6 @@
 	place-items: center; /* centra todo el panel */
 }
 
-.prs-cover-modal__content{
-        background-color: #fff;
-        box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-        border-radius: 12px;
-        padding: 24px;
-        width: 90%;
-        max-width: 500px;
-}
-
-/* Título + barra superior */
-.prs-cover-modal__title{
-	font-size: 20px;
-	font-weight: 700;
-	margin-bottom: 10px;
-}
-.prs-cover-modal__topbar{
-	display: flex;
-	align-items: center;
-	gap: 12px;
-}
-
-/* Stage centrado y más pequeño (280x450) */
-.prs-crop-wrap{
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        margin-bottom: 0;
-}
-.prs-crop-stage{
-        position: relative;
-}
-
-.prs-crop-controls{
-        display: flex;
-        align-items: center;
-        gap: 12px;
-}
-.prs-crop-label{ color:#444; font-size:14px; }
-.prs-crop-slider{ width: 100%; }
-.prs-cover-status{ display:block; font-size:13px; }
-
 /* Botón del overlay sobre la portada */
 .prs-cover-actions{
         display:flex;
@@ -83,29 +42,6 @@
 .prs-cover-btn:focus-visible{ background:#2a2a2a; }
 
 /* Botón base ya usado en tu tema */
-.prs-btn{
-        padding:8px 16px;
-        border-radius:6px;
-        font-weight:600;
-        transition:background-color 0.2s;
-        background-color:#3b82f6;
-        color:#fff;
-        border:none;
-        cursor:pointer;
-}
-.prs-btn:not(.prs-btn--ghost){
-        background-color:#3b82f6;
-        color:#fff;
-}
-.prs-btn--ghost{
-        background-color:transparent;
-        color:#4b5563;
-        border:1px solid #d1d5db;
-}
-.prs-btn:hover:not(.prs-btn--ghost){
-        background-color:#2563eb;
-}
-
 /* Modal de búsqueda de portadas */
 .prs-cover-search-modal{
         position:fixed;

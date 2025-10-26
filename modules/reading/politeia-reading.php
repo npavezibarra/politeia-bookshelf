@@ -89,12 +89,19 @@ add_action(
 	function () {
 
 		// Estilos base del plugin
-		wp_register_style(
-			'politeia-reading',
-			POLITEIA_READING_URL . 'assets/css/politeia.css',
-			array(),
-			POLITEIA_READING_VERSION
-		);
+                wp_register_style(
+                        'politeia-reading',
+                        POLITEIA_READING_URL . 'assets/css/politeia.css',
+                        array(),
+                        POLITEIA_READING_VERSION
+                );
+
+                wp_register_style(
+                        'prs-cover-modal',
+                        POLITEIA_READING_URL . 'assets/css/prs-cover-modal.css',
+                        array(),
+                        POLITEIA_READING_VERSION
+                );
 
 		// Scripts varios del plugin
 		wp_register_script(
@@ -114,19 +121,29 @@ add_action(
 		);
 
 		// Script de la página “Mi Libro”
-		wp_register_script(
-			'politeia-my-book',
-			POLITEIA_READING_URL . 'assets/js/my-book.js',
-			array( 'jquery' ),
-			POLITEIA_READING_VERSION,
-			true
-		);
+                wp_register_script(
+                        'politeia-my-book',
+                        POLITEIA_READING_URL . 'assets/js/my-book.js',
+                        array( 'jquery' ),
+                        POLITEIA_READING_VERSION,
+                        true
+                );
+
+                wp_register_script(
+                        'prs-cover-modal',
+                        POLITEIA_READING_URL . 'assets/js/prs-cover-modal.js',
+                        array(),
+                        POLITEIA_READING_VERSION,
+                        true
+                );
 
 		// Carga condicional en la vista de un libro individual (manteniendo tu lógica)
-		if ( get_query_var( 'prs_book_slug' ) ) {
-			wp_enqueue_style( 'politeia-reading' );
-			wp_enqueue_script( 'politeia-my-book' );
-		}
+                if ( get_query_var( 'prs_book_slug' ) ) {
+                        wp_enqueue_style( 'politeia-reading' );
+                        wp_enqueue_style( 'prs-cover-modal' );
+                        wp_enqueue_script( 'politeia-my-book' );
+                        wp_enqueue_script( 'prs-cover-modal' );
+                }
 
 		// Importante: los assets del módulo Post Reading (post-reading.css/js)
 		// los encola automáticamente Politeia_Post_Reading_Render solo en single posts.

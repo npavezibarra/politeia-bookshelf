@@ -83,46 +83,61 @@
     }
 
     modal = el('div', 'prs-cover-modal');
-    const panel = el('div', 'prs-cover-modal__content');
-    panel.innerHTML = `
-      <div class="prs-cover-modal__title text-2xl font-bold mb-6 text-gray-800">Upload Book Cover</div>
 
-      <div class="main-content-grid flex gap-6">
-        <div class="prs-crop-wrap" id="drag-drop-area">
-          <div id="cropStage" class="flex flex-col justify-center items-center relative" style="width: 220px; height: 350px;" title="Drop JPEG or PNG file here">
-            <div id="cropPlaceholder" class="absolute inset-0 flex flex-col justify-center items-center p-4 text-center pointer-events-auto">
-              <svg class="mx-auto h-12 w-12 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 14.9V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3.1" />
-                <path d="M16 16l-4-4-4 4" />
-                <path d="M12 12v9" />
-              </svg>
-              <p class="text-gray-600 mt-2 font-medium">Drag JPEG or PNG here (220x350 Preview)</p>
-              <p class="text-xs text-gray-500">or click upload</p>
+    let panel = null;
+    const template = document.getElementById('prs-cover-modal-template');
+    if (template && 'content' in template) {
+      const fragment = template.content.cloneNode(true);
+      const found = fragment.querySelector('.prs-cover-modal__content');
+      if (found) {
+        panel = found;
+        modal.appendChild(panel);
+      }
+    }
+
+    if (!panel) {
+      panel = el('div', 'prs-cover-modal__content');
+      panel.innerHTML = `
+        <div class="prs-cover-modal__title">Upload Book Cover</div>
+
+        <div class="prs-cover-modal__grid">
+          <div class="prs-crop-wrap" id="drag-drop-area">
+            <div id="cropStage" class="prs-crop-stage" title="Drop JPEG or PNG file here">
+              <div id="cropPlaceholder" class="prs-crop-placeholder">
+                <svg class="prs-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M4 14.9V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3.1" />
+                  <path d="M16 16l-4-4-4 4" />
+                  <path d="M12 12v9" />
+                </svg>
+                <p>Drag JPEG or PNG here (220x350 Preview)</p>
+                <span>or click upload</span>
+              </div>
+              <img id="previewImage" src="" alt="Book Cover Preview" style="display:none;">
             </div>
-            <img id="previewImage" src="" alt="Book Cover Preview" style="display: none;">
+          </div>
+
+          <div class="prs-cover-controls" id="upload-settings-setting">
+            <div class="prs-file-input">
+              <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
+              <label for="fileInput" class="prs-btn prs-btn--ghost">Choose File</label>
+            </div>
+
+            <div class="prs-crop-controls">
+              <label for="zoomSlider">Zoom (1x - 4x)</label>
+              <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
+            </div>
+
+            <span id="statusMessage" class="prs-cover-status">Awaiting file upload.</span>
+
+            <div class="prs-btn-group">
+              <button class="prs-btn prs-btn--ghost" type="button" id="prs-cover-cancel">Cancel</button>
+              <button class="prs-btn" type="button" id="prs-cover-save">Save</button>
+            </div>
           </div>
         </div>
-
-        <div class="flex-1 flex flex-col gap-4 border border-gray-300 rounded-lg bg-gray-50 p-4" id="upload-settings-setting">
-          <div class="prs-cover-modal__topbar">
-            <input type="file" id="fileInput" accept="image/jpeg, image/png" class="hidden">
-            <label for="fileInput" class="prs-btn prs-btn--ghost w-full text-center block cursor-pointer hover:bg-gray-100">Choose File</label>
-          </div>
-
-          <div class="prs-crop-controls">
-            <span class="prs-crop-label text-sm text-gray-600 font-medium whitespace-nowrap">Zoom (1x - 4x)</span>
-            <input class="prs-crop-slider" type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
-          </div>
-
-          <span id="statusMessage" class="prs-cover-status text-sm font-medium text-gray-500 w-full pt-2 text-center">Awaiting file upload.</span>
-
-          <div class="flex flex-col gap-2 mt-2">
-            <button class="prs-btn prs-btn--ghost hover:bg-gray-50 w-full" type="button" id="prs-cover-cancel">Cancel</button>
-            <button class="prs-btn hover:bg-blue-700 w-full" type="button" id="prs-cover-save">Save</button>
-          </div>
-        </div>
-      </div>
-    `;
+      `;
+      modal.appendChild(panel);
+    }
 
     stage = panel.querySelector('#cropStage');
     placeholderEl = panel.querySelector('#cropPlaceholder');
@@ -132,67 +147,30 @@
     cancelBtn = panel.querySelector('#prs-cover-cancel');
     saveBtn = panel.querySelector('#prs-cover-save');
     imgEl = panel.querySelector('#previewImage');
-    modal.appendChild(panel);
     document.body.appendChild(modal);
 
     modal.addEventListener('click', (e) => {
       if (e.target === modal) closeModal();
     });
     cancelBtn.addEventListener('click', closeModal);
-    fileInput.addEventListener('change', (event) => {
-      handleFiles(event.target.files);
-      event.target.value = '';
-    });
-    slider.addEventListener('input', onZoomChange);
     saveBtn.addEventListener('click', onSave);
-
-    if (stage) {
-      const preventDefaults = (event) => {
-        event.preventDefault();
-        event.stopPropagation();
-      };
-
-      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach((ev) => {
-        stage.addEventListener(ev, preventDefaults);
-      });
-
-      ['dragenter', 'dragover'].forEach((ev) => {
-        stage.addEventListener(ev, () => {
-          stage.classList.add('drag-active');
-          stage.classList.remove('error');
-        });
-      });
-
-      ['dragleave', 'drop'].forEach((ev) => {
-        stage.addEventListener(ev, () => {
-          stage.classList.remove('drag-active');
-        });
-      });
-
-      stage.addEventListener('drop', (event) => {
-        if (event.dataTransfer) {
-          handleFiles(event.dataTransfer.files);
-        }
-      });
-
-      stage.addEventListener('click', () => {
-        if (fileInput) {
-          fileInput.click();
-        }
-      });
-    }
-
-    if (placeholderEl) {
-      placeholderEl.addEventListener('click', () => {
-        if (fileInput) {
-          fileInput.click();
-        }
-      });
-    }
 
     if (statusEl) {
       setStatus(statusEl.textContent || 'Awaiting file upload.');
     }
+
+    document.dispatchEvent(new CustomEvent('prsCoverModal:ready', {
+      detail: {
+        stage,
+        placeholder: placeholderEl,
+        status: statusEl,
+        fileInput,
+        previewImage: imgEl,
+        zoomSlider: slider,
+        onFiles: handleFiles,
+        onZoomChange,
+      }
+    }));
   }
 
   function closeModal() {
@@ -214,13 +192,16 @@
 
   function resetStatusClasses() {
     if (!statusEl) return;
-    statusEl.className = 'prs-cover-status text-sm font-medium w-full pt-2 text-center';
+    statusEl.className = 'prs-cover-status';
+    statusEl.style.color = '#6b7280';
   }
 
-  function setStatus(txt, extraClass) {
+  function setStatus(txt, color) {
     if (!statusEl) return;
     resetStatusClasses();
-    statusEl.classList.add(extraClass || 'text-gray-500');
+    if (color) {
+      statusEl.style.color = color;
+    }
     statusEl.textContent = txt || '';
   }
 
@@ -243,7 +224,7 @@
       if (stage) {
         stage.classList.add('error');
       }
-      setStatus('Error: Only JPEG and PNG images are accepted.', 'text-red-500');
+      setStatus('Error: Only JPEG and PNG images are accepted.', '#ef4444');
       if (imgEl) {
         imgEl.style.display = 'none';
         imgEl.removeAttribute('src');
@@ -272,7 +253,7 @@
       const dataUrl = event.target.result;
       loadIntoStage(dataUrl, () => {
         const sizeKb = (file.size / 1024).toFixed(1);
-        setStatus(`File loaded: ${file.name} (${sizeKb} KB)`, 'text-green-600');
+        setStatus(`File loaded: ${file.name} (${sizeKb} KB)`, '#16a34a');
       });
     };
     reader.readAsDataURL(file);
@@ -377,7 +358,7 @@
 
   function onSave() {
     if (!imgEl || naturalW <= 0 || naturalH <= 0) {
-      setStatus('Choose an image', 'text-red-500');
+      setStatus('Choose an image', '#ef4444');
       return;
     }
 
@@ -400,7 +381,7 @@
 
     canvas.toBlob(async (blob) => {
       if (!blob) {
-        setStatus('Render error');
+        setStatus('Render error', '#ef4444');
         return;
       }
       setStatus('Saving…');
@@ -429,11 +410,11 @@
         });
         const out = await resp.json();
         if (!out || !out.success) {
-          setStatus(out?.data?.message || out?.message || 'Error');
+          setStatus(out?.data?.message || out?.message || 'Error', '#ef4444');
           return;
         }
 
-        setStatus('Saved');
+        setStatus('Saved', '#16a34a');
         const src = out.data.src;
         replaceCover(src, true, '');
         if (window.PRS_BOOK) {
@@ -442,7 +423,7 @@
         }
         closeModal();
       } catch (error) {
-        setStatus('Error');
+        setStatus('Error', '#ef4444');
         console.error('[PRS] cover save error', error);
       }
     }, 'image/jpeg', 0.9);

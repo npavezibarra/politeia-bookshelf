@@ -1,0 +1,174 @@
+/* === Upload Book Cover Modal === */
+
+.prs-cover-modal__content {
+  background: #fff;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+  border-radius: 12px;
+  padding: 24px;
+  width: 90%;
+  max-width: 520px;
+  margin: 0 auto;
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+}
+
+.prs-cover-modal__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin-bottom: 20px;
+}
+
+.prs-cover-modal__grid {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+}
+
+.prs-crop-wrap {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.prs-crop-stage {
+  width: 220px;
+  height: 350px;
+  border: 2px dashed #9ca3af;
+  border-radius: 8px;
+  background: #fafafa;
+  overflow: hidden;
+  position: relative;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.prs-crop-stage.drag-active {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+}
+
+.prs-crop-stage.error {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+}
+
+.prs-crop-placeholder {
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  padding: 10px;
+  transition: opacity 0.2s;
+}
+
+.prs-crop-placeholder span {
+  display: block;
+  font-size: 0.75rem;
+  color: #9ca3af;
+}
+
+.prs-upload-icon {
+  width: 48px;
+  height: 48px;
+  margin-bottom: 8px;
+  color: #9ca3af;
+}
+
+#previewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
+}
+
+.prs-cover-controls {
+  flex: 1;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  background-color: #f9fafb;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.prs-crop-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.prs-crop-controls label {
+  font-size: 0.9rem;
+  color: #4b5563;
+  white-space: nowrap;
+}
+
+#zoomSlider {
+  flex: 1;
+}
+
+.prs-cover-status {
+  text-align: center;
+  font-size: 0.875rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.prs-btn {
+  display: block;
+  width: 100%;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  text-align: center;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  border: none;
+}
+
+.prs-btn--ghost {
+  background-color: transparent;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.prs-btn--ghost:hover {
+  background-color: #f3f4f6;
+}
+
+.prs-btn:not(.prs-btn--ghost) {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+.prs-btn:not(.prs-btn--ghost):hover {
+  background-color: #2563eb;
+}
+
+.prs-btn-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.prs-hidden-input {
+  display: none;
+}
+
+.prs-file-input {
+  width: 100%;
+}
+
+@media (max-width: 640px) {
+  .prs-cover-modal__grid {
+    flex-direction: column;
+  }
+
+  .prs-crop-stage {
+    margin: 0 auto 16px;
+  }
+}
