@@ -102,8 +102,6 @@ add_shortcode(
              b.author,
              b.year,
              b.cover_attachment_id,
-             b.cover_url,
-             b.cover_source,
              b.slug,
               {$book_pages_select} AS book_total_pages
         FROM $ub ub
