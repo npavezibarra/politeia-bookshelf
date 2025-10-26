@@ -149,18 +149,51 @@ wp_localize_script(
         background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
         color:#fff;
         font-family:'Inter', sans-serif;
-        border-radius:8px;
+        border-radius:10px;
         padding:10px;
+        position:relative;
+        overflow:hidden;
         }
         .prs-cover-placeholder h3{
-        font-size:1.2rem;
+        font-size:1.25rem;
         font-weight:700;
         margin:0;
+        line-height:1.4;
+        padding:0 10px;
         }
         .prs-cover-placeholder p{
         font-size:1rem;
         font-style:italic;
-        margin:5px 0 0 0;
+        margin:6px 0 0;
+        opacity:0.9;
+        }
+        .prs-cover-overlay{
+        position:absolute;
+        inset:0;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        background:transparent;
+        pointer-events:none;
+        }
+        .prs-cover-actions{
+        pointer-events:all;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        align-items:center;
+        }
+        .prs-cover-btn{
+        background:#1a1a1a;
+        color:#fff;
+        border-radius:6px;
+        padding:8px 16px;
+        font-weight:600;
+        transition:background 0.2s;
+        }
+        .prs-cover-btn:hover{
+        background:#333;
         }
 
 	/* Tipos y tablas */
@@ -261,7 +294,9 @@ wp_localize_script(
                         </figcaption>
                 </figure>
                 <div class="prs-cover-overlay">
-                        <?php echo do_shortcode( '[prs_cover_button]' ); ?>
+                        <div class="prs-cover-actions">
+                                <?php echo do_shortcode( '[prs_cover_button]' ); ?>
+                        </div>
                 </div>
                 </div>
 	</div>
@@ -276,7 +311,7 @@ wp_localize_script(
                         </button>
                 </h2>
                 <div class="prs-meta">
-                <strong><?php echo esc_html( $book->author ); ?></strong>
+                <strong class="prs-book-author"><?php echo esc_html( $book->author ); ?></strong>
                 <?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
                 </div>
 

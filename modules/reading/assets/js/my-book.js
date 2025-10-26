@@ -43,11 +43,14 @@
     const hasCover = qs("#prs-book-cover-figure img");
     if (hasCover) return;
 
-    const titleEl = qs("#prs-book-title");
-    const authorEl = qs("#prs-book-author");
+    const titleEl = qs(".prs-book-title__text") || qs(".prs-book-title");
+    const authorEl = qs(".prs-book-author");
 
-    const titleText = titleEl && titleEl.textContent ? titleEl.textContent.trim() : "";
-    const authorText = authorEl && authorEl.textContent ? authorEl.textContent.trim() : "";
+    const localizedTitle = (window.PRS_BOOK && typeof PRS_BOOK.title === "string") ? PRS_BOOK.title : "";
+    const localizedAuthor = (window.PRS_BOOK && typeof PRS_BOOK.author === "string") ? PRS_BOOK.author : "";
+
+    const titleText = titleEl && titleEl.textContent ? titleEl.textContent.trim() : localizedTitle.trim();
+    const authorText = authorEl && authorEl.textContent ? authorEl.textContent.trim() : localizedAuthor.trim();
 
     const placeholderTitle = titleText || "Untitled Book";
     const placeholderAuthor = authorText || "Unknown Author";

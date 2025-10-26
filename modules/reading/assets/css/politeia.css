@@ -1266,18 +1266,23 @@ span#purchase-channel-form {
         background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
         color:#fff;
         font-family:'Inter', sans-serif;
-        border-radius:8px;
+        border-radius:10px;
         padding:10px;
+        position:relative;
+        overflow:hidden;
         }
         .prs-cover-placeholder h3{
-        font-size:1.2rem;
+        font-size:1.25rem;
         font-weight:700;
         margin:0;
+        line-height:1.4;
+        padding:0 10px;
         }
         .prs-cover-placeholder p{
         font-size:1rem;
         font-style:italic;
-        margin:5px 0 0 0;
+        margin:6px 0 0;
+        opacity:0.9;
         }
         .prs-book-cover{ margin:0; display:flex; flex-direction:column; height:100%; }
         .prs-book-cover__caption{ margin:0; padding:8px 10px; text-align:center; font-size:12px; background:#fff; color:#0a58ca; border-top:1px solid rgba(0,0,0,.08); }
@@ -1289,20 +1294,33 @@ span#purchase-channel-form {
 
         /* Botón centrado dentro del frame */
         .prs-cover-overlay{
-        position:absolute; inset:0;
-	display:flex; align-items:center; justify-content:center;
-	pointer-events:auto; /* ← así los botones siempre reciben el click */
-	}
-	#prs-cover-upload{
-	pointer-events:auto;
-	padding:10px 14px; border:none; border-radius:10px; cursor:pointer;
-	background:#111; color:#fff; box-shadow:none; outline:none;
-	}
-	#prs-cover-remove{
-	pointer-events:auto;
-	padding:10px 14px; border:none; border-radius:10px; cursor:pointer;
-	background:#777; color:#fff; box-shadow:none; outline:none; margin-left:8px;
-	}
+        position:absolute;
+        inset:0;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        background:transparent;
+        pointer-events:none;
+        }
+        .prs-cover-actions{
+        pointer-events:all;
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        align-items:center;
+        }
+        .prs-cover-btn{
+        background:#1a1a1a;
+        color:#fff;
+        border-radius:6px;
+        padding:8px 16px;
+        font-weight:600;
+        transition:background 0.2s;
+        }
+        .prs-cover-btn:hover{
+        background:#333;
+        }
 
 	/* Mostrar overlay siempre si no hay imagen; o solo al hover si hay imagen */
 	.prs-cover-frame.has-image .prs-cover-overlay{ opacity:0; transition:opacity .2s; }
