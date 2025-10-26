@@ -29,24 +29,27 @@ if ( ! defined( 'ABSPATH' ) ) {
                                 </div>
                         </div>
 
-                        <div class="prs-cover-controls" id="upload-settings-setting">
-                                <div class="prs-file-input">
-                                        <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
-                                        <label for="fileInput" class="prs-btn prs-btn--ghost">Choose File</label>
-                                </div>
+                       <div class="prs-cover-controls" id="upload-settings-setting">
 
-                                <div class="prs-crop-controls">
-                                        <label for="zoomSlider">Zoom (1x - 4x)</label>
-                                        <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
-                                </div>
+                               <div class="prs-file-input">
+                                       <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
+                                       <label for="fileInput" class="prs-btn prs-btn--ghost">Choose File</label>
+                               </div>
 
-                                <span id="statusMessage" class="prs-cover-status">Awaiting file upload.</span>
+                               <div class="prs-crop-controls">
+                                       <div class="prs-zoom-group">
+                                               <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
+                                               <label for="zoomSlider" class="prs-zoom-label">Zoom (1x – 4x)</label>
+                                       </div>
+                               </div>
 
-                                <div class="prs-btn-group">
-                                        <button class="prs-btn prs-btn--ghost" type="button" id="prs-cover-cancel">Cancel</button>
-                                        <button class="prs-btn" type="button" id="prs-cover-save">Save</button>
-                                </div>
-                        </div>
+                               <span id="statusMessage" class="prs-cover-status">Awaiting file upload.</span>
+
+                               <div class="prs-btn-group">
+                                       <button class="prs-btn prs-btn--ghost" type="button" id="prs-cover-cancel">Cancel</button>
+                                       <button class="prs-btn" type="button" id="prs-cover-save">Save</button>
+                               </div>
+                       </div>
                 </div>
         </div>
 </template>

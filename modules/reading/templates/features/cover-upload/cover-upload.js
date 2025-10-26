@@ -117,14 +117,17 @@
           </div>
 
           <div class="prs-cover-controls" id="upload-settings-setting">
+
             <div class="prs-file-input">
               <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
               <label for="fileInput" class="prs-btn prs-btn--ghost">Choose File</label>
             </div>
 
             <div class="prs-crop-controls">
-              <label for="zoomSlider">Zoom (1x - 4x)</label>
-              <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
+              <div class="prs-zoom-group">
+                <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
+                <label for="zoomSlider" class="prs-zoom-label">Zoom (1x – 4x)</label>
+              </div>
             </div>
 
             <span id="statusMessage" class="prs-cover-status">Awaiting file upload.</span>

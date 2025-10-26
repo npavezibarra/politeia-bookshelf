@@ -20,11 +20,14 @@
 
 .prs-cover-modal__grid {
   display: flex;
+  justify-content: space-between;
   gap: 1.5rem;
   align-items: flex-start;
+  flex-wrap: nowrap;
 }
 
 .prs-crop-wrap {
+  flex: 0 0 220px;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -84,7 +87,14 @@
 }
 
 .prs-cover-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#upload-settings-setting {
   flex: 1;
+  max-width: 50%;
   border: 1px solid #d1d5db;
   border-radius: 8px;
   background-color: #f9fafb;
@@ -92,22 +102,30 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  box-sizing: border-box;
 }
 
 .prs-crop-controls {
   display: flex;
+  justify-content: center;
+}
+
+.prs-zoom-group {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 12px;
+  width: 100%;
 }
 
-.prs-crop-controls label {
-  font-size: 0.9rem;
+.prs-zoom-group input[type="range"] {
+  width: 80%;
+  margin-bottom: 4px;
+}
+
+.prs-zoom-label {
+  font-size: 0.85rem;
   color: #4b5563;
-  white-space: nowrap;
-}
-
-#zoomSlider {
-  flex: 1;
+  text-align: center;
 }
 
 .prs-cover-status {
@@ -170,5 +188,10 @@
 
   .prs-crop-stage {
     margin: 0 auto 16px;
+  }
+
+  #upload-settings-setting {
+    max-width: 100%;
+    width: 100%;
   }
 }
