@@ -1428,9 +1428,12 @@ button#owning-contact-save {
 
 /* === INLINE ACTIONS RESET === */
 .prs-inline-actions {
+        margin-left: 0; /* reset unwanted indentation */
+}
+
+.prs-purchase-field span.prs-inline-actions {
         display: block;
         margin-top: 6px;
-        margin-left: 0; /* reset unwanted indentation */
 }
 
 /* === INPUTS === */
