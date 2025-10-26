@@ -504,12 +504,12 @@ wp_localize_script(
                                         $needs_contact = in_array( $ub->owning_status, array( 'borrowed', 'borrowing', 'sold' ), true ) && ! $has_contact;
                                 ?>
                                 <div id="owning-contact-form" class="prs-contact-form" style="display: <?php echo ( $needs_contact && ! $is_digital ) ? 'block' : 'none'; ?>;">
-                                        <label for="owning-contact-name" class="prs-contact-label"><?php esc_html_e( 'Name', 'politeia-reading' ); ?></label>
                                         <input type="text" id="owning-contact-name" class="prs-contact-input"
+                                                placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>"
                                                 value="<?php echo $ub->counterparty_name ? esc_attr( $ub->counterparty_name ) : ''; ?>" <?php disabled( $is_digital ); ?> />
 
-                                        <label for="owning-contact-email" class="prs-contact-label"><?php esc_html_e( 'Email', 'politeia-reading' ); ?></label>
                                         <input type="email" id="owning-contact-email" class="prs-contact-input"
+                                                placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>"
                                                 value="<?php echo $ub->counterparty_email ? esc_attr( $ub->counterparty_email ) : ''; ?>" <?php disabled( $is_digital ); ?> />
 
                                         <div class="prs-contact-actions">

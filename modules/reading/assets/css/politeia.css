@@ -1494,9 +1494,10 @@ button#owning-contact-save {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 3rem;
+        gap: 1rem;
         margin-top: 1.5rem;
         margin-bottom: 2rem;
+        border-top: 1px solid #d7d9dd;
 }
 
 .prs-status-field {
