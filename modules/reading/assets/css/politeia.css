@@ -1408,7 +1408,7 @@ button#owning-contact-save {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 3rem;
+        gap: 1rem;
         margin-top: 1.5rem;
         margin-bottom: 2rem;
 }
@@ -1485,6 +1485,6 @@ button#owning-contact-save {
 @media (max-width: 768px) {
         .prs-purchase-row {
                 flex-direction: column;
-                gap: 2rem;
+                gap: 1rem;
         }
 }
