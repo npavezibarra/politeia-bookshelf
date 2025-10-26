@@ -49,7 +49,12 @@ $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 
 
 $current_type = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
 
-$user_cover_raw     = isset( $ub->cover_attachment_id_user ) ? $ub->cover_attachment_id_user : '';
+$user_cover_raw     = '';
+if ( isset( $ub->cover_reference ) && '' !== $ub->cover_reference && null !== $ub->cover_reference ) {
+        $user_cover_raw = $ub->cover_reference;
+} elseif ( isset( $ub->cover_attachment_id_user ) ) {
+        $user_cover_raw = $ub->cover_attachment_id_user;
+}
 $parsed_user_cover  = method_exists( 'PRS_Cover_Upload_Feature', 'parse_cover_value' ) ? PRS_Cover_Upload_Feature::parse_cover_value( $user_cover_raw ) : array(
         'attachment_id' => is_numeric( $user_cover_raw ) ? (int) $user_cover_raw : 0,
         'url'           => '',

@@ -76,3 +76,5 @@ By centralizing schema definitions in `create_or_update_tables()`, gating change
 - **Hook order:** `register_activation_hook()` → `activate()` → `maybe_upgrade()` (on `plugins_loaded`)
 - **Schema source:** `create_or_update_tables()` in `class-activator.php`
 
+- **v1.2** — Replaced `cover_attachment_id_user` (`BIGINT`) with the text-based `cover_reference` column on `wp_politeia_user_books` to support Google Books URLs and uploaded cover references.
+

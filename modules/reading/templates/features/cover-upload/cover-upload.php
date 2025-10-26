@@ -80,7 +80,7 @@ class PRS_Cover_Upload_Feature {
 	/**
 	 * Recibe un dataURL (JPG/PNG) ya recortado a 240x450,
 	 * lo guarda como attachment, borra portadas anteriores del mismo user_book,
-	 * y actualiza politeia_user_books.cover_attachment_id_user
+        * y actualiza politeia_user_books.cover_reference
 	 */
 	public static function ajax_save_crop() {
 		if ( ! is_user_logged_in() ) {
@@ -194,11 +194,11 @@ class PRS_Cover_Upload_Feature {
                 $wpdb->update(
                         $t,
                         array(
-                                'cover_attachment_id_user' => (int) $att_id,
-                                'updated_at'               => current_time( 'mysql', true ),
+                                'cover_reference' => (string) (int) $att_id,
+                                'updated_at'      => current_time( 'mysql', true ),
                         ),
                         array( 'id' => $user_book_id ),
-                        array( '%d', '%s' ),
+                        array( '%s', '%s' ),
                         array( '%d' )
                 );
 
@@ -407,16 +407,18 @@ class PRS_Cover_Upload_Feature {
                 $clean_url      = esc_url_raw( $cover_url );
                 $clean_source   = $cover_source ? esc_url_raw( $cover_source ) : '';
                 $attachment_id  = self::sideload_cover_attachment( $clean_url, $user_id, $user_book_id );
-                $data          = array(
-                        'cover_attachment_id_user' => $attachment_id ? (int) $attachment_id : maybe_serialize( array_filter(
-                                array(
-                                        'external_cover' => $clean_url,
-                                        'source'         => $clean_source,
-                                )
-                        ) ),
-                        'updated_at'               => current_time( 'mysql', true ),
+                $payload       = array_filter(
+                        array(
+                                'external_cover' => $clean_url,
+                                'source'         => $clean_source,
+                        )
                 );
-                $format        = $attachment_id ? array( '%d', '%s' ) : array( '%s', '%s' );
+                $reference     = $attachment_id ? (string) (int) $attachment_id : ( $payload ? maybe_serialize( $payload ) : '' );
+                $data          = array(
+                        'cover_reference' => $reference,
+                        'updated_at'      => current_time( 'mysql', true ),
+                );
+                $format        = array( '%s', '%s' );
 
                 $updated = $wpdb->update(
                         $table,
@@ -557,12 +559,21 @@ class PRS_Cover_Upload_Feature {
                 );
 
                 if ( $raw instanceof WP_Post ) {
-                        $raw = isset( $raw->cover_attachment_id_user ) ? $raw->cover_attachment_id_user : '';
+                        if ( isset( $raw->cover_reference ) ) {
+                                $raw = $raw->cover_reference;
+                        } elseif ( isset( $raw->cover_attachment_id_user ) ) {
+                                $raw = $raw->cover_attachment_id_user;
+                        } else {
+                                $raw = '';
+                        }
                 }
 
-                if ( is_numeric( $raw ) && (int) $raw > 0 ) {
-                        $data['attachment_id'] = (int) $raw;
-                        return $data;
+                if ( is_array( $raw ) ) {
+                        $raw = maybe_serialize( $raw );
+                }
+
+                if ( is_numeric( $raw ) && ! is_string( $raw ) ) {
+                        $raw = (string) (int) $raw;
                 }
 
                 if ( is_string( $raw ) ) {
@@ -572,8 +583,26 @@ class PRS_Cover_Upload_Feature {
                                 return $data;
                         }
 
+                        if ( is_numeric( $raw ) && (int) $raw > 0 ) {
+                                $data['attachment_id'] = (int) $raw;
+                                return $data;
+                        }
+
+                        if ( 0 === strpos( $raw, 'attachment:' ) ) {
+                                $maybe_id = trim( substr( $raw, strlen( 'attachment:' ) ) );
+                                if ( is_numeric( $maybe_id ) ) {
+                                        $data['attachment_id'] = (int) $maybe_id;
+                                        return $data;
+                                }
+                        }
+
                         if ( 0 === strpos( $raw, 'url:' ) ) {
                                 $data['url'] = esc_url_raw( substr( $raw, 4 ) );
+                                return $data;
+                        }
+
+                        if ( filter_var( $raw, FILTER_VALIDATE_URL ) ) {
+                                $data['url'] = esc_url_raw( $raw );
                                 return $data;
                         }
 
@@ -587,6 +616,26 @@ class PRS_Cover_Upload_Feature {
                                 }
                                 if ( isset( $maybe['source'] ) ) {
                                         $data['source'] = esc_url_raw( (string) $maybe['source'] );
+                                }
+                                if ( isset( $maybe['path'] ) ) {
+                                        $data['url'] = esc_url_raw( (string) $maybe['path'] );
+                                }
+                                return $data;
+                        }
+
+                        $json = json_decode( $raw, true );
+                        if ( is_array( $json ) ) {
+                                if ( isset( $json['attachment_id'] ) && is_numeric( $json['attachment_id'] ) ) {
+                                        $data['attachment_id'] = (int) $json['attachment_id'];
+                                }
+                                if ( isset( $json['url'] ) ) {
+                                        $data['url'] = esc_url_raw( (string) $json['url'] );
+                                }
+                                if ( isset( $json['source'] ) ) {
+                                        $data['source'] = esc_url_raw( (string) $json['source'] );
+                                }
+                                if ( isset( $json['external_cover'] ) && '' === $data['url'] ) {
+                                        $data['url'] = esc_url_raw( (string) $json['external_cover'] );
                                 }
                         }
                 }
