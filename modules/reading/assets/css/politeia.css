@@ -1483,8 +1483,55 @@ button#owning-contact-save {
 
 /* Responsive stacking */
 @media (max-width: 768px) {
-        .prs-purchase-row {
+    .prs-purchase-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+/* === STATUS ROW === */
+.prs-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 3rem;
+        margin-top: 1.5rem;
+        margin-bottom: 2rem;
+}
+
+.prs-status-field {
+        flex: 1;
+}
+
+/* === LABELS === */
+.prs-status-field .label {
+        display: block;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 6px;
+}
+
+/* === SELECT ELEMENTS === */
+.prs-status-field select {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+}
+
+/* === LOCATION LINE === */
+.prs-location {
+        margin-top: 8px;
+        font-size: 13px;
+        color: #555;
+}
+
+/* === RESPONSIVE STACK === */
+@media (max-width: 768px) {
+        .prs-status-row {
                 flex-direction: column;
-                gap: 1rem;
+                gap: 2rem;
         }
 }
