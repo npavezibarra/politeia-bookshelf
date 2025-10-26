@@ -23,6 +23,67 @@
     }
   }
 
+  function formatAuthorName(raw) {
+    if (typeof raw !== "string") return "";
+
+    const normalized = raw.replace(/\s+/g, " ").trim();
+    if (!normalized) {
+      return "";
+    }
+
+    if (/et al\.?$/i.test(normalized)) {
+      return normalized;
+    }
+
+    const altDelimiters = [
+      /\s+and\s+/i,
+      /\s*&\s*/,
+      /\s*\/\s*/,
+      /\s*·\s*/,
+      /\s*•\s*/,
+      /\s*;\s*/,
+    ];
+
+    for (const delim of altDelimiters) {
+      if (delim.test(normalized)) {
+        const parts = normalized.split(delim).map(part => part.trim()).filter(Boolean);
+        if (parts.length > 1) {
+          return `${parts[0]} et al`;
+        }
+      }
+    }
+
+    if (normalized.includes(",")) {
+      const parts = normalized.split(",").map(part => part.trim()).filter(Boolean);
+      if (parts.length > 1) {
+        const suffixPattern = /^(?:Jr|Sr|II|III|IV|V|VI|VII|VIII|IX|X)\.?$/i;
+        let [firstPart, ...rest] = parts;
+        let firstAuthor = firstPart;
+
+        if (firstAuthor && !/\s/.test(firstAuthor) && rest.length) {
+          const potentialGiven = rest[0];
+          if (potentialGiven && /^(?:[A-Za-z\u00C0-\u017F]+(?:[\s-][A-Za-z\u00C0-\u017F.]+)*)$/.test(potentialGiven) && !suffixPattern.test(potentialGiven)) {
+            firstAuthor = `${firstAuthor}, ${potentialGiven}`;
+            rest = rest.slice(1);
+          }
+        }
+
+        if (rest.length && suffixPattern.test(rest[0])) {
+          firstAuthor = `${firstAuthor}, ${rest[0]}`;
+          rest = rest.slice(1);
+        }
+
+        if (rest.length > 0) {
+          return `${firstAuthor} et al`;
+        }
+
+        return firstAuthor;
+      }
+    }
+
+    return normalized;
+  }
+
   function ajaxPost(url, data) {
     return fetch(url, {
       method: "POST",
@@ -58,7 +119,10 @@
     }
 
     if (sourceAuthor) {
-      authorPlaceholder.textContent = sourceAuthor;
+      const formattedAuthor = formatAuthorName(sourceAuthor);
+      if (formattedAuthor) {
+        authorPlaceholder.textContent = formattedAuthor;
+      }
     }
   }
 

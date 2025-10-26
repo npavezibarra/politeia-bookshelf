@@ -164,7 +164,6 @@ wp_localize_script(
         }
         .prs-cover-author{
         margin:4px 0 0;
-        font-style:italic;
         opacity:0.9;
         font-size:clamp(14px, 2vw, 18px);
         }
