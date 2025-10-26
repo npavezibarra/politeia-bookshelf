@@ -14,6 +14,7 @@ class PRS_Cover_Upload_Feature {
                 add_action( 'wp_ajax_prs_cover_save_crop', array( __CLASS__, 'ajax_save_crop' ) );
                 add_action( 'wp_ajax_prs_cover_save_external', array( __CLASS__, 'ajax_save_external' ) );
                 add_action( 'wp_ajax_prs_cover_search_google', array( __CLASS__, 'ajax_search_google' ) );
+                add_action( 'wp_ajax_prs_save_cover_url', array( __CLASS__, 'ajax_save_cover_url' ) );
         }
 
 	public static function assets() {
@@ -29,13 +30,13 @@ class PRS_Cover_Upload_Feature {
 			array(),
 			'0.1.0'
 		);
-		wp_register_script(
-			'prs-cover-upload',
-			plugins_url( 'templates/features/cover-upload/cover-upload.js', dirname( __DIR__, 2 ) ),
-			array(),
-			'0.1.0',
-			true
-		);
+                wp_register_script(
+                        'prs-cover-upload',
+                        plugins_url( 'templates/features/cover-upload/cover-upload.js', dirname( __DIR__, 2 ) ),
+                        array( 'jquery' ),
+                        '0.1.0',
+                        true
+                );
 
 		wp_enqueue_style( 'prs-cover-upload' );
 		wp_enqueue_script( 'prs-cover-upload' );
@@ -55,6 +56,15 @@ class PRS_Cover_Upload_Feature {
                                 'onlyOne'     => 1,
                                 'externalNonce' => wp_create_nonce( 'prs_cover_save_external' ),
                                 'searchNonce'   => wp_create_nonce( 'prs_cover_search_google' ),
+                        )
+                );
+
+                wp_localize_script(
+                        'prs-cover-upload',
+                        'prs_cover_data',
+                        array(
+                                'ajaxurl' => admin_url( 'admin-ajax.php' ),
+                                'nonce'   => wp_create_nonce( 'prs_cover_nonce' ),
                         )
                 );
         }
@@ -298,6 +308,107 @@ class PRS_Cover_Upload_Feature {
                         array(
                                 'src' => $image_url,
                                 'source' => $source_link,
+                        )
+                );
+        }
+
+        /**
+         * Guarda la URL de portada seleccionada desde Google Books.
+         */
+        public static function ajax_save_cover_url() {
+                if ( ! is_user_logged_in() ) {
+                        wp_send_json_error( 'User not logged in.', 401 );
+                }
+
+                if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'prs_cover_nonce' ) ) {
+                        wp_send_json_error( 'Invalid nonce.', 403 );
+                }
+
+                $user_id       = get_current_user_id();
+                $book_id       = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $cover_url     = isset( $_POST['cover_url'] ) ? esc_url_raw( wp_unslash( $_POST['cover_url'] ) ) : '';
+                $cover_source  = isset( $_POST['cover_source'] ) ? esc_url_raw( wp_unslash( $_POST['cover_source'] ) ) : '';
+
+                if ( ! $book_id || '' === $cover_url ) {
+                        wp_send_json_error( 'Invalid data.', 400 );
+                }
+
+                if ( ! filter_var( $cover_url, FILTER_VALIDATE_URL ) ) {
+                        wp_send_json_error( 'Invalid cover URL.', 400 );
+                }
+
+                $scheme = wp_parse_url( $cover_url, PHP_URL_SCHEME );
+                if ( ! in_array( strtolower( (string) $scheme ), array( 'http', 'https' ), true ) ) {
+                        wp_send_json_error( 'Invalid cover URL scheme.', 400 );
+                }
+
+                $host = wp_parse_url( $cover_url, PHP_URL_HOST );
+                if ( ! $host || false === stripos( $host, 'books.google' ) ) {
+                        wp_send_json_error( 'Cover host not permitted.', 400 );
+                }
+
+                if ( $cover_source ) {
+                        if ( ! filter_var( $cover_source, FILTER_VALIDATE_URL ) ) {
+                                wp_send_json_error( 'Invalid source URL.', 400 );
+                        }
+
+                        $source_scheme = wp_parse_url( $cover_source, PHP_URL_SCHEME );
+                        if ( ! in_array( strtolower( (string) $source_scheme ), array( 'http', 'https' ), true ) ) {
+                                wp_send_json_error( 'Invalid source URL scheme.', 400 );
+                        }
+
+                        $source_host = wp_parse_url( $cover_source, PHP_URL_HOST );
+                        if ( ! $source_host || false === stripos( $source_host, 'books.google' ) ) {
+                                wp_send_json_error( 'Source host not permitted.', 400 );
+                        }
+                }
+
+                global $wpdb;
+
+                $user_books_table = $wpdb->prefix . 'politeia_user_books';
+                $books_table      = $wpdb->prefix . 'politeia_books';
+
+                $owns_book = $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT COUNT(*) FROM {$user_books_table} WHERE book_id = %d AND user_id = %d",
+                                $book_id,
+                                $user_id
+                        )
+                );
+
+                if ( ! $owns_book ) {
+                        wp_send_json_error( 'Permission denied.', 403 );
+                }
+
+                $now = current_time( 'mysql', true );
+
+                if ( $cover_source ) {
+                        $sql = $wpdb->prepare(
+                                "UPDATE {$books_table} SET cover_url = %s, cover_source = %s, updated_at = %s WHERE id = %d",
+                                $cover_url,
+                                $cover_source,
+                                $now,
+                                $book_id
+                        );
+                } else {
+                        $sql = $wpdb->prepare(
+                                "UPDATE {$books_table} SET cover_url = %s, cover_source = NULL, updated_at = %s WHERE id = %d",
+                                $cover_url,
+                                $now,
+                                $book_id
+                        );
+                }
+
+                $updated = $wpdb->query( $sql );
+
+                if ( false === $updated ) {
+                        wp_send_json_error( 'Database update failed.', 500 );
+                }
+
+                wp_send_json_success(
+                        array(
+                                'src'    => $cover_url,
+                                'source' => $cover_source,
                         )
                 );
         }

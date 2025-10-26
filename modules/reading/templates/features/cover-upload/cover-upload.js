@@ -324,6 +324,13 @@
   let searchPrevFocus = null;
   let searchKeydownListener = null;
 
+  function getAjaxConfig() {
+    const config = window.prs_cover_data || {};
+    const ajaxUrl = config.ajaxurl || window.ajaxurl || (window.PRS_COVER && PRS_COVER.ajax) || '';
+    const nonce = config.nonce || '';
+    return { ajaxUrl, nonce };
+  }
+
   function getSearchFocusableElements() {
     if (!searchModal) return [];
     const selectors = [
@@ -375,10 +382,16 @@
     const cancel = el('button', 'prs-btn prs-btn--ghost');
     cancel.type = 'button';
     cancel.textContent = 'Cancel';
-    searchSetBtn = el('button', 'prs-btn');
+    searchSetBtn = el('button', 'prs-btn prs-cover-set');
     searchSetBtn.type = 'button';
     searchSetBtn.textContent = 'Set Cover';
     searchSetBtn.disabled = true;
+    const { book_id } = getContext();
+    if (book_id) {
+      searchSetBtn.dataset.bookId = book_id;
+    } else if (searchSetBtn.dataset) {
+      delete searchSetBtn.dataset.bookId;
+    }
     footer.append(cancel, searchSetBtn);
 
     panel.append(title, searchMessageEl, searchGridEl, footer);
@@ -614,7 +627,7 @@
     }
   }
 
-  async function onSearchSetCover() {
+  function onSearchSetCover() {
     if (!selectedSearchOption || !selectedSearchOption.url) return;
     if (!searchSetBtn) return;
 
@@ -623,49 +636,65 @@
     searchSetBtn.textContent = 'Saving…';
     setSearchMessage('Saving selected cover…');
 
-    const { user_book_id, book_id } = getContext();
-    const body = new URLSearchParams({
-      action: 'prs_cover_save_external',
-      nonce: (window.PRS_COVER && PRS_COVER.externalNonce) || '',
-      user_book_id,
-      book_id,
-      image_url: selectedSearchOption.url,
-      source_link: selectedSearchOption.source || ''
-    });
+    const ajax = getAjaxConfig();
+    const bookId = parseInt(searchSetBtn.dataset.bookId || getContext().book_id || 0, 10);
 
-    try {
-      const resp = await fetch((window.PRS_COVER && PRS_COVER.ajax) || '', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-        credentials: 'same-origin',
-        body
-      });
-      const out = await resp.json();
-      if (!out || !out.success || !out.data) {
-        throw new Error(out?.data?.message || out?.message || 'save_failed');
+    if (!ajax.ajaxUrl || !bookId) {
+      setSearchMessage('Could not save the selected cover. Please try again.');
+      searchSetBtn.disabled = false;
+      searchSetBtn.textContent = originalText;
+      return;
+    }
+
+    const payload = {
+      action: 'prs_save_cover_url',
+      nonce: ajax.nonce,
+      book_id: bookId,
+      cover_url: selectedSearchOption.url,
+      cover_source: selectedSearchOption.source || ''
+    };
+
+    const jq = window.jQuery;
+
+    if (!jq || typeof jq.ajax !== 'function') {
+      searchSetBtn.disabled = false;
+      searchSetBtn.textContent = originalText;
+      setSearchMessage('Could not save the selected cover. Please try again.');
+      return;
+    }
+
+    jq.ajax({
+      url: ajax.ajaxUrl,
+      method: 'POST',
+      dataType: 'json',
+      data: payload,
+    }).done((res) => {
+      if (!res || !res.success) {
+        const errorMessage = res && res.data ? String(res.data) : 'Could not save the selected cover. Please try again.';
+        setSearchMessage(errorMessage);
+        searchSetBtn.disabled = false;
+        searchSetBtn.textContent = originalText;
+        return;
       }
 
-      const src = out.data.src || selectedSearchOption.url;
-      const sourceLink = out.data.source || selectedSearchOption.source || '';
+      const data = res.data || {};
+      const src = data.src || selectedSearchOption.url;
+      const sourceLink = data.source || selectedSearchOption.source || '';
       replaceCover(src, false, sourceLink);
       if (window.PRS_BOOK) {
         window.PRS_BOOK.cover_url = src;
         window.PRS_BOOK.cover_source = sourceLink;
       }
-      closeSearchModal();
-    } catch (error) {
-      console.error('[PRS] cover save external error', error);
-      setSearchMessage('Could not save the selected cover. Please try again.');
       if (searchSetBtn) {
         searchSetBtn.disabled = false;
         searchSetBtn.textContent = originalText;
       }
-      return;
-    }
-
-    if (searchSetBtn) {
+      closeSearchModal();
+    }).fail(() => {
+      setSearchMessage('Server error. Please try again later.');
+      searchSetBtn.disabled = false;
       searchSetBtn.textContent = originalText;
-    }
+    });
   }
 
   // ====== Event bindings ======
