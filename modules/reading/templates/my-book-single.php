@@ -116,8 +116,22 @@ wp_localize_script(
 );
 ?>
 <style>
-	/* Maqueta general */
-	.prs-single-grid{
+        /* Maqueta general */
+        .prs-back-link-wrap{
+        margin-top:20px;
+        font-size:14px;
+        }
+        .prs-back-link{
+        color:#868686;
+        outline:0;
+        text-decoration:none;
+        border:1px solid #b3b3b3;
+        padding:1px 6px;
+        border-radius:4px;
+        background:#ffffff;
+        display:inline-block;
+        }
+        .prs-single-grid{
 	display:grid;
 	grid-template-columns: 280px 1fr 1fr;
 	grid-template-rows: auto auto auto;
@@ -137,7 +151,92 @@ wp_localize_script(
 	background:#eee; border-radius:12px;
 	}
 	.prs-cover-img{ width:100%; height:100%; object-fit:cover; display:block; }
-	.prs-cover-placeholder{ width:100%; height:100%; background:#ddd; }
+        .prs-cover-placeholder{
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        gap:10px;
+        text-align:center;
+        width:100%;
+        height:400px;
+        padding:24px;
+        border-radius:8px;
+        background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
+        color:#111;
+        font-family:'Inter', sans-serif;
+        position:relative;
+        overflow:hidden;
+        transition:all 0.3s ease-in-out;
+        }
+        .prs-cover-title{
+        margin:0;
+        max-width:90%;
+        font-weight:800;
+        font-size:clamp(20px, 2.6vw, 28px);
+        text-shadow:0 1px 0 rgba(255,255,255,0.25);
+        }
+        .prs-cover-author{
+        margin:4px 0 0;
+        opacity:0.9;
+        font-size:clamp(14px, 2vw, 18px);
+        }
+        .prs-cover-actions{
+        display:flex;
+        flex-direction:column;
+        gap:10px;
+        margin-top:18px;
+        opacity:0;
+        transform:translateY(10px);
+        transition:opacity 0.25s ease, transform 0.25s ease;
+        }
+        .prs-cover-placeholder:hover .prs-cover-actions,
+        .prs-cover-placeholder:focus-within .prs-cover-actions{
+        opacity:1;
+        transform:translateY(0);
+        }
+        .prs-cover-btn{
+        background:#111;
+        color:#fff;
+        border:none;
+        border-radius:14px;
+        padding:10px 20px;
+        font-weight:600;
+        cursor:pointer;
+        transition:background 0.2s ease-in-out;
+        }
+        .prs-cover-btn:hover,
+        .prs-cover-btn:focus-visible{
+        background:#2a2a2a;
+        }
+        .prs-cover-overlay{
+        position:absolute;
+        inset:0;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        background:rgba(0,0,0,0);
+        pointer-events:none;
+        opacity:0;
+        transition:opacity 0.25s ease, background 0.25s ease;
+        }
+        .prs-cover-overlay .prs-cover-actions{
+        margin-top:0;
+        opacity:0;
+        transform:translateY(10px);
+        pointer-events:auto;
+        }
+        .prs-cover-frame.has-image:hover .prs-cover-overlay,
+        .prs-cover-frame.has-image:focus-within .prs-cover-overlay{
+        opacity:1;
+        background:rgba(0,0,0,0.25);
+        pointer-events:auto;
+        }
+        .prs-cover-frame.has-image:hover .prs-cover-overlay .prs-cover-actions,
+        .prs-cover-frame.has-image:focus-within .prs-cover-overlay .prs-cover-actions{
+        opacity:1;
+        transform:translateY(0);
+        }
 
 	/* Tipos y tablas */
         .prs-box h2{ margin:0 0 8px; }
@@ -188,7 +287,7 @@ wp_localize_script(
 </style>
 
 <div class="wrap">
-        <p style="margin-top:10px; font-size:14px;"><a href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
+        <p class="prs-back-link-wrap"><a class="prs-back-link" href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
 
 	<div class="prs-single-grid">
 
@@ -220,7 +319,15 @@ wp_localize_script(
                         }
                         ?>
                 <?php else : ?>
-                        <div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
+                        <div
+                                id="prs-cover-placeholder"
+                                class="prs-cover-placeholder"
+                                role="img"
+                                aria-label="<?php esc_attr_e( 'Default book cover', 'politeia-reading' ); ?>">
+                                <h2 id="prs-book-title-placeholder" class="prs-cover-title"><?php esc_html_e( 'Untitled Book', 'politeia-reading' ); ?></h2>
+                                <h3 id="prs-book-author-placeholder" class="prs-cover-author"><?php esc_html_e( 'Unknown Author', 'politeia-reading' ); ?></h3>
+                                <?php echo do_shortcode( '[prs_cover_button]' ); ?>
+                        </div>
                 <?php endif; ?>
                         <figcaption
                                 id="prs-cover-attribution-wrap"
@@ -236,11 +343,13 @@ wp_localize_script(
                                 </a>
                         </figcaption>
                 </figure>
+                <?php if ( $has_image ) : ?>
                 <div class="prs-cover-overlay">
                         <?php echo do_shortcode( '[prs_cover_button]' ); ?>
                 </div>
+                <?php endif; ?>
                 </div>
-	</div>
+        </div>
 
 	<!-- Arriba centro: título/info y metacampos -->
         <div id="prs-book-info" class="prs-box">
@@ -252,7 +361,7 @@ wp_localize_script(
                         </button>
                 </h2>
                 <div class="prs-meta">
-                <strong><?php echo esc_html( $book->author ); ?></strong>
+                <strong class="prs-book-author"><?php echo esc_html( $book->author ); ?></strong>
                 <?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
                 </div>
 

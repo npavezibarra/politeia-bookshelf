@@ -23,6 +23,67 @@
     }
   }
 
+  function formatAuthorName(raw) {
+    if (typeof raw !== "string") return "";
+
+    const normalized = raw.replace(/\s+/g, " ").trim();
+    if (!normalized) {
+      return "";
+    }
+
+    if (/et al\.?$/i.test(normalized)) {
+      return normalized;
+    }
+
+    const altDelimiters = [
+      /\s+and\s+/i,
+      /\s*&\s*/,
+      /\s*\/\s*/,
+      /\s*·\s*/,
+      /\s*•\s*/,
+      /\s*;\s*/,
+    ];
+
+    for (const delim of altDelimiters) {
+      if (delim.test(normalized)) {
+        const parts = normalized.split(delim).map(part => part.trim()).filter(Boolean);
+        if (parts.length > 1) {
+          return `${parts[0]} et al`;
+        }
+      }
+    }
+
+    if (normalized.includes(",")) {
+      const parts = normalized.split(",").map(part => part.trim()).filter(Boolean);
+      if (parts.length > 1) {
+        const suffixPattern = /^(?:Jr|Sr|II|III|IV|V|VI|VII|VIII|IX|X)\.?$/i;
+        let [firstPart, ...rest] = parts;
+        let firstAuthor = firstPart;
+
+        if (firstAuthor && !/\s/.test(firstAuthor) && rest.length) {
+          const potentialGiven = rest[0];
+          if (potentialGiven && /^(?:[A-Za-z\u00C0-\u017F]+(?:[\s-][A-Za-z\u00C0-\u017F.]+)*)$/.test(potentialGiven) && !suffixPattern.test(potentialGiven)) {
+            firstAuthor = `${firstAuthor}, ${potentialGiven}`;
+            rest = rest.slice(1);
+          }
+        }
+
+        if (rest.length && suffixPattern.test(rest[0])) {
+          firstAuthor = `${firstAuthor}, ${rest[0]}`;
+          rest = rest.slice(1);
+        }
+
+        if (rest.length > 0) {
+          return `${firstAuthor} et al`;
+        }
+
+        return firstAuthor;
+      }
+    }
+
+    return normalized;
+  }
+
   function ajaxPost(url, data) {
     return fetch(url, {
       method: "POST",
@@ -34,6 +95,35 @@
   function num(val, defVal = 0) {
     const n = parseInt(val, 10);
     return Number.isFinite(n) ? n : defVal;
+  }
+
+  function setupCoverPlaceholder() {
+    const titlePlaceholder = qs("#prs-book-title-placeholder");
+    const authorPlaceholder = qs("#prs-book-author-placeholder");
+    if (!titlePlaceholder || !authorPlaceholder) return;
+
+    const hasCover = qs("#prs-book-cover-figure img");
+    if (hasCover) return;
+
+    const domTitle = qs(".prs-book-title__text") || qs(".prs-book-title");
+    const domAuthor = qs(".prs-book-author");
+
+    const localizedTitle = (window.PRS_BOOK && typeof PRS_BOOK.title === "string") ? PRS_BOOK.title.trim() : "";
+    const localizedAuthor = (window.PRS_BOOK && typeof PRS_BOOK.author === "string") ? PRS_BOOK.author.trim() : "";
+
+    const sourceTitle = domTitle && domTitle.textContent ? domTitle.textContent.trim() : localizedTitle;
+    const sourceAuthor = domAuthor && domAuthor.textContent ? domAuthor.textContent.trim() : localizedAuthor;
+
+    if (sourceTitle) {
+      titlePlaceholder.textContent = sourceTitle;
+    }
+
+    if (sourceAuthor) {
+      const formattedAuthor = formatAuthorName(sourceAuthor);
+      if (formattedAuthor) {
+        authorPlaceholder.textContent = formattedAuthor;
+      }
+    }
   }
 
   // ---------- Edición: Pages ----------
@@ -1013,6 +1103,7 @@
 
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
+    setupCoverPlaceholder();
     setupPages();
     setupLibraryPagesInlineEdit();
     setupPurchaseDate();
