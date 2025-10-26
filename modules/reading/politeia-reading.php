@@ -13,8 +13,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 // ===== Constants =====
 if ( ! defined( 'POLITEIA_READING_VERSION' ) ) {
-	// ⬆️ Incrementa esta versión cuando cambies estructuras/flujo global del plugin
+        // ⬆️ Incrementa esta versión cuando cambies estructuras/flujo global del plugin
         define( 'POLITEIA_READING_VERSION', '0.2.3' );
+}
+if ( ! defined( 'POLITEIA_READING_DB_VERSION' ) ) {
+        define( 'POLITEIA_READING_DB_VERSION', '1.2' );
 }
 if ( ! defined( 'POLITEIA_READING_PATH' ) ) {
 	define( 'POLITEIA_READING_PATH', plugin_dir_path( __FILE__ ) );

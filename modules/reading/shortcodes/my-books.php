@@ -87,7 +87,7 @@ add_shortcode(
               ub.type_book,
               ub.pages,
               ub.counterparty_name,
-              ub.cover_attachment_id_user,
+              ub.cover_reference,
               (
                       SELECT start_date
                       FROM $l l
@@ -200,7 +200,12 @@ add_shortcode(
                                 <td class="prs-library__info">
                                 <div class="prs-library__cover">
                                 <?php
-                                $user_cover_raw    = isset( $r->cover_attachment_id_user ) ? $r->cover_attachment_id_user : '';
+                                $user_cover_raw    = '';
+                                if ( isset( $r->cover_reference ) && '' !== $r->cover_reference && null !== $r->cover_reference ) {
+                                        $user_cover_raw = $r->cover_reference;
+                                } elseif ( isset( $r->cover_attachment_id_user ) ) {
+                                        $user_cover_raw = $r->cover_attachment_id_user;
+                                }
                                 $parsed_user_cover = method_exists( 'PRS_Cover_Upload_Feature', 'parse_cover_value' ) ? PRS_Cover_Upload_Feature::parse_cover_value( $user_cover_raw ) : array(
                                         'attachment_id' => is_numeric( $user_cover_raw ) ? (int) $user_cover_raw : 0,
                                         'url'           => '',

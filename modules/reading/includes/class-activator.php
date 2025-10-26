@@ -14,10 +14,10 @@ class Politeia_Reading_Activator {
 			Politeia_Post_Reading_Schema::migrate();
 		}
 
-		if ( get_option( 'politeia_reading_db_version' ) === false ) {
-			add_option( 'politeia_reading_db_version', POLITEIA_READING_VERSION );
-		} else {
-			update_option( 'politeia_reading_db_version', POLITEIA_READING_VERSION );
+                if ( get_option( 'politeia_reading_db_version' ) === false ) {
+                        add_option( 'politeia_reading_db_version', POLITEIA_READING_DB_VERSION );
+                } else {
+                        update_option( 'politeia_reading_db_version', POLITEIA_READING_DB_VERSION );
 		}
 
 		add_option( 'politeia_reading_flush_rewrite', 1 );
@@ -29,11 +29,11 @@ class Politeia_Reading_Activator {
 	 * add_action('plugins_loaded', ['Politeia_Reading_Activator','maybe_upgrade']);
 	 */
 	public static function maybe_upgrade() {
-		$stored = get_option( 'politeia_reading_db_version' );
-		if ( $stored !== POLITEIA_READING_VERSION ) {
+                $stored = get_option( 'politeia_reading_db_version' );
+                if ( $stored !== POLITEIA_READING_DB_VERSION ) {
 			self::create_or_update_tables();
 			self::run_migrations();
-			update_option( 'politeia_reading_db_version', POLITEIA_READING_VERSION );
+                        update_option( 'politeia_reading_db_version', POLITEIA_READING_DB_VERSION );
 		}
 	}
 
@@ -87,7 +87,7 @@ class Politeia_Reading_Activator {
             purchase_place VARCHAR(255) NULL,
             counterparty_name  VARCHAR(255) NULL,
             counterparty_email VARCHAR(190) NULL,
-            cover_attachment_id_user BIGINT UNSIGNED NULL,
+            cover_reference TEXT NULL,
             cover_url VARCHAR(800) NULL,
             cover_source VARCHAR(800) NULL,
             language VARCHAR(50) NULL,
@@ -181,6 +181,14 @@ class Politeia_Reading_Activator {
 
                 self::maybe_add_column( $books, 'cover_url', 'VARCHAR(800) NULL' );
                 self::maybe_add_column( $books, 'cover_source', 'VARCHAR(800) NULL' );
+                self::maybe_add_column( $user_books, 'cover_reference', 'TEXT NULL AFTER rating' );
+
+                if ( self::column_exists( $user_books, 'cover_attachment_id_user' ) && self::column_exists( $user_books, 'cover_reference' ) ) {
+                        $wpdb->query(
+                                "UPDATE {$user_books} SET cover_reference = CAST(cover_attachment_id_user AS CHAR)"
+                                . " WHERE cover_attachment_id_user IS NOT NULL AND (cover_reference IS NULL OR cover_reference = '')"
+                        );
+                }
 
                 self::migrate_books_hash_and_unique(); // <-- mantiene tu migración de hash/unique
                 self::ensure_unique_user_book();       // robustez por si faltara el UNIQUE
