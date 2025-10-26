@@ -37,34 +37,24 @@
   }
 
   function setupCoverPlaceholder() {
-    const placeholder = qs("#prs-cover-placeholder");
-    if (!placeholder) return;
+    const titlePlaceholder = qs("#prs-book-title-placeholder");
+    const authorPlaceholder = qs("#prs-book-author-placeholder");
+    if (!titlePlaceholder || !authorPlaceholder) return;
 
     const hasCover = qs("#prs-book-cover-figure img");
     if (hasCover) return;
 
-    const titleEl = qs(".prs-book-title__text") || qs(".prs-book-title");
-    const authorEl = qs(".prs-book-author");
+    const domTitle = qs(".prs-book-title__text") || qs(".prs-book-title");
+    const domAuthor = qs(".prs-book-author");
 
-    const localizedTitle = (window.PRS_BOOK && typeof PRS_BOOK.title === "string") ? PRS_BOOK.title : "";
-    const localizedAuthor = (window.PRS_BOOK && typeof PRS_BOOK.author === "string") ? PRS_BOOK.author : "";
+    const localizedTitle = (window.PRS_BOOK && typeof PRS_BOOK.title === "string") ? PRS_BOOK.title.trim() : "";
+    const localizedAuthor = (window.PRS_BOOK && typeof PRS_BOOK.author === "string") ? PRS_BOOK.author.trim() : "";
 
-    const titleText = titleEl && titleEl.textContent ? titleEl.textContent.trim() : localizedTitle.trim();
-    const authorText = authorEl && authorEl.textContent ? authorEl.textContent.trim() : localizedAuthor.trim();
+    const titleText = domTitle && domTitle.textContent ? domTitle.textContent.trim() : localizedTitle;
+    const authorText = domAuthor && domAuthor.textContent ? domAuthor.textContent.trim() : localizedAuthor;
 
-    const placeholderTitle = titleText || "Untitled Book";
-    const placeholderAuthor = authorText || "Unknown Author";
-
-    placeholder.innerHTML = "";
-
-    const titleNode = document.createElement("h3");
-    titleNode.textContent = placeholderTitle;
-
-    const authorNode = document.createElement("p");
-    authorNode.textContent = placeholderAuthor;
-
-    placeholder.appendChild(titleNode);
-    placeholder.appendChild(authorNode);
+    titlePlaceholder.textContent = titleText || "Untitled Book";
+    authorPlaceholder.textContent = authorText || "Unknown Author";
   }
 
   // ---------- Edición: Pages ----------

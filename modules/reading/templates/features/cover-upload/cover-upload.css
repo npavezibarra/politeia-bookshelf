@@ -84,19 +84,21 @@
 
 /* Botón del overlay sobre la portada */
 .prs-cover-actions{
-        pointer-events:all;
         display:flex;
         flex-direction:column;
         gap:10px;
+        pointer-events:all;
         align-items:center;
 }
 .prs-cover-btn{
         background:#1a1a1a;
         color:#fff;
-        border-radius:6px;
-        padding:8px 16px;
+        border-radius:12px;
+        padding:8px 20px;
         font-weight:600;
-        transition:background 0.2s;
+        border:none;
+        cursor:pointer;
+        transition:background 0.2s ease-in-out;
 }
 .prs-cover-btn:hover{ background:#333; }
 

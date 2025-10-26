@@ -138,34 +138,35 @@ wp_localize_script(
 	}
 	.prs-cover-img{ width:100%; height:100%; object-fit:cover; display:block; }
         .prs-cover-placeholder{
-        width:100%;
-        height:100%;
-        min-height:180px;
         display:flex;
         flex-direction:column;
         align-items:center;
         justify-content:center;
-        text-align:center;
         background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
         color:#fff;
         font-family:'Inter', sans-serif;
-        border-radius:10px;
-        padding:10px;
+        width:100%;
+        height:400px;
+        border-radius:14px;
+        text-align:center;
         position:relative;
         overflow:hidden;
         }
-        .prs-cover-placeholder h3{
-        font-size:1.25rem;
+        #prs-book-title-placeholder{
+        font-size:1.4rem;
         font-weight:700;
         margin:0;
-        line-height:1.4;
+        color:#1a1a1a;
+        text-shadow:0 1px 1px rgba(255,255,255,0.2);
         padding:0 10px;
         }
-        .prs-cover-placeholder p{
-        font-size:1rem;
+        #prs-book-author-placeholder{
+        font-size:1.1rem;
         font-style:italic;
-        margin:6px 0 0;
-        opacity:0.9;
+        margin:8px 0 0;
+        color:#1a1a1a;
+        opacity:0.85;
+        padding:0 10px;
         }
         .prs-cover-overlay{
         position:absolute;
@@ -178,19 +179,21 @@ wp_localize_script(
         pointer-events:none;
         }
         .prs-cover-actions{
-        pointer-events:all;
         display:flex;
         flex-direction:column;
         gap:10px;
+        pointer-events:all;
         align-items:center;
         }
         .prs-cover-btn{
         background:#1a1a1a;
         color:#fff;
-        border-radius:6px;
-        padding:8px 16px;
+        border-radius:12px;
+        padding:8px 20px;
         font-weight:600;
-        transition:background 0.2s;
+        border:none;
+        cursor:pointer;
+        transition:background 0.2s ease-in-out;
         }
         .prs-cover-btn:hover{
         background:#333;
@@ -277,7 +280,10 @@ wp_localize_script(
                         }
                         ?>
                 <?php else : ?>
-                        <div id="prs-cover-placeholder" class="prs-cover-placeholder"></div>
+                        <div id="prs-cover-placeholder" class="prs-cover-placeholder">
+                                <h2 id="prs-book-title-placeholder"><?php esc_html_e( 'Untitled Book', 'politeia-reading' ); ?></h2>
+                                <h3 id="prs-book-author-placeholder"><?php esc_html_e( 'Unknown Author', 'politeia-reading' ); ?></h3>
+                        </div>
                 <?php endif; ?>
                         <figcaption
                                 id="prs-cover-attribution-wrap"
