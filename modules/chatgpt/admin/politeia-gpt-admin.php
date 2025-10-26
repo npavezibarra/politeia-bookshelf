@@ -1,27 +1,27 @@
 <?php
 /**
- * Admin UI para PoliteiaGPT
- * - Menú principal "PoliteiaGPT" con pestañas "General" y "GPT Instructions".
- * - Guarda:
+ * Admin UI for PoliteiaGPT
+ * - Main menu "PoliteiaGPT" with tabs "General" and "GPT Instructions".
+ * - Saves:
  *     - politeia_chatgpt_api_token        (API Key)
- *     - politeia_gpt_instruction_text     (instrucción para TEXTO)
- *     - politeia_gpt_instruction_audio    (instrucción para AUDIO)
- *     - politeia_gpt_instruction_image    (instrucción para IMAGEN)
- * - Fallback: si la de AUDIO está vacía, el handler usará la de TEXTO.
+ *     - politeia_gpt_instruction_text     (instruction for TEXT)
+ *     - politeia_gpt_instruction_audio    (instruction for AUDIO)
+ *     - politeia_gpt_instruction_image    (instruction for IMAGE)
+ * - Fallback: if the AUDIO instruction is empty, the handler will reuse the TEXT one.
  */
 
 if ( ! defined('ABSPATH') ) exit;
 
-/** Sanitiza párrafos (sin HTML) */
+/** Sanitize paragraphs (strip HTML) */
 function politeia_gpt_sanitize_paragraph( $input ) {
-    $input = wp_strip_all_tags( $input ); // quita HTML/JS
+    $input = wp_strip_all_tags( $input ); // remove HTML/JS
     return trim( $input );
 }
 
-/** Registra settings y campos */
+/** Register settings and fields */
 function politeia_gpt_register_settings() {
 
-    // === Pestaña: General ===
+    // === Tab: General ===
     register_setting(
         'politeia_gpt_general',
         'politeia_chatgpt_api_token',
@@ -34,9 +34,9 @@ function politeia_gpt_register_settings() {
 
     add_settings_section(
         'politeia_gpt_section_general',
-        'Configuración General',
+        'General configuration',
         function () {
-            echo '<p>Define tu API Key de OpenAI para habilitar las funciones del plugin.</p>';
+            echo '<p>Provide your OpenAI API Key to enable the plugin features.</p>';
         },
         'politeia_gpt_general'
     );
@@ -47,13 +47,13 @@ function politeia_gpt_register_settings() {
         function () {
             $token = get_option('politeia_chatgpt_api_token', '');
             echo '<input type="password" name="politeia_chatgpt_api_token" value="' . esc_attr($token) . '" class="regular-text" />';
-            echo '<p class="description">Obtén tu llave en <a target="_blank" href="https://platform.openai.com/api-keys">platform.openai.com/api-keys</a>.</p>';
+            echo '<p class="description">Generate a key at <a target="_blank" href="https://platform.openai.com/api-keys">platform.openai.com/api-keys</a>.</p>';
         },
         'politeia_gpt_general',
         'politeia_gpt_section_general'
     );
 
-    // === Pestaña: GPT Instructions ===
+    // === Tab: GPT Instructions ===
     register_setting(
         'politeia_gpt_instructions',
         'politeia_gpt_instruction_text',
@@ -86,51 +86,51 @@ function politeia_gpt_register_settings() {
         'politeia_gpt_section_instructions',
         'GPT Instructions',
         function () {
-            echo '<p>Define instrucciones por tipo de entrada. Si dejas "Audio" vacío, se usará la de "Texto".</p>';
+            echo '<p>Define instructions per input type. If "Audio" is empty, the "Text" instruction will be used.</p>';
         },
         'politeia_gpt_instructions'
     );
 
-    // Campo TEXTO
+    // TEXT field
     add_settings_field(
         'politeia_gpt_instruction_text_field',
-        'Instrucción para TEXTO',
+        'Instruction for TEXT',
         function () {
             $val = get_option('politeia_gpt_instruction_text', '');
             if ($val === '') {
-                $val = 'A partir del siguiente texto, extrae los libros mencionados y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta: { "books": [ { "title": "...", "author": "..." } ] }. No incluyas comentarios, notas ni markdown.';
+                $val = 'Based on the following text, extract the mentioned books and return ONLY a JSON with this exact shape: { "books": [ { "title": "...", "author": "..." } ] }. Do not include comments, notes, or markdown.';
             }
             echo '<textarea name="politeia_gpt_instruction_text" rows="6" class="large-text" style="max-width: 900px;">' . esc_textarea($val) . '</textarea>';
-            echo '<p class="description">Para prompts escritos (o transcripción de audio si no defines una instrucción específica de audio).</p>';
+            echo '<p class="description">Used for written prompts (or audio transcripts when no audio-specific instruction is defined).</p>';
         },
         'politeia_gpt_instructions',
         'politeia_gpt_section_instructions'
     );
 
-    // Campo AUDIO
+    // AUDIO field
     add_settings_field(
         'politeia_gpt_instruction_audio_field',
-        'Instrucción para AUDIO (opcional)',
+        'Instruction for AUDIO (optional)',
         function () {
             $val = get_option('politeia_gpt_instruction_audio', '');
             echo '<textarea name="politeia_gpt_instruction_audio" rows="6" class="large-text" style="max-width: 900px;">' . esc_textarea($val) . '</textarea>';
-            echo '<p class="description">Útil para dictados: pide ignorar muletillas, corregir pronunciación de títulos, eliminar repeticiones y normalizar autores. Si se deja vacío, se usa la instrucción de TEXTO.</p>';
+            echo '<p class="description">Useful for dictated inputs: ask to ignore filler words, correct book title pronunciation, remove repetitions, and normalize author names. When empty, the TEXT instruction is reused.</p>';
         },
         'politeia_gpt_instructions',
         'politeia_gpt_section_instructions'
     );
 
-    // Campo IMAGEN
+    // IMAGE field
     add_settings_field(
         'politeia_gpt_instruction_image_field',
-        'Instrucción para IMAGEN',
+        'Instruction for IMAGE',
         function () {
             $val = get_option('politeia_gpt_instruction_image', '');
             if ($val === '') {
-                $val = 'Analiza esta imagen (estantería de libros). Extrae los títulos y autores visibles y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta: { "books": [ { "title": "...", "author": "..." } ] }. Omite elementos dudosos o parciales. Nada de markdown ni texto adicional.';
+                $val = 'Analyze this image (bookshelf). Extract the visible book titles and authors and return ONLY a JSON with this exact shape: { "books": [ { "title": "...", "author": "..." } ] }. Skip uncertain or partial matches. No markdown or extra text.';
             }
             echo '<textarea name="politeia_gpt_instruction_image" rows="6" class="large-text" style="max-width: 900px;">' . esc_textarea($val) . '</textarea>';
-            echo '<p class="description">Para análisis de imágenes con visión.</p>';
+            echo '<p class="description">For computer-vision image analysis.</p>';
         },
         'politeia_gpt_instructions',
         'politeia_gpt_section_instructions'
@@ -138,7 +138,7 @@ function politeia_gpt_register_settings() {
 }
 add_action('admin_init', 'politeia_gpt_register_settings');
 
-/** Menú principal */
+/** Main menu */
 function politeia_gpt_add_menu() {
     $cap = 'manage_options';
     add_menu_page(
@@ -153,7 +153,7 @@ function politeia_gpt_add_menu() {
 }
 add_action('admin_menu', 'politeia_gpt_add_menu');
 
-/** Render de página con tabs */
+/** Render admin page with tabs */
 function politeia_gpt_render_page() {
     if ( ! current_user_can('manage_options') ) return;
 
@@ -176,7 +176,7 @@ function politeia_gpt_render_page() {
                 <?php
                 settings_fields('politeia_gpt_general');
                 do_settings_sections('politeia_gpt_general');
-                submit_button('Guardar cambios');
+                submit_button('Save changes');
                 ?>
             </form>
         <?php else: ?>
@@ -184,7 +184,7 @@ function politeia_gpt_render_page() {
                 <?php
                 settings_fields('politeia_gpt_instructions');
                 do_settings_sections('politeia_gpt_instructions');
-                submit_button('Guardar instrucciones');
+                submit_button('Save instructions');
                 ?>
             </form>
         <?php endif; ?>
