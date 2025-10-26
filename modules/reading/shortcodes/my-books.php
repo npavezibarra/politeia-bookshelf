@@ -25,8 +25,13 @@ add_shortcode(
                         )
                 );
 
-		$user_id  = get_current_user_id();
-		$per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
+                $user_id  = get_current_user_id();
+                if ( ! $user_id ) {
+                        wp_get_current_user();
+                        $user_id = get_current_user_id();
+                }
+                error_log( '[PRS_MY_BOOKS] Current user: ' . $user_id );
+                $per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
 		if ( $per_page < 1 ) {
 			$per_page = 15;
 		}
@@ -41,17 +46,18 @@ add_shortcode(
                 $l  = $wpdb->prefix . 'politeia_loans';
 
 		// Total para paginación
-		$total = (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"
+               $total = (int) $wpdb->get_var(
+                       $wpdb->prepare(
+                               "
         SELECT COUNT(*)
         FROM $ub ub
         JOIN $b  b ON b.id = ub.book_id
         WHERE ub.user_id = %d
+          AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
     ",
-				$user_id
-			)
-		);
+                               $user_id
+                       )
+               );
 
 		if ( $total === 0 ) {
 			return '<p>' . esc_html__( 'Your library is empty. Add a book first.', 'politeia-reading' ) . '</p>';
@@ -72,7 +78,7 @@ add_shortcode(
                 $book_pages_select = $books_has_total_pages ? 'b.total_pages' : 'NULL';
 
                 // Traer fila sólo de la página actual
-                $rows = $wpdb->get_results(
+                $books = $wpdb->get_results(
                         $wpdb->prepare(
                                 "
        SELECT ub.id AS user_book_id,
@@ -96,21 +102,22 @@ add_shortcode(
              b.author,
              b.year,
              b.cover_attachment_id,
-             b.cover_url,
-             b.cover_source,
              b.slug,
               {$book_pages_select} AS book_total_pages
         FROM $ub ub
         JOIN $b b ON b.id = ub.book_id
         WHERE ub.user_id = %d
+          AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
         ORDER BY b.title ASC
         LIMIT %d OFFSET %d
     ",
-				$user_id,
-				$per_page,
-				$offset
-			)
-		);
+                                $user_id,
+                                $per_page,
+                                $offset
+                        )
+                );
+
+                error_log( '[PRS_MY_BOOKS] Found ' . count( $books ) . ' books for user ' . $user_id );
 
 		// Helper de enlaces de paginación
 		$base_url = remove_query_arg( 'prs_page' );
@@ -151,7 +158,7 @@ add_shortcode(
                         </tr>
                </thead>
                 <tbody>
-                        <?php foreach ( (array) $rows as $r ) :
+                        <?php foreach ( (array) $books as $r ) :
                                 $slug     = $r->slug ?: sanitize_title( $r->title . '-' . $r->author . ( $r->year ? '-' . $r->year : '' ) );
                                 $url      = home_url( '/my-books/my-book-' . $slug );
                                 $year     = $r->year ? (int) $r->year : null;
