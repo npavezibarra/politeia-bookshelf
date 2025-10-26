@@ -150,7 +150,12 @@ wp_localize_script(
 	position:relative; width:100%; height:auto; overflow:hidden;
 	background:#eee; border-radius:12px;
 	}
-	.prs-cover-img{ width:100%; height:100%; object-fit:cover; display:block; }
+        .prs-cover-img{
+        width:100%;
+        height:auto;
+        display:block;
+        object-fit:contain;
+        }
         .prs-cover-placeholder{
         display:flex;
         flex-direction:column;

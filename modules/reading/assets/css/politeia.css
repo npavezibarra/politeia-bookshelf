@@ -1221,7 +1221,12 @@ table.prs-form__table {
 	border-radius: 10px;
 	background: #eee;
 	}
-	.prs-cover-img{ width:100%; height:100%; object-fit:cover; display:block; }
+        .prs-cover-img{
+        width:100%;
+        height:auto;
+        display:block;
+        object-fit:contain;
+        }
         .prs-cover-placeholder{
         display:flex;
         flex-direction:column;
