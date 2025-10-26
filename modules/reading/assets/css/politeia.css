@@ -1241,7 +1241,22 @@ span#purchase-channel-form {
 	}
 
 
-	/* BOOK COVER MY BOOK SINGLE */
+        .prs-back-link-wrap{
+        margin-top:10px;
+        font-size:14px;
+        }
+        .prs-back-link{
+        color:#868686;
+        outline:0;
+        text-decoration:none;
+        border:1px solid #b3b3b3;
+        padding:1px 6px;
+        border-radius:4px;
+        background:#ffffff;
+        display:inline-block;
+        }
+
+        /* BOOK COVER MY BOOK SINGLE */
 
 	#prs-book-cover{ grid-column:1; grid-row:1 / span 2; padding:0; background:transparent; }
 

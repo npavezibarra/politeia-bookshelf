@@ -116,8 +116,22 @@ wp_localize_script(
 );
 ?>
 <style>
-	/* Maqueta general */
-	.prs-single-grid{
+        /* Maqueta general */
+        .prs-back-link-wrap{
+        margin-top:10px;
+        font-size:14px;
+        }
+        .prs-back-link{
+        color:#868686;
+        outline:0;
+        text-decoration:none;
+        border:1px solid #b3b3b3;
+        padding:1px 6px;
+        border-radius:4px;
+        background:#ffffff;
+        display:inline-block;
+        }
+        .prs-single-grid{
 	display:grid;
 	grid-template-columns: 280px 1fr 1fr;
 	grid-template-rows: auto auto auto;
@@ -273,7 +287,7 @@ wp_localize_script(
 </style>
 
 <div class="wrap">
-        <p style="margin-top:10px; font-size:14px;"><a href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
+        <p class="prs-back-link-wrap"><a class="prs-back-link" href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
 
 	<div class="prs-single-grid">
 
