@@ -732,7 +732,285 @@
     });
   }
 
-  
+
+  // ---------- Library filter dashboard ----------
+  function setupLibraryFilterDashboard() {
+    const filterBtn = qs(".prs-library__filter-btn");
+    const overlay = qs("#prs-filter-overlay");
+    const dashboard = qs("#prs-filter-dashboard");
+    const form = qs("#prs-filter-form", dashboard);
+    const tbody = qs("#prs-library tbody");
+
+    if (!filterBtn || !overlay || !dashboard || !form || !tbody) {
+      return;
+    }
+
+    const owningSelect = qs("#prs-filter-owning-status", dashboard);
+    const readingSelect = qs("#prs-filter-reading-status", dashboard);
+    const progressMinInput = qs("#prs-filter-progress-min", dashboard);
+    const progressMaxInput = qs("#prs-filter-progress-max", dashboard);
+    const orderSelect = qs("#prs-filter-order", dashboard);
+    const resetBtn = qs("#prs-filter-reset", dashboard);
+    const closeBtn = qs("#prs-filter-close", dashboard);
+
+    const storageKey = "PRS_LIBRARY_FILTERS";
+    const defaultState = {
+      owning: "",
+      reading: "",
+      min: 0,
+      max: 100,
+      order: "title_asc",
+    };
+
+    let lastFocused = null;
+
+    function clampProgress(val, fallback) {
+      return Math.min(100, Math.max(0, num(val, fallback)));
+    }
+
+    function normalizeState(raw) {
+      const normalized = Object.assign({}, defaultState);
+      if (raw && typeof raw === "object") {
+        if (typeof raw.owning === "string") normalized.owning = raw.owning;
+        if (typeof raw.reading === "string") normalized.reading = raw.reading;
+        if (typeof raw.order === "string") normalized.order = raw.order;
+        normalized.min = clampProgress(raw.min, defaultState.min);
+        normalized.max = clampProgress(raw.max, defaultState.max);
+      }
+
+      if (normalized.min > normalized.max) {
+        const swap = normalized.min;
+        normalized.min = normalized.max;
+        normalized.max = swap;
+      }
+
+      return normalized;
+    }
+
+    function updateRangeDisplay(input) {
+      if (!input) return;
+      const span = dashboard.querySelector('[data-display-for="' + input.id + '"]');
+      if (span) {
+        span.textContent = clampProgress(input.value, input.id === "prs-filter-progress-max" ? 100 : 0) + "%";
+      }
+    }
+
+    function setSelectValue(select, value) {
+      if (!select) return;
+      const values = Array.prototype.map.call(select.options, option => option.value);
+      select.value = values.indexOf(value) !== -1 ? value : "";
+    }
+
+    function applyInputs(state) {
+      setSelectValue(owningSelect, state.owning);
+      setSelectValue(readingSelect, state.reading);
+      setSelectValue(orderSelect, state.order);
+      if (progressMinInput) {
+        progressMinInput.value = String(state.min);
+        updateRangeDisplay(progressMinInput);
+      }
+      if (progressMaxInput) {
+        progressMaxInput.value = String(state.max);
+        updateRangeDisplay(progressMaxInput);
+      }
+    }
+
+    function getStateFromInputs() {
+      return {
+        owning: owningSelect ? owningSelect.value : "",
+        reading: readingSelect ? readingSelect.value : "",
+        min: progressMinInput ? num(progressMinInput.value, defaultState.min) : defaultState.min,
+        max: progressMaxInput ? num(progressMaxInput.value, defaultState.max) : defaultState.max,
+        order: orderSelect ? orderSelect.value : defaultState.order,
+      };
+    }
+
+    function compareText(a, b, attr, asc) {
+      const aVal = (a.getAttribute(attr) || "").toLocaleLowerCase();
+      const bVal = (b.getAttribute(attr) || "").toLocaleLowerCase();
+      const result = aVal.localeCompare(bVal, undefined, { sensitivity: "base" });
+      return asc ? result : -result;
+    }
+
+    function compareNumber(a, b, attr, asc) {
+      const aVal = clampProgress(a.getAttribute(attr), 0);
+      const bVal = clampProgress(b.getAttribute(attr), 0);
+      if (aVal === bVal) return 0;
+      return asc ? (aVal - bVal) : (bVal - aVal);
+    }
+
+    function reorderRows(rows, order) {
+      const sorted = rows.slice();
+      switch (order) {
+        case "title_desc":
+          sorted.sort((a, b) => compareText(a, b, "data-title", false));
+          break;
+        case "author_asc":
+          sorted.sort((a, b) => compareText(a, b, "data-author", true));
+          break;
+        case "author_desc":
+          sorted.sort((a, b) => compareText(a, b, "data-author", false));
+          break;
+        case "progress_asc":
+          sorted.sort((a, b) => compareNumber(a, b, "data-progress", true));
+          break;
+        case "progress_desc":
+          sorted.sort((a, b) => compareNumber(a, b, "data-progress", false));
+          break;
+        case "title_asc":
+        default:
+          sorted.sort((a, b) => compareText(a, b, "data-title", true));
+          break;
+      }
+
+      sorted.forEach(row => tbody.appendChild(row));
+      return sorted;
+    }
+
+    function applyFilters(state) {
+      const normalized = normalizeState(state);
+      const rows = qsa("tr[data-user-book-id]", tbody);
+      if (!rows.length) {
+        return normalized;
+      }
+
+      const sortedRows = reorderRows(rows, normalized.order);
+      const owningValue = (normalized.owning || "").toLocaleLowerCase();
+      const readingValue = (normalized.reading || "").toLocaleLowerCase();
+
+      sortedRows.forEach(row => {
+        const owning = (row.getAttribute("data-owning-status") || "").toLocaleLowerCase();
+        const reading = (row.getAttribute("data-reading-status") || "").toLocaleLowerCase();
+        const progress = clampProgress(row.getAttribute("data-progress"), 0);
+        const owningMatches = !owningValue || owning === owningValue;
+        const readingMatches = !readingValue || reading === readingValue;
+        const progressMatches = progress >= normalized.min && progress <= normalized.max;
+        row.style.display = (owningMatches && readingMatches && progressMatches) ? "" : "none";
+      });
+
+      return normalized;
+    }
+
+    function saveState(state) {
+      try {
+        window.localStorage.setItem(storageKey, JSON.stringify(state));
+      } catch (err) {
+        // ignore storage errors
+      }
+    }
+
+    function loadState() {
+      try {
+        const raw = window.localStorage.getItem(storageKey);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        return normalizeState(parsed);
+      } catch (err) {
+        return null;
+      }
+    }
+
+    function clearState() {
+      try {
+        window.localStorage.removeItem(storageKey);
+      } catch (err) {
+        // ignore
+      }
+    }
+
+    function handleKeydown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        closeDashboard();
+      }
+    }
+
+    function openDashboard() {
+      lastFocused = document.activeElement;
+      overlay.classList.add("is-active");
+      overlay.removeAttribute("hidden");
+      dashboard.classList.add("is-active");
+      dashboard.removeAttribute("hidden");
+      dashboard.setAttribute("aria-hidden", "false");
+      filterBtn.setAttribute("aria-expanded", "true");
+      document.body.classList.add("prs-filter-open");
+      document.addEventListener("keydown", handleKeydown);
+      const firstFocusable = dashboard.querySelector("select, input, button");
+      if (firstFocusable) {
+        setTimeout(() => firstFocusable.focus(), 0);
+      }
+    }
+
+    function closeDashboard() {
+      overlay.classList.remove("is-active");
+      overlay.setAttribute("hidden", "hidden");
+      dashboard.classList.remove("is-active");
+      dashboard.setAttribute("hidden", "hidden");
+      dashboard.setAttribute("aria-hidden", "true");
+      filterBtn.setAttribute("aria-expanded", "false");
+      document.body.classList.remove("prs-filter-open");
+      document.removeEventListener("keydown", handleKeydown);
+      if (lastFocused && typeof lastFocused.focus === "function") {
+        setTimeout(() => lastFocused.focus(), 0);
+      }
+    }
+
+    function applyAndSave(state, shouldClose) {
+      const normalized = normalizeState(state);
+      applyInputs(normalized);
+      applyFilters(normalized);
+      saveState(normalized);
+      if (shouldClose) {
+        closeDashboard();
+      }
+    }
+
+    filterBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      openDashboard();
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        closeDashboard();
+      });
+    }
+
+    overlay.addEventListener("click", () => {
+      closeDashboard();
+    });
+
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      applyAndSave(getStateFromInputs(), true);
+    });
+
+    if (resetBtn) {
+      resetBtn.addEventListener("click", (event) => {
+        event.preventDefault();
+        clearState();
+        applyInputs(defaultState);
+        applyFilters(defaultState);
+      });
+    }
+
+    [progressMinInput, progressMaxInput].forEach((input) => {
+      if (!input) return;
+      input.addEventListener("input", () => updateRangeDisplay(input));
+    });
+
+    const savedState = loadState();
+    if (savedState) {
+      applyInputs(savedState);
+      applyFilters(savedState);
+    } else {
+      applyInputs(defaultState);
+      applyFilters(defaultState);
+    }
+  }
+
+
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     setupPages();
@@ -745,5 +1023,6 @@
     setupOwningStatus();
     setupSessionsAjax();
     setupSessionRecorderModal();
+    setupLibraryFilterDashboard();
   });
 })();

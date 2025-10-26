@@ -42,6 +42,8 @@
 #prs-library .prs-library__header-actions {
         display: flex;
         align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
 }
 
 #prs-library tbody tr {
@@ -197,6 +199,127 @@
 
 #prs-library .prs-library__pages--error .prs-library__pages-error {
         display: inline;
+}
+
+.prs-filter-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.45);
+        display: none;
+        z-index: 9998;
+}
+
+.prs-filter-overlay.is-active {
+        display: block;
+}
+
+.prs-filter-dashboard {
+        position: fixed;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        z-index: 9999;
+}
+
+.prs-filter-dashboard.is-active {
+        display: flex;
+}
+
+.prs-filter-dashboard__panel {
+        width: min(100%, 420px);
+        background: #ffffff;
+        border-radius: 16px;
+        box-shadow: 0 25px 60px rgba(15, 23, 42, 0.25);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+        max-height: 90vh;
+        overflow-y: auto;
+}
+
+.prs-filter-dashboard__title {
+        font-size: 1.35rem;
+        font-weight: 600;
+        margin: 0;
+        color: #0f172a;
+}
+
+.prs-filter-dashboard__form {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+}
+
+.prs-filter-dashboard__group {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+}
+
+.prs-filter-dashboard__label {
+        font-weight: 600;
+        color: #1f2937;
+        font-size: 0.95rem;
+}
+
+.prs-filter-dashboard__select {
+        width: 100%;
+        border-radius: 8px;
+        border: 1px solid #cbd5f5;
+        padding: 8px 10px;
+        font-size: 0.95rem;
+        color: #111827;
+        background: #f8fafc;
+}
+
+.prs-filter-range {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+}
+
+.prs-filter-range__input {
+        flex: 1;
+}
+
+.prs-filter-range__value {
+        min-width: 48px;
+        text-align: right;
+        font-weight: 600;
+        color: #0f172a;
+}
+
+.prs-filter-dashboard__actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: flex-end;
+}
+
+.prs-filter-dashboard__close {
+        margin-left: auto;
+}
+
+body.prs-filter-open {
+        overflow: hidden;
+}
+
+@media (max-width: 480px) {
+        .prs-filter-dashboard__panel {
+                padding: 20px;
+                border-radius: 14px;
+        }
+
+        .prs-filter-dashboard__actions {
+                justify-content: stretch;
+        }
+
+        .prs-filter-dashboard__actions .button {
+                flex: 1 1 auto;
+        }
 }
 
 #prs-library .prs-library__actions {
