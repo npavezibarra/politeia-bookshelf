@@ -241,7 +241,7 @@
         slider.value = '1';
       }
       if (imgEl) {
-        imgEl.style.transform = 'scale(1)';
+        imgEl.style.transform = 'translate(-50%, -50%) scale(1)';
       }
       naturalW = 0;
       naturalH = 0;
@@ -297,7 +297,7 @@
   function updatePreviewTransform() {
     if (!imgEl || !slider) return;
     const zoomValue = parseFloat(slider.value || '1');
-    imgEl.style.transform = `scale(${zoomValue})`;
+    imgEl.style.transform = `translate(-50%, -50%) scale(${zoomValue})`;
     scale = minScale * zoomValue;
   }
 

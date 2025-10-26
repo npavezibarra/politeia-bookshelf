@@ -5,6 +5,7 @@
     const detail = event.detail || {};
     const stage = detail.stage;
     const placeholder = detail.placeholder || null;
+    const previewImage = detail.previewImage || null;
     const fileInput = detail.fileInput || null;
     const zoomSlider = detail.zoomSlider || null;
     const onFiles = typeof detail.onFiles === 'function' ? detail.onFiles : noop;
@@ -62,7 +63,13 @@
     });
 
     if (zoomSlider) {
-      zoomSlider.addEventListener('input', onZoomChange);
+      zoomSlider.addEventListener('input', (eventInput) => {
+        const value = zoomSlider.value || '1';
+        if (previewImage) {
+          previewImage.style.transform = `translate(-50%, -50%) scale(${value})`;
+        }
+        onZoomChange(eventInput);
+      });
     }
   });
 })();

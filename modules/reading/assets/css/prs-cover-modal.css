@@ -18,12 +18,12 @@
   margin-bottom: 20px;
 }
 
+
 .prs-cover-modal__grid {
   display: flex;
   justify-content: space-between;
-  gap: 1.5rem;
   align-items: flex-start;
-  flex-wrap: nowrap;
+  gap: 1.5rem;
 }
 
 .prs-crop-wrap {
@@ -33,12 +33,28 @@
   align-items: center;
 }
 
-.prs-crop-stage {
+.prs-cover-modal__content input[type="file"],
+.prs-cover-modal__content .prs-hidden-input {
+  appearance: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  z-index: -1 !important;
+  pointer-events: none !important;
+}
+
+.prs-crop-stage,
+#cropStage {
   width: 220px;
   height: 350px;
   border: 2px dashed #9ca3af;
   border-radius: 8px;
-  background: #fafafa;
+  background-color: #fafafa;
   overflow: hidden;
   position: relative;
   transition: all 0.2s ease;
@@ -47,25 +63,35 @@
   align-items: center;
 }
 
-.prs-crop-stage.drag-active {
+.prs-crop-stage.drag-active,
+#cropStage.drag-active {
   border-color: #3b82f6;
   background-color: #eff6ff;
 }
 
-.prs-crop-stage.error {
+.prs-crop-stage.error,
+#cropStage.error {
   border-color: #ef4444;
   background-color: #fef2f2;
 }
 
-.prs-crop-placeholder {
+.prs-crop-placeholder,
+#cropPlaceholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
   text-align: center;
   color: #6b7280;
   font-size: 0.9rem;
   padding: 10px;
-  transition: opacity 0.2s;
+  transition: opacity 0.2s ease;
 }
 
-.prs-crop-placeholder span {
+.prs-crop-placeholder span,
+#cropPlaceholder span {
   display: block;
   font-size: 0.75rem;
   color: #9ca3af;
@@ -79,11 +105,16 @@
 }
 
 #previewImage {
-  width: 100%;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: auto;
   height: 100%;
+  transform: translate(-50%, -50%) scale(1);
   object-fit: contain;
   transform-origin: center center;
   transition: transform 0.15s ease-out;
+  pointer-events: none;
 }
 
 .prs-cover-controls {
@@ -173,10 +204,6 @@
   margin-top: 8px;
 }
 
-.prs-hidden-input {
-  display: none;
-}
-
 .prs-file-input {
   width: 100%;
 }
@@ -186,7 +213,8 @@
     flex-direction: column;
   }
 
-  .prs-crop-stage {
+  .prs-crop-stage,
+  #cropStage {
     margin: 0 auto 16px;
   }
 
