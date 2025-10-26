@@ -1523,10 +1523,6 @@ table.prs-form__table {
 /* === CONTACT FORM === */
 .prs-contact-form {
         display: flex;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 8px;
-        margin-top: 10px;
 }
 
 .prs-contact-input {
