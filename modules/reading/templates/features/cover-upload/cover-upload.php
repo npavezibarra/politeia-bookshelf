@@ -130,8 +130,8 @@ class PRS_Cover_Upload_Feature {
 			wp_send_json_error( array( 'message' => 'upload_dir_error' ), 500 );
 		}
 
-		$key      = 'u' . $user_id . 'ub' . $user_book_id;
-		$filename = 'book-cover-' . $key . '-' . gmdate( 'Ymd-His' ) . '.' . $ext;
+                $key      = self::build_cover_key( $user_id, $user_book_id );
+                $filename = 'book-cover-' . $key . '-' . gmdate( 'Ymd-His' ) . '.' . $ext;
 		$path     = trailingslashit( $up['path'] ) . $filename;
 
 		if ( ! wp_mkdir_p( $up['path'] ) ) {
@@ -164,12 +164,13 @@ class PRS_Cover_Upload_Feature {
 		wp_update_attachment_metadata( $att_id, $meta );
 
 		// Etiquetas para poder limpiar
-		update_post_meta( $att_id, '_prs_cover_user_id', $user_id );
-		update_post_meta( $att_id, '_prs_cover_user_book_id', $user_book_id );
-		update_post_meta( $att_id, '_prs_cover_key', $key );
+                update_post_meta( $att_id, '_prs_cover_user_id', $user_id );
+                update_post_meta( $att_id, '_prs_cover_user_book_id', $user_book_id );
+                update_post_meta( $att_id, '_prs_cover_key', $key );
+                delete_post_meta( $att_id, '_prs_cover_source' );
 
 		// Borrar otras portadas del mismo user_book
-		$others = get_posts(
+                $others = get_posts(
 			array(
 				'post_type'      => 'attachment',
 				'post_status'    => 'inherit',
@@ -194,11 +195,11 @@ class PRS_Cover_Upload_Feature {
                         $t,
                         array(
                                 'cover_attachment_id_user' => (int) $att_id,
-                                'cover_url'                => null,
-                                'cover_source'             => null,
                                 'updated_at'               => current_time( 'mysql', true ),
                         ),
-                        array( 'id' => $user_book_id )
+                        array( 'id' => $user_book_id ),
+                        array( '%d', '%s' ),
+                        array( '%d' )
                 );
 
                 // Responder con URL para reemplazar la portada en el front
@@ -265,33 +266,9 @@ class PRS_Cover_Upload_Feature {
                 }
 
                 global $wpdb;
-
                 $user_books_table = $wpdb->prefix . 'politeia_user_books';
 
-                $table_exists = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $user_books_table ) );
-
-                if ( $table_exists !== $user_books_table ) {
-                        error_log( sprintf( '[PRS_COVER] Table %s missing when attempting to save cover.', $user_books_table ) );
-                        wp_send_json_error( array( 'message' => 'missing_table' ), 500 );
-                }
-
-                $columns = $wpdb->get_col( "DESC {$user_books_table}", 0 );
-
-                if ( ! in_array( 'cover_url', $columns, true ) || ! in_array( 'cover_source', $columns, true ) ) {
-                        error_log( '[PRS_COVER] Missing columns detected at runtime, attempting fix.' );
-
-                        if ( function_exists( 'politeia_bookshelf_check_cover_columns' ) ) {
-                                politeia_bookshelf_check_cover_columns();
-                                $columns = $wpdb->get_col( "DESC {$user_books_table}", 0 );
-                        }
-
-                        if ( ! in_array( 'cover_url', $columns, true ) || ! in_array( 'cover_source', $columns, true ) ) {
-                                error_log( '[PRS_COVER] Required cover columns still missing after attempted fix.' );
-                                wp_send_json_error( array( 'message' => 'missing_cover_columns' ), 500 );
-                        }
-                }
-
-                $row = $wpdb->get_var(
+                $row = $wpdb->get_row(
                         $wpdb->prepare(
                                 "SELECT id FROM {$user_books_table} WHERE id=%d AND user_id=%d AND book_id=%d LIMIT 1",
                                 $user_book_id,
@@ -304,34 +281,23 @@ class PRS_Cover_Upload_Feature {
                         wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
                 }
 
-                $now = current_time( 'mysql', true );
-                if ( $source_link ) {
-                        $sql = $wpdb->prepare(
-                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = %s, cover_attachment_id_user = NULL, updated_at = %s WHERE id = %d",
-                                $image_url,
-                                $source_link,
-                                $now,
-                                $user_book_id
-                        );
-                } else {
-                        $sql = $wpdb->prepare(
-                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = NULL, cover_attachment_id_user = NULL, updated_at = %s WHERE id = %d",
-                                $image_url,
-                                $now,
-                                $user_book_id
-                        );
+                $result = self::persist_user_cover_choice( (int) $row->id, $user_id, $book_id, $image_url, $source_link );
+
+                if ( is_wp_error( $result ) ) {
+                        error_log( sprintf( '[PRS_COVER] External cover save failed for user %d, book %d: %s', $user_id, $book_id, $result->get_error_message() ) );
+                        wp_send_json_error( array( 'message' => 'db_error' ), 500 );
                 }
 
-                $updated = $wpdb->query( $sql );
-
-                if ( false === $updated ) {
-                        wp_send_json_error( array( 'message' => 'db_error' ), 500 );
+                if ( 'attachment' === $result['type'] && ! empty( $result['attachment_id'] ) ) {
+                        error_log( sprintf( '[PRS_COVER] Saved external cover for user %d, book %d as attachment %d.', $user_id, $book_id, (int) $result['attachment_id'] ) );
+                } else {
+                        error_log( sprintf( '[PRS_COVER] Saved external cover for user %d, book %d as direct URL.', $user_id, $book_id ) );
                 }
 
                 wp_send_json_success(
                         array(
-                                'src' => $image_url,
-                                'source' => $source_link,
+                                'src'    => $result['src'],
+                                'source' => $result['source'],
                         )
                 );
         }
@@ -400,56 +366,232 @@ class PRS_Cover_Upload_Feature {
 
                 $user_books_table = $wpdb->prefix . 'politeia_user_books';
 
-                $owns_book = $wpdb->get_var(
+                $row = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT COUNT(*) FROM {$user_books_table} WHERE book_id = %d AND user_id = %d",
+                                "SELECT id FROM {$user_books_table} WHERE book_id = %d AND user_id = %d LIMIT 1",
                                 $book_id,
                                 $user_id
                         )
                 );
 
-                if ( ! $owns_book ) {
+                if ( ! $row ) {
                         error_log( sprintf( '[PRS_COVER] Permission denied for user %d attempting to update book %d.', $user_id, $book_id ) );
                         wp_send_json_error( 'Permission denied.', 403 );
                 }
 
-                $now = current_time( 'mysql', true );
+                $result = self::persist_user_cover_choice( (int) $row->id, $user_id, $book_id, $cover_url, $cover_source );
 
-                if ( $cover_source ) {
-                        $sql = $wpdb->prepare(
-                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = %s, cover_attachment_id_user = NULL, updated_at = %s WHERE book_id = %d AND user_id = %d",
-                                $cover_url,
-                                $cover_source,
-                                $now,
-                                $book_id,
-                                $user_id
-                        );
+                if ( is_wp_error( $result ) ) {
+                        error_log( sprintf( '[PRS_COVER] Database update failed for user %d, book %d: %s', $user_id, $book_id, $result->get_error_message() ) );
+                        wp_send_json_error( 'Database update failed.', 500 );
+                }
+
+                if ( 'attachment' === $result['type'] && ! empty( $result['attachment_id'] ) ) {
+                        error_log( sprintf( '[PRS_COVER] Cover saved successfully for user %d, book %d as attachment %d.', $user_id, $book_id, (int) $result['attachment_id'] ) );
                 } else {
-                        $sql = $wpdb->prepare(
-                                "UPDATE {$user_books_table} SET cover_url = %s, cover_source = NULL, cover_attachment_id_user = NULL, updated_at = %s WHERE book_id = %d AND user_id = %d",
-                                $cover_url,
-                                $now,
-                                $book_id,
-                                $user_id
-                        );
+                        error_log( sprintf( '[PRS_COVER] Cover saved successfully for user %d, book %d as direct URL.', $user_id, $book_id ) );
                 }
-
-                $updated = $wpdb->query( $sql );
-
-                if ( false === $updated ) {
-                        $db_error = $wpdb->last_error;
-                        error_log( sprintf( '[PRS_COVER] Database update failed for user %d, book %d: %s', $user_id, $book_id, $db_error ) );
-                        wp_send_json_error( 'Database update failed: ' . $db_error, 500 );
-                }
-
-                error_log( sprintf( '[PRS_COVER] Cover saved successfully for user %d, book %d.', $user_id, $book_id ) );
 
                 wp_send_json_success(
                         array(
-                                'src'    => $cover_url,
-                                'source' => $cover_source,
+                                'src'    => $result['src'],
+                                'source' => $result['source'],
                         )
                 );
+        }
+
+        protected static function persist_user_cover_choice( $user_book_id, $user_id, $book_id, $cover_url, $cover_source = '' ) {
+                global $wpdb;
+
+                $table          = $wpdb->prefix . 'politeia_user_books';
+                $clean_url      = esc_url_raw( $cover_url );
+                $clean_source   = $cover_source ? esc_url_raw( $cover_source ) : '';
+                $attachment_id  = self::sideload_cover_attachment( $clean_url, $user_id, $user_book_id );
+                $data          = array(
+                        'cover_attachment_id_user' => $attachment_id ? (int) $attachment_id : maybe_serialize( array_filter(
+                                array(
+                                        'external_cover' => $clean_url,
+                                        'source'         => $clean_source,
+                                )
+                        ) ),
+                        'updated_at'               => current_time( 'mysql', true ),
+                );
+                $format        = $attachment_id ? array( '%d', '%s' ) : array( '%s', '%s' );
+
+                $updated = $wpdb->update(
+                        $table,
+                        $data,
+                        array( 'id' => $user_book_id ),
+                        $format,
+                        array( '%d' )
+                );
+
+                if ( false === $updated ) {
+                        if ( $attachment_id ) {
+                                wp_delete_attachment( $attachment_id, true );
+                        }
+
+                        return new WP_Error( 'db_error', 'Database update failed.' );
+                }
+
+                if ( $attachment_id ) {
+                        if ( $clean_source ) {
+                                update_post_meta( $attachment_id, '_prs_cover_source', $clean_source );
+                        } else {
+                                delete_post_meta( $attachment_id, '_prs_cover_source' );
+                        }
+
+                        self::cleanup_cover_attachments( $user_id, $user_book_id, $attachment_id );
+
+                        $src = wp_get_attachment_image_url( $attachment_id, 'large' );
+
+                        return array(
+                                'type'          => 'attachment',
+                                'attachment_id' => $attachment_id,
+                                'src'           => $src ?: '',
+                                'source'        => $clean_source,
+                        );
+                }
+
+                return array(
+                        'type'          => 'external',
+                        'attachment_id' => 0,
+                        'src'           => $clean_url,
+                        'source'        => $clean_source,
+                );
+        }
+
+        protected static function sideload_cover_attachment( $cover_url, $user_id, $user_book_id ) {
+                if ( '' === $cover_url ) {
+                        return false;
+                }
+
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+                require_once ABSPATH . 'wp-admin/includes/media.php';
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+
+                $tmp = download_url( $cover_url );
+
+                if ( is_wp_error( $tmp ) ) {
+                        error_log( sprintf( '[PRS_COVER] download_url failed for user %d, book %d: %s', $user_id, $user_book_id, $tmp->get_error_message() ) );
+                        return false;
+                }
+
+                $path     = parse_url( $cover_url, PHP_URL_PATH );
+                $basename = $path ? basename( $path ) : '';
+                if ( ! $basename || '.' === $basename ) {
+                        $basename = 'google-cover-' . $user_id . '-' . time() . '.jpg';
+                }
+
+                $file_array = array(
+                        'name'     => sanitize_file_name( $basename ),
+                        'tmp_name' => $tmp,
+                );
+
+                $attachment_id = media_handle_sideload(
+                        $file_array,
+                        0,
+                        '',
+                        array(
+                                'post_author' => $user_id,
+                        )
+                );
+
+                if ( is_wp_error( $attachment_id ) ) {
+                        @unlink( $tmp );
+                        error_log( sprintf( '[PRS_COVER] media_handle_sideload failed for user %d, book %d: %s', $user_id, $user_book_id, $attachment_id->get_error_message() ) );
+                        return false;
+                }
+
+                $key = self::build_cover_key( $user_id, $user_book_id );
+                update_post_meta( $attachment_id, '_prs_cover_user_id', $user_id );
+                if ( $user_book_id ) {
+                        update_post_meta( $attachment_id, '_prs_cover_user_book_id', $user_book_id );
+                        update_post_meta( $attachment_id, '_prs_cover_key', $key );
+                }
+
+                return (int) $attachment_id;
+        }
+
+        protected static function cleanup_cover_attachments( $user_id, $user_book_id, $keep_attachment_id ) {
+                if ( ! $user_book_id ) {
+                        return;
+                }
+
+                $key    = self::build_cover_key( $user_id, $user_book_id );
+                $args   = array(
+                        'post_type'      => 'attachment',
+                        'post_status'    => 'inherit',
+                        'fields'         => 'ids',
+                        'posts_per_page' => -1,
+                        'author'         => $user_id,
+                        'meta_query'     => array(
+                                array(
+                                        'key'   => '_prs_cover_key',
+                                        'value' => $key,
+                                ),
+                        ),
+                );
+                if ( $keep_attachment_id ) {
+                        $args['exclude'] = array( (int) $keep_attachment_id );
+                }
+
+                $others = get_posts( $args );
+                foreach ( $others as $oid ) {
+                        if ( $keep_attachment_id && (int) $keep_attachment_id === (int) $oid ) {
+                                continue;
+                        }
+                        wp_delete_attachment( $oid, true );
+                }
+        }
+
+        protected static function build_cover_key( $user_id, $user_book_id ) {
+                return 'u' . (int) $user_id . 'ub' . (int) $user_book_id;
+        }
+
+        public static function parse_cover_value( $raw ) {
+                $data = array(
+                        'attachment_id' => 0,
+                        'url'           => '',
+                        'source'        => '',
+                );
+
+                if ( $raw instanceof WP_Post ) {
+                        $raw = isset( $raw->cover_attachment_id_user ) ? $raw->cover_attachment_id_user : '';
+                }
+
+                if ( is_numeric( $raw ) && (int) $raw > 0 ) {
+                        $data['attachment_id'] = (int) $raw;
+                        return $data;
+                }
+
+                if ( is_string( $raw ) ) {
+                        $raw = trim( $raw );
+
+                        if ( '' === $raw ) {
+                                return $data;
+                        }
+
+                        if ( 0 === strpos( $raw, 'url:' ) ) {
+                                $data['url'] = esc_url_raw( substr( $raw, 4 ) );
+                                return $data;
+                        }
+
+                        $maybe = maybe_unserialize( $raw );
+                        if ( is_array( $maybe ) ) {
+                                if ( isset( $maybe['attachment_id'] ) && is_numeric( $maybe['attachment_id'] ) ) {
+                                        $data['attachment_id'] = (int) $maybe['attachment_id'];
+                                }
+                                if ( isset( $maybe['external_cover'] ) ) {
+                                        $data['url'] = esc_url_raw( (string) $maybe['external_cover'] );
+                                }
+                                if ( isset( $maybe['source'] ) ) {
+                                        $data['source'] = esc_url_raw( (string) $maybe['source'] );
+                                }
+                        }
+                }
+
+                return $data;
         }
 
         public static function ajax_search_google() {

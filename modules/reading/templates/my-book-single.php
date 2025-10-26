@@ -49,12 +49,25 @@ $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 
 
 $current_type = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
 
-$user_cover_id      = isset( $ub->cover_attachment_id_user ) ? (int) $ub->cover_attachment_id_user : 0;
+$user_cover_raw     = isset( $ub->cover_attachment_id_user ) ? $ub->cover_attachment_id_user : '';
+$parsed_user_cover  = method_exists( 'PRS_Cover_Upload_Feature', 'parse_cover_value' ) ? PRS_Cover_Upload_Feature::parse_cover_value( $user_cover_raw ) : array(
+        'attachment_id' => is_numeric( $user_cover_raw ) ? (int) $user_cover_raw : 0,
+        'url'           => '',
+        'source'        => '',
+);
+$user_cover_id      = isset( $parsed_user_cover['attachment_id'] ) ? (int) $parsed_user_cover['attachment_id'] : 0;
 $canon_cover_id     = isset( $book->cover_attachment_id ) ? (int) $book->cover_attachment_id : 0;
-$user_cover_url     = isset( $ub->cover_url ) ? trim( (string) $ub->cover_url ) : '';
-$user_cover_source  = $user_cover_url ? trim( isset( $ub->cover_source ) ? (string) $ub->cover_source : '' ) : '';
+$user_cover_url     = isset( $parsed_user_cover['url'] ) ? trim( (string) $parsed_user_cover['url'] ) : '';
+$user_cover_url     = $user_cover_url ? esc_url_raw( $user_cover_url ) : '';
+$user_cover_source  = isset( $parsed_user_cover['source'] ) ? trim( (string) $parsed_user_cover['source'] ) : '';
+$attachment_source  = $user_cover_id ? get_post_meta( $user_cover_id, '_prs_cover_source', true ) : '';
+if ( $attachment_source ) {
+        $user_cover_source = (string) $attachment_source;
+}
+$user_cover_source = $user_cover_source ? esc_url_raw( $user_cover_source ) : '';
 $book_cover_url     = isset( $book->cover_url ) ? trim( (string) $book->cover_url ) : '';
 $book_cover_source  = $book_cover_url ? trim( isset( $book->cover_source ) ? (string) $book->cover_source : '' ) : '';
+$book_cover_source  = $book_cover_source ? esc_url_raw( $book_cover_source ) : '';
 $cover_url          = '';
 $cover_source       = '';
 $final_cover_id     = 0;

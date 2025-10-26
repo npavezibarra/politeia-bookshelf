@@ -181,8 +181,6 @@ class Politeia_Reading_Activator {
 
                 self::maybe_add_column( $books, 'cover_url', 'VARCHAR(800) NULL' );
                 self::maybe_add_column( $books, 'cover_source', 'VARCHAR(800) NULL' );
-                self::maybe_add_column( $user_books, 'cover_url', 'VARCHAR(800) NULL' );
-                self::maybe_add_column( $user_books, 'cover_source', 'VARCHAR(800) NULL' );
 
                 self::migrate_books_hash_and_unique(); // <-- mantiene tu migración de hash/unique
                 self::ensure_unique_user_book();       // robustez por si faltara el UNIQUE
