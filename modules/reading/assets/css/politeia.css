@@ -1057,45 +1057,6 @@ table.prs-form__table {
 	display: none;
 }
 
-/* Inline contact form under Owning Status */
-.prs-contact-form{
-	display: grid;
-	grid-template-columns: 120px minmax(240px, 1fr);
-	gap: 10px 12px;               /* row-gap / column-gap */
-	max-width: 600px;
-	margin: 10px 0 0 10px;
-	}
-	.prs-contact-label{
-	align-self: center;
-	font-weight: 600;
-	}
-	.prs-contact-input{
-	width: 100%;
-	}
-	.prs-contact-actions{
-	grid-column: 2;               /* tercera fila, bajo los inputs */
-	display: flex;
-	align-items: center;
-	gap: 10px;
-	}
-	.prs-contact-status{ color:#555; }
-
-	/* Responsive: apilar en mobile */
-	@media (max-width: 720px){
-	.prs-contact-form{
-		grid-template-columns: 1fr;
-		margin-left: 0;
-	}
-	.prs-contact-actions{
-		grid-column: 1;
-	}
-	}
-
-button#owning-contact-save {
-	margin-top: 15px;
-}
-
-
 /* Container */
 .prs-stars {
         display: inline-flex;
@@ -1408,7 +1369,7 @@ button#owning-contact-save {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
-        gap: 3rem;
+        gap: 1rem;
         margin-top: 1.5rem;
         margin-bottom: 2rem;
 }
@@ -1469,6 +1430,10 @@ button#owning-contact-save {
         padding: 6px 12px;
 }
 
+button#purchase-date-save {
+        margin-top: 16px;
+}
+
 #purchase-date-save,
 #purchase-channel-save {
         background: #4a73ff;
@@ -1483,8 +1448,111 @@ button#owning-contact-save {
 
 /* Responsive stacking */
 @media (max-width: 768px) {
-        .prs-purchase-row {
+    .prs-purchase-row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+}
+
+/* === STATUS ROW LAYOUT === */
+.prs-status-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-top: 1.5rem;
+        margin-bottom: 2rem;
+}
+
+/* === FIXED HALF-WIDTH COLUMNS === */
+.prs-status-field {
+        flex: 0 0 calc(50% - 0.5rem);
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+}
+
+/* === LABEL STYLING === */
+.prs-status-field .label {
+        display: block;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 6px;
+}
+
+/* === FORM ELEMENTS (Selects, Inputs, Buttons) === */
+.prs-status-field select,
+.prs-status-field input[type="text"],
+.prs-status-field input[type="email"] {
+        width: 100%;
+        padding: 8px 10px;
+        font-size: 14px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        box-sizing: border-box;
+        margin-bottom: 8px;
+}
+
+/* === BUTTONS === */
+.prs-status-field .prs-btn {
+        display: inline-block;
+        width: 100%;
+        text-align: center;
+        font-size: 14px;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        padding: 8px 12px;
+        margin-top: 4px;
+}
+
+#owning-return-shelf {
+        background: #4a73ff;
+        color: #fff;
+}
+
+#owning-contact-save {
+        background: #4a73ff;
+        color: #fff;
+}
+
+/* === HELP TEXT & LOCATION === */
+.prs-status-field .prs-help,
+.prs-status-field .prs-location {
+        font-size: 13px;
+        color: #555;
+        margin-top: 4px;
+}
+
+/* === CONTACT FORM === */
+.prs-contact-form {
+        display: flex;
+}
+
+.prs-contact-input {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        font-size: 14px;
+        box-sizing: border-box;
+}
+
+/* === CONTACT ACTIONS === */
+.prs-contact-actions {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 6px;
+}
+
+/* === RESPONSIVE STACKING === */
+@media (max-width: 768px) {
+        .prs-status-row {
                 flex-direction: column;
-                gap: 2rem;
+        }
+
+        .prs-status-field {
+                flex: 1 1 100%;
         }
 }
