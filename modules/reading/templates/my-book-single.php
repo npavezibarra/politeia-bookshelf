@@ -259,7 +259,7 @@ wp_localize_script(
 
 	.prs-field{ margin-top:12px; }
 	.prs-field .label{ font-weight:600; display:block; margin-bottom:4px; }
-	.prs-inline-actions{ margin-left:8px; }
+        .prs-inline-actions{ margin-left:0; }
 	.prs-inline-actions a{ margin-left:8px; }
 	.prs-help{ color:#666; font-size:12px; }
 
