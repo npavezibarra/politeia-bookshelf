@@ -88,6 +88,8 @@ class Politeia_Reading_Activator {
             counterparty_name  VARCHAR(255) NULL,
             counterparty_email VARCHAR(190) NULL,
             cover_attachment_id_user BIGINT UNSIGNED NULL,
+            cover_url VARCHAR(800) NULL,
+            cover_source VARCHAR(800) NULL,
             language VARCHAR(50) NULL,
             notes TEXT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -173,13 +175,16 @@ class Politeia_Reading_Activator {
 		self::maybe_migrate_owning_status();  // legado
 
 		// NUEVO: asegurar cover_url en books
-		global $wpdb;
-		$books = $wpdb->prefix . 'politeia_books';
-		self::maybe_add_column( $books, 'cover_url', 'VARCHAR(800) NULL' );
+                global $wpdb;
+                $books      = $wpdb->prefix . 'politeia_books';
+                $user_books = $wpdb->prefix . 'politeia_user_books';
 
-		self::migrate_books_hash_and_unique(); // <-- mantiene tu migración de hash/unique
-		self::ensure_unique_user_book();       // robustez por si faltara el UNIQUE
-	}
+                self::maybe_add_column( $books, 'cover_url', 'VARCHAR(800) NULL' );
+                self::maybe_add_column( $books, 'cover_source', 'VARCHAR(800) NULL' );
+
+                self::migrate_books_hash_and_unique(); // <-- mantiene tu migración de hash/unique
+                self::ensure_unique_user_book();       // robustez por si faltara el UNIQUE
+        }
 
 	/* ======================== MIGRACIONES NUEVAS ======================== */
 

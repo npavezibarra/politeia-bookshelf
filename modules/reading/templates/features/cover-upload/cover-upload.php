@@ -13,6 +13,8 @@ class PRS_Cover_Upload_Feature {
                 add_shortcode( 'prs_cover_button', array( __CLASS__, 'shortcode_button' ) );
                 add_action( 'wp_ajax_prs_cover_save_crop', array( __CLASS__, 'ajax_save_crop' ) );
                 add_action( 'wp_ajax_prs_cover_save_external', array( __CLASS__, 'ajax_save_external' ) );
+                add_action( 'wp_ajax_prs_cover_search_google', array( __CLASS__, 'ajax_search_google' ) );
+                add_action( 'wp_ajax_prs_save_cover_url', array( __CLASS__, 'ajax_save_cover_url' ) );
         }
 
 	public static function assets() {
@@ -28,13 +30,13 @@ class PRS_Cover_Upload_Feature {
 			array(),
 			'0.1.0'
 		);
-		wp_register_script(
-			'prs-cover-upload',
-			plugins_url( 'templates/features/cover-upload/cover-upload.js', dirname( __DIR__, 2 ) ),
-			array(),
-			'0.1.0',
-			true
-		);
+                wp_register_script(
+                        'prs-cover-upload',
+                        plugins_url( 'templates/features/cover-upload/cover-upload.js', dirname( __DIR__, 2 ) ),
+                        array( 'jquery' ),
+                        '0.1.0',
+                        true
+                );
 
 		wp_enqueue_style( 'prs-cover-upload' );
 		wp_enqueue_script( 'prs-cover-upload' );
@@ -53,6 +55,16 @@ class PRS_Cover_Upload_Feature {
                                 'coverHeight' => 450,
                                 'onlyOne'     => 1,
                                 'externalNonce' => wp_create_nonce( 'prs_cover_save_external' ),
+                                'searchNonce'   => wp_create_nonce( 'prs_cover_search_google' ),
+                        )
+                );
+
+                wp_localize_script(
+                        'prs-cover-upload',
+                        'prs_cover_data',
+                        array(
+                                'ajaxurl' => admin_url( 'admin-ajax.php' ),
+                                'nonce'   => wp_create_nonce( 'prs_cover_nonce' ),
                         )
                 );
         }
@@ -118,8 +130,8 @@ class PRS_Cover_Upload_Feature {
 			wp_send_json_error( array( 'message' => 'upload_dir_error' ), 500 );
 		}
 
-		$key      = 'u' . $user_id . 'ub' . $user_book_id;
-		$filename = 'book-cover-' . $key . '-' . gmdate( 'Ymd-His' ) . '.' . $ext;
+                $key      = self::build_cover_key( $user_id, $user_book_id );
+                $filename = 'book-cover-' . $key . '-' . gmdate( 'Ymd-His' ) . '.' . $ext;
 		$path     = trailingslashit( $up['path'] ) . $filename;
 
 		if ( ! wp_mkdir_p( $up['path'] ) ) {
@@ -152,12 +164,13 @@ class PRS_Cover_Upload_Feature {
 		wp_update_attachment_metadata( $att_id, $meta );
 
 		// Etiquetas para poder limpiar
-		update_post_meta( $att_id, '_prs_cover_user_id', $user_id );
-		update_post_meta( $att_id, '_prs_cover_user_book_id', $user_book_id );
-		update_post_meta( $att_id, '_prs_cover_key', $key );
+                update_post_meta( $att_id, '_prs_cover_user_id', $user_id );
+                update_post_meta( $att_id, '_prs_cover_user_book_id', $user_book_id );
+                update_post_meta( $att_id, '_prs_cover_key', $key );
+                delete_post_meta( $att_id, '_prs_cover_source' );
 
 		// Borrar otras portadas del mismo user_book
-		$others = get_posts(
+                $others = get_posts(
 			array(
 				'post_type'      => 'attachment',
 				'post_status'    => 'inherit',
@@ -184,7 +197,9 @@ class PRS_Cover_Upload_Feature {
                                 'cover_attachment_id_user' => (int) $att_id,
                                 'updated_at'               => current_time( 'mysql', true ),
                         ),
-                        array( 'id' => $user_book_id )
+                        array( 'id' => $user_book_id ),
+                        array( '%d', '%s' ),
+                        array( '%d' )
                 );
 
                 // Responder con URL para reemplazar la portada en el front
@@ -213,6 +228,8 @@ class PRS_Cover_Upload_Feature {
                 $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
                 $image_url    = isset( $_POST['image_url'] ) ? (string) wp_unslash( $_POST['image_url'] ) : '';
                 $image_url    = $image_url ? esc_url_raw( $image_url ) : '';
+                $source_link  = isset( $_POST['source_link'] ) ? (string) wp_unslash( $_POST['source_link'] ) : '';
+                $source_link  = $source_link ? esc_url_raw( $source_link ) : '';
 
                 if ( ! $user_book_id || ! $book_id || ! $image_url ) {
                         wp_send_json_error( array( 'message' => 'missing_params' ), 400 );
@@ -227,12 +244,31 @@ class PRS_Cover_Upload_Feature {
                         wp_send_json_error( array( 'message' => 'unsupported_scheme' ), 400 );
                 }
 
+                $image_host = wp_parse_url( $image_url, PHP_URL_HOST );
+                if ( ! $image_host || false === stripos( $image_host, 'books.google' ) ) {
+                        wp_send_json_error( array( 'message' => 'invalid_image_host' ), 400 );
+                }
+
+                if ( $source_link ) {
+                        if ( ! filter_var( $source_link, FILTER_VALIDATE_URL ) ) {
+                                wp_send_json_error( array( 'message' => 'bad_source_url' ), 400 );
+                        }
+
+                        $source_scheme = wp_parse_url( $source_link, PHP_URL_SCHEME );
+                        if ( ! in_array( strtolower( (string) $source_scheme ), array( 'http', 'https' ), true ) ) {
+                                wp_send_json_error( array( 'message' => 'unsupported_source_scheme' ), 400 );
+                        }
+
+                        $source_host = wp_parse_url( $source_link, PHP_URL_HOST );
+                        if ( ! $source_host || false === stripos( $source_host, 'books.google' ) ) {
+                                wp_send_json_error( array( 'message' => 'invalid_source_host' ), 400 );
+                        }
+                }
+
                 global $wpdb;
-
                 $user_books_table = $wpdb->prefix . 'politeia_user_books';
-                $books_table      = $wpdb->prefix . 'politeia_books';
 
-                $row = $wpdb->get_var(
+                $row = $wpdb->get_row(
                         $wpdb->prepare(
                                 "SELECT id FROM {$user_books_table} WHERE id=%d AND user_id=%d AND book_id=%d LIMIT 1",
                                 $user_book_id,
@@ -245,26 +281,555 @@ class PRS_Cover_Upload_Feature {
                         wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
                 }
 
-                $updated = $wpdb->update(
-                        $books_table,
-                        array(
-                                'cover_url'  => $image_url,
-                                'updated_at' => current_time( 'mysql', true ),
-                        ),
-                        array( 'id' => $book_id ),
-                        array( '%s', '%s' ),
-                        array( '%d' )
-                );
+                $result = self::persist_user_cover_choice( (int) $row->id, $user_id, $book_id, $image_url, $source_link );
 
-                if ( false === $updated ) {
+                if ( is_wp_error( $result ) ) {
+                        error_log( sprintf( '[PRS_COVER] External cover save failed for user %d, book %d: %s', $user_id, $book_id, $result->get_error_message() ) );
                         wp_send_json_error( array( 'message' => 'db_error' ), 500 );
+                }
+
+                if ( 'attachment' === $result['type'] && ! empty( $result['attachment_id'] ) ) {
+                        error_log( sprintf( '[PRS_COVER] Saved external cover for user %d, book %d as attachment %d.', $user_id, $book_id, (int) $result['attachment_id'] ) );
+                } else {
+                        error_log( sprintf( '[PRS_COVER] Saved external cover for user %d, book %d as direct URL.', $user_id, $book_id ) );
                 }
 
                 wp_send_json_success(
                         array(
-                                'src' => $image_url,
+                                'src'    => $result['src'],
+                                'source' => $result['source'],
                         )
                 );
+        }
+
+        /**
+         * Guarda la URL de portada seleccionada desde Google Books.
+         */
+        public static function ajax_save_cover_url() {
+                if ( ! is_user_logged_in() ) {
+                        error_log( '[PRS_COVER] Unauthorized attempt to save Google cover.' );
+                        wp_send_json_error( 'User not logged in.', 401 );
+                }
+
+                if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'prs_cover_nonce' ) ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid nonce for user %d.', get_current_user_id() ) );
+                        wp_send_json_error( 'Invalid nonce.', 403 );
+                }
+
+                $user_id       = get_current_user_id();
+                $book_id       = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $cover_url     = isset( $_POST['cover_url'] ) ? esc_url_raw( wp_unslash( $_POST['cover_url'] ) ) : '';
+                $cover_source  = isset( $_POST['cover_source'] ) ? esc_url_raw( wp_unslash( $_POST['cover_source'] ) ) : '';
+
+                if ( ! $book_id || '' === $cover_url ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid payload for user %d. book_id=%d cover_url=%s', $user_id, $book_id, $cover_url ) );
+                        wp_send_json_error( 'Invalid data.', 400 );
+                }
+
+                if ( ! filter_var( $cover_url, FILTER_VALIDATE_URL ) ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid cover URL for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
+                        wp_send_json_error( 'Invalid cover URL.', 400 );
+                }
+
+                $scheme = wp_parse_url( $cover_url, PHP_URL_SCHEME );
+                if ( ! in_array( strtolower( (string) $scheme ), array( 'http', 'https' ), true ) ) {
+                        error_log( sprintf( '[PRS_COVER] Invalid cover URL scheme for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
+                        wp_send_json_error( 'Invalid cover URL scheme.', 400 );
+                }
+
+                $host = wp_parse_url( $cover_url, PHP_URL_HOST );
+                if ( ! $host || false === stripos( $host, 'books.google' ) ) {
+                        error_log( sprintf( '[PRS_COVER] Cover host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
+                        wp_send_json_error( 'Cover host not permitted.', 400 );
+                }
+
+                if ( $cover_source ) {
+                        if ( ! filter_var( $cover_source, FILTER_VALIDATE_URL ) ) {
+                                error_log( sprintf( '[PRS_COVER] Invalid source URL for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
+                                wp_send_json_error( 'Invalid source URL.', 400 );
+                        }
+
+                        $source_scheme = wp_parse_url( $cover_source, PHP_URL_SCHEME );
+                        if ( ! in_array( strtolower( (string) $source_scheme ), array( 'http', 'https' ), true ) ) {
+                                error_log( sprintf( '[PRS_COVER] Invalid source URL scheme for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
+                                wp_send_json_error( 'Invalid source URL scheme.', 400 );
+                        }
+
+                        $source_host = wp_parse_url( $cover_source, PHP_URL_HOST );
+                        if ( ! $source_host || false === stripos( $source_host, 'books.google' ) ) {
+                                error_log( sprintf( '[PRS_COVER] Source host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
+                                wp_send_json_error( 'Source host not permitted.', 400 );
+                        }
+                }
+
+                global $wpdb;
+
+                $user_books_table = $wpdb->prefix . 'politeia_user_books';
+
+                $row = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$user_books_table} WHERE book_id = %d AND user_id = %d LIMIT 1",
+                                $book_id,
+                                $user_id
+                        )
+                );
+
+                if ( ! $row ) {
+                        error_log( sprintf( '[PRS_COVER] Permission denied for user %d attempting to update book %d.', $user_id, $book_id ) );
+                        wp_send_json_error( 'Permission denied.', 403 );
+                }
+
+                $result = self::persist_user_cover_choice( (int) $row->id, $user_id, $book_id, $cover_url, $cover_source );
+
+                if ( is_wp_error( $result ) ) {
+                        error_log( sprintf( '[PRS_COVER] Database update failed for user %d, book %d: %s', $user_id, $book_id, $result->get_error_message() ) );
+                        wp_send_json_error( 'Database update failed.', 500 );
+                }
+
+                if ( 'attachment' === $result['type'] && ! empty( $result['attachment_id'] ) ) {
+                        error_log( sprintf( '[PRS_COVER] Cover saved successfully for user %d, book %d as attachment %d.', $user_id, $book_id, (int) $result['attachment_id'] ) );
+                } else {
+                        error_log( sprintf( '[PRS_COVER] Cover saved successfully for user %d, book %d as direct URL.', $user_id, $book_id ) );
+                }
+
+                wp_send_json_success(
+                        array(
+                                'src'    => $result['src'],
+                                'source' => $result['source'],
+                        )
+                );
+        }
+
+        protected static function persist_user_cover_choice( $user_book_id, $user_id, $book_id, $cover_url, $cover_source = '' ) {
+                global $wpdb;
+
+                $table          = $wpdb->prefix . 'politeia_user_books';
+                $clean_url      = esc_url_raw( $cover_url );
+                $clean_source   = $cover_source ? esc_url_raw( $cover_source ) : '';
+                $attachment_id  = self::sideload_cover_attachment( $clean_url, $user_id, $user_book_id );
+                $data          = array(
+                        'cover_attachment_id_user' => $attachment_id ? (int) $attachment_id : maybe_serialize( array_filter(
+                                array(
+                                        'external_cover' => $clean_url,
+                                        'source'         => $clean_source,
+                                )
+                        ) ),
+                        'updated_at'               => current_time( 'mysql', true ),
+                );
+                $format        = $attachment_id ? array( '%d', '%s' ) : array( '%s', '%s' );
+
+                $updated = $wpdb->update(
+                        $table,
+                        $data,
+                        array( 'id' => $user_book_id ),
+                        $format,
+                        array( '%d' )
+                );
+
+                if ( false === $updated ) {
+                        if ( $attachment_id ) {
+                                wp_delete_attachment( $attachment_id, true );
+                        }
+
+                        return new WP_Error( 'db_error', 'Database update failed.' );
+                }
+
+                if ( $attachment_id ) {
+                        if ( $clean_source ) {
+                                update_post_meta( $attachment_id, '_prs_cover_source', $clean_source );
+                        } else {
+                                delete_post_meta( $attachment_id, '_prs_cover_source' );
+                        }
+
+                        self::cleanup_cover_attachments( $user_id, $user_book_id, $attachment_id );
+
+                        $src = wp_get_attachment_image_url( $attachment_id, 'large' );
+
+                        return array(
+                                'type'          => 'attachment',
+                                'attachment_id' => $attachment_id,
+                                'src'           => $src ?: '',
+                                'source'        => $clean_source,
+                        );
+                }
+
+                return array(
+                        'type'          => 'external',
+                        'attachment_id' => 0,
+                        'src'           => $clean_url,
+                        'source'        => $clean_source,
+                );
+        }
+
+        protected static function sideload_cover_attachment( $cover_url, $user_id, $user_book_id ) {
+                if ( '' === $cover_url ) {
+                        return false;
+                }
+
+                require_once ABSPATH . 'wp-admin/includes/file.php';
+                require_once ABSPATH . 'wp-admin/includes/media.php';
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+
+                $tmp = download_url( $cover_url );
+
+                if ( is_wp_error( $tmp ) ) {
+                        error_log( sprintf( '[PRS_COVER] download_url failed for user %d, book %d: %s', $user_id, $user_book_id, $tmp->get_error_message() ) );
+                        return false;
+                }
+
+                $path     = parse_url( $cover_url, PHP_URL_PATH );
+                $basename = $path ? basename( $path ) : '';
+                if ( ! $basename || '.' === $basename ) {
+                        $basename = 'google-cover-' . $user_id . '-' . time() . '.jpg';
+                }
+
+                $file_array = array(
+                        'name'     => sanitize_file_name( $basename ),
+                        'tmp_name' => $tmp,
+                );
+
+                $attachment_id = media_handle_sideload(
+                        $file_array,
+                        0,
+                        '',
+                        array(
+                                'post_author' => $user_id,
+                        )
+                );
+
+                if ( is_wp_error( $attachment_id ) ) {
+                        @unlink( $tmp );
+                        error_log( sprintf( '[PRS_COVER] media_handle_sideload failed for user %d, book %d: %s', $user_id, $user_book_id, $attachment_id->get_error_message() ) );
+                        return false;
+                }
+
+                $key = self::build_cover_key( $user_id, $user_book_id );
+                update_post_meta( $attachment_id, '_prs_cover_user_id', $user_id );
+                if ( $user_book_id ) {
+                        update_post_meta( $attachment_id, '_prs_cover_user_book_id', $user_book_id );
+                        update_post_meta( $attachment_id, '_prs_cover_key', $key );
+                }
+
+                return (int) $attachment_id;
+        }
+
+        protected static function cleanup_cover_attachments( $user_id, $user_book_id, $keep_attachment_id ) {
+                if ( ! $user_book_id ) {
+                        return;
+                }
+
+                $key    = self::build_cover_key( $user_id, $user_book_id );
+                $args   = array(
+                        'post_type'      => 'attachment',
+                        'post_status'    => 'inherit',
+                        'fields'         => 'ids',
+                        'posts_per_page' => -1,
+                        'author'         => $user_id,
+                        'meta_query'     => array(
+                                array(
+                                        'key'   => '_prs_cover_key',
+                                        'value' => $key,
+                                ),
+                        ),
+                );
+                if ( $keep_attachment_id ) {
+                        $args['exclude'] = array( (int) $keep_attachment_id );
+                }
+
+                $others = get_posts( $args );
+                foreach ( $others as $oid ) {
+                        if ( $keep_attachment_id && (int) $keep_attachment_id === (int) $oid ) {
+                                continue;
+                        }
+                        wp_delete_attachment( $oid, true );
+                }
+        }
+
+        protected static function build_cover_key( $user_id, $user_book_id ) {
+                return 'u' . (int) $user_id . 'ub' . (int) $user_book_id;
+        }
+
+        public static function parse_cover_value( $raw ) {
+                $data = array(
+                        'attachment_id' => 0,
+                        'url'           => '',
+                        'source'        => '',
+                );
+
+                if ( $raw instanceof WP_Post ) {
+                        $raw = isset( $raw->cover_attachment_id_user ) ? $raw->cover_attachment_id_user : '';
+                }
+
+                if ( is_numeric( $raw ) && (int) $raw > 0 ) {
+                        $data['attachment_id'] = (int) $raw;
+                        return $data;
+                }
+
+                if ( is_string( $raw ) ) {
+                        $raw = trim( $raw );
+
+                        if ( '' === $raw ) {
+                                return $data;
+                        }
+
+                        if ( 0 === strpos( $raw, 'url:' ) ) {
+                                $data['url'] = esc_url_raw( substr( $raw, 4 ) );
+                                return $data;
+                        }
+
+                        $maybe = maybe_unserialize( $raw );
+                        if ( is_array( $maybe ) ) {
+                                if ( isset( $maybe['attachment_id'] ) && is_numeric( $maybe['attachment_id'] ) ) {
+                                        $data['attachment_id'] = (int) $maybe['attachment_id'];
+                                }
+                                if ( isset( $maybe['external_cover'] ) ) {
+                                        $data['url'] = esc_url_raw( (string) $maybe['external_cover'] );
+                                }
+                                if ( isset( $maybe['source'] ) ) {
+                                        $data['source'] = esc_url_raw( (string) $maybe['source'] );
+                                }
+                        }
+                }
+
+                return $data;
+        }
+
+        public static function ajax_search_google() {
+                if ( ! is_user_logged_in() ) {
+                        wp_send_json_error( array( 'message' => 'auth' ), 401 );
+                }
+                if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'prs_cover_search_google' ) ) {
+                        wp_send_json_error( array( 'message' => 'bad_nonce' ), 403 );
+                }
+
+                $title    = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+                $author   = isset( $_POST['author'] ) ? sanitize_text_field( wp_unslash( $_POST['author'] ) ) : '';
+                $language = isset( $_POST['language'] ) ? sanitize_text_field( wp_unslash( $_POST['language'] ) ) : '';
+                $language = self::normalize_language( $language );
+
+                if ( '' === $title ) {
+                        wp_send_json_error( array( 'message' => 'missing_title' ), 400 );
+                }
+
+                $api_key = trim( (string) get_option( 'politeia_bookshelf_google_api_key' ) );
+                if ( '' === $api_key ) {
+                        wp_send_json_error( array( 'message' => 'missing_api_key' ), 400 );
+                }
+
+                $query = $title;
+                if ( $author ) {
+                        $query .= ' inauthor:' . $author;
+                }
+
+                $args = array(
+                        'q'            => $query,
+                        'langRestrict' => $language ? $language : 'en',
+                        'maxResults'   => 5,
+                        'printType'    => 'books',
+                        'key'          => $api_key,
+                );
+
+                $url      = add_query_arg( $args, 'https://www.googleapis.com/books/v1/volumes' );
+                $response = wp_remote_get(
+                        $url,
+                        array(
+                                'timeout' => 10,
+                        )
+                );
+
+                if ( is_wp_error( $response ) ) {
+                        wp_send_json_error( array( 'message' => 'api_error' ), 500 );
+                }
+
+                $code = (int) wp_remote_retrieve_response_code( $response );
+                $body = wp_remote_retrieve_body( $response );
+                $data = json_decode( $body, true );
+
+                if ( ! is_array( $data ) ) {
+                        wp_send_json_error( array( 'message' => 'api_error' ), 500 );
+                }
+
+                if ( $code >= 400 ) {
+                        $message = isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'api_error';
+                        wp_send_json_error( array( 'message' => $message ), $code );
+                }
+
+                if ( empty( $data['items'] ) || ! is_array( $data['items'] ) ) {
+                        wp_send_json_error( array( 'message' => 'no_results' ), 404 );
+                }
+
+                $preferred = array();
+                $fallback  = array();
+                $seen      = array();
+
+                foreach ( $data['items'] as $entry ) {
+                        if ( ! is_array( $entry ) ) {
+                                continue;
+                        }
+
+                        $volume = isset( $entry['volumeInfo'] ) && is_array( $entry['volumeInfo'] ) ? $entry['volumeInfo'] : array();
+                        $vol_title = isset( $volume['title'] ) ? (string) $volume['title'] : '';
+                        if ( '' === $vol_title ) {
+                                continue;
+                        }
+
+                        $similarity = self::title_similarity( $title, $vol_title );
+                        if ( $similarity < 0.7 ) {
+                                continue;
+                        }
+
+                        $links = isset( $volume['imageLinks'] ) && is_array( $volume['imageLinks'] ) ? $volume['imageLinks'] : array();
+                        $best  = self::best_image_link( $links );
+                        if ( '' === $best ) {
+                                continue;
+                        }
+
+                        $cover_url = self::sanitize_google_image_url( $best );
+                        if ( '' === $cover_url ) {
+                                continue;
+                        }
+
+                        $info_link = isset( $volume['infoLink'] ) ? self::sanitize_google_info_link( (string) $volume['infoLink'] ) : '';
+                        if ( '' === $info_link ) {
+                                continue;
+                        }
+
+                        if ( isset( $seen[ $cover_url ] ) ) {
+                                continue;
+                        }
+
+                        $seen[ $cover_url ] = true;
+
+                        $vol_language = isset( $volume['language'] ) ? self::normalize_language( $volume['language'] ) : '';
+                        $item         = array(
+                                'url'      => $cover_url,
+                                'source'   => $info_link,
+                                'language' => $vol_language,
+                                'title'    => $vol_title,
+                        );
+
+                        if ( $language && $vol_language && $language !== $vol_language ) {
+                                $fallback[] = $item;
+                        } else {
+                                $preferred[] = $item;
+                        }
+                }
+
+                $items = array_merge( $preferred, $fallback );
+                if ( empty( $items ) ) {
+                        wp_send_json_error( array( 'message' => 'no_results' ), 404 );
+                }
+
+                $items = array_slice( $items, 0, 3 );
+
+                wp_send_json_success(
+                        array(
+                                'items' => $items,
+                        )
+                );
+        }
+
+        private static function normalize_language( $code ) {
+                $code = strtolower( trim( (string) $code ) );
+                if ( '' === $code ) {
+                        return '';
+                }
+
+                $code = preg_replace( '/^languages\//', '', $code );
+                $code = preg_replace( '/^lang\//', '', $code );
+                $code = str_replace( '_', '-', $code );
+
+                if ( strlen( $code ) === 2 ) {
+                        return $code;
+                }
+
+                $map = array(
+                        'eng' => 'en',
+                        'spa' => 'es',
+                        'esl' => 'es',
+                        'fre' => 'fr',
+                        'fra' => 'fr',
+                        'por' => 'pt',
+                        'ptg' => 'pt',
+                        'ger' => 'de',
+                        'deu' => 'de',
+                        'ita' => 'it',
+                        'cat' => 'ca',
+                        'glg' => 'gl',
+                );
+
+                if ( isset( $map[ $code ] ) ) {
+                        return $map[ $code ];
+                }
+
+                if ( strlen( $code ) > 2 ) {
+                        return substr( $code, 0, 2 );
+                }
+
+                return $code;
+        }
+
+        private static function normalize_title( $title ) {
+                $title = strtolower( (string) $title );
+                $title = preg_replace( "/[\"'`\x{2018}\x{2019}\x{201C}\x{201D}]/u", '', $title );
+                $title = preg_replace( '/[^\p{L}\p{N}\s]/u', ' ', $title );
+                $title = preg_replace( '/\s+/u', ' ', $title );
+                return trim( $title );
+        }
+
+        private static function title_similarity( $a, $b ) {
+                $norm_a = self::normalize_title( $a );
+                $norm_b = self::normalize_title( $b );
+                if ( '' === $norm_a || '' === $norm_b ) {
+                        return 0.0;
+                }
+
+                $words_a = array_unique( preg_split( '/\s+/', $norm_a, -1, PREG_SPLIT_NO_EMPTY ) );
+                $words_b = array_unique( preg_split( '/\s+/', $norm_b, -1, PREG_SPLIT_NO_EMPTY ) );
+                if ( empty( $words_a ) || empty( $words_b ) ) {
+                        return 0.0;
+                }
+
+                $overlap = count( array_intersect( $words_a, $words_b ) );
+                return $overlap / max( count( $words_a ), count( $words_b ) );
+        }
+
+        private static function best_image_link( array $links ) {
+                $order = array( 'extraLarge', 'large', 'medium', 'thumbnail', 'smallThumbnail' );
+                foreach ( $order as $key ) {
+                        if ( ! empty( $links[ $key ] ) ) {
+                                return (string) $links[ $key ];
+                        }
+                }
+                return '';
+        }
+
+        private static function sanitize_google_image_url( $url ) {
+                if ( ! $url ) {
+                        return '';
+                }
+
+                $url = str_replace( 'http://', 'https://', trim( (string) $url ) );
+                $parts = wp_parse_url( $url );
+                if ( empty( $parts['host'] ) || false === stripos( $parts['host'], 'books.google' ) ) {
+                        return '';
+                }
+
+                return esc_url_raw( $url );
+        }
+
+        private static function sanitize_google_info_link( $url ) {
+                if ( ! $url ) {
+                        return '';
+                }
+
+                $url   = str_replace( 'http://', 'https://', trim( (string) $url ) );
+                $parts = wp_parse_url( $url );
+                if ( empty( $parts['host'] ) || false === stripos( $parts['host'], 'books.google' ) ) {
+                        return '';
+                }
+
+                return esc_url_raw( $url );
         }
 }
 PRS_Cover_Upload_Feature::init();
