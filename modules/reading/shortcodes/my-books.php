@@ -148,11 +148,22 @@ add_shortcode(
                         <th scope="colgroup" colspan="2">
                                 <div class="prs-library__header">
                                         <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
-                                        <?php if ( $add_book_shortcode ) : ?>
-                                                <div class="prs-library__header-actions">
-                                                        <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                                </div>
-                                        <?php endif; ?>
+                                       <div class="prs-library__header-actions">
+                                               <button
+                                                       type="button"
+                                                       class="prs-library__filter-btn button button-secondary"
+                                                       aria-haspopup="dialog"
+                                                       aria-controls="prs-filter-dashboard"
+                                                       aria-expanded="false"
+                                               >
+                                                       <?php esc_html_e( 'Filter', 'politeia-reading' ); ?>
+                                               </button>
+                                               <?php if ( $add_book_shortcode ) : ?>
+                                                       <div class="prs-library__header-add-book">
+                                                               <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                                       </div>
+                                               <?php endif; ?>
+                                       </div>
                                 </div>
                         </th>
                         </tr>
@@ -165,9 +176,13 @@ add_shortcode(
                                 $pages             = $r->pages ? (int) $r->pages : null;
                                 $book_total_pages  = isset( $r->book_total_pages ) ? (int) $r->book_total_pages : 0;
                                 $effective_pages   = $book_total_pages > 0 ? $book_total_pages : ( $pages ?? 0 );
-                                $progress          = 0;
+                               $progress          = 0;
+                               $owning_status     = isset( $r->owning_status ) ? (string) $r->owning_status : '';
+                               $reading_status    = isset( $r->reading_status ) ? (string) $r->reading_status : '';
+                               $author_value      = isset( $r->author ) ? (string) $r->author : '';
+                               $title_value       = isset( $r->title ) ? (string) $r->title : '';
 
-                                if ( class_exists( 'Politeia_Reading_Sessions' ) && $effective_pages > 0 ) {
+                               if ( class_exists( 'Politeia_Reading_Sessions' ) && $effective_pages > 0 ) {
                                         $progress = Politeia_Reading_Sessions::calculate_progress_percent( $user_id, (int) $r->book_id, $effective_pages );
                                 }
 
@@ -196,7 +211,14 @@ add_shortcode(
                                 /* translators: %s: percentage of reading progress. */
                                 $progress_label = sprintf( __( '%s%% complete', 'politeia-reading' ), (int) $progress );
                                 ?>
-                        <tr data-user-book-id="<?php echo (int) $r->user_book_id; ?>">
+                        <tr
+                                data-user-book-id="<?php echo (int) $r->user_book_id; ?>"
+                                data-owning-status="<?php echo esc_attr( $owning_status ); ?>"
+                                data-reading-status="<?php echo esc_attr( $reading_status ); ?>"
+                                data-progress="<?php echo esc_attr( (int) $progress ); ?>"
+                                data-author="<?php echo esc_attr( $author_value ); ?>"
+                                data-title="<?php echo esc_attr( $title_value ); ?>"
+                        >
                                 <td class="prs-library__info">
                                 <div class="prs-library__cover">
                                 <?php
@@ -413,9 +435,75 @@ add_shortcode(
 		</nav>
 		<?php endif; ?>
 
-		<?php wp_nonce_field( 'prs_update_user_book', 'prs_update_user_book_nonce' ); ?>
-	</div>
-		<?php
-		return ob_get_clean();
-	}
+                <?php wp_nonce_field( 'prs_update_user_book', 'prs_update_user_book_nonce' ); ?>
+        </div>
+        <div id="prs-filter-overlay" class="prs-filter-overlay" hidden></div>
+        <div
+                id="prs-filter-dashboard"
+                class="prs-filter-dashboard"
+                role="dialog"
+                aria-modal="true"
+                aria-hidden="true"
+                aria-labelledby="prs-filter-title"
+                hidden
+        >
+                <div class="prs-filter-dashboard__panel" role="document">
+                        <h2 id="prs-filter-title" class="prs-filter-dashboard__title"><?php esc_html_e( 'Filter Library', 'politeia-reading' ); ?></h2>
+                        <form id="prs-filter-form" class="prs-filter-dashboard__form">
+                                <div class="prs-filter-dashboard__group">
+                                        <label for="prs-filter-owning-status" class="prs-filter-dashboard__label"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
+                                        <select id="prs-filter-owning-status" class="prs-filter-dashboard__select">
+                                                <option value=""><?php esc_html_e( 'All owning statuses', 'politeia-reading' ); ?></option>
+                                                <option value="in_shelf"><?php esc_html_e( 'In Shelf', 'politeia-reading' ); ?></option>
+                                                <option value="lost"><?php esc_html_e( 'Lost', 'politeia-reading' ); ?></option>
+                                                <option value="borrowed"><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
+                                                <option value="borrowing"><?php esc_html_e( 'Borrowing', 'politeia-reading' ); ?></option>
+                                                <option value="sold"><?php esc_html_e( 'Sold', 'politeia-reading' ); ?></option>
+                                        </select>
+                                </div>
+                                <div class="prs-filter-dashboard__group">
+                                        <label for="prs-filter-reading-status" class="prs-filter-dashboard__label"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
+                                        <select id="prs-filter-reading-status" class="prs-filter-dashboard__select">
+                                                <option value=""><?php esc_html_e( 'All reading statuses', 'politeia-reading' ); ?></option>
+                                                <option value="not_started"><?php esc_html_e( 'Not Started', 'politeia-reading' ); ?></option>
+                                                <option value="started"><?php esc_html_e( 'Started', 'politeia-reading' ); ?></option>
+                                                <option value="finished"><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
+                                        </select>
+                                </div>
+                                <div class="prs-filter-dashboard__group">
+                                        <label for="prs-filter-progress-min" class="prs-filter-dashboard__label"><?php esc_html_e( 'Minimum Progress', 'politeia-reading' ); ?></label>
+                                        <div class="prs-filter-range">
+                                                <input id="prs-filter-progress-min" class="prs-filter-range__input" type="range" min="0" max="100" step="1" value="0" />
+                                                <span class="prs-filter-range__value" data-display-for="prs-filter-progress-min">0%</span>
+                                        </div>
+                                </div>
+                                <div class="prs-filter-dashboard__group">
+                                        <label for="prs-filter-progress-max" class="prs-filter-dashboard__label"><?php esc_html_e( 'Maximum Progress', 'politeia-reading' ); ?></label>
+                                        <div class="prs-filter-range">
+                                                <input id="prs-filter-progress-max" class="prs-filter-range__input" type="range" min="0" max="100" step="1" value="100" />
+                                                <span class="prs-filter-range__value" data-display-for="prs-filter-progress-max">100%</span>
+                                        </div>
+                                </div>
+                                <div class="prs-filter-dashboard__group">
+                                        <label for="prs-filter-order" class="prs-filter-dashboard__label"><?php esc_html_e( 'Order By', 'politeia-reading' ); ?></label>
+                                        <select id="prs-filter-order" class="prs-filter-dashboard__select">
+                                                <option value="title_asc"><?php esc_html_e( 'Title (A → Z)', 'politeia-reading' ); ?></option>
+                                                <option value="title_desc"><?php esc_html_e( 'Title (Z → A)', 'politeia-reading' ); ?></option>
+                                                <option value="author_asc"><?php esc_html_e( 'Author (A → Z)', 'politeia-reading' ); ?></option>
+                                                <option value="author_desc"><?php esc_html_e( 'Author (Z → A)', 'politeia-reading' ); ?></option>
+                                                <option value="progress_asc"><?php esc_html_e( 'Progress (Low → High)', 'politeia-reading' ); ?></option>
+                                                <option value="progress_desc"><?php esc_html_e( 'Progress (High → Low)', 'politeia-reading' ); ?></option>
+                                        </select>
+                                </div>
+                                <div class="prs-filter-dashboard__actions">
+                                        <button type="submit" id="prs-filter-apply" class="button button-primary"><?php esc_html_e( 'Apply', 'politeia-reading' ); ?></button>
+                                        <button type="button" id="prs-filter-reset" class="button button-secondary"><?php esc_html_e( 'Reset Filters', 'politeia-reading' ); ?></button>
+                                        <button type="button" id="prs-filter-close" class="button prs-filter-dashboard__close"><?php esc_html_e( 'Close', 'politeia-reading' ); ?></button>
+                                </div>
+                        </form>
+                </div>
+        </div>
+                <?php
+                return ob_get_clean();
+        }
 );
