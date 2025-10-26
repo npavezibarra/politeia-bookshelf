@@ -467,7 +467,7 @@ wp_localize_script(
                                         <option value="started"     <?php selected( $ub->reading_status, 'started' ); ?>><?php esc_html_e( 'Started', 'politeia-reading' ); ?></option>
                                         <option value="finished"    <?php selected( $ub->reading_status, 'finished' ); ?>><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
                                 </select>
-                                <span id="reading-status-status" class="prs-help" style="margin-left:8px;"></span>
+                                <span id="reading-status-status" class="prs-help"></span>
                         </div>
 
                         <!-- Owning Status (editable) + Contact (condicional) -->
@@ -482,11 +482,11 @@ wp_localize_script(
                                 </select>
 
                                 <?php $show_return_btn = in_array( $ub->owning_status, array( 'borrowed', 'borrowing' ), true ); ?>
-                                <button type="button" id="owning-return-shelf" class="prs-btn" style="margin-left:8px; <?php echo $show_return_btn ? '' : 'display:none;'; ?>" <?php disabled( $is_digital ); ?>>
+                                <button type="button" id="owning-return-shelf" class="prs-btn" style="<?php echo $show_return_btn ? '' : 'display:none;'; ?>" <?php disabled( $is_digital ); ?>>
                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                 </button>
 
-                                <span id="owning-status-status" class="prs-help" style="margin-left:8px;"></span>
+                                <span id="owning-status-status" class="prs-help"></span>
                                 <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
                                         <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
                                 </p>
