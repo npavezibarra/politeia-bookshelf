@@ -68,3 +68,11 @@ Specialized migrations compute deterministic `title_author_hash` values, dedupli
 4. **Maintain idempotence and safety.** Prefer `dbDelta()` and the conditional helpers over direct `ALTER TABLE` statements to avoid unintended data loss or duplicate schema elements.
 
 By centralizing schema definitions in `create_or_update_tables()`, gating changes through version comparisons, and relying on idempotent migration helpers, the Politeia Reading plugin maintains a robust, self-healing schema lifecycle that can accommodate future enhancements such as richer cover storage, structured user notes, or extended author relationships.
+
+## Schema Version Reference
+
+- **Constant:** `POLITEIA_READING_DB_VERSION`
+- **Option name:** `politeia_reading_db_version`
+- **Hook order:** `register_activation_hook()` → `activate()` → `maybe_upgrade()` (on `plugins_loaded`)
+- **Schema source:** `create_or_update_tables()` in `class-activator.php`
+
