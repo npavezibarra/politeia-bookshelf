@@ -513,7 +513,7 @@ wp_add_inline_script(
                         </div>
 
                         <!-- Owning Status (editable) + Contact (condicional) -->
-                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>">
+                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>" data-active-start="<?php echo esc_attr( $active_start_local ); ?>">
                                 <label class="label" for="owning-status-select"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
                                 <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
                                         <option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
@@ -565,6 +565,17 @@ wp_add_inline_script(
                 </div>
 
                 <span id="owning-overlay-status" class="prs-help"></span>
+        </div>
+</div>
+
+<div id="return-overlay" class="prs-overlay" style="display:none;">
+        <div class="prs-overlay-backdrop"></div>
+        <div class="prs-overlay-content">
+                <h2><?php esc_html_e( 'Are you sure you want to mark as returned?', 'politeia-reading' ); ?></h2>
+                <div class="prs-overlay-actions">
+                        <button type="button" id="return-overlay-yes" class="prs-btn"><?php esc_html_e( 'Yes', 'politeia-reading' ); ?></button>
+                        <button type="button" id="return-overlay-no" class="prs-btn prs-btn-secondary"><?php esc_html_e( 'No', 'politeia-reading' ); ?></button>
+                </div>
         </div>
 </div>
 <?php

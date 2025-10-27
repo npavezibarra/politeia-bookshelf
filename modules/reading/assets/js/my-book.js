@@ -23,6 +23,20 @@
     }
   }
 
+  function escapeHtml(str) {
+    if (typeof str !== "string") return "";
+    return str.replace(/[&<>"']/g, ch => {
+      switch (ch) {
+        case "&": return "&amp;";
+        case "<": return "&lt;";
+        case ">": return "&gt;";
+        case '"': return "&quot;";
+        case "'": return "&#39;";
+        default: return ch;
+      }
+    });
+  }
+
   function formatAuthorName(raw) {
     if (typeof raw !== "string") return "";
 
@@ -687,6 +701,9 @@
     const confirmBtn = qs("#owning-overlay-confirm");
     const cancelBtn = qs("#owning-overlay-cancel");
     const overlayStatus = qs("#owning-overlay-status");
+    const returnOverlay = qs("#return-overlay");
+    const returnOverlayYes = qs("#return-overlay-yes");
+    const returnOverlayNo = qs("#return-overlay-no");
 
     const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
       || (window.PRS_BOOK && PRS_BOOK.ajax_url)
@@ -698,10 +715,12 @@
     const labelSold = wrap.getAttribute("data-label-sold") || "Sold to:";
     const labelLost = wrap.getAttribute("data-label-lost") || "Last borrowed to:";
     const labelUnknown = wrap.getAttribute("data-label-unknown") || "Unknown";
+    const contactStatuses = ["borrowed", "borrowing", "sold"];
 
     let savedOwningStatus = select ? (select.value || "").trim() : "";
     let pendingStatus = "";
     let lastContactName = savedNameAttr;
+    let loanDate = wrap.getAttribute("data-active-start") || "";
 
     const bookId = (typeof window.PRS_BOOK_ID === "number" && window.PRS_BOOK_ID)
       || (window.PRS_BOOK && parseInt(PRS_BOOK.book_id, 10))
@@ -713,27 +732,62 @@
       || (window.PRS_BOOK && PRS_BOOK.owning_nonce)
       || "";
 
-    function computeStatusDescription(statusValue, contactName) {
-      const normalizedName = (contactName || "").trim() || labelUnknown;
+    function getStatusLabel(statusValue) {
       switch (statusValue) {
         case "borrowing":
-          return `${labelBorrowing} ${normalizedName}`;
+          return labelBorrowing;
         case "borrowed":
-          return `${labelBorrowed} ${normalizedName}`;
+          return labelBorrowed;
         case "sold":
-          return `${labelSold} ${normalizedName}`;
+          return labelSold;
         case "lost":
-          return `${labelLost} ${normalizedName}`;
+          return labelLost;
         default:
           return "";
       }
     }
 
-    function applyStatusDescription(statusValue, contactName) {
+    function computeStatusDescription(statusValue, contactName, options = {}) {
+      const normalizedName = (contactName || "").trim() || labelUnknown;
+      const label = getStatusLabel(statusValue);
+      if (!label) {
+        return { text: "" };
+      }
+
+      const allowRich = !!options.rich && contactStatuses.indexOf(statusValue) !== -1;
+      const date = (options.date || "").trim();
+
+      if (allowRich && date) {
+        const safeLabel = escapeHtml(label);
+        const safeName = escapeHtml(normalizedName);
+        const safeDate = escapeHtml(date);
+        return {
+          html: `<strong>${safeLabel}</strong><br>${safeName}${safeDate ? `<br><small>${safeDate}</small>` : ""}`,
+          text: `${label} ${normalizedName}`.trim(),
+        };
+      }
+
+      return {
+        text: `${label} ${normalizedName}`.trim(),
+      };
+    }
+
+    function applyStatusDescription(statusValue, contactName, options = {}) {
       if (!status) return;
-      const description = computeStatusDescription(statusValue, contactName);
-      status.textContent = description;
-      status.style.color = "";
+      const description = computeStatusDescription(statusValue, contactName, options);
+      if (description.html) {
+        status.innerHTML = description.html;
+      } else {
+        status.textContent = description.text || "";
+      }
+      if (!options.keepColor) {
+        status.style.color = "";
+      }
+    }
+
+    function setLoanDate(value) {
+      loanDate = (value || "").trim();
+      wrap.setAttribute("data-active-start", loanDate);
     }
 
     function openOverlayFor(statusValue) {
@@ -829,6 +883,7 @@
             lastContactName = "";
             wrap.setAttribute("data-contact-name", "");
             wrap.setAttribute("data-contact-email", "");
+            setLoanDate("");
             applyStatusDescription("", "");
           }
         })
@@ -893,8 +948,18 @@
           wrap.setAttribute("data-contact-name", lastContactName);
           wrap.setAttribute("data-contact-email", nextEmail || "");
 
+          if (contactStatuses.indexOf(statusValue) !== -1) {
+            const today = new Date().toISOString().split("T")[0];
+            setLoanDate(today);
+          } else {
+            setLoanDate("");
+          }
+
           updateDerived(statusValue);
-          applyStatusDescription(statusValue, lastContactName);
+          applyStatusDescription(statusValue, lastContactName, {
+            rich: contactStatuses.indexOf(statusValue) !== -1 && !!loanDate,
+            date: loanDate,
+          });
 
           if (useOverlay && overlayStatus) {
             overlayStatus.style.color = "green";
@@ -930,10 +995,83 @@
         });
     }
 
+    function markAsReturned() {
+      if (!ajaxUrl || !bookId || !userBookId) {
+        console.warn("Missing owning overlay configuration.");
+        return Promise.reject(new Error("configuration"));
+      }
+
+      const body = new URLSearchParams({
+        action: "mark_as_returned",
+        book_id: String(bookId),
+        user_book_id: String(userBookId),
+        nonce: owningNonce,
+      });
+
+      if (status) {
+        status.style.color = "";
+        status.textContent = "Saving...";
+      }
+      if (returnBtn) {
+        returnBtn.disabled = true;
+      }
+
+      return fetch(ajaxUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "same-origin",
+        body,
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res || !res.success) {
+            throw res;
+          }
+
+          savedOwningStatus = "";
+          pendingStatus = "";
+          lastContactName = "";
+          wrap.setAttribute("data-contact-name", "");
+          wrap.setAttribute("data-contact-email", "");
+          setLoanDate("");
+          updateDerived("");
+
+          if (select) {
+            select.value = "";
+          }
+          if (returnBtn) {
+            returnBtn.style.display = "none";
+            returnBtn.disabled = false;
+          }
+
+          if (status) {
+            const message = (res.data && res.data.message) ? res.data.message : "Book marked as returned.";
+            status.style.color = "#2f6b2f";
+            status.textContent = message;
+          }
+
+          return res;
+        })
+        .catch(err => {
+          if (status) {
+            const msg = (err && err.data && err.data.message) ? err.data.message : "Error updating.";
+            status.style.color = "#b00020";
+            status.textContent = msg;
+          }
+          if (returnBtn) {
+            returnBtn.disabled = false;
+          }
+          throw err;
+        });
+    }
+
     if (select) {
       updateDerived(select.value || "");
       applyTypeLock();
-      applyStatusDescription(savedOwningStatus, lastContactName);
+      applyStatusDescription(savedOwningStatus, lastContactName, {
+        rich: contactStatuses.indexOf(savedOwningStatus) !== -1 && !!loanDate,
+        date: loanDate,
+      });
       select.addEventListener("change", () => {
         if (select.disabled) {
           return;
@@ -960,18 +1098,43 @@
       });
     }
 
+    function openReturnOverlay() {
+      if (returnOverlay) {
+        returnOverlay.style.display = "flex";
+      } else {
+        handleReturnConfirmation();
+      }
+    }
+
+    function closeReturnOverlay() {
+      if (returnOverlay) {
+        returnOverlay.style.display = "none";
+      }
+    }
+
+    function handleReturnConfirmation() {
+      closeReturnOverlay();
+      markAsReturned();
+    }
+
     if (returnBtn) {
       returnBtn.addEventListener("click", () => {
         if (returnBtn.disabled) {
           return;
         }
-        // Volver a In Shelf
-        select && (select.value = "");
-        postOwning("")
-          .then(() => {
-            savedOwningStatus = "";
-          })
-          .catch(() => {});
+        openReturnOverlay();
+      });
+    }
+
+    if (returnOverlayNo) {
+      returnOverlayNo.addEventListener("click", () => {
+        closeReturnOverlay();
+      });
+    }
+
+    if (returnOverlayYes) {
+      returnOverlayYes.addEventListener("click", () => {
+        handleReturnConfirmation();
       });
     }
 
@@ -1015,7 +1178,10 @@
       const val = select ? (select.value || "") : "";
       updateDerived(val);
       applyTypeLock();
-      applyStatusDescription(savedOwningStatus, lastContactName);
+      applyStatusDescription(savedOwningStatus, lastContactName, {
+        rich: contactStatuses.indexOf(savedOwningStatus) !== -1 && !!loanDate,
+        date: loanDate,
+      });
     });
   }
 
