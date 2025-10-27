@@ -1410,6 +1410,33 @@ table.prs-form__table {
         margin-top: 6px;
 }
 
+#fld-pages {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 8px;
+}
+
+#fld-pages .prs-inline-value,
+#fld-pages .prs-inline-input {
+        font-weight: 500;
+}
+
+#fld-pages .prs-inline-actions {
+        font-size: 0.9em;
+        color: #0073aa;
+        text-decoration: none;
+}
+
+#fld-pages .prs-inline-actions:hover {
+        text-decoration: underline;
+}
+
+#pages-hint {
+        font-size: 0.85em;
+        color: #666;
+}
+
 /* === INPUTS === */
 .prs-purchase-field input[type="date"],
 .prs-purchase-field select,

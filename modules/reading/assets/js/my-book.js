@@ -1,4 +1,4 @@
-/* global PRS_BOOK, PRS_SESS */
+/* global PRS_BOOK, PRS_SESS, jQuery */
 
 /**
  * Utilidades
@@ -129,51 +129,181 @@
   // ---------- Edición: Pages ----------
   function setupPages() {
     const wrap = qs("#fld-pages");
-    if (!wrap || !window.PRS_BOOK) return;
+    if (!wrap) return;
 
     const view = qs("#pages-view", wrap);
     const editBtn = qs("#pages-edit", wrap);
-    const form = qs("#pages-form", wrap);
     const input = qs("#pages-input", wrap);
-    const saveBtn = qs("#pages-save", wrap);
-    const cancelBtn = qs("#pages-cancel", wrap);
-    const status = qs("#pages-status", wrap);
+    const hint = qs("#pages-hint", wrap);
 
-    if (editBtn) editBtn.addEventListener("click", (e) => {
+    if (!view || !editBtn || !input) {
+      return;
+    }
+
+    const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
+      || (window.PRS_BOOK && PRS_BOOK.ajax_url)
+      || "";
+    const nonce = (window.PRS_BOOK && PRS_BOOK.nonce) || "";
+    const bookId = (window.PRS_BOOK && PRS_BOOK.user_book_id) ? parseInt(PRS_BOOK.user_book_id, 10) : 0;
+    const defaultHint = hint ? hint.textContent.trim() : "";
+
+    function normalizeValue(raw) {
+      const trimmed = (raw || "").trim();
+      return trimmed === "—" ? "" : trimmed;
+    }
+
+    function displayValue(val) {
+      return val ? String(val) : "—";
+    }
+
+    function openEditor() {
+      view.style.display = "none";
+      editBtn.style.display = "none";
+      input.style.display = "inline-block";
+      input.value = originalValue || "";
+      if (hint) {
+        hint.style.display = "none";
+        hint.textContent = defaultHint;
+      }
+      setTimeout(() => {
+        input.focus();
+        input.select && input.select();
+      }, 0);
+    }
+
+    function closeEditor() {
+      view.style.display = "";
+      editBtn.style.display = "";
+      input.style.display = "none";
+      if (hint) {
+        hint.style.display = "none";
+        hint.textContent = defaultHint;
+      }
+    }
+
+    function setHint(message, autoHideDelay) {
+      if (!hint) return;
+      hint.textContent = message;
+      hint.style.display = "block";
+      if (autoHideDelay) {
+        setTimeout(() => {
+          hint.style.display = "none";
+          hint.textContent = defaultHint;
+        }, autoHideDelay);
+      }
+    }
+
+    function toggleHintForChange() {
+      if (!hint) return;
+      const current = normalizeValue(input.value);
+      if (current !== originalValue) {
+        hint.textContent = defaultHint || "Press Enter to save";
+        hint.style.display = "block";
+      } else {
+        hint.style.display = "none";
+        hint.textContent = defaultHint;
+      }
+    }
+
+    function handleError(msg) {
+      setHint(msg || "Error saving pages.");
+    }
+
+    function saveValue(newValue) {
+      if (!ajaxUrl || !bookId) {
+        handleError("Error saving pages.");
+        return;
+      }
+
+      const numeric = parseInt(newValue, 10);
+      if (!Number.isFinite(numeric) || numeric < 1) {
+        handleError("Please enter a number greater than zero.");
+        return;
+      }
+
+      const stringValue = String(numeric);
+      const payload = {
+        action: "prs_update_pages",
+        book_id: String(bookId),
+        pages: stringValue,
+      };
+      if (nonce) {
+        payload.nonce = nonce;
+      }
+
+      setHint("Saving...");
+      input.disabled = true;
+
+      const jq = window.jQuery;
+      const onDone = (json) => {
+        const resp = (json && typeof json === "object" && Object.prototype.hasOwnProperty.call(json, "success")) ? json : null;
+
+        if (!resp || !resp.success) {
+          const message = resp && resp.data && resp.data.message ? resp.data.message : "Error saving pages.";
+          handleError(message);
+          input.disabled = false;
+          return;
+        }
+
+        const savedValue = resp && resp.data && resp.data.pages ? String(resp.data.pages) : stringValue;
+        originalValue = savedValue;
+        view.textContent = displayValue(originalValue);
+        closeEditor();
+        setHint("Saved!", 1200);
+        input.disabled = false;
+      };
+
+      const onFail = () => {
+        handleError("Error saving pages.");
+        input.disabled = false;
+      };
+
+      if (jq && typeof jq.post === "function") {
+        jq.post(ajaxUrl, payload)
+          .done(onDone)
+          .fail(onFail);
+      } else {
+        const fd = new FormData();
+        Object.keys(payload).forEach(key => fd.append(key, payload[key]));
+        ajaxPost(ajaxUrl, fd)
+          .then(onDone)
+          .catch(onFail);
+      }
+    }
+
+    let originalValue = normalizeValue(view.textContent);
+    if (!input.value) {
+      input.value = originalValue || "";
+    }
+
+    editBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      hide(editBtn);
-      show(form);
-      input.focus();
-      input.select();
+      openEditor();
     });
 
-    if (cancelBtn) cancelBtn.addEventListener("click", () => {
-      show(editBtn);
-      hide(form);
-      setStatus(status, "", true, 0);
+    input.addEventListener("input", () => {
+      toggleHintForChange();
     });
 
-    if (saveBtn) saveBtn.addEventListener("click", () => {
-      const pages = Math.max(0, num(input.value, 0));
-      const fd = new FormData();
-      fd.append("action", "prs_update_user_book_meta");
-      fd.append("nonce", PRS_BOOK.nonce);
-      fd.append("user_book_id", String(PRS_BOOK.user_book_id));
-      fd.append("pages", String(pages));
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const candidate = normalizeValue(input.value);
+        if (!candidate || candidate === originalValue) {
+          return;
+        }
+        e.preventDefault();
+        saveValue(candidate);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        input.value = originalValue || "";
+        closeEditor();
+      }
+    });
 
-      ajaxPost(PRS_BOOK.ajax_url, fd)
-        .then(json => {
-          if (!json || !json.success) throw json;
-          setText(view, pages > 0 ? String(pages) : "—");
-          setStatus(status, "Saved.", true);
-          // cerrar editor
-          show(editBtn);
-          hide(form);
-        })
-        .catch(err => {
-          const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving.";
-          setStatus(status, msg, false, 4000);
-        });
+    input.addEventListener("blur", () => {
+      if (normalizeValue(input.value) === originalValue) {
+        closeEditor();
+      }
     });
   }
 
