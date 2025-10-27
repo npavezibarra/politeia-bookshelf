@@ -83,6 +83,7 @@
   let startTop = 0;
   let startWidth = 0;
   let startHeight = 0;
+  let lastLoadedFileType = '';
 
   function openModal() {
     if (modal) {
@@ -174,7 +175,7 @@
       if (e.target === modal) closeModal();
     });
     cancelBtn.addEventListener('click', closeModal);
-    saveBtn.addEventListener('click', onSave);
+    saveBtn.addEventListener('click', onSaveCrop);
 
     if (statusEl) {
       setStatus(statusEl.textContent || 'Awaiting file upload.');
@@ -211,6 +212,7 @@
     isDraggingCrop = false;
     isResizingCrop = false;
     activeHandle = null;
+    lastLoadedFileType = '';
   }
 
   function resetStatusClasses() {
@@ -572,18 +574,33 @@
 
     sx = Math.max(0, Math.min(sx, naturalW));
     sy = Math.max(0, Math.min(sy, naturalH));
-    sw = Math.max(1, Math.min(sw, naturalW - sx));
-    sh = Math.max(1, Math.min(sh, naturalH - sy));
 
-    if (sw <= 0 || sh <= 0) {
+    const maxWidth = naturalW - sx;
+    const maxHeight = naturalH - sy;
+
+    sw = Math.max(1, Math.min(sw, maxWidth));
+    sh = Math.max(1, Math.min(sh, maxHeight));
+
+    let roundedSx = Math.max(0, Math.min(Math.round(sx), Math.max(0, naturalW - 1)));
+    let roundedSy = Math.max(0, Math.min(Math.round(sy), Math.max(0, naturalH - 1)));
+    let roundedSw = Math.max(1, Math.round(sw));
+    let roundedSh = Math.max(1, Math.round(sh));
+
+    const maxRoundedWidth = Math.max(1, naturalW - roundedSx);
+    const maxRoundedHeight = Math.max(1, naturalH - roundedSy);
+
+    roundedSw = Math.max(1, Math.min(roundedSw, maxRoundedWidth));
+    roundedSh = Math.max(1, Math.min(roundedSh, maxRoundedHeight));
+
+    if (roundedSw <= 0 || roundedSh <= 0) {
       return null;
     }
 
     return {
-      sx,
-      sy,
-      sw,
-      sh,
+      sx: roundedSx,
+      sy: roundedSy,
+      sw: roundedSw,
+      sh: roundedSh,
     };
   }
 
@@ -619,9 +636,11 @@
       isDraggingCrop = false;
       isResizingCrop = false;
       activeHandle = null;
+      lastLoadedFileType = '';
       return;
     }
 
+    lastLoadedFileType = file.type || '';
     const reader = new FileReader();
     reader.onload = (event) => {
       if (!event.target) return;
@@ -710,20 +729,90 @@
     if (typeof source === 'string') {
       updateCoverAttribution(source);
     }
+    if (window.PRS_BOOK) {
+      window.PRS_BOOK.cover_url = src;
+      window.PRS_BOOK.cover_source = typeof source === 'string' ? source : '';
+    }
   }
 
-  function onSave() {
+  function getUploadConfig() {
+    const coverConfig = window.PRS_COVER || {};
+    const ajaxUrl = window.PRS_SAVE_URL
+      || coverConfig.saveUrl
+      || coverConfig.ajax
+      || (window.prs_cover_data && window.prs_cover_data.ajaxurl)
+      || window.ajaxurl
+      || '';
+    const nonce = window.PRS_NONCE
+      || coverConfig.saveNonce
+      || coverConfig.nonce
+      || '';
+    const postId = window.PRS_POST_ID
+      || coverConfig.postId
+      || 0;
+
+    return { ajaxUrl, nonce, postId };
+  }
+
+  async function uploadCroppedCover({ dataURL, mime, postId }) {
+    const { ajaxUrl, nonce, postId: fallbackPostId } = getUploadConfig();
+    const targetPostId = typeof postId !== 'undefined' ? postId : fallbackPostId;
+
+    if (!ajaxUrl) {
+      throw new Error('Upload unavailable');
+    }
+    if (!nonce) {
+      throw new Error('Missing nonce');
+    }
+    if (!dataURL) {
+      throw new Error('Missing image data');
+    }
+
+    const payload = new URLSearchParams({
+      action: 'prs_save_cropped_cover',
+      _wpnonce: nonce,
+      data: dataURL,
+      mime: mime || 'image/png',
+    });
+
+    const numericPostId = parseInt(targetPostId, 10);
+    if (!Number.isNaN(numericPostId)) {
+      payload.append('post_id', String(numericPostId));
+    }
+
+    const { user_book_id, book_id } = getContext();
+    if (user_book_id) {
+      payload.append('user_book_id', String(user_book_id));
+    }
+    if (book_id) {
+      payload.append('book_id', String(book_id));
+    }
+
+    const response = await fetch(ajaxUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      body: payload,
+    });
+
+    const json = await response.json().catch(() => null);
+
+    if (!response.ok || !json) {
+      throw new Error('Upload failed');
+    }
+
+    if (!json.success) {
+      throw new Error(json?.data?.message || json?.message || 'Upload failed');
+    }
+
+    return json.data || {};
+  }
+
+  function onSaveCrop() {
     if (!imgEl || naturalW <= 0 || naturalH <= 0) {
       setStatus('Choose an image', '#ef4444');
       return;
     }
-
-    const W = (window.PRS_COVER && PRS_COVER.coverWidth) || 240;
-    const H = (window.PRS_COVER && PRS_COVER.coverHeight) || 450;
-    const canvas = document.createElement('canvas');
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext('2d');
 
     const cropRect = getCropSourceRect();
     if (!cropRect) {
@@ -731,57 +820,75 @@
       return;
     }
 
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(imgEl, cropRect.sx, cropRect.sy, cropRect.sw, cropRect.sh, 0, 0, W, H);
+    const canvas = document.createElement('canvas');
+    canvas.width = cropRect.sw;
+    canvas.height = cropRect.sh;
 
-    canvas.toBlob(async (blob) => {
-      if (!blob) {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      setStatus('Render error', '#ef4444');
+      return;
+    }
+
+    const sourceImage = new Image();
+    sourceImage.onload = async () => {
+      ctx.drawImage(
+        sourceImage,
+        cropRect.sx,
+        cropRect.sy,
+        cropRect.sw,
+        cropRect.sh,
+        0,
+        0,
+        cropRect.sw,
+        cropRect.sh
+      );
+
+      const preferredMime = (lastLoadedFileType === 'image/jpeg' || lastLoadedFileType === 'image/png')
+        ? lastLoadedFileType
+        : 'image/png';
+
+      let dataURL;
+      try {
+        if (preferredMime === 'image/jpeg') {
+          dataURL = canvas.toDataURL(preferredMime, 0.92);
+        } else {
+          dataURL = canvas.toDataURL(preferredMime);
+        }
+      } catch (encodingError) {
+        console.error('[PRS] cover encode error', encodingError);
         setStatus('Render error', '#ef4444');
         return;
       }
+
       setStatus('Saving…');
 
-      const dataUrl = await new Promise((resolve) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.readAsDataURL(blob);
-      });
-
-      const { user_book_id, book_id } = getContext();
-      const body = new URLSearchParams({
-        action: 'prs_cover_save_crop',
-        nonce: (window.PRS_COVER && PRS_COVER.nonce) || '',
-        user_book_id,
-        book_id,
-        image: dataUrl
-      });
-
       try {
-        const resp = await fetch((window.PRS_COVER && PRS_COVER.ajax) || '', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-          credentials: 'same-origin',
-          body
+        const payload = await uploadCroppedCover({
+          dataURL,
+          mime: preferredMime,
         });
-        const out = await resp.json();
-        if (!out || !out.success) {
-          setStatus(out?.data?.message || out?.message || 'Error', '#ef4444');
+
+        if (!payload || !payload.url) {
+          setStatus('Error', '#ef4444');
           return;
         }
 
         setStatus('Saved', '#16a34a');
-        const src = out.data.src;
-        replaceCover(src, true, '');
-        if (window.PRS_BOOK) {
-          window.PRS_BOOK.cover_url = '';
-          window.PRS_BOOK.cover_source = '';
-        }
+        replaceCover(payload.url, true, '');
         closeModal();
       } catch (error) {
-        setStatus('Error', '#ef4444');
+        const message = error?.message || 'Error';
+        setStatus(message, '#ef4444');
         console.error('[PRS] cover save error', error);
       }
-    }, 'image/jpeg', 0.9);
+    };
+
+    sourceImage.onerror = () => {
+      setStatus('Render error', '#ef4444');
+    };
+
+    sourceImage.src = imgEl.src;
   }
 
   // ====== Search modal ======
