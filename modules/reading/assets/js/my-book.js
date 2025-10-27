@@ -692,7 +692,7 @@
     const select = qs("#owning-status-select", wrap);
     const status = qs("#owning-status-status", wrap);
     const returnBtn = qs("#owning-return-shelf", wrap);
-    const derivedText = qs("#derived-location-text", wrap);
+    const derivedText = qs("#derived-location-text");
     const note = qs("#owning-status-note", wrap);
     const overlay = qs("#owning-overlay");
     const overlayTitle = qs("#owning-overlay-title");
