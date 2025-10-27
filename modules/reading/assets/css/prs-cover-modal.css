@@ -115,6 +115,87 @@
   transform-origin: center center;
   transition: transform 0.15s ease-out;
   pointer-events: none;
+  user-select: none;
+}
+
+.prs-crop-area,
+#cropArea {
+  position: absolute;
+  border: 1px dashed rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 0 9999px rgba(17, 24, 39, 0.55);
+  cursor: grab;
+  z-index: 5;
+  touch-action: none;
+  user-select: none;
+}
+
+.prs-crop-area:active,
+#cropArea:active {
+  cursor: grabbing;
+}
+
+.resize-handle {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  background: #fff;
+  border: 2px solid #3b82f6;
+  border-radius: 999px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25);
+  z-index: 6;
+  touch-action: none;
+}
+
+.resize-handle.corner.nw {
+  top: -9px;
+  left: -9px;
+  cursor: nwse-resize;
+}
+
+.resize-handle.corner.ne {
+  top: -9px;
+  right: -9px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.corner.sw {
+  bottom: -9px;
+  left: -9px;
+  cursor: nesw-resize;
+}
+
+.resize-handle.corner.se {
+  bottom: -9px;
+  right: -9px;
+  cursor: nwse-resize;
+}
+
+.resize-handle.side.n {
+  top: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.resize-handle.side.s {
+  bottom: -9px;
+  left: 50%;
+  transform: translateX(-50%);
+  cursor: ns-resize;
+}
+
+.resize-handle.side.e {
+  right: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
+}
+
+.resize-handle.side.w {
+  left: -9px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: ew-resize;
 }
 
 .prs-cover-controls {
@@ -157,6 +238,13 @@
   font-size: 0.85rem;
   color: #4b5563;
   text-align: center;
+}
+
+.prs-crop-instructions {
+  font-size: 0.85rem;
+  color: #4b5563;
+  text-align: center;
+  margin: 0;
 }
 
 .prs-cover-status {
