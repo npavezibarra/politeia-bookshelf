@@ -23,6 +23,20 @@
     }
   }
 
+  function escapeHtml(str) {
+    if (typeof str !== "string") return "";
+    return str.replace(/[&<>"']/g, ch => {
+      switch (ch) {
+        case "&": return "&amp;";
+        case "<": return "&lt;";
+        case ">": return "&gt;";
+        case '"': return "&quot;";
+        case "'": return "&#39;";
+        default: return ch;
+      }
+    });
+  }
+
   function formatAuthorName(raw) {
     if (typeof raw !== "string") return "";
 
@@ -679,46 +693,138 @@
     const status = qs("#owning-status-status", wrap);
     const returnBtn = qs("#owning-return-shelf", wrap);
     const derivedText = qs("#derived-location-text", wrap);
-    const contactForm = qs("#owning-contact-form", wrap);
-    const contactName = qs("#owning-contact-name", wrap);
-    const contactEmail = qs("#owning-contact-email", wrap);
-    const contactSave = qs("#owning-contact-save", wrap);
-    const contactStatus = qs("#owning-contact-status", wrap);
-    const contactView = qs("#owning-contact-view", wrap);
     const note = qs("#owning-status-note", wrap);
+    const overlay = qs("#owning-overlay");
+    const overlayTitle = qs("#owning-overlay-title");
+    const nameInput = qs("#owning-overlay-name");
+    const emailInput = qs("#owning-overlay-email");
+    const confirmBtn = qs("#owning-overlay-confirm");
+    const cancelBtn = qs("#owning-overlay-cancel");
+    const overlayStatus = qs("#owning-overlay-status");
+    const returnOverlay = qs("#return-overlay");
+    const returnOverlayYes = qs("#return-overlay-yes");
+    const returnOverlayNo = qs("#return-overlay-no");
 
-    function getContactDateText() {
-      if (!contactView) return "";
-      const dateEl = contactView.querySelector("#owning-contact-date-view");
-      return dateEl ? dateEl.textContent.trim() : "";
+    const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
+      || (window.PRS_BOOK && PRS_BOOK.ajax_url)
+      || "";
+
+    const savedNameAttr = wrap.getAttribute("data-contact-name") || "";
+    const labelBorrowing = wrap.getAttribute("data-label-borrowing") || "Borrowing to:";
+    const labelBorrowed = wrap.getAttribute("data-label-borrowed") || "Borrowed from:";
+    const labelSold = wrap.getAttribute("data-label-sold") || "Sold to:";
+    const labelLost = wrap.getAttribute("data-label-lost") || "Last borrowed to:";
+    const labelUnknown = wrap.getAttribute("data-label-unknown") || "Unknown";
+    const contactStatuses = ["borrowed", "borrowing", "sold"];
+
+    let savedOwningStatus = select ? (select.value || "").trim() : "";
+    let pendingStatus = "";
+    let lastContactName = savedNameAttr;
+    let loanDate = wrap.getAttribute("data-active-start") || "";
+
+    const bookId = (typeof window.PRS_BOOK_ID === "number" && window.PRS_BOOK_ID)
+      || (window.PRS_BOOK && parseInt(PRS_BOOK.book_id, 10))
+      || 0;
+    const userBookId = (typeof window.PRS_USER_BOOK_ID === "number" && window.PRS_USER_BOOK_ID)
+      || (window.PRS_BOOK && parseInt(PRS_BOOK.user_book_id, 10))
+      || 0;
+    const owningNonce = (typeof window.PRS_NONCE === "string" && window.PRS_NONCE)
+      || (window.PRS_BOOK && PRS_BOOK.owning_nonce)
+      || "";
+
+    function getStatusLabel(statusValue) {
+      switch (statusValue) {
+        case "borrowing":
+          return labelBorrowing;
+        case "borrowed":
+          return labelBorrowed;
+        case "sold":
+          return labelSold;
+        case "lost":
+          return labelLost;
+        default:
+          return "";
+      }
     }
 
-    function renderContactView(name, email, date) {
-      if (!contactView) return;
-
-      contactView.innerHTML = "";
-
-      const entries = [
-        { id: "owning-contact-name-view", value: name },
-        { id: "owning-contact-email-view", value: email },
-        { id: "owning-contact-date-view", value: date }
-      ];
-
-      let hasContent = false;
-      entries.forEach(entry => {
-        if (!entry.value) {
-          return;
-        }
-        const p = document.createElement("p");
-        p.id = entry.id;
-        p.textContent = entry.value;
-        contactView.appendChild(p);
-        hasContent = true;
-      });
-
-      if (!hasContent) {
-        contactView.textContent = "";
+    function computeStatusDescription(statusValue, contactName, options = {}) {
+      const normalizedName = (contactName || "").trim() || labelUnknown;
+      const label = getStatusLabel(statusValue);
+      if (!label) {
+        return { text: "" };
       }
+
+      const allowRich = !!options.rich && contactStatuses.indexOf(statusValue) !== -1;
+      const date = (options.date || "").trim();
+
+      if (allowRich && date) {
+        const safeLabel = escapeHtml(label);
+        const safeName = escapeHtml(normalizedName);
+        const safeDate = escapeHtml(date);
+        return {
+          html: `<strong>${safeLabel}</strong><br>${safeName}${safeDate ? `<br><small>${safeDate}</small>` : ""}`,
+          text: `${label} ${normalizedName}`.trim(),
+        };
+      }
+
+      return {
+        text: `${label} ${normalizedName}`.trim(),
+      };
+    }
+
+    function applyStatusDescription(statusValue, contactName, options = {}) {
+      if (!status) return;
+      const description = computeStatusDescription(statusValue, contactName, options);
+      if (description.html) {
+        status.innerHTML = description.html;
+      } else {
+        status.textContent = description.text || "";
+      }
+      if (!options.keepColor) {
+        status.style.color = "";
+      }
+    }
+
+    function setLoanDate(value) {
+      loanDate = (value || "").trim();
+      wrap.setAttribute("data-active-start", loanDate);
+    }
+
+    function openOverlayFor(statusValue) {
+      if (!overlay) return;
+      pendingStatus = statusValue;
+      if (overlayStatus) {
+        overlayStatus.textContent = "";
+        overlayStatus.style.color = "";
+      }
+      if (overlayTitle) {
+        switch (statusValue) {
+          case "borrowing":
+            overlayTitle.textContent = labelBorrowing;
+            break;
+          case "borrowed":
+            overlayTitle.textContent = labelBorrowed;
+            break;
+          case "sold":
+            overlayTitle.textContent = labelSold;
+            break;
+          default:
+            overlayTitle.textContent = labelBorrowing;
+        }
+      }
+      if (nameInput) nameInput.value = "";
+      if (emailInput) emailInput.value = "";
+      overlay.style.display = "flex";
+      setTimeout(() => {
+        if (nameInput) {
+          nameInput.focus();
+        }
+      }, 0);
+    }
+
+    function closeOverlay() {
+      if (!overlay) return;
+      overlay.style.display = "none";
     }
 
     function isDigitalType() {
@@ -736,20 +842,6 @@
         returnBtn.style.display = showReturn ? "" : "none";
         returnBtn.disabled = locked;
       }
-
-      // contacto requerido si borrowed/borrowing/sold y faltan datos => mostramos form
-      const needsContact = (!locked) && (val === "borrowed" || val === "borrowing" || val === "sold");
-      if (contactForm) {
-        if (needsContact) {
-          show(contactForm);
-        } else {
-          hide(contactForm);
-        }
-      }
-
-      if (contactName) contactName.disabled = locked;
-      if (contactEmail) contactEmail.disabled = locked;
-      if (contactSave) contactSave.disabled = locked;
     }
 
     function applyTypeLock() {
@@ -765,6 +857,9 @@
       }
       if (note) {
         note.style.display = locked ? "" : "none";
+      }
+      if (overlay) {
+        overlay.setAttribute("aria-hidden", locked ? "true" : "false");
       }
     }
 
@@ -783,23 +878,243 @@
           if (!json || !json.success) throw json;
           setStatus(status, "Saved.", true);
           updateDerived(val);
+          savedOwningStatus = val;
+          if (!val) {
+            lastContactName = "";
+            wrap.setAttribute("data-contact-name", "");
+            wrap.setAttribute("data-contact-email", "");
+            setLoanDate("");
+            applyStatusDescription("", "");
+          }
         })
         .catch(err => {
           const msg = (err && err.data && err.data.message) ? err.data.message : "Error updating owning status.";
           setStatus(status, msg, false, 4000);
+          if (select) {
+            select.value = savedOwningStatus;
+          }
+          updateDerived(savedOwningStatus);
+        });
+    }
+
+    function saveOwningContact(statusValue, name, email, options) {
+      const useOverlay = !options || options.fromOverlay !== false ? true : false;
+
+      if (!ajaxUrl || !bookId || !userBookId) {
+        console.warn("Missing owning overlay configuration.");
+        return Promise.reject(new Error("configuration"));
+      }
+
+      const trimmedName = (name || "").trim();
+      const trimmedEmail = (email || "").trim();
+
+      if (useOverlay && overlayStatus) {
+        overlayStatus.style.color = "";
+        overlayStatus.textContent = "Saving...";
+      } else if (!useOverlay && status) {
+        status.style.color = "";
+        status.textContent = "Saving...";
+      }
+
+      const body = new URLSearchParams({
+        action: "save_owning_contact",
+        book_id: String(bookId),
+        user_book_id: String(userBookId),
+        owning_status: statusValue,
+        contact_name: trimmedName,
+        contact_email: trimmedEmail,
+        nonce: owningNonce,
+      });
+
+      return fetch(ajaxUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "same-origin",
+        body,
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res || !res.success) {
+            throw res;
+          }
+
+          const payload = res.data || {};
+          const nextName = typeof payload.counterparty_name === "string" ? payload.counterparty_name : trimmedName;
+          const nextEmail = typeof payload.counterparty_email === "string" ? payload.counterparty_email : trimmedEmail;
+
+          lastContactName = nextName || "";
+          savedOwningStatus = statusValue;
+
+          wrap.setAttribute("data-contact-name", lastContactName);
+          wrap.setAttribute("data-contact-email", nextEmail || "");
+
+          if (contactStatuses.indexOf(statusValue) !== -1) {
+            const today = new Date().toISOString().split("T")[0];
+            setLoanDate(today);
+          } else {
+            setLoanDate("");
+          }
+
+          updateDerived(statusValue);
+          applyStatusDescription(statusValue, lastContactName, {
+            rich: contactStatuses.indexOf(statusValue) !== -1 && !!loanDate,
+            date: loanDate,
+          });
+
+          if (useOverlay && overlayStatus) {
+            overlayStatus.style.color = "green";
+            overlayStatus.textContent = (payload && payload.message) || "Saved successfully.";
+            setTimeout(() => {
+              overlayStatus.textContent = "";
+            }, 2000);
+            closeOverlay();
+          } else if (!useOverlay && status) {
+            status.style.color = "";
+          }
+
+          if (select) {
+            select.value = statusValue;
+          }
+
+          return res;
+        })
+        .catch(err => {
+          const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving contact.";
+          if (useOverlay && overlayStatus) {
+            overlayStatus.style.color = "#b00020";
+            overlayStatus.textContent = msg;
+          } else if (status) {
+            status.style.color = "#b00020";
+            status.textContent = msg;
+          }
+          if (select) {
+            select.value = savedOwningStatus;
+          }
+          updateDerived(savedOwningStatus);
+          throw err;
+        });
+    }
+
+    function markAsReturned() {
+      if (!ajaxUrl || !bookId || !userBookId) {
+        console.warn("Missing owning overlay configuration.");
+        return Promise.reject(new Error("configuration"));
+      }
+
+      const body = new URLSearchParams({
+        action: "mark_as_returned",
+        book_id: String(bookId),
+        user_book_id: String(userBookId),
+        nonce: owningNonce,
+      });
+
+      if (status) {
+        status.style.color = "";
+        status.textContent = "Saving...";
+      }
+      if (returnBtn) {
+        returnBtn.disabled = true;
+      }
+
+      return fetch(ajaxUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "same-origin",
+        body,
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res || !res.success) {
+            throw res;
+          }
+
+          savedOwningStatus = "";
+          pendingStatus = "";
+          lastContactName = "";
+          wrap.setAttribute("data-contact-name", "");
+          wrap.setAttribute("data-contact-email", "");
+          setLoanDate("");
+          updateDerived("");
+
+          if (select) {
+            select.value = "";
+          }
+          if (returnBtn) {
+            returnBtn.style.display = "none";
+            returnBtn.disabled = false;
+          }
+
+          if (status) {
+            const message = (res.data && res.data.message) ? res.data.message : "Book marked as returned.";
+            status.style.color = "#2f6b2f";
+            status.textContent = message;
+          }
+
+          return res;
+        })
+        .catch(err => {
+          if (status) {
+            const msg = (err && err.data && err.data.message) ? err.data.message : "Error updating.";
+            status.style.color = "#b00020";
+            status.textContent = msg;
+          }
+          if (returnBtn) {
+            returnBtn.disabled = false;
+          }
+          throw err;
         });
     }
 
     if (select) {
       updateDerived(select.value || "");
       applyTypeLock();
+      applyStatusDescription(savedOwningStatus, lastContactName, {
+        rich: contactStatuses.indexOf(savedOwningStatus) !== -1 && !!loanDate,
+        date: loanDate,
+      });
       select.addEventListener("change", () => {
         if (select.disabled) {
           return;
         }
         const val = (select.value || "").trim(); // "", borrowed, borrowing, sold, lost
-        postOwning(val);
+        if (!val) {
+          postOwning("");
+          return;
+        }
+
+        if (val === "lost") {
+          const fallbackName = lastContactName || labelUnknown;
+          saveOwningContact("lost", fallbackName, "", { fromOverlay: false });
+          return;
+        }
+
+        if (val === "borrowed" || val === "borrowing" || val === "sold") {
+          openOverlayFor(val);
+          return;
+        }
+
+        // Default: revert to saved value
+        select.value = savedOwningStatus;
       });
+    }
+
+    function openReturnOverlay() {
+      if (returnOverlay) {
+        returnOverlay.style.display = "flex";
+      } else {
+        handleReturnConfirmation();
+      }
+    }
+
+    function closeReturnOverlay() {
+      if (returnOverlay) {
+        returnOverlay.style.display = "none";
+      }
+    }
+
+    function handleReturnConfirmation() {
+      closeReturnOverlay();
+      markAsReturned();
     }
 
     if (returnBtn) {
@@ -807,42 +1122,55 @@
         if (returnBtn.disabled) {
           return;
         }
-        // Volver a In Shelf
-        select && (select.value = "");
-        postOwning("");
+        openReturnOverlay();
       });
     }
 
-    if (contactSave) {
-      contactSave.addEventListener("click", () => {
-        if (isDigitalType()) {
+    if (returnOverlayNo) {
+      returnOverlayNo.addEventListener("click", () => {
+        closeReturnOverlay();
+      });
+    }
+
+    if (returnOverlayYes) {
+      returnOverlayYes.addEventListener("click", () => {
+        handleReturnConfirmation();
+      });
+    }
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", () => {
+        if (!pendingStatus) {
+          closeOverlay();
           return;
         }
-        const name = (contactName && contactName.value || "").trim();
-        const email = (contactEmail && contactEmail.value || "").trim();
 
-        const fd = new FormData();
-        fd.append("action", "prs_update_user_book_meta");
-        fd.append("nonce", PRS_BOOK.nonce);
-        fd.append("user_book_id", String(PRS_BOOK.user_book_id));
-        fd.append("counterparty_name", name);
-        fd.append("counterparty_email", email);
+        const name = (nameInput && nameInput.value || "").trim();
+        const email = (emailInput && emailInput.value || "").trim();
 
-        // No cambiamos owning_status aquí para no alterar el flujo,
-        // solo guardamos contacto (la clase actualiza el loan abierto si aplica).
-        ajaxPost(PRS_BOOK.ajax_url, fd)
-          .then(json => {
-            if (!json || !json.success) throw json;
-            setStatus(contactStatus, "Saved.", true);
-            // Actualiza la vista compacta (no tenemos la fecha del loan, así que solo nombre/email)
-            const responseData = json && json.data ? json.data : {};
-            const date = responseData.date ? String(responseData.date).trim() : getContactDateText();
-            renderContactView(name, email, date);
+        if (!name || !email) {
+          if (overlayStatus) {
+            overlayStatus.style.color = "#b00020";
+            overlayStatus.textContent = "Please enter both name and email.";
+          }
+          return;
+        }
+
+        saveOwningContact(pendingStatus, name, email)
+          .then(() => {
+            pendingStatus = "";
           })
-          .catch(err => {
-            const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving contact.";
-            setStatus(contactStatus, msg, false, 4000);
-          });
+          .catch(() => {});
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => {
+        closeOverlay();
+        pendingStatus = "";
+        if (select) {
+          select.value = savedOwningStatus;
+        }
       });
     }
 
@@ -850,6 +1178,10 @@
       const val = select ? (select.value || "") : "";
       updateDerived(val);
       applyTypeLock();
+      applyStatusDescription(savedOwningStatus, lastContactName, {
+        rich: contactStatuses.indexOf(savedOwningStatus) !== -1 && !!loanDate,
+        date: loanDate,
+      });
     });
   }
 

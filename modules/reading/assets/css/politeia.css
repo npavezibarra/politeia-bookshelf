@@ -1647,6 +1647,10 @@ button#purchase-date-save {
         margin-top: 4px;
 }
 
+p#derived-location {
+        margin-bottom: 0px;
+}
+
 /* === CONTACT FORM === */
 .prs-contact-form {
         display: flex;
@@ -1678,4 +1682,52 @@ button#purchase-date-save {
         .prs-status-field {
                 flex: 1 1 100%;
         }
+}
+
+.prs-overlay {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+}
+
+.prs-overlay-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+}
+
+.prs-overlay-content {
+        position: relative;
+        z-index: 10001;
+        background: #fff;
+        border-radius: 12px;
+        padding: 32px 40px;
+        width: 340px;
+        box-shadow: 0 0 25px rgba(0,0,0,0.25);
+        text-align: center;
+}
+
+.prs-overlay-content h2 {
+        margin-bottom: 18px;
+        font-size: 1.2rem;
+}
+
+.prs-overlay-actions {
+        margin-top: 24px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+}
+
+.prs-btn-secondary {
+        background: #ddd;
+        color: #333;
+}
+
+#return-overlay h2 {
+        font-size: 1.1rem;
+        margin-bottom: 20px;
 }

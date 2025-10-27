@@ -15,6 +15,8 @@ class Politeia_Reading_User_Books {
                 add_action( 'wp_ajax_prs_update_user_book', array( __CLASS__, 'ajax_update_user_book' ) );
                 add_action( 'wp_ajax_prs_update_user_book_meta', array( __CLASS__, 'ajax_update_user_book_meta' ) );
                 add_action( 'wp_ajax_prs_update_pages', array( __CLASS__, 'ajax_update_pages' ) );
+                add_action( 'wp_ajax_save_owning_contact', array( __CLASS__, 'ajax_save_owning_contact' ) );
+                add_action( 'wp_ajax_mark_as_returned', array( __CLASS__, 'ajax_mark_as_returned' ) );
                 // (Sin acciones de portada/imagen)
         }
 
@@ -276,6 +278,155 @@ class Politeia_Reading_User_Books {
         }
 
         /**
+         * AJAX: guarda contacto + owning_status desde overlay.
+         */
+        public static function ajax_save_owning_contact() {
+                if ( ! is_user_logged_in() ) {
+                        self::json_error( __( 'You must be logged in.', 'politeia-reading' ), 401 );
+                }
+
+                if ( ! self::verify_nonce( 'save_owning_contact', array( 'nonce' ) ) ) {
+                        self::json_error( __( 'Security check failed.', 'politeia-reading' ), 403 );
+                }
+
+                $user_id      = get_current_user_id();
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+
+                if ( ! $book_id || ! $user_book_id ) {
+                        self::json_error( __( 'Invalid book.', 'politeia-reading' ), 400 );
+                }
+
+                $row = self::get_user_book_row( $user_book_id, $user_id );
+                if ( ! $row || (int) $row->book_id !== $book_id ) {
+                        self::json_error( __( 'Book not found in your library.', 'politeia-reading' ), 403 );
+                }
+
+                if ( 'd' === (string) $row->type_book ) {
+                        self::json_error( __( 'Owning status is available only for printed copies.', 'politeia-reading' ), 400 );
+                }
+
+                $status_raw = isset( $_POST['owning_status'] ) ? wp_unslash( $_POST['owning_status'] ) : '';
+                $status     = ( '' === $status_raw || null === $status_raw ) ? '' : sanitize_key( $status_raw );
+
+                $allowed_status = array( 'borrowed', 'borrowing', 'sold', 'lost', '' );
+                if ( ! in_array( $status, $allowed_status, true ) ) {
+                        self::json_error( __( 'Invalid owning status.', 'politeia-reading' ), 400 );
+                }
+
+                $name_raw        = isset( $_POST['contact_name'] ) ? wp_unslash( $_POST['contact_name'] ) : '';
+                $email_raw       = isset( $_POST['contact_email'] ) ? wp_unslash( $_POST['contact_email'] ) : '';
+                $name_sanitized  = sanitize_text_field( $name_raw );
+                $name_trimmed    = trim( $name_sanitized );
+                $email_sanitized = sanitize_email( $email_raw );
+                $email_trimmed   = $email_sanitized ? $email_sanitized : '';
+
+                $requires_contact = in_array( $status, array( 'borrowed', 'borrowing', 'sold' ), true );
+
+                if ( $requires_contact && ( '' === $name_trimmed || '' === $email_trimmed ) ) {
+                        self::json_error( __( 'Please enter both name and email.', 'politeia-reading' ), 400 );
+                }
+
+                $update = array();
+                $now    = current_time( 'mysql', true );
+
+                if ( '' === $status ) {
+                        $update['owning_status']      = null;
+                        $update['counterparty_name']  = null;
+                        $update['counterparty_email'] = null;
+                        self::close_open_loan( (int) $row->user_id, (int) $row->book_id, $now );
+                } else {
+                        $safe_name  = '' === $name_trimmed ? null : $name_trimmed;
+                        $safe_email = '' === $email_trimmed ? null : $email_trimmed;
+
+                        $update['owning_status']      = $status;
+                        $update['counterparty_name']  = $safe_name;
+                        $update['counterparty_email'] = $safe_email;
+
+                        if ( in_array( $status, array( 'borrowed', 'borrowing' ), true ) ) {
+                                self::ensure_open_loan(
+                                        (int) $row->user_id,
+                                        (int) $row->book_id,
+                                        array(
+                                                'counterparty_name'  => $safe_name,
+                                                'counterparty_email' => $safe_email,
+                                        ),
+                                        $now
+                                );
+                        } else {
+                                self::close_open_loan( (int) $row->user_id, (int) $row->book_id, $now );
+                        }
+                }
+
+                self::update_user_book( (int) $row->id, $update );
+
+                self::json_success(
+                        array(
+                                'message'            => __( 'Contact saved', 'politeia-reading' ),
+                                'owning_status'      => $status,
+                                'counterparty_name'  => $name_trimmed,
+                                'counterparty_email' => $email_trimmed,
+                        )
+                );
+        }
+
+        /**
+         * AJAX: marca un libro prestado como devuelto.
+         */
+        public static function ajax_mark_as_returned() {
+                if ( ! is_user_logged_in() ) {
+                        self::json_error( __( 'You must be logged in.', 'politeia-reading' ), 401 );
+                }
+
+                if ( ! self::verify_nonce( 'save_owning_contact', array( 'nonce' ) ) ) {
+                        self::json_error( __( 'Security check failed.', 'politeia-reading' ), 403 );
+                }
+
+                $user_id      = get_current_user_id();
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+
+                if ( ! $book_id ) {
+                        self::json_error( __( 'Invalid book.', 'politeia-reading' ), 400 );
+                }
+
+                if ( $user_book_id ) {
+                        $row = self::get_user_book_row( $user_book_id, $user_id );
+                } else {
+                        $row = self::get_user_book_by_book( $user_id, $book_id );
+                }
+
+                if ( ! $row || (int) $row->book_id !== $book_id ) {
+                        self::json_error( __( 'Book not found in your library.', 'politeia-reading' ), 403 );
+                }
+
+                if ( 'd' === (string) $row->type_book ) {
+                        self::json_error( __( 'Owning status is available only for printed copies.', 'politeia-reading' ), 400 );
+                }
+
+                $now_gmt = current_time( 'mysql', true );
+
+                self::update_user_book(
+                        (int) $row->id,
+                        array(
+                                'owning_status'      => null,
+                                'counterparty_name'  => null,
+                                'counterparty_email' => null,
+                        )
+                );
+
+                self::close_open_loan( (int) $row->user_id, (int) $row->book_id, $now_gmt, 'returned' );
+
+                self::json_success(
+                        array(
+                                'message'       => __( 'Book marked as returned.', 'politeia-reading' ),
+                                'owning_status' => '',
+                                'loan_closed'   => get_date_from_gmt( $now_gmt, 'Y-m-d' ),
+                        )
+                );
+        }
+
+        /**
          * AJAX: inline update for pages field.
          */
         public static function ajax_update_pages() {
@@ -340,22 +491,34 @@ class Politeia_Reading_User_Books {
 	=========================
 	 * DB helpers
 	 * ========================= */
-	private static function get_user_book_row( $user_book_id, $user_id ) {
-		global $wpdb;
-		$t = $wpdb->prefix . 'politeia_user_books';
-		return $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$t} WHERE id=%d AND user_id=%d LIMIT 1",
-				$user_book_id,
-				$user_id
-			)
-		);
-	}
+        private static function get_user_book_row( $user_book_id, $user_id ) {
+                global $wpdb;
+                $t = $wpdb->prefix . 'politeia_user_books';
+                return $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT * FROM {$t} WHERE id=%d AND user_id=%d LIMIT 1",
+                                $user_book_id,
+                                $user_id
+                        )
+                );
+        }
 
-	private static function update_user_book( $user_book_id, $update ) {
-		global $wpdb;
-		$t                    = $wpdb->prefix . 'politeia_user_books';
-		$update['updated_at'] = current_time( 'mysql', true ); // UTC
+        private static function get_user_book_by_book( $user_id, $book_id ) {
+                global $wpdb;
+                $t = $wpdb->prefix . 'politeia_user_books';
+                return $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT * FROM {$t} WHERE user_id=%d AND book_id=%d LIMIT 1",
+                                $user_id,
+                                $book_id
+                        )
+                );
+        }
+
+        private static function update_user_book( $user_book_id, $update ) {
+                global $wpdb;
+                $t                    = $wpdb->prefix . 'politeia_user_books';
+                $update['updated_at'] = current_time( 'mysql', true ); // UTC
 		$wpdb->update( $t, $update, array( 'id' => $user_book_id ) );
 		return $update;
 	}
@@ -434,22 +597,37 @@ class Politeia_Reading_User_Books {
 	}
 
 	/** Cierra cualquier loan abierto del par (user, book). */
-	private static function close_open_loan( $user_id, $book_id, $end_gmt ) {
-		global $wpdb;
-		$t   = self::loans_table();
-		$now = current_time( 'mysql', true );
-		$wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$t}
+        private static function close_open_loan( $user_id, $book_id, $end_gmt, $status = null ) {
+                global $wpdb;
+                $t   = self::loans_table();
+                $now = current_time( 'mysql', true );
+                if ( $status ) {
+                        $wpdb->query(
+                                $wpdb->prepare(
+                                        "UPDATE {$t}
+             SET status=%s, end_date=%s, updated_at=%s
+             WHERE user_id=%d AND book_id=%d AND end_date IS NULL",
+                                        $status,
+                                        $end_gmt,
+                                        $now,
+                                        $user_id,
+                                        $book_id
+                                )
+                        );
+                } else {
+                        $wpdb->query(
+                                $wpdb->prepare(
+                                        "UPDATE {$t}
              SET end_date=%s, updated_at=%s
              WHERE user_id=%d AND book_id=%d AND end_date IS NULL",
-				$end_gmt,
-				$now,
-				$user_id,
-				$book_id
-			)
-		);
-	}
+                                        $end_gmt,
+                                        $now,
+                                        $user_id,
+                                        $book_id
+                                )
+                        );
+                }
+        }
 
 	/*
 	=========================
