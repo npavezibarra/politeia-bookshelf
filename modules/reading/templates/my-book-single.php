@@ -139,7 +139,9 @@ wp_localize_script(
         margin: 16px 0 32px;
         }
 	.prs-box{ background:#f9f9f9; padding:16px; min-height:120px; }
-        #prs-book-cover{ grid-column:1; grid-row:1 / span 2; width:190px; }
+        #prs-book-cover{ grid-column:1; grid-row:1 / span 2; }
+        #prs-book-cover,
+        #prs-book-cover img{ width:190px; height:auto; object-fit:contain; display:block; }
         #prs-book-info{ grid-column:2; grid-row:1; min-height:140px; }
         #prs-book-stats{ grid-column:3; grid-row:1; min-height:auto; background:#ffffff;
         padding: 16px; border: 1px solid #dddddd; align-self:start; }
@@ -300,24 +302,29 @@ wp_localize_script(
                 <?php if ( $has_image ) : ?>
                         <?php
                         if ( $final_cover_id ) {
-                                echo wp_get_attachment_image(
-                                        $final_cover_id,
-                                        'large',
-                                        false,
-                                        array(
-                                                'class' => 'prs-cover-img',
-                                                'alt'   => esc_attr( $book->title ),
-                                                'id'    => 'prs-cover-img',
-                                        )
-                                );
+                                $cover_image_src = wp_get_attachment_image_src( $final_cover_id, 'large' );
+                                if ( $cover_image_src ) {
+                                        $cover_alt = trim( (string) get_post_meta( $final_cover_id, '_wp_attachment_image_alt', true ) );
+                                        if ( ! $cover_alt && ! empty( $book->title ) ) {
+                                                $cover_alt = $book->title;
+                                        }
+                                        if ( ! $cover_alt ) {
+                                                $cover_alt = __( 'Book cover', 'politeia-reading' );
+                                        }
+
+                                        printf(
+                                                '<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
+                                                esc_url( $cover_image_src[0] ),
+                                                esc_attr( $cover_alt )
+                                        );
+                                }
                         } elseif ( $cover_url ) {
-                                ?>
-                                <img
-                                        src="<?php echo esc_url( $cover_url ); ?>"
-                                        class="prs-cover-img"
-                                        id="prs-cover-img"
-                                        alt="<?php echo esc_attr( $book->title ); ?>" />
-                                <?php
+                                $fallback_alt = ! empty( $book->title ) ? $book->title : __( 'Book cover', 'politeia-reading' );
+                                printf(
+                                        '<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
+                                        esc_url( $cover_url ),
+                                        esc_attr( $fallback_alt )
+                                );
                         }
                         ?>
                 <?php else : ?>
