@@ -417,9 +417,8 @@ wp_localize_script(
                         </div>
                 </div>
 
-                <!-- Purchase Date & Channel -->
-                <hr style="margin-bottom:10px">
-                <div class="prs-purchase-row">
+               <!-- Purchase Date & Channel -->
+               <div class="prs-purchase-row">
                         <div class="prs-field prs-purchase-field" id="fld-purchase-date">
                                 <label class="label"><?php esc_html_e( 'Purchase Date', 'politeia-reading' ); ?></label>
                                 <span id="purchase-date-view"><?php echo $ub->purchase_date ? esc_html( $ub->purchase_date ) : '—'; ?></span>
