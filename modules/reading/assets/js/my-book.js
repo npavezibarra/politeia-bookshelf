@@ -1,5 +1,7 @@
 /* global PRS_BOOK, PRS_SESS, jQuery */
 
+window.PRS_isSaving = false;
+
 /**
  * Utilidades
  */
@@ -1140,6 +1142,11 @@
         return Promise.reject(new Error("configuration"));
       }
 
+      if (window.PRS_isSaving) {
+        return Promise.resolve(null);
+      }
+      window.PRS_isSaving = true;
+
       const trimmedName = (name || "").trim();
       const trimmedEmail = (email || "").trim();
       const previousState = normalizeOwningState(
@@ -1253,6 +1260,9 @@
             returnBtn.disabled = false;
           }
           throw err;
+        })
+        .finally(() => {
+          window.PRS_isSaving = false;
         });
     }
 
@@ -1345,6 +1355,9 @@
       select.addEventListener("change", () => {
         if (overlayConfirmed) {
           overlayConfirmed = false;
+          return;
+        }
+        if (window.PRS_isSaving) {
           return;
         }
         if (select.disabled) {
@@ -2054,6 +2067,11 @@
         return Promise.reject(new Error("configuration"));
       }
 
+      if (window.PRS_isSaving) {
+        return Promise.resolve(null);
+      }
+      window.PRS_isSaving = true;
+
       const fromOverlay = !!options.fromOverlay;
       if (fromOverlay && statusMsg) {
         statusMsg.style.color = "";
@@ -2144,6 +2162,9 @@
             returnBtn.disabled = select.disabled;
           }
           return Promise.reject(err);
+        })
+        .finally(() => {
+          window.PRS_isSaving = false;
         });
     }
 
@@ -2260,6 +2281,9 @@
       select.addEventListener("change", () => {
         if (overlayConfirmed) {
           overlayConfirmed = false;
+          return;
+        }
+        if (window.PRS_isSaving) {
           return;
         }
         if (select.disabled) {

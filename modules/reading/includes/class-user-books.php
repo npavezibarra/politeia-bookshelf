@@ -548,6 +548,20 @@ class Politeia_Reading_User_Books {
                         self::json_error( $validation->get_error_message(), 400 );
                 }
 
+                global $wpdb;
+                $table = self::loans_table();
+                $loan  = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT counterparty_name, counterparty_email FROM {$table} WHERE user_id=%d AND book_id=%d AND notes LIKE %s ORDER BY id DESC LIMIT 1",
+                                (int) $row->user_id,
+                                $book_id,
+                                '%"state":"borrowing"%'
+                        )
+                );
+
+                $counterparty_name  = $loan && ! empty( $loan->counterparty_name ) ? $loan->counterparty_name : $row->counterparty_name;
+                $counterparty_email = $loan && ! empty( $loan->counterparty_email ) ? $loan->counterparty_email : $row->counterparty_email;
+
                 $now_gmt = current_time( 'mysql', true );
 
                 self::update_user_book(
@@ -567,8 +581,8 @@ class Politeia_Reading_User_Books {
                         $current_state,
                         Politeia_Loan_Manager::DEFAULT_STATE,
                         array(
-                                'counterparty_name'  => null,
-                                'counterparty_email' => null,
+                                'counterparty_name'  => $counterparty_name ? $counterparty_name : null,
+                                'counterparty_email' => $counterparty_email ? $counterparty_email : null,
                         )
                 );
 
