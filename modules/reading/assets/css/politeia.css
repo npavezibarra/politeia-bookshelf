@@ -1090,12 +1090,20 @@ table.prs-form__table {
         min-width: 0;
 }
 
+label.prs-type-book__label {
+        font-size: 12px;
+}
+
 .prs-field--rating-type .prs-type-book__label {
         font-weight: 600;
 }
 
 .prs-field--rating-type .prs-type-book__select {
         min-width: 150px;
+}
+
+select#prs-type-book {
+        height: 24px;
 }
 
 @media (max-width: 600px) {
@@ -1243,7 +1251,7 @@ table.prs-form__table {
         #prs-book-info__main{
         display:flex;
         flex-direction:column;
-        gap:12px;
+        gap:5px;
         }
 
         section#prs-book-info__main{
@@ -1443,13 +1451,20 @@ table.prs-form__table {
         opacity: 1;
 }
 
+/* === RATING FIELD === */
+div#fld-user-rating {
+        border-top: 1px solid #e4e5e9;
+        border-bottom: 1px solid #e4e5e9;
+        padding: 10px 0px;
+}
+
 /* === PURCHASE ROW LAYOUT === */
 .prs-purchase-row {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 16px;
-        margin-top: 1.5rem;
-        margin-bottom: 2rem;
+        margin-top: 0;
+        margin-bottom: 0;
 }
 
 /* Each field takes equal width */
@@ -1564,8 +1579,12 @@ button#purchase-date-save {
         justify-content: space-between;
         align-items: flex-start;
         gap: 1rem;
-        margin-top: 1.5rem;
-        margin-bottom: 2rem;
+        margin-top: 0;
+        margin-bottom: 0;
+}
+
+.prs-field {
+        margin-top: 0px;
 }
 
 /* === FIXED HALF-WIDTH COLUMNS === */
