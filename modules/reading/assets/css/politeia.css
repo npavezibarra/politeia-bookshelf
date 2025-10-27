@@ -1641,9 +1641,12 @@ button#purchase-date-save {
         margin-top: 4px;
 }
 
-#owning-return-shelf {
+.owning-return-shelf {
         background: #4a73ff;
         color: #fff;
+        margin-top: 4px;
+        font-size: 0.85em;
+        padding: 4px 8px;
 }
 
 #owning-contact-save {

@@ -546,7 +546,15 @@ wp_add_inline_script(
                                 </select>
 
                                 <?php $show_return_btn = in_array( $ub->owning_status, array( 'borrowed', 'borrowing' ), true ); ?>
-                                <button type="button" id="owning-return-shelf" class="prs-btn" style="<?php echo $show_return_btn ? '' : 'display:none;'; ?>" <?php disabled( $is_digital ); ?>>
+                                <button
+                                        type="button"
+                                        id="owning-return-shelf"
+                                        class="prs-btn owning-return-shelf"
+                                        data-book-id="<?php echo (int) $book->id; ?>"
+                                        data-user-book-id="<?php echo (int) $ub->id; ?>"
+                                        style="<?php echo $show_return_btn ? '' : 'display:none;'; ?>"
+                                        <?php disabled( $is_digital ); ?>
+                                >
                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                 </button>
 

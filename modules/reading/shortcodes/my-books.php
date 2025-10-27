@@ -477,6 +477,20 @@ add_shortcode(
                                                 }
                                                 ?>
                                                 </select>
+                                                <?php
+                                                $show_return_btn = ! $is_digital && in_array( $owning_status, array( 'borrowed', 'borrowing' ), true );
+                                                $return_btn_style = $show_return_btn ? '' : 'display:none;';
+                                                ?>
+                                                <button
+                                                        type="button"
+                                                        class="prs-btn owning-return-shelf"
+                                                        data-book-id="<?php echo (int) $r->book_id; ?>"
+                                                        data-user-book-id="<?php echo (int) $r->user_book_id; ?>"
+                                                        style="<?php echo esc_attr( $return_btn_style ); ?>"
+                                                        <?php echo $is_digital ? 'disabled="disabled" aria-disabled="true"' : ''; ?>
+                                                >
+                                                        <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
+                                                </button>
                                                 <span class="owning-status-info"><?php echo $owning_info_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
                                                 <?php if ( $is_digital ) : ?>
                                                 <div class="prs-owning-status-note"><?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?></div>

@@ -6,6 +6,101 @@
 (function () {
   "use strict";
 
+  let overlayConfirmed = false;
+  let currentReturnButton = null;
+
+  function triggerReturnAction() {
+    if (!currentReturnButton || typeof currentReturnButton.__prsReturnHandler !== "function") {
+      currentReturnButton = null;
+      overlayConfirmed = false;
+      return Promise.resolve();
+    }
+
+    const handler = currentReturnButton.__prsReturnHandler;
+    currentReturnButton = null;
+
+    try {
+      const result = handler();
+      if (result && typeof result.finally === "function") {
+        return result.finally(() => {
+          overlayConfirmed = false;
+        });
+      }
+      overlayConfirmed = false;
+      return result;
+    } catch (err) {
+      overlayConfirmed = false;
+      throw err;
+    }
+  }
+
+  function openReturnOverlay(bookId, btnEl) {
+    currentReturnButton = btnEl || null;
+    const overlay = document.getElementById("return-overlay");
+
+    if (!overlay) {
+      if (currentReturnButton && typeof currentReturnButton.__prsReturnHandler === "function") {
+        overlayConfirmed = true;
+        const result = currentReturnButton.__prsReturnHandler();
+        if (result && typeof result.finally === "function") {
+          result.finally(() => {
+            overlayConfirmed = false;
+          });
+        } else {
+          overlayConfirmed = false;
+        }
+        if (result && typeof result.catch === "function") {
+          result.catch(() => {});
+        }
+      }
+      currentReturnButton = null;
+      return;
+    }
+
+    overlay.style.display = "flex";
+
+    const yesReturn = document.getElementById("return-overlay-yes");
+    const noReturn = document.getElementById("return-overlay-no");
+
+    if (!yesReturn || !noReturn) {
+      overlayConfirmed = true;
+      const action = triggerReturnAction();
+      if (action && typeof action.catch === "function") {
+        action.catch(() => {});
+      }
+      overlay.style.display = "none";
+      return;
+    }
+
+    yesReturn.replaceWith(yesReturn.cloneNode(true));
+    noReturn.replaceWith(noReturn.cloneNode(true));
+
+    const yes = document.getElementById("return-overlay-yes");
+    const no = document.getElementById("return-overlay-no");
+
+    yes.addEventListener("click", () => {
+      overlay.style.display = "none";
+      overlayConfirmed = true;
+      const action = triggerReturnAction();
+      if (action && typeof action.catch === "function") {
+        action.catch(() => {});
+      }
+    });
+
+    no.addEventListener("click", () => {
+      overlay.style.display = "none";
+      currentReturnButton = null;
+      overlayConfirmed = false;
+    });
+  }
+
+  document.addEventListener("click", e => {
+    const target = e.target;
+    if (target && target.classList && target.classList.contains("owning-return-shelf")) {
+      openReturnOverlay(target.dataset.bookId || "", target);
+    }
+  });
+
   // ---------- Helpers ----------
   function qs(sel, root) { return (root || document).querySelector(sel); }
   function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
@@ -809,7 +904,7 @@
 
     const select = qs("#owning-status-select", wrap);
     const status = qs("#owning-status-status", wrap);
-    const returnBtn = qs("#owning-return-shelf", wrap);
+    const returnBtn = qs(".owning-return-shelf", wrap);
     const derivedText = qs("#derived-location-text", wrap);
     const note = qs("#owning-status-note", wrap);
     const overlay = qs("#owning-overlay");
@@ -819,9 +914,14 @@
     const confirmBtn = qs("#owning-overlay-confirm");
     const cancelBtn = qs("#owning-overlay-cancel");
     const overlayStatus = qs("#owning-overlay-status");
-    const returnOverlay = qs("#return-overlay");
-    const returnOverlayYes = qs("#return-overlay-yes");
-    const returnOverlayNo = qs("#return-overlay-no");
+    if (returnBtn) {
+      if (!returnBtn.dataset.bookId && bookId) {
+        returnBtn.dataset.bookId = String(bookId);
+      }
+      if (!returnBtn.dataset.userBookId && userBookId) {
+        returnBtn.dataset.userBookId = String(userBookId);
+      }
+    }
 
     const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
       || (window.PRS_BOOK && PRS_BOOK.ajax_url)
@@ -1124,6 +1224,11 @@
           }
           toggleReadingStatusLock(select);
           filterOwningOptions(select, statusValue);
+          if (returnBtn) {
+            const shouldShowReturn = statusValue === "borrowing" || statusValue === "borrowed";
+            returnBtn.style.display = shouldShowReturn ? "" : "none";
+            returnBtn.disabled = false;
+          }
 
           return res;
         })
@@ -1142,16 +1247,22 @@
           updateDerived(savedOwningStatus);
           toggleReadingStatusLock(select);
           filterOwningOptions(select, savedOwningStatus);
+          if (returnBtn) {
+            const shouldShowReturn = savedOwningStatus === "borrowing" || savedOwningStatus === "borrowed";
+            returnBtn.style.display = shouldShowReturn ? "" : "none";
+            returnBtn.disabled = false;
+          }
           throw err;
         });
     }
 
-    function markAsReturned() {
+    function markAsReturned(triggerBtn) {
       if (!ajaxUrl || !bookId || !userBookId) {
         console.warn("Missing owning overlay configuration.");
         return Promise.reject(new Error("configuration"));
       }
 
+      const activeBtn = triggerBtn || returnBtn;
       const body = new URLSearchParams({
         action: "mark_as_returned",
         book_id: String(bookId),
@@ -1163,8 +1274,8 @@
         status.style.color = "";
         status.textContent = "Saving...";
       }
-      if (returnBtn) {
-        returnBtn.disabled = true;
+      if (activeBtn) {
+        activeBtn.disabled = true;
       }
 
       return fetch(ajaxUrl, {
@@ -1192,9 +1303,9 @@
           }
           toggleReadingStatusLock(select);
           filterOwningOptions(select, "");
-          if (returnBtn) {
-            returnBtn.style.display = "none";
-            returnBtn.disabled = false;
+          if (activeBtn) {
+            activeBtn.style.display = "none";
+            activeBtn.disabled = false;
           }
 
           if (status) {
@@ -1211,11 +1322,14 @@
             status.style.color = "#b00020";
             status.textContent = msg;
           }
-          if (returnBtn) {
-            returnBtn.disabled = false;
+          if (activeBtn) {
+            activeBtn.disabled = false;
           }
           filterOwningOptions(select, savedOwningStatus);
           throw err;
+        })
+        .finally(() => {
+          overlayConfirmed = false;
         });
     }
 
@@ -1229,6 +1343,10 @@
       toggleReadingStatusLock(select);
       filterOwningOptions(select, savedOwningStatus);
       select.addEventListener("change", () => {
+        if (overlayConfirmed) {
+          overlayConfirmed = false;
+          return;
+        }
         if (select.disabled) {
           toggleReadingStatusLock(select);
           return;
@@ -1265,44 +1383,8 @@
       });
     }
 
-    function openReturnOverlay() {
-      if (returnOverlay) {
-        returnOverlay.style.display = "flex";
-      } else {
-        handleReturnConfirmation();
-      }
-    }
-
-    function closeReturnOverlay() {
-      if (returnOverlay) {
-        returnOverlay.style.display = "none";
-      }
-    }
-
-    function handleReturnConfirmation() {
-      closeReturnOverlay();
-      markAsReturned();
-    }
-
     if (returnBtn) {
-      returnBtn.addEventListener("click", () => {
-        if (returnBtn.disabled) {
-          return;
-        }
-        openReturnOverlay();
-      });
-    }
-
-    if (returnOverlayNo) {
-      returnOverlayNo.addEventListener("click", () => {
-        closeReturnOverlay();
-      });
-    }
-
-    if (returnOverlayYes) {
-      returnOverlayYes.addEventListener("click", () => {
-        handleReturnConfirmation();
-      });
+      returnBtn.__prsReturnHandler = () => markAsReturned(returnBtn);
     }
 
     if (confirmBtn) {
@@ -1935,6 +2017,21 @@
 
       toggleReadingStatusLock(select);
       filterOwningOptions(select, storedStatus || "");
+
+      const row = select.closest("tr");
+      const returnBtn = row ? row.querySelector(".owning-return-shelf") : null;
+      if (returnBtn) {
+        const normalizedStatus = normalizeStatus(storedStatus || "");
+        const shouldShow = normalizedStatus === "borrowing" || normalizedStatus === "borrowed";
+        returnBtn.style.display = shouldShow ? "" : "none";
+        if (!returnBtn.dataset.bookId && select.dataset.bookId) {
+          returnBtn.dataset.bookId = select.dataset.bookId;
+        }
+        if (!returnBtn.dataset.userBookId && select.dataset.userBookId) {
+          returnBtn.dataset.userBookId = select.dataset.userBookId;
+        }
+        returnBtn.disabled = select.disabled;
+      }
     }
 
     function saveOwningContact(select, status, name, email, options = {}) {
@@ -2039,7 +2136,82 @@
           updateInfoElement(rowInfo, select.dataset.storedStatus || "", select.dataset.contactName || "", select.dataset.activeStart || "");
           toggleReadingStatusLock(select);
           filterOwningOptions(select, previous);
+          const returnBtn = rowEl ? rowEl.querySelector(".owning-return-shelf") : null;
+          if (returnBtn) {
+            const stored = normalizeStatus(select.dataset.storedStatus || "");
+            const shouldShow = stored === "borrowing" || stored === "borrowed";
+            returnBtn.style.display = shouldShow ? "" : "none";
+            returnBtn.disabled = select.disabled;
+          }
           return Promise.reject(err);
+        });
+    }
+
+    function markAsReturnedRow(select, returnBtn, rowInfo) {
+      const bookId = parseInt((returnBtn && returnBtn.dataset.bookId) || select.dataset.bookId || "", 10) || 0;
+      const userBookId = parseInt((returnBtn && returnBtn.dataset.userBookId) || select.dataset.userBookId || "", 10) || 0;
+
+      if (!ajaxUrl || !nonce || !bookId || !userBookId) {
+        console.warn("Missing owning overlay configuration.");
+        overlayConfirmed = false;
+        return Promise.reject(new Error("configuration"));
+      }
+
+      if (returnBtn) {
+        returnBtn.disabled = true;
+      }
+
+      const body = new URLSearchParams({
+        action: "mark_as_returned",
+        book_id: String(bookId),
+        user_book_id: String(userBookId),
+        nonce,
+      });
+
+      return fetch(ajaxUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "same-origin",
+        body,
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res || !res.success) {
+            throw res;
+          }
+
+          select.dataset.currentValue = "in_shelf";
+          select.dataset.storedStatus = "";
+          select.dataset.contactName = "";
+          select.dataset.contactEmail = "";
+          select.dataset.activeStart = "";
+          select.value = "in_shelf";
+
+          const row = select.closest("tr");
+          if (row) {
+            row.setAttribute("data-owning-status", "in_shelf");
+          }
+
+          updateInfoElement(rowInfo, "", "", "");
+          toggleReadingStatusLock(select);
+          filterOwningOptions(select, "");
+
+          if (returnBtn) {
+            returnBtn.style.display = "none";
+            returnBtn.disabled = false;
+          }
+
+          overlayConfirmed = false;
+          return res;
+        })
+        .catch(err => {
+          if (returnBtn) {
+            returnBtn.disabled = false;
+          }
+          const message = (err && err.data && err.data.message) ? err.data.message : msgAlert;
+          window.alert(message);
+          overlayConfirmed = false;
+          throw err;
         });
     }
 
@@ -2066,11 +2238,30 @@
         select.dataset.activeStart = "";
       }
 
-      const rowInfo = select.closest("tr") ? select.closest("tr").querySelector(".owning-status-info") : null;
+      const row = select.closest("tr");
+      const rowInfo = row ? row.querySelector(".owning-status-info") : null;
+      const returnBtn = row ? row.querySelector(".owning-return-shelf") : null;
+      if (returnBtn) {
+        if (!returnBtn.dataset.bookId && select.dataset.bookId) {
+          returnBtn.dataset.bookId = select.dataset.bookId;
+        }
+        if (!returnBtn.dataset.userBookId && select.dataset.userBookId) {
+          returnBtn.dataset.userBookId = select.dataset.userBookId;
+        }
+        const initialState = normalizeStatus(select.dataset.currentValue || select.value || "");
+        const shouldShowReturn = initialState === "borrowing" || initialState === "borrowed";
+        returnBtn.style.display = shouldShowReturn ? "" : "none";
+        returnBtn.disabled = select.disabled;
+        returnBtn.__prsReturnHandler = () => markAsReturnedRow(select, returnBtn, rowInfo);
+      }
       toggleReadingStatusLock(select);
       filterOwningOptions(select, select.dataset.currentValue || select.value || "");
 
       select.addEventListener("change", () => {
+        if (overlayConfirmed) {
+          overlayConfirmed = false;
+          return;
+        }
         if (select.disabled) {
           select.value = select.dataset.currentValue || select.value || "";
           toggleReadingStatusLock(select);
