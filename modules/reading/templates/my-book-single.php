@@ -510,6 +510,14 @@ wp_add_inline_script(
                                         <option value="finished"    <?php selected( $ub->reading_status, 'finished' ); ?>><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
                                 </select>
                                 <span id="reading-status-status" class="prs-help"></span>
+                                <?php
+                                        // "In Shelf" es derivado solo cuando owning_status es NULL/''
+                                        $is_in_shelf = empty( $ub->owning_status );
+                                ?>
+                                <p class="prs-location" id="derived-location">
+                                        <strong><?php esc_html_e( 'Location', 'politeia-reading' ); ?>:</strong>
+                                        <span id="derived-location-text"><?php echo $is_in_shelf ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
+                                </p>
                         </div>
 
                         <!-- Owning Status (editable) + Contact (condicional) -->
@@ -531,15 +539,6 @@ wp_add_inline_script(
                                 <span id="owning-status-status" class="prs-help"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
                                 <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
                                         <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
-                                </p>
-
-                                <?php
-                                        // "In Shelf" es derivado solo cuando owning_status es NULL/''
-                                        $is_in_shelf = empty( $ub->owning_status );
-                                ?>
-                                <p class="prs-location" id="derived-location">
-                                        <strong><?php esc_html_e( 'Location', 'politeia-reading' ); ?>:</strong>
-                                        <span id="derived-location-text"><?php echo $is_in_shelf ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
                                 </p>
 
                         </div>
