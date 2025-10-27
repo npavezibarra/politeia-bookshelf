@@ -26,6 +26,16 @@ if ( ! defined( 'ABSPATH' ) ) {
                                                 <span>or click upload</span>
                                         </div>
                                         <img id="previewImage" src="" alt="Book Cover Preview" style="display:none;">
+                                        <div id="cropArea" class="prs-crop-area" style="display:none;">
+                                                <div class="resize-handle corner nw"></div>
+                                                <div class="resize-handle corner ne"></div>
+                                                <div class="resize-handle corner sw"></div>
+                                                <div class="resize-handle corner se"></div>
+                                                <div class="resize-handle side n"></div>
+                                                <div class="resize-handle side s"></div>
+                                                <div class="resize-handle side e"></div>
+                                                <div class="resize-handle side w"></div>
+                                        </div>
                                 </div>
                         </div>
 
@@ -37,10 +47,7 @@ if ( ! defined( 'ABSPATH' ) ) {
                                </div>
 
                                <div class="prs-crop-controls">
-                                       <div class="prs-zoom-group">
-                                               <input type="range" id="zoomSlider" min="1" max="4" step="0.01" value="1" disabled>
-                                               <label for="zoomSlider" class="prs-zoom-label">Zoom (1x – 4x)</label>
-                                       </div>
+                                       <p class="prs-crop-instructions">Drag or resize the selection on the image to crop.</p>
                                </div>
 
                                <span id="statusMessage" class="prs-cover-status">Awaiting file upload.</span>

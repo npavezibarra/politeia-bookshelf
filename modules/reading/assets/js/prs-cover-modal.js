@@ -7,9 +7,8 @@
     const placeholder = detail.placeholder || null;
     const previewImage = detail.previewImage || null;
     const fileInput = detail.fileInput || null;
-    const zoomSlider = detail.zoomSlider || null;
+    const cropArea = detail.cropArea || null;
     const onFiles = typeof detail.onFiles === 'function' ? detail.onFiles : noop;
-    const onZoomChange = typeof detail.onZoomChange === 'function' ? detail.onZoomChange : noop;
 
     if (!stage || !fileInput) {
       return;
@@ -48,7 +47,12 @@
       fileInput.click();
     };
 
-    stage.addEventListener('click', triggerFileInput);
+    stage.addEventListener('click', (eventClick) => {
+      if (cropArea && cropArea.contains(eventClick.target)) {
+        return;
+      }
+      triggerFileInput();
+    });
 
     if (placeholder) {
       placeholder.addEventListener('click', triggerFileInput);
@@ -61,15 +65,5 @@
       }
       eventChange.target.value = '';
     });
-
-    if (zoomSlider) {
-      zoomSlider.addEventListener('input', (eventInput) => {
-        const value = zoomSlider.value || '1';
-        if (previewImage) {
-          previewImage.style.transform = `translate(-50%, -50%) scale(${value})`;
-        }
-        onZoomChange(eventInput);
-      });
-    }
   });
 })();
