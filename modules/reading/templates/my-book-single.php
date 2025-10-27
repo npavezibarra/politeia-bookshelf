@@ -273,7 +273,9 @@ wp_localize_script(
 	.prs-contact-label{ align-self:center; font-weight:600; }
 	.prs-contact-input{ width:100%; }
 	.prs-contact-actions{ display:flex; align-items:center; gap:10px; }
-	#owning-contact-view{ margin:6px 0 0 10px; color:#555; }
+        #owning-contact-view{ margin-top:8px; line-height:1.4; }
+        #owning-contact-view p{ margin:2px 0; font-size:0.9rem; color:#333; }
+        #owning-contact-email-view{ color:#0066cc; word-break:break-all; }
 
 	/* Paginación (parcial AJAX) */
 	.prs-pagination ul.page-numbers{ display:flex; gap:6px; list-style:none; justify-content: center; }
@@ -523,19 +525,17 @@ wp_localize_script(
                                 </div>
 
                                 <div id="owning-contact-view">
-                                        <?php
-                                        $view = '';
-                                        if ( $ub->counterparty_name ) {
-                                                $view .= $ub->counterparty_name;
-                                        }
-                                        if ( $ub->counterparty_email ) {
-                                                $view .= ( $view ? ' · ' : '' ) . $ub->counterparty_email;
-                                        }
-                                        if ( $active_start_local ) {
-                                                $view .= ( $view ? ' · ' : '' ) . $active_start_local;
-                                        }
-                                        echo esc_html( $view );
-                                        ?>
+                                        <?php if ( $ub->counterparty_name ) : ?>
+                                                <p id="owning-contact-name-view"><?php echo esc_html( $ub->counterparty_name ); ?></p>
+                                        <?php endif; ?>
+
+                                        <?php if ( $ub->counterparty_email ) : ?>
+                                                <p id="owning-contact-email-view"><?php echo esc_html( $ub->counterparty_email ); ?></p>
+                                        <?php endif; ?>
+
+                                        <?php if ( $active_start_local ) : ?>
+                                                <p id="owning-contact-date-view"><?php echo esc_html( $active_start_local ); ?></p>
+                                        <?php endif; ?>
                                 </div>
                         </div>
                 </div>
