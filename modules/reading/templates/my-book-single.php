@@ -141,7 +141,9 @@ wp_localize_script(
 	.prs-box{ background:#f9f9f9; padding:16px; min-height:120px; }
         #prs-book-cover{ grid-column:1; grid-row:1 / span 2; }
         #prs-book-cover,
-        #prs-book-cover img{ width:190px; height:auto; object-fit:contain; display:block; }
+        #prs-book-cover img,
+        .prs-cover-frame,
+        .prs-book-cover{ width:190px; height:auto; display:block; }
         #prs-book-info{ grid-column:2; grid-row:1; min-height:140px; }
         #prs-book-stats{ grid-column:3; grid-row:1; min-height:auto; background:#ffffff;
         padding: 16px; border: 1px solid #dddddd; align-self:start; }
@@ -149,10 +151,11 @@ wp_localize_script(
 
 	/* Frame portada */
         .prs-cover-frame{
-        position:relative; width:100%; max-width:190px; height:auto; overflow:hidden;
-        background:#eee; border-radius:12px;
+        position:relative; overflow:hidden;
+        background:#eee; border-radius:12px; align-self:flex-start;
         }
-        .prs-cover-img{ width:100%; height:auto; object-fit:contain; display:block; }
+        .prs-cover-img{ width:100%; height:auto; object-fit:contain; display:block; border-radius:inherit; }
+        .prs-book-cover{ margin:0; }
         .prs-cover-placeholder{
         display:flex;
         flex-direction:column;
