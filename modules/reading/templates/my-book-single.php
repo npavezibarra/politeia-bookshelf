@@ -300,6 +300,8 @@ wp_add_inline_script(
         .prs-inline-actions{ margin-left:0; }
 	.prs-inline-actions a{ margin-left:8px; }
 	.prs-help{ color:#666; font-size:12px; }
+	#derived-location{ margin-top:6px; font-size:0.9em; color:#333; }
+	#derived-location strong{ font-weight:600; }
 
 	/* Contact form (3 filas) */
 	.prs-contact-form{
@@ -502,6 +504,10 @@ wp_add_inline_script(
                 <!-- Status Row -->
                 <section id="prs-book-info__sidebar" class="prs-book-info__sidebar" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
                 <div id="prs-status-row" class="prs-status-row">
+                        <?php
+                                // "In Shelf" es derivado solo cuando owning_status es NULL/''.
+                                $is_in_shelf = empty( $ub->owning_status );
+                        ?>
                         <div class="prs-field prs-status-field" id="fld-reading-status">
                                 <label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
                                 <select id="reading-status-select">
@@ -510,6 +516,10 @@ wp_add_inline_script(
                                         <option value="finished"    <?php selected( $ub->reading_status, 'finished' ); ?>><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
                                 </select>
                                 <span id="reading-status-status" class="prs-help"></span>
+                                <p class="prs-location" id="derived-location">
+                                        <strong><?php esc_html_e( 'Location', 'politeia-reading' ); ?>:</strong>
+                                        <span id="derived-location-text"><?php echo $is_in_shelf ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
+                                </p>
                         </div>
 
                         <!-- Owning Status (editable) + Contact (condicional) -->
@@ -531,15 +541,6 @@ wp_add_inline_script(
                                 <span id="owning-status-status" class="prs-help"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
                                 <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
                                         <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
-                                </p>
-
-                                <?php
-                                        // "In Shelf" es derivado solo cuando owning_status es NULL/''
-                                        $is_in_shelf = empty( $ub->owning_status );
-                                ?>
-                                <p class="prs-location" id="derived-location">
-                                        <strong><?php esc_html_e( 'Location', 'politeia-reading' ); ?>:</strong>
-                                        <span id="derived-location-text"><?php echo $is_in_shelf ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
                                 </p>
 
                         </div>
