@@ -916,6 +916,8 @@
         status.textContent = "Saving...";
       }
 
+      const rowEl = select.closest("tr");
+
       const body = new URLSearchParams({
         action: "save_owning_contact",
         book_id: String(bookId),
@@ -1596,6 +1598,367 @@
   }
 
 
+  // ---------- Library owning overlay ----------
+  function setupLibraryOwningOverlay() {
+    const selects = qsa(".owning-status-select");
+    if (!selects.length) return;
+
+    const overlay = qs("#owning-overlay");
+    if (!overlay) return;
+
+    const overlayTitle = qs("#owning-overlay-title");
+    const nameInput = qs("#owning-overlay-name");
+    const emailInput = qs("#owning-overlay-email");
+    const confirmBtn = qs("#owning-overlay-confirm");
+    const cancelBtn = qs("#owning-overlay-cancel");
+    const statusMsg = qs("#owning-overlay-status");
+
+    const owningConfig = (window.PRS_LIBRARY && PRS_LIBRARY.owning) || {};
+    const owningLabels = owningConfig.labels || {};
+    const owningMessages = owningConfig.messages || {};
+    const nonce = owningConfig.nonce || (typeof window.PRS_NONCE === "string" ? window.PRS_NONCE : "");
+    const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
+      || (window.PRS_LIBRARY && PRS_LIBRARY.ajax_url)
+      || "";
+
+    const msgMissingContact = owningMessages.missing || "Please enter both name and email.";
+    const msgSaving = owningMessages.saving || "Saving...";
+    const msgError = owningMessages.error || "Error saving contact.";
+    const msgAlert = owningMessages.alert || msgError;
+
+    const labelBorrowing = owningLabels.borrowing || "Borrowing to:";
+    const labelBorrowed = owningLabels.borrowed || "Borrowed from:";
+    const labelSold = owningLabels.sold || "Sold to:";
+    const labelLost = owningLabels.lost || "Last borrowed to:";
+    const labelLocation = owningLabels.location || "Location";
+    const labelInShelf = owningLabels.in_shelf || "In Shelf";
+    const labelNotInShelf = owningLabels.not_in_shelf || "Not In Shelf";
+    const labelUnknown = owningLabels.unknown || "Unknown";
+
+    let currentSelect = null;
+    let currentStatus = "";
+    let currentRowInfo = null;
+    let previousValue = "";
+
+    function requiresContact(status) {
+      return status === "borrowed" || status === "borrowing" || status === "sold";
+    }
+
+    function getLabelFor(status) {
+      switch (status) {
+        case "borrowed":
+          return labelBorrowed;
+        case "borrowing":
+          return labelBorrowing;
+        case "sold":
+          return labelSold;
+        case "lost":
+          return labelLost;
+        default:
+          return labelBorrowing;
+      }
+    }
+
+    function normalizeStatus(value) {
+      const trimmed = (value || "").trim();
+      return trimmed === "" ? "in_shelf" : trimmed;
+    }
+
+    function clearOverlayMessage() {
+      if (!statusMsg) return;
+      statusMsg.style.color = "";
+      statusMsg.textContent = "";
+    }
+
+    function closeOverlay() {
+      overlay.style.display = "none";
+      currentSelect = null;
+      currentStatus = "";
+      currentRowInfo = null;
+      previousValue = "";
+      clearOverlayMessage();
+    }
+
+    function openOverlay(select, status, rowInfo) {
+      currentSelect = select;
+      currentStatus = status;
+      currentRowInfo = rowInfo || null;
+      previousValue = select ? (select.dataset.currentValue || select.value || "") : "";
+      clearOverlayMessage();
+
+      if (overlayTitle) {
+        overlayTitle.textContent = getLabelFor(status);
+      }
+      if (nameInput) {
+        nameInput.value = select ? (select.dataset.contactName || "") : "";
+      }
+      if (emailInput) {
+        emailInput.value = select ? (select.dataset.contactEmail || "") : "";
+      }
+
+      overlay.style.display = "flex";
+      setTimeout(() => {
+        if (nameInput) {
+          nameInput.focus();
+        }
+      }, 0);
+    }
+
+    function updateInfoElement(el, status, name, date) {
+      if (!el) return;
+      const normalizedStatus = (status || "").trim();
+      const safeName = escapeHtml(name || "");
+      const safeDate = date ? escapeHtml(date) : "";
+
+      if (requiresContact(normalizedStatus)) {
+        const label = escapeHtml(getLabelFor(normalizedStatus));
+        const displayName = safeName || escapeHtml(labelUnknown);
+        let html = label ? `<strong>${label}</strong>` : "";
+        if (displayName) {
+          html += (html ? "<br>" : "") + displayName;
+        }
+        if (safeDate) {
+          html += `<br><small>${safeDate}</small>`;
+        }
+        el.innerHTML = html;
+        return;
+      }
+
+      if (normalizedStatus === "lost") {
+        const locationLine = `<strong>${escapeHtml(labelLocation)}</strong>: ${escapeHtml(labelNotInShelf)}`;
+        const contactName = safeName || escapeHtml(labelUnknown);
+        if (contactName) {
+          const lostLabel = escapeHtml(labelLost);
+          el.innerHTML = `${locationLine}<br><strong>${lostLabel}</strong> ${contactName}`;
+        } else {
+          el.innerHTML = locationLine;
+        }
+        return;
+      }
+
+      const locationLine = `<strong>${escapeHtml(labelLocation)}</strong>: ${escapeHtml(labelInShelf)}`;
+      el.innerHTML = locationLine;
+    }
+
+    function finalizeSelect(select, storedStatus, meta = {}) {
+      const uiValue = storedStatus ? storedStatus : "in_shelf";
+      select.value = uiValue;
+      select.dataset.currentValue = uiValue;
+      select.dataset.storedStatus = storedStatus || "";
+
+      if (typeof meta.contactName !== "undefined") {
+        select.dataset.contactName = meta.contactName || "";
+      }
+      if (typeof meta.contactEmail !== "undefined") {
+        select.dataset.contactEmail = meta.contactEmail || "";
+      }
+      if (typeof meta.activeStart !== "undefined") {
+        select.dataset.activeStart = meta.activeStart || "";
+      }
+    }
+
+    function saveOwningContact(select, status, name, email, options = {}) {
+      const previous = options.previousValue || select.dataset.currentValue || "";
+      const bookId = parseInt(select.dataset.bookId || "", 10) || 0;
+      const userBookId = parseInt(select.dataset.userBookId || "", 10) || 0;
+      const normalizedStatus = status === "in_shelf" ? "" : (status || "");
+      const trimmedName = (name || "").trim();
+      const trimmedEmail = (email || "").trim();
+
+      if (!ajaxUrl || !nonce || !bookId || !userBookId) {
+        console.warn("Missing owning overlay configuration.");
+        select.value = previous;
+        select.dataset.currentValue = previous;
+        return Promise.reject(new Error("configuration"));
+      }
+
+      const fromOverlay = !!options.fromOverlay;
+      if (fromOverlay && statusMsg) {
+        statusMsg.style.color = "";
+        statusMsg.textContent = msgSaving;
+      }
+
+      const body = new URLSearchParams({
+        action: "save_owning_contact",
+        book_id: String(bookId),
+        user_book_id: String(userBookId),
+        owning_status: normalizedStatus,
+        contact_name: trimmedName,
+        contact_email: trimmedEmail,
+        nonce,
+      });
+
+      const rowInfo = options.rowInfo || null;
+
+      return fetch(ajaxUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "same-origin",
+        body,
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res || !res.success) {
+            throw res;
+          }
+
+          const payload = res.data || {};
+          const savedStatus = typeof payload.owning_status === "string" ? payload.owning_status : normalizedStatus;
+          const nextName = typeof payload.counterparty_name === "string" ? payload.counterparty_name : trimmedName;
+          const nextEmail = typeof payload.counterparty_email === "string" ? payload.counterparty_email : trimmedEmail;
+          const dateString = requiresContact(savedStatus)
+            ? (options.dateString || select.dataset.activeStart || new Date().toISOString().split("T")[0])
+            : "";
+
+          finalizeSelect(select, savedStatus, {
+            contactName: nextName,
+            contactEmail: nextEmail,
+            activeStart: requiresContact(savedStatus) ? dateString : "",
+          });
+
+          if (rowEl) {
+            rowEl.setAttribute("data-owning-status", savedStatus ? savedStatus : "in_shelf");
+          }
+
+          updateInfoElement(rowInfo, savedStatus, nextName, dateString);
+
+          if (fromOverlay && statusMsg) {
+            const successMsg = (payload && payload.message) ? payload.message : "Saved successfully.";
+            statusMsg.style.color = "#2f6b2f";
+            statusMsg.textContent = successMsg;
+            setTimeout(() => {
+              if (statusMsg.textContent === successMsg) {
+                statusMsg.textContent = "";
+              }
+            }, 2000);
+          }
+
+          closeOverlay();
+          return res;
+        })
+        .catch(err => {
+          if (fromOverlay && statusMsg) {
+            statusMsg.style.color = "#b00020";
+            statusMsg.textContent = (err && err.data && err.data.message) ? err.data.message : msgError;
+          } else {
+            window.alert((err && err.data && err.data.message) ? err.data.message : msgAlert);
+          }
+
+          select.value = previous;
+          select.dataset.currentValue = previous;
+          if (rowEl) {
+            const fallbackStatus = select.dataset.storedStatus || "";
+            rowEl.setAttribute("data-owning-status", fallbackStatus ? fallbackStatus : "in_shelf");
+          }
+          updateInfoElement(rowInfo, select.dataset.storedStatus || "", select.dataset.contactName || "", select.dataset.activeStart || "");
+          return Promise.reject(err);
+        });
+    }
+
+    selects.forEach(select => {
+      if (select.dataset.libraryOwningBound === "1") {
+        return;
+      }
+      select.dataset.libraryOwningBound = "1";
+
+      if (!select.dataset.currentValue) {
+        select.dataset.currentValue = normalizeStatus(select.value || "");
+      }
+      if (typeof select.dataset.storedStatus === "undefined") {
+        const initialStored = select.value && select.value !== "in_shelf" ? select.value : "";
+        select.dataset.storedStatus = initialStored;
+      }
+      if (typeof select.dataset.contactName === "undefined") {
+        select.dataset.contactName = "";
+      }
+      if (typeof select.dataset.contactEmail === "undefined") {
+        select.dataset.contactEmail = "";
+      }
+      if (typeof select.dataset.activeStart === "undefined") {
+        select.dataset.activeStart = "";
+      }
+
+      const rowInfo = select.closest("tr") ? select.closest("tr").querySelector(".owning-status-info") : null;
+
+      select.addEventListener("change", () => {
+        if (select.disabled) {
+          select.value = select.dataset.currentValue || select.value || "";
+          return;
+        }
+
+        const rawValue = normalizeStatus(select.value);
+        const previous = select.dataset.currentValue || normalizeStatus(select.value);
+
+        if (requiresContact(rawValue)) {
+          openOverlay(select, rawValue, rowInfo);
+          return;
+        }
+
+        if (rawValue === "lost") {
+          saveOwningContact(select, rawValue, select.dataset.contactName || "", select.dataset.contactEmail || "", {
+            rowInfo,
+            previousValue: previous,
+            fromOverlay: false,
+          }).catch(() => {});
+          return;
+        }
+
+        if (rawValue === "in_shelf") {
+          saveOwningContact(select, rawValue, "", "", {
+            rowInfo,
+            previousValue: previous,
+            fromOverlay: false,
+          }).catch(() => {});
+          return;
+        }
+
+        select.value = previous;
+      });
+    });
+
+    if (confirmBtn) {
+      confirmBtn.addEventListener("click", () => {
+        if (!currentSelect || !requiresContact(currentStatus)) {
+          closeOverlay();
+          return;
+        }
+
+        const name = nameInput ? nameInput.value.trim() : "";
+        const email = emailInput ? emailInput.value.trim() : "";
+
+        if (!name || !email) {
+          if (statusMsg) {
+            statusMsg.style.color = "#b00020";
+            statusMsg.textContent = msgMissingContact;
+          }
+          return;
+        }
+
+        confirmBtn.disabled = true;
+        saveOwningContact(currentSelect, currentStatus, name, email, {
+          rowInfo: currentRowInfo,
+          previousValue,
+          fromOverlay: true,
+          dateString: new Date().toISOString().split("T")[0],
+        })
+          .catch(() => {})
+          .finally(() => {
+            confirmBtn.disabled = false;
+          });
+      });
+    }
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => {
+        if (currentSelect) {
+          currentSelect.value = previousValue || currentSelect.dataset.currentValue || "";
+        }
+        closeOverlay();
+      });
+    }
+  }
+
+
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     setupCoverPlaceholder();
@@ -1607,6 +1970,7 @@
     setupTypeBook();
     setupReadingStatus();
     setupOwningStatus();
+    setupLibraryOwningOverlay();
     setupSessionsAjax();
     setupSessionRecorderModal();
     setupLibraryFilterDashboard();

@@ -551,23 +551,7 @@ wp_add_inline_script(
         </div>
 </div>
 
-<div id="owning-overlay" class="prs-overlay" style="display:none;">
-        <div class="prs-overlay-backdrop"></div>
-
-        <div class="prs-overlay-content">
-                <h2 id="owning-overlay-title"><?php echo esc_html( $label_borrowing ); ?></h2>
-
-                <input type="text" id="owning-overlay-name" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>">
-                <input type="email" id="owning-overlay-email" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>">
-
-                <div class="prs-overlay-actions">
-                        <button type="button" id="owning-overlay-confirm" class="prs-btn"><?php esc_html_e( 'Confirm', 'politeia-reading' ); ?></button>
-                        <button type="button" id="owning-overlay-cancel" class="prs-btn prs-btn-secondary"><?php esc_html_e( 'Cancel', 'politeia-reading' ); ?></button>
-                </div>
-
-                <span id="owning-overlay-status" class="prs-help"></span>
-        </div>
-</div>
+<?php prs_render_owning_overlay( array( 'heading' => $label_borrowing ) ); ?>
 
 <div id="return-overlay" class="prs-overlay" style="display:none;">
         <div class="prs-overlay-backdrop"></div>
