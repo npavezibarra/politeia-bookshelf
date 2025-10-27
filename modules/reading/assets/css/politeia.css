@@ -1226,7 +1226,7 @@ select#prs-type-book {
         /* Book info layout */
         .prs-book-info-grid{
         display:grid;
-        grid-template-columns:190px 1fr 320px;
+        grid-template-columns:190px 1fr 1fr;
         gap:28px;
         align-items:stretch;
         width:100%;
