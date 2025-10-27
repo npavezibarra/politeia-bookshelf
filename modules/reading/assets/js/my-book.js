@@ -86,6 +86,52 @@
     }
   }
 
+  function normalizeOwningState(value) {
+    const raw = (value || "").trim();
+    if (!raw || raw === "in_shelf") {
+      return "in_shelf";
+    }
+    return raw;
+  }
+
+  const POLITEIA_TRANSITIONS = {
+    in_shelf: ["", "in_shelf", "borrowing", "sold", "lost"],
+    borrowing: ["", "in_shelf", "borrowing", "sold", "lost"],
+    borrowed: ["", "in_shelf", "borrowed"],
+    sold: ["sold"],
+    lost: ["", "in_shelf", "lost"],
+  };
+
+  function filterOwningOptions(selectEl, currentState) {
+    if (!selectEl) return;
+    const normalized = normalizeOwningState(currentState);
+    const allowed = POLITEIA_TRANSITIONS[normalized] || [];
+    const fallback = allowed.length ? allowed : [selectEl.value];
+
+    selectEl.querySelectorAll("option").forEach(opt => {
+      const value = (opt.value || "").trim();
+      const isAllowed = fallback.includes(value);
+      opt.disabled = !isAllowed;
+      opt.style.display = isAllowed ? "" : "none";
+    });
+  }
+
+  function applyOwningOptionFilters() {
+    qsa(".owning-status-select").forEach(sel => {
+      const current = sel.value
+        || sel.getAttribute("data-current-value")
+        || sel.getAttribute("data-stored-status")
+        || "";
+      filterOwningOptions(sel, current);
+    });
+
+    const singleSelect = document.getElementById("owning-status-select");
+    if (singleSelect) {
+      const currentState = getNormalizedOwningValue(singleSelect);
+      filterOwningOptions(singleSelect, currentState);
+    }
+  }
+
   function setStatus(el, msg, ok = true, ttl = 2000) {
     if (!el) return;
     el.textContent = msg || "";
@@ -862,9 +908,14 @@
       wrap.setAttribute("data-active-start", loanDate);
     }
 
-    function openOverlayFor(statusValue) {
+    function openOverlayFor(statusValue, previousStateOverride) {
       if (!overlay) return;
       pendingStatus = statusValue;
+      const priorState = normalizeOwningState(
+        typeof previousStateOverride === "string"
+          ? previousStateOverride
+          : savedOwningStatus
+      );
       if (overlayStatus) {
         overlayStatus.textContent = "";
         overlayStatus.style.color = "";
@@ -882,6 +933,14 @@
             break;
           default:
             overlayTitle.textContent = labelBorrowing;
+        }
+      }
+      if (statusValue === "sold" && priorState === "borrowing") {
+        if (overlayTitle) {
+          overlayTitle.textContent = "Borrowed person is buying this book:";
+        }
+        if (overlayStatus) {
+          overlayStatus.textContent = "Confirm that the borrower is purchasing or compensating for the book.";
         }
       }
       if (nameInput) nameInput.value = "";
@@ -952,6 +1011,7 @@
           updateDerived(val);
           savedOwningStatus = val;
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, val);
           if (!val) {
             lastContactName = "";
             wrap.setAttribute("data-contact-name", "");
@@ -968,6 +1028,7 @@
           }
           updateDerived(savedOwningStatus);
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, savedOwningStatus);
         });
     }
 
@@ -981,6 +1042,15 @@
 
       const trimmedName = (name || "").trim();
       const trimmedEmail = (email || "").trim();
+      const previousState = normalizeOwningState(
+        options && typeof options.previousValue === "string"
+          ? options.previousValue
+          : savedOwningStatus
+      );
+      const nextState = normalizeOwningState(statusValue);
+      const transactionType = previousState === "borrowing" && nextState === "sold"
+        ? "bought_by_borrower"
+        : "";
 
       if (useOverlay && overlayStatus) {
         overlayStatus.style.color = "";
@@ -999,6 +1069,7 @@
         owning_status: statusValue,
         contact_name: trimmedName,
         contact_email: trimmedEmail,
+        transaction_type: transactionType,
         nonce: owningNonce,
       });
 
@@ -1052,6 +1123,7 @@
             select.value = statusValue;
           }
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, statusValue);
 
           return res;
         })
@@ -1069,6 +1141,7 @@
           }
           updateDerived(savedOwningStatus);
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, savedOwningStatus);
           throw err;
         });
     }
@@ -1118,6 +1191,7 @@
             select.value = "";
           }
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, "");
           if (returnBtn) {
             returnBtn.style.display = "none";
             returnBtn.disabled = false;
@@ -1140,6 +1214,7 @@
           if (returnBtn) {
             returnBtn.disabled = false;
           }
+          filterOwningOptions(select, savedOwningStatus);
           throw err;
         });
     }
@@ -1152,32 +1227,41 @@
         date: loanDate,
       });
       toggleReadingStatusLock(select);
+      filterOwningOptions(select, savedOwningStatus);
       select.addEventListener("change", () => {
         if (select.disabled) {
           toggleReadingStatusLock(select);
           return;
         }
         const val = (select.value || "").trim(); // "", borrowed, borrowing, sold, lost
+        const previousState = normalizeOwningState(savedOwningStatus);
         toggleReadingStatusLock(select);
         if (!val) {
-          postOwning("");
+          postOwning("").finally(() => {
+            filterOwningOptions(select, "");
+          });
           return;
         }
 
         if (val === "lost") {
           const fallbackName = lastContactName || labelUnknown;
-          saveOwningContact("lost", fallbackName, "", { fromOverlay: false });
+          saveOwningContact("lost", fallbackName, "", { fromOverlay: false, previousValue: savedOwningStatus })
+            .catch(() => {})
+            .finally(() => {
+              filterOwningOptions(select, savedOwningStatus);
+            });
           return;
         }
 
         if (val === "borrowed" || val === "borrowing" || val === "sold") {
-          openOverlayFor(val);
+          openOverlayFor(val, previousState);
           return;
         }
 
         // Default: revert to saved value
         select.value = savedOwningStatus;
         toggleReadingStatusLock(select);
+        filterOwningOptions(select, savedOwningStatus);
       });
     }
 
@@ -1239,7 +1323,7 @@
           return;
         }
 
-        saveOwningContact(pendingStatus, name, email)
+        saveOwningContact(pendingStatus, name, email, { previousValue: savedOwningStatus })
           .then(() => {
             pendingStatus = "";
           })
@@ -1254,6 +1338,7 @@
         if (select) {
           select.value = savedOwningStatus;
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, savedOwningStatus);
         }
       });
     }
@@ -1771,6 +1856,16 @@
       if (overlayTitle) {
         overlayTitle.textContent = getLabelFor(status);
       }
+      const priorState = normalizeStatus(previousValue || "");
+      if (status === "sold" && priorState === "borrowing") {
+        if (overlayTitle) {
+          overlayTitle.textContent = "Borrowed person is buying this book:";
+        }
+        if (statusMsg) {
+          statusMsg.style.color = "";
+          statusMsg.textContent = "Confirm that the borrower is purchasing or compensating for the book.";
+        }
+      }
       if (nameInput) {
         nameInput.value = select ? (select.dataset.contactName || "") : "";
       }
@@ -1839,6 +1934,7 @@
       }
 
       toggleReadingStatusLock(select);
+      filterOwningOptions(select, storedStatus || "");
     }
 
     function saveOwningContact(select, status, name, email, options = {}) {
@@ -1848,6 +1944,11 @@
       const normalizedStatus = status === "in_shelf" ? "" : (status || "");
       const trimmedName = (name || "").trim();
       const trimmedEmail = (email || "").trim();
+      const previousState = normalizeStatus(previous);
+      const transactionType = previousState === "borrowing" && normalizeStatus(status) === "sold"
+        ? "bought_by_borrower"
+        : "";
+      const rowEl = select.closest("tr");
 
       if (!ajaxUrl || !nonce || !bookId || !userBookId) {
         console.warn("Missing owning overlay configuration.");
@@ -1869,6 +1970,7 @@
         owning_status: normalizedStatus,
         contact_name: trimmedName,
         contact_email: trimmedEmail,
+        transaction_type: transactionType,
         nonce,
       });
 
@@ -1936,6 +2038,7 @@
           }
           updateInfoElement(rowInfo, select.dataset.storedStatus || "", select.dataset.contactName || "", select.dataset.activeStart || "");
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, previous);
           return Promise.reject(err);
         });
     }
@@ -1965,17 +2068,20 @@
 
       const rowInfo = select.closest("tr") ? select.closest("tr").querySelector(".owning-status-info") : null;
       toggleReadingStatusLock(select);
+      filterOwningOptions(select, select.dataset.currentValue || select.value || "");
 
       select.addEventListener("change", () => {
         if (select.disabled) {
           select.value = select.dataset.currentValue || select.value || "";
           toggleReadingStatusLock(select);
+          filterOwningOptions(select, select.dataset.currentValue || "");
           return;
         }
 
         const rawValue = normalizeStatus(select.value);
         const previous = select.dataset.currentValue || normalizeStatus(select.value);
         toggleReadingStatusLock(select);
+        filterOwningOptions(select, rawValue);
 
         if (requiresContact(rawValue)) {
           openOverlay(select, rawValue, rowInfo);
@@ -2042,6 +2148,7 @@
         if (currentSelect) {
           currentSelect.value = previousValue || currentSelect.dataset.currentValue || "";
           toggleReadingStatusLock(currentSelect);
+          filterOwningOptions(currentSelect, currentSelect.value || previousValue || "");
         }
         closeOverlay();
       });
@@ -2062,6 +2169,7 @@
     setupOwningStatus();
     setupLibraryOwningOverlay();
     toggleReadingStatusLockForAll();
+    applyOwningOptionFilters();
     setupSessionsAjax();
     setupSessionRecorderModal();
     setupLibraryFilterDashboard();
