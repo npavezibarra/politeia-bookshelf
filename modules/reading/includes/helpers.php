@@ -467,6 +467,51 @@ function prs_maybe_create_loans_table() {
 }
 add_action( 'plugins_loaded', 'prs_maybe_create_loans_table' );
 
+/**
+ * Render the reusable owning overlay markup once per request.
+ *
+ * @param array $args {
+ *     Optional. Arguments to customize the overlay.
+ *
+ *     @type string $heading Default heading text.
+ * }
+ */
+function prs_render_owning_overlay( $args = array() ) {
+        static $rendered = false;
+
+        if ( $rendered ) {
+                return;
+        }
+
+        $defaults = array(
+                'heading' => __( 'Borrowing to:', 'politeia-reading' ),
+        );
+
+        $args     = wp_parse_args( $args, $defaults );
+        $heading  = is_string( $args['heading'] ) ? $args['heading'] : '';
+        $rendered = true;
+
+        ?>
+        <div id="owning-overlay" class="prs-overlay" style="display:none;">
+                <div class="prs-overlay-backdrop"></div>
+
+                <div class="prs-overlay-content">
+                        <h2 id="owning-overlay-title"><?php echo esc_html( $heading ); ?></h2>
+
+                        <input type="text" id="owning-overlay-name" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>">
+                        <input type="email" id="owning-overlay-email" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>">
+
+                        <div class="prs-overlay-actions">
+                                <button type="button" id="owning-overlay-confirm" class="prs-btn"><?php esc_html_e( 'Confirm', 'politeia-reading' ); ?></button>
+                                <button type="button" id="owning-overlay-cancel" class="prs-btn prs-btn-secondary"><?php esc_html_e( 'Cancel', 'politeia-reading' ); ?></button>
+                        </div>
+
+                        <span id="owning-overlay-status" class="prs-help"></span>
+                </div>
+        </div>
+        <?php
+}
+
 // Devuelve el start_date (GMT) del loan activo o null
 function prs_get_active_loan_start_date( $user_id, $book_id ) {
 	global $wpdb;

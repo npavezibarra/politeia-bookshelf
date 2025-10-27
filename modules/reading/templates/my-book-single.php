@@ -508,9 +508,21 @@ wp_add_inline_script(
                                 // "In Shelf" es derivado solo cuando owning_status es NULL/''.
                                 $is_in_shelf = empty( $ub->owning_status );
                         ?>
+                        <?php
+                                $reading_disabled        = in_array( $ub->owning_status, array( 'borrowing', 'borrowed' ), true );
+                                $reading_disabled_text    = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
+                                $reading_disabled_title   = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
+                                $reading_disabled_attr    = $reading_disabled ? ' disabled="disabled"' : '';
+                                $reading_disabled_class   = $reading_disabled ? ' is-disabled' : '';
+                        ?>
                         <div class="prs-field prs-status-field" id="fld-reading-status">
                                 <label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
-                                <select id="reading-status-select">
+                                <select
+                                        id="reading-status-select"
+                                        class="reading-status-select<?php echo esc_attr( $reading_disabled_class ); ?>"
+                                        data-disabled-text="<?php echo esc_attr( $reading_disabled_text ); ?>"
+                                        aria-disabled="<?php echo $reading_disabled ? 'true' : 'false'; ?>"<?php echo $reading_disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $reading_disabled_title; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                >
                                         <option value="not_started" <?php selected( $ub->reading_status, 'not_started' ); ?>><?php esc_html_e( 'Not Started', 'politeia-reading' ); ?></option>
                                         <option value="started"     <?php selected( $ub->reading_status, 'started' ); ?>><?php esc_html_e( 'Started', 'politeia-reading' ); ?></option>
                                         <option value="finished"    <?php selected( $ub->reading_status, 'finished' ); ?>><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
@@ -551,23 +563,7 @@ wp_add_inline_script(
         </div>
 </div>
 
-<div id="owning-overlay" class="prs-overlay" style="display:none;">
-        <div class="prs-overlay-backdrop"></div>
-
-        <div class="prs-overlay-content">
-                <h2 id="owning-overlay-title"><?php echo esc_html( $label_borrowing ); ?></h2>
-
-                <input type="text" id="owning-overlay-name" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>">
-                <input type="email" id="owning-overlay-email" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>">
-
-                <div class="prs-overlay-actions">
-                        <button type="button" id="owning-overlay-confirm" class="prs-btn"><?php esc_html_e( 'Confirm', 'politeia-reading' ); ?></button>
-                        <button type="button" id="owning-overlay-cancel" class="prs-btn prs-btn-secondary"><?php esc_html_e( 'Cancel', 'politeia-reading' ); ?></button>
-                </div>
-
-                <span id="owning-overlay-status" class="prs-help"></span>
-        </div>
-</div>
+<?php prs_render_owning_overlay( array( 'heading' => $label_borrowing ) ); ?>
 
 <div id="return-overlay" class="prs-overlay" style="display:none;">
         <div class="prs-overlay-backdrop"></div>

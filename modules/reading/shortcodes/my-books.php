@@ -12,6 +12,27 @@ add_shortcode(
 
                 wp_enqueue_style( 'politeia-reading' );
                 wp_enqueue_script( 'politeia-my-book' );
+
+                $owning_labels = array(
+                        'borrowing'    => __( 'Borrowing to:', 'politeia-reading' ),
+                        'borrowed'     => __( 'Borrowed from:', 'politeia-reading' ),
+                        'sold'         => __( 'Sold to:', 'politeia-reading' ),
+                        'lost'         => __( 'Last borrowed to:', 'politeia-reading' ),
+                        'location'     => __( 'Location', 'politeia-reading' ),
+                        'in_shelf'     => __( 'In Shelf', 'politeia-reading' ),
+                        'not_in_shelf' => __( 'Not In Shelf', 'politeia-reading' ),
+                        'unknown'      => __( 'Unknown', 'politeia-reading' ),
+                );
+
+                $owning_messages = array(
+                        'missing' => __( 'Please enter both name and email.', 'politeia-reading' ),
+                        'saving'  => __( 'Saving...', 'politeia-reading' ),
+                        'error'   => __( 'Error saving contact.', 'politeia-reading' ),
+                        'alert'   => __( 'Error saving contact.', 'politeia-reading' ),
+                );
+
+                $owning_nonce = wp_create_nonce( 'save_owning_contact' );
+
                 wp_localize_script(
                         'politeia-my-book',
                         'PRS_LIBRARY',
@@ -22,8 +43,22 @@ add_shortcode(
                                         'too_small' => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
                                         'error'     => __( 'There was an error saving the number of pages.', 'politeia-reading' ),
                                 ),
+                                'owning'   => array(
+                                        'nonce'    => $owning_nonce,
+                                        'labels'   => $owning_labels,
+                                        'messages' => $owning_messages,
+                                ),
                         )
                 );
+
+                $label_borrowing    = $owning_labels['borrowing'];
+                $label_borrowed     = $owning_labels['borrowed'];
+                $label_sold         = $owning_labels['sold'];
+                $label_lost         = $owning_labels['lost'];
+                $label_location     = $owning_labels['location'];
+                $label_in_shelf     = $owning_labels['in_shelf'];
+                $label_not_in_shelf = $owning_labels['not_in_shelf'];
+                $label_unknown      = $owning_labels['unknown'];
 
                 $user_id  = get_current_user_id();
                 if ( ! $user_id ) {
@@ -81,12 +116,13 @@ add_shortcode(
                 $books = $wpdb->get_results(
                         $wpdb->prepare(
                                 "
-       SELECT ub.id AS user_book_id,
+              SELECT ub.id AS user_book_id,
               ub.reading_status,
               ub.owning_status,
               ub.type_book,
               ub.pages,
               ub.counterparty_name,
+              ub.counterparty_email,
               ub.cover_reference,
               (
                       SELECT start_date
@@ -178,6 +214,7 @@ add_shortcode(
                                 $effective_pages   = $book_total_pages > 0 ? $book_total_pages : ( $pages ?? 0 );
                                $progress          = 0;
                                $owning_status     = isset( $r->owning_status ) ? (string) $r->owning_status : '';
+                               $row_owning_attr   = $owning_status ? $owning_status : 'in_shelf';
                                $reading_status    = isset( $r->reading_status ) ? (string) $r->reading_status : '';
                                $author_value      = isset( $r->author ) ? (string) $r->author : '';
                                $title_value       = isset( $r->title ) ? (string) $r->title : '';
@@ -190,16 +227,15 @@ add_shortcode(
                                 $owning_id   = 'owning-status-' . (int) $r->user_book_id;
                                 $progress_id = 'reading-progress-' . (int) $r->user_book_id;
 
-                                $loan_contact_name = isset( $r->counterparty_name ) ? trim( (string) $r->counterparty_name ) : '';
-                                $loan_days         = null;
-                                $is_digital        = ( isset( $r->type_book ) && 'd' === $r->type_book );
+                                $loan_contact_name  = isset( $r->counterparty_name ) ? trim( (string) $r->counterparty_name ) : '';
+                                $loan_contact_email = isset( $r->counterparty_email ) ? trim( (string) $r->counterparty_email ) : '';
+                                $is_digital         = ( isset( $r->type_book ) && 'd' === $r->type_book );
+                                $active_start_local = '';
 
                                 if ( ! empty( $r->active_loan_start ) ) {
-                                        $start_timestamp = (int) get_date_from_gmt( $r->active_loan_start, 'U' );
-                                        if ( $start_timestamp ) {
-                                                $now       = current_time( 'timestamp' );
-                                                $diff      = max( 0, $now - $start_timestamp );
-                                                $loan_days = (int) floor( $diff / DAY_IN_SECONDS );
+                                        $converted = get_date_from_gmt( $r->active_loan_start, 'Y-m-d' );
+                                        if ( $converted ) {
+                                                $active_start_local = $converted;
                                         }
                                 }
 
@@ -210,10 +246,70 @@ add_shortcode(
 
                                 /* translators: %s: percentage of reading progress. */
                                 $progress_label = sprintf( __( '%s%% complete', 'politeia-reading' ), (int) $progress );
+
+                                $current_select_value = $owning_status ? $owning_status : 'in_shelf';
+                                $stored_status        = $owning_status ? $owning_status : '';
+
+                                $owning_info_lines = array();
+
+                                if ( in_array( $owning_status, array( 'borrowed', 'borrowing', 'sold' ), true ) ) {
+                                        $label_map   = array(
+                                                'borrowed'  => $label_borrowed,
+                                                'borrowing' => $label_borrowing,
+                                                'sold'      => $label_sold,
+                                        );
+                                        $info_label  = isset( $label_map[ $owning_status ] ) ? $label_map[ $owning_status ] : '';
+                                        $display_name = $loan_contact_name ? $loan_contact_name : $label_unknown;
+
+                                        if ( $info_label ) {
+                                                $owning_info_lines[] = '<strong>' . esc_html( $info_label ) . '</strong>';
+                                        }
+
+                                        $owning_info_lines[] = esc_html( $display_name );
+
+                                        if ( $active_start_local ) {
+                                                $owning_info_lines[] = '<small>' . esc_html( $active_start_local ) . '</small>';
+                                        }
+                                } elseif ( 'lost' === $owning_status ) {
+                                        $owning_info_lines[] = sprintf(
+                                                '<strong>%s</strong>: %s',
+                                                esc_html( $label_location ),
+                                                esc_html( $label_not_in_shelf )
+                                        );
+
+                                        if ( $loan_contact_name ) {
+                                                $owning_info_lines[] = sprintf(
+                                                        '<strong>%s</strong> %s',
+                                                        esc_html( $label_lost ),
+                                                        esc_html( $loan_contact_name )
+                                                );
+                                        }
+                                } else {
+                                        $owning_info_lines[] = sprintf(
+                                                '<strong>%s</strong>: %s',
+                                                esc_html( $label_location ),
+                                                esc_html( $label_in_shelf )
+                                        );
+                                }
+
+                                $owning_info_html = implode( '<br>', $owning_info_lines );
+                                $owning_info_display = $owning_info_html ? wp_kses(
+                                        $owning_info_html,
+                                        array(
+                                                'strong' => array(),
+                                                'br'     => array(),
+                                                'small'  => array(),
+                                        )
+                                ) : '';
+
+                                $reading_disabled       = in_array( $owning_status, array( 'borrowing', 'borrowed' ), true );
+                                $reading_disabled_text   = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
+                                $reading_disabled_class  = $reading_disabled ? ' is-disabled' : '';
+                                $reading_disabled_title  = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
                                 ?>
-                        <tr
+                                <tr
                                 data-user-book-id="<?php echo (int) $r->user_book_id; ?>"
-                                data-owning-status="<?php echo esc_attr( $owning_status ); ?>"
+                                data-owning-status="<?php echo esc_attr( $row_owning_attr ); ?>"
                                 data-reading-status="<?php echo esc_attr( $reading_status ); ?>"
                                 data-progress="<?php echo esc_attr( (int) $progress ); ?>"
                                 data-author="<?php echo esc_attr( $author_value ); ?>"
@@ -321,7 +417,12 @@ add_shortcode(
                                 <div class="prs-library__controls">
                                         <div class="prs-library__field">
                                                 <label for="<?php echo esc_attr( $reading_id ); ?>"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
-                                                <select id="<?php echo esc_attr( $reading_id ); ?>" class="prs-reading-status">
+                                                <select
+                                                        id="<?php echo esc_attr( $reading_id ); ?>"
+                                                        class="prs-reading-status reading-status-select<?php echo esc_attr( $reading_disabled_class ); ?>"
+                                                        data-disabled-text="<?php echo esc_attr( $reading_disabled_text ); ?>"
+                                                        aria-disabled="<?php echo $reading_disabled ? 'true' : 'false'; ?>"<?php echo $reading_disabled ? ' disabled="disabled"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $reading_disabled_title; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                                >
                                                 <?php
                                                 $reading = array(
                                                         'not_started' => __( 'Not Started', 'politeia-reading' ),
@@ -343,55 +444,40 @@ add_shortcode(
                                                 <label for="<?php echo esc_attr( $owning_id ); ?>"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
                                                 <select
                                                         id="<?php echo esc_attr( $owning_id ); ?>"
-                                                        class="prs-owning-status<?php echo $is_digital ? ' is-disabled' : ''; ?>"
+                                                        class="prs-owning-status owning-status-select<?php echo $is_digital ? ' is-disabled' : ''; ?>"
+                                                        data-book-id="<?php echo (int) $r->book_id; ?>"
+                                                        data-user-book-id="<?php echo (int) $r->user_book_id; ?>"
+                                                        data-current-value="<?php echo esc_attr( $current_select_value ); ?>"
+                                                        data-stored-status="<?php echo esc_attr( $stored_status ); ?>"
+                                                        data-contact-name="<?php echo esc_attr( $loan_contact_name ); ?>"
+                                                        data-contact-email="<?php echo esc_attr( $loan_contact_email ); ?>"
+                                                        data-active-start="<?php echo esc_attr( $active_start_local ); ?>"
                                                         <?php echo $is_digital ? 'disabled="disabled" aria-disabled="true"' : ''; ?>
                                                 >
+                                                <option value=""><?php echo esc_html__( '— Select —', 'politeia-reading' ); ?></option>
                                                 <?php
                                                 $owning = array(
                                                         'in_shelf'  => __( 'In Shelf', 'politeia-reading' ),
-                                                        'lost'      => __( 'Lost', 'politeia-reading' ),
                                                         'borrowed'  => __( 'Borrowed', 'politeia-reading' ),
                                                         'borrowing' => __( 'Borrowing', 'politeia-reading' ),
                                                         'sold'      => __( 'Sold', 'politeia-reading' ),
+                                                        'lost'      => __( 'Lost', 'politeia-reading' ),
                                                 );
                                                 foreach ( $owning as $val => $label ) {
+                                                        $selected_attr = selected( $owning_status, $val, false );
+                                                        if ( 'in_shelf' === $val && '' === $owning_status ) {
+                                                                $selected_attr = ' selected="selected"';
+                                                        }
                                                         printf(
                                                                 '<option value="%s"%s>%s</option>',
                                                                 esc_attr( $val ),
-                                                                selected( $r->owning_status, $val, false ),
+                                                                $selected_attr,
                                                                 esc_html( $label )
                                                         );
                                                 }
                                                 ?>
                                                 </select>
-                                                <?php
-                                                $loan_days_text = null;
-                                                if ( null !== $loan_days ) {
-                                                        $loan_days_text = sprintf(
-                                                                _n( '%s day ago...', '%s days ago...', $loan_days, 'politeia-reading' ),
-                                                                number_format_i18n( $loan_days )
-                                                        );
-                                                }
-
-                                                $loan_detail_text = '';
-                                                $loan_detail_parts = array();
-
-                                                if ( $loan_contact_name ) {
-                                                        $loan_detail_parts[] = $loan_contact_name;
-                                                }
-
-                                                if ( $loan_days_text ) {
-                                                        $loan_detail_parts[] = $loan_days_text;
-                                                }
-
-                                                if ( $loan_detail_parts ) {
-                                                        array_unshift( $loan_detail_parts, __( 'To', 'politeia-reading' ) );
-                                                        $loan_detail_text = implode( ' ', $loan_detail_parts );
-                                                }
-                                                ?>
-                                                <?php if ( 'borrowing' === $r->owning_status && $loan_detail_text ) : ?>
-                                                <div class="prs-owning-status-details"><?php echo esc_html( $loan_detail_text ); ?></div>
-                                                <?php endif; ?>
+                                                <span class="owning-status-info"><?php echo $owning_info_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
                                                 <?php if ( $is_digital ) : ?>
                                                 <div class="prs-owning-status-note"><?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?></div>
                                                 <?php endif; ?>
@@ -425,15 +511,17 @@ add_shortcode(
                 </tbody>
                 </table>
 
-		<?php if ( ! empty( $paginate ) ) : ?>
-		<nav class="prs-pagination" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
-			<ul class="page-numbers" style="display:flex;gap:6px;list-style:none;padding-left:0;">
-			<?php foreach ( $paginate as $link ) : ?>
-				<li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></li>
-			<?php endforeach; ?>
-			</ul>
-		</nav>
-		<?php endif; ?>
+                <?php if ( ! empty( $paginate ) ) : ?>
+                <nav class="prs-pagination" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
+                        <ul class="page-numbers" style="display:flex;gap:6px;list-style:none;padding-left:0;">
+                        <?php foreach ( $paginate as $link ) : ?>
+                                <li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></li>
+                        <?php endforeach; ?>
+                        </ul>
+                </nav>
+                <?php endif; ?>
+
+                <?php prs_render_owning_overlay(); ?>
 
                 <?php wp_nonce_field( 'prs_update_user_book', 'prs_update_user_book_nonce' ); ?>
         </div>
