@@ -1218,7 +1218,7 @@ table.prs-form__table {
         /* Book info layout */
         .prs-book-info-grid{
         display:grid;
-        grid-template-columns:240px 1fr 360px;
+        grid-template-columns:240px minmax(0,360px) minmax(0,360px);
         gap:32px;
         align-items:start;
         background:none;
@@ -1243,11 +1243,18 @@ table.prs-form__table {
         gap:12px;
         }
 
+        section#prs-book-info__main{
+        background:#fff;
+        padding:20px;
+        border:1px solid #e5e6ea;
+        border-radius:13px;
+        }
+
         #prs-book-info__sidebar{
         background:#fff;
-        border:1px solid #e5e7eb;
-        border-radius:10px;
-        padding:16px;
+        border:1px solid #e5e6ea;
+        border-radius:13px;
+        padding:20px;
         box-shadow:0 1px 3px rgba(0,0,0,0.05);
         }
 
