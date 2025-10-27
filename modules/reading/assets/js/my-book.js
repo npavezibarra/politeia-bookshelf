@@ -14,6 +14,78 @@
   function show(el) { if (el) el.style.display = ""; }
   function hide(el) { if (el) el.style.display = "none"; }
 
+  function getNormalizedOwningValue(select) {
+    if (!select) return "";
+    let value = "";
+    if (typeof select.value !== "undefined") {
+      value = String(select.value || "").trim();
+    }
+    if (!value) {
+      const dataCurrent = select.getAttribute("data-current-value")
+        || (select.dataset ? select.dataset.currentValue : "");
+      if (dataCurrent) {
+        value = String(dataCurrent).trim();
+      }
+    }
+    if (!value) {
+      const dataStored = select.getAttribute("data-stored-status")
+        || (select.dataset ? select.dataset.storedStatus : "");
+      if (dataStored) {
+        value = String(dataStored).trim();
+      }
+    }
+    return value || "in_shelf";
+  }
+
+  function findRelatedReadingSelect(owningSelect) {
+    if (!owningSelect) return null;
+    const row = owningSelect.closest && owningSelect.closest("tr");
+    if (row) {
+      const rowReading = row.querySelector(".reading-status-select");
+      if (rowReading) {
+        return rowReading;
+      }
+    }
+    return document.getElementById("reading-status-select");
+  }
+
+  function toggleReadingStatusLock(owningSelect) {
+    if (!owningSelect) return;
+    const readingSelect = findRelatedReadingSelect(owningSelect);
+    if (!readingSelect) return;
+
+    const owningValue = getNormalizedOwningValue(owningSelect);
+    const shouldDisable = owningValue === "borrowing";
+    const disabledText = readingSelect.getAttribute("data-disabled-text")
+      || "Disabled while this book is being borrowed.";
+
+    if (shouldDisable) {
+      if (!readingSelect.disabled) {
+        readingSelect.disabled = true;
+      }
+      readingSelect.classList.add("is-disabled");
+      readingSelect.setAttribute("aria-disabled", "true");
+      if (disabledText) {
+        readingSelect.title = disabledText;
+      }
+    } else {
+      if (readingSelect.disabled) {
+        readingSelect.disabled = false;
+      }
+      readingSelect.classList.remove("is-disabled");
+      readingSelect.setAttribute("aria-disabled", "false");
+      readingSelect.title = "";
+    }
+  }
+
+  function toggleReadingStatusLockForAll() {
+    qsa(".owning-status-select").forEach(toggleReadingStatusLock);
+    const singleSelect = document.getElementById("owning-status-select");
+    if (singleSelect) {
+      toggleReadingStatusLock(singleSelect);
+    }
+  }
+
   function setStatus(el, msg, ok = true, ttl = 2000) {
     if (!el) return;
     el.textContent = msg || "";
@@ -879,6 +951,7 @@
           setStatus(status, "Saved.", true);
           updateDerived(val);
           savedOwningStatus = val;
+          toggleReadingStatusLock(select);
           if (!val) {
             lastContactName = "";
             wrap.setAttribute("data-contact-name", "");
@@ -894,6 +967,7 @@
             select.value = savedOwningStatus;
           }
           updateDerived(savedOwningStatus);
+          toggleReadingStatusLock(select);
         });
     }
 
@@ -977,6 +1051,7 @@
           if (select) {
             select.value = statusValue;
           }
+          toggleReadingStatusLock(select);
 
           return res;
         })
@@ -993,6 +1068,7 @@
             select.value = savedOwningStatus;
           }
           updateDerived(savedOwningStatus);
+          toggleReadingStatusLock(select);
           throw err;
         });
     }
@@ -1041,6 +1117,7 @@
           if (select) {
             select.value = "";
           }
+          toggleReadingStatusLock(select);
           if (returnBtn) {
             returnBtn.style.display = "none";
             returnBtn.disabled = false;
@@ -1074,11 +1151,14 @@
         rich: contactStatuses.indexOf(savedOwningStatus) !== -1 && !!loanDate,
         date: loanDate,
       });
+      toggleReadingStatusLock(select);
       select.addEventListener("change", () => {
         if (select.disabled) {
+          toggleReadingStatusLock(select);
           return;
         }
         const val = (select.value || "").trim(); // "", borrowed, borrowing, sold, lost
+        toggleReadingStatusLock(select);
         if (!val) {
           postOwning("");
           return;
@@ -1097,6 +1177,7 @@
 
         // Default: revert to saved value
         select.value = savedOwningStatus;
+        toggleReadingStatusLock(select);
       });
     }
 
@@ -1172,6 +1253,7 @@
         pendingStatus = "";
         if (select) {
           select.value = savedOwningStatus;
+          toggleReadingStatusLock(select);
         }
       });
     }
@@ -1755,6 +1837,8 @@
       if (typeof meta.activeStart !== "undefined") {
         select.dataset.activeStart = meta.activeStart || "";
       }
+
+      toggleReadingStatusLock(select);
     }
 
     function saveOwningContact(select, status, name, email, options = {}) {
@@ -1851,6 +1935,7 @@
             rowEl.setAttribute("data-owning-status", fallbackStatus ? fallbackStatus : "in_shelf");
           }
           updateInfoElement(rowInfo, select.dataset.storedStatus || "", select.dataset.contactName || "", select.dataset.activeStart || "");
+          toggleReadingStatusLock(select);
           return Promise.reject(err);
         });
     }
@@ -1879,15 +1964,18 @@
       }
 
       const rowInfo = select.closest("tr") ? select.closest("tr").querySelector(".owning-status-info") : null;
+      toggleReadingStatusLock(select);
 
       select.addEventListener("change", () => {
         if (select.disabled) {
           select.value = select.dataset.currentValue || select.value || "";
+          toggleReadingStatusLock(select);
           return;
         }
 
         const rawValue = normalizeStatus(select.value);
         const previous = select.dataset.currentValue || normalizeStatus(select.value);
+        toggleReadingStatusLock(select);
 
         if (requiresContact(rawValue)) {
           openOverlay(select, rawValue, rowInfo);
@@ -1913,6 +2001,7 @@
         }
 
         select.value = previous;
+        toggleReadingStatusLock(select);
       });
     });
 
@@ -1952,6 +2041,7 @@
       cancelBtn.addEventListener("click", () => {
         if (currentSelect) {
           currentSelect.value = previousValue || currentSelect.dataset.currentValue || "";
+          toggleReadingStatusLock(currentSelect);
         }
         closeOverlay();
       });
@@ -1971,6 +2061,7 @@
     setupReadingStatus();
     setupOwningStatus();
     setupLibraryOwningOverlay();
+    toggleReadingStatusLockForAll();
     setupSessionsAjax();
     setupSessionRecorderModal();
     setupLibraryFilterDashboard();

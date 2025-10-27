@@ -508,9 +508,21 @@ wp_add_inline_script(
                                 // "In Shelf" es derivado solo cuando owning_status es NULL/''.
                                 $is_in_shelf = empty( $ub->owning_status );
                         ?>
+                        <?php
+                                $reading_disabled        = ( 'borrowing' === $ub->owning_status );
+                                $reading_disabled_text    = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
+                                $reading_disabled_title   = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
+                                $reading_disabled_attr    = $reading_disabled ? ' disabled="disabled"' : '';
+                                $reading_disabled_class   = $reading_disabled ? ' is-disabled' : '';
+                        ?>
                         <div class="prs-field prs-status-field" id="fld-reading-status">
                                 <label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
-                                <select id="reading-status-select">
+                                <select
+                                        id="reading-status-select"
+                                        class="reading-status-select<?php echo esc_attr( $reading_disabled_class ); ?>"
+                                        data-disabled-text="<?php echo esc_attr( $reading_disabled_text ); ?>"
+                                        aria-disabled="<?php echo $reading_disabled ? 'true' : 'false'; ?>"<?php echo $reading_disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $reading_disabled_title; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                >
                                         <option value="not_started" <?php selected( $ub->reading_status, 'not_started' ); ?>><?php esc_html_e( 'Not Started', 'politeia-reading' ); ?></option>
                                         <option value="started"     <?php selected( $ub->reading_status, 'started' ); ?>><?php esc_html_e( 'Started', 'politeia-reading' ); ?></option>
                                         <option value="finished"    <?php selected( $ub->reading_status, 'finished' ); ?>><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>

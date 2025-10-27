@@ -301,6 +301,11 @@ add_shortcode(
                                                 'small'  => array(),
                                         )
                                 ) : '';
+
+                                $reading_disabled       = ( 'borrowing' === $owning_status );
+                                $reading_disabled_text   = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
+                                $reading_disabled_class  = $reading_disabled ? ' is-disabled' : '';
+                                $reading_disabled_title  = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
                                 ?>
                                 <tr
                                 data-user-book-id="<?php echo (int) $r->user_book_id; ?>"
@@ -412,7 +417,12 @@ add_shortcode(
                                 <div class="prs-library__controls">
                                         <div class="prs-library__field">
                                                 <label for="<?php echo esc_attr( $reading_id ); ?>"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
-                                                <select id="<?php echo esc_attr( $reading_id ); ?>" class="prs-reading-status">
+                                                <select
+                                                        id="<?php echo esc_attr( $reading_id ); ?>"
+                                                        class="prs-reading-status reading-status-select<?php echo esc_attr( $reading_disabled_class ); ?>"
+                                                        data-disabled-text="<?php echo esc_attr( $reading_disabled_text ); ?>"
+                                                        aria-disabled="<?php echo $reading_disabled ? 'true' : 'false'; ?>"<?php echo $reading_disabled ? ' disabled="disabled"' : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $reading_disabled_title; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                                >
                                                 <?php
                                                 $reading = array(
                                                         'not_started' => __( 'Not Started', 'politeia-reading' ),
