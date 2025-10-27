@@ -1647,6 +1647,10 @@ button#purchase-date-save {
         margin-top: 4px;
 }
 
+p#derived-location {
+        margin-bottom: 0px;
+}
+
 /* === CONTACT FORM === */
 .prs-contact-form {
         display: flex;
