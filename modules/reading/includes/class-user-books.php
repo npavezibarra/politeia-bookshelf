@@ -11,11 +11,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class Politeia_Reading_User_Books {
 
-	public static function init() {
-		add_action( 'wp_ajax_prs_update_user_book', array( __CLASS__, 'ajax_update_user_book' ) );
-		add_action( 'wp_ajax_prs_update_user_book_meta', array( __CLASS__, 'ajax_update_user_book_meta' ) );
-		// (Sin acciones de portada/imagen)
-	}
+        public static function init() {
+                add_action( 'wp_ajax_prs_update_user_book', array( __CLASS__, 'ajax_update_user_book' ) );
+                add_action( 'wp_ajax_prs_update_user_book_meta', array( __CLASS__, 'ajax_update_user_book_meta' ) );
+                add_action( 'wp_ajax_prs_update_pages', array( __CLASS__, 'ajax_update_pages' ) );
+                // (Sin acciones de portada/imagen)
+        }
 
 	/*
 	============================================================
@@ -94,10 +95,10 @@ class Politeia_Reading_User_Books {
 	==================================================================================
 	 * AJAX: update meta granular (pages, purchase_*, contact, reading_status, rating)
 	 * ================================================================================== */
-	public static function ajax_update_user_book_meta() {
-		if ( ! is_user_logged_in() ) {
-			self::json_error( 'auth', 401 );
-		}
+        public static function ajax_update_user_book_meta() {
+                if ( ! is_user_logged_in() ) {
+                        self::json_error( 'auth', 401 );
+                }
 
 		// Acepta cualquiera de los dos nonces
 		if ( ! self::verify_nonce_multi(
@@ -270,9 +271,58 @@ class Politeia_Reading_User_Books {
 			self::json_error( 'no_fields', 400 );
 		}
 
-		$updated = self::update_user_book( $user_book_id, $update );
-		self::json_success( $updated );
-	}
+                $updated = self::update_user_book( $user_book_id, $update );
+                self::json_success( $updated );
+        }
+
+        /**
+         * AJAX: inline update for pages field.
+         */
+        public static function ajax_update_pages() {
+                if ( ! is_user_logged_in() ) {
+                        self::json_error( 'auth', 401 );
+                }
+
+                if ( ! self::verify_nonce_multi(
+                        array(
+                                array(
+                                        'action' => 'prs_update_user_book_meta',
+                                        'keys'   => array( 'nonce' ),
+                                ),
+                                array(
+                                        'action' => 'prs_update_user_book',
+                                        'keys'   => array( 'prs_update_user_book_nonce' ),
+                                ),
+                        )
+                ) ) {
+                        self::json_error( 'bad_nonce', 403 );
+                }
+
+                $user_book_id = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $pages        = isset( $_POST['pages'] ) ? absint( $_POST['pages'] ) : 0;
+
+                if ( ! $user_book_id || $pages < 1 ) {
+                        self::json_error( __( 'Invalid data', 'politeia-reading' ), 400 );
+                }
+
+                $row = self::get_user_book_row( $user_book_id, get_current_user_id() );
+                if ( ! $row ) {
+                        self::json_error( 'forbidden', 403 );
+                }
+
+                self::update_user_book(
+                        $user_book_id,
+                        array(
+                                'pages' => $pages,
+                        )
+                );
+
+                self::json_success(
+                        array(
+                                'pages' => $pages,
+                        )
+                );
+        }
 
 	/*
 	=========================

@@ -373,8 +373,18 @@ wp_localize_script(
                         </button>
                 </h2>
                 <div class="prs-meta">
-                <strong class="prs-book-author"><?php echo esc_html( $book->author ); ?></strong>
-                <?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
+                        <strong class="prs-book-author"><?php echo esc_html( $book->author ); ?></strong>
+                        <?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
+                </div>
+
+                <div class="prs-field prs-inline-field" id="fld-pages">
+                        <span class="label"><?php esc_html_e( 'Pages:', 'politeia-reading' ); ?></span>
+                        <span id="pages-view" class="prs-inline-value"><?php echo $ub->pages ? (int) $ub->pages : '—'; ?></span>
+                        <a href="#" id="pages-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
+                        <input type="number" id="pages-input" class="prs-inline-input" min="1" value="<?php echo $ub->pages ? (int) $ub->pages : ''; ?>" style="display:none;width:80px;" />
+                        <div id="pages-hint" class="prs-help" style="display:none;margin-top:4px;">
+                                <?php esc_html_e( 'Press Enter to save', 'politeia-reading' ); ?>
+                        </div>
                 </div>
 
                 <?php
@@ -406,20 +416,6 @@ wp_localize_script(
                                 <span id="type-book-status" class="prs-help" aria-live="polite"></span>
                         </div>
                 </div>
-
-		<!-- Pages -->
-		<div class="prs-field" id="fld-pages">
-		<hr style="margin-bottom:10px">
-		<span class="label"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></span>
-		<span id="pages-view"><?php echo $ub->pages ? (int) $ub->pages : '—'; ?></span>
-		<a href="#" id="pages-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
-		<span id="pages-form" style="display:none;" class="prs-inline-actions">
-			<input type="number" id="pages-input" min="1" style="width:120px" value="<?php echo $ub->pages ? (int) $ub->pages : ''; ?>" />
-			<button type="button" id="pages-save" class="prs-btn" style="padding:4px 10px;">Save</button>
-			<button type="button" id="pages-cancel" class="prs-btn" style="padding:4px 10px;background:#777;">Cancel</button>
-			<span id="pages-status" class="prs-help"></span>
-		</span>
-		</div>
 
                 <!-- Purchase Date & Channel -->
                 <hr style="margin-bottom:10px">
