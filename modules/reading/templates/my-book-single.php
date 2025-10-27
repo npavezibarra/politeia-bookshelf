@@ -509,7 +509,7 @@ wp_add_inline_script(
                                 $is_in_shelf = empty( $ub->owning_status );
                         ?>
                         <?php
-                                $reading_disabled        = ( 'borrowing' === $ub->owning_status );
+                                $reading_disabled        = in_array( $ub->owning_status, array( 'borrowing', 'borrowed' ), true );
                                 $reading_disabled_text    = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
                                 $reading_disabled_title   = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
                                 $reading_disabled_attr    = $reading_disabled ? ' disabled="disabled"' : '';

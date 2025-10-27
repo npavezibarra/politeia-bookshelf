@@ -55,7 +55,7 @@
     if (!readingSelect) return;
 
     const owningValue = getNormalizedOwningValue(owningSelect);
-    const shouldDisable = owningValue === "borrowing";
+    const shouldDisable = owningValue === "borrowing" || owningValue === "borrowed";
     const disabledText = readingSelect.getAttribute("data-disabled-text")
       || "Disabled while this book is being borrowed.";
 

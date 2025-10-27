@@ -302,7 +302,7 @@ add_shortcode(
                                         )
                                 ) : '';
 
-                                $reading_disabled       = ( 'borrowing' === $owning_status );
+                                $reading_disabled       = in_array( $owning_status, array( 'borrowing', 'borrowed' ), true );
                                 $reading_disabled_text   = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
                                 $reading_disabled_class  = $reading_disabled ? ' is-disabled' : '';
                                 $reading_disabled_title  = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
