@@ -34,6 +34,32 @@ if ( ! $ub ) {
 
 /** Contacto ya guardado (definir antes de localize) */
 $has_contact = ( ! empty( $ub->counterparty_name ) ) || ( ! empty( $ub->counterparty_email ) );
+$contact_name  = $ub->counterparty_name ? (string) $ub->counterparty_name : '';
+$contact_email = $ub->counterparty_email ? (string) $ub->counterparty_email : '';
+
+$label_borrowing = __( 'Borrowing to:', 'politeia-reading' );
+$label_borrowed  = __( 'Borrowed from:', 'politeia-reading' );
+$label_sold      = __( 'Sold to:', 'politeia-reading' );
+$label_lost      = __( 'Last borrowed to:', 'politeia-reading' );
+$label_unknown   = __( 'Unknown', 'politeia-reading' );
+
+$owning_message = '';
+if ( $contact_name ) {
+        switch ( (string) $ub->owning_status ) {
+                case 'borrowing':
+                        $owning_message = sprintf( '%s %s', $label_borrowing, $contact_name );
+                        break;
+                case 'borrowed':
+                        $owning_message = sprintf( '%s %s', $label_borrowed, $contact_name );
+                        break;
+                case 'sold':
+                        $owning_message = sprintf( '%s %s', $label_sold, $contact_name );
+                        break;
+                case 'lost':
+                        $owning_message = sprintf( '%s %s', $label_lost, $contact_name );
+                        break;
+        }
+}
 
 /** Préstamo activo (fecha local) */
 $active_start_gmt   = $wpdb->get_var(
@@ -95,12 +121,15 @@ wp_enqueue_style( 'politeia-reading' );
 wp_enqueue_script( 'politeia-my-book' ); // asegúrate de registrar este JS en tu plugin/tema
 
 /** Datos al JS principal */
+$owning_nonce        = wp_create_nonce( 'save_owning_contact' );
+$meta_update_nonce   = wp_create_nonce( 'prs_update_user_book_meta' );
 wp_localize_script(
         'politeia-my-book',
         'PRS_BOOK',
         array(
                 'ajax_url'      => admin_url( 'admin-ajax.php' ),
-                'nonce'         => wp_create_nonce( 'prs_update_user_book_meta' ),
+                'nonce'         => $meta_update_nonce,
+                'owning_nonce'  => $owning_nonce,
                 'user_book_id'  => (int) $ub->id,
                 'book_id'       => (int) $book->id,
                 'owning_status' => (string) $ub->owning_status,
@@ -113,6 +142,16 @@ wp_localize_script(
                 'language'      => isset( $book->language ) ? (string) $book->language : '',
                 'cover_source'  => $cover_source,
         )
+);
+wp_add_inline_script(
+        'politeia-my-book',
+        sprintf(
+                'window.PRS_BOOK_ID=%1$d;window.PRS_USER_BOOK_ID=%2$d;window.PRS_NONCE=%3$s;',
+                (int) $book->id,
+                (int) $ub->id,
+                wp_json_encode( $owning_nonce )
+        ),
+        'before'
 );
 ?>
 <style>
@@ -273,9 +312,6 @@ wp_localize_script(
 	.prs-contact-label{ align-self:center; font-weight:600; }
 	.prs-contact-input{ width:100%; }
 	.prs-contact-actions{ display:flex; align-items:center; gap:10px; }
-        #owning-contact-view{ margin-top:8px; line-height:1.4; }
-        #owning-contact-view p{ margin:2px 0; font-size:0.9rem; color:#333; }
-        #owning-contact-email-view{ color:#0066cc; word-break:break-all; }
 
 	/* Paginación (parcial AJAX) */
 	.prs-pagination ul.page-numbers{ display:flex; gap:6px; list-style:none; justify-content: center; }
@@ -477,7 +513,7 @@ wp_localize_script(
                         </div>
 
                         <!-- Owning Status (editable) + Contact (condicional) -->
-                        <div class="prs-field prs-status-field" id="fld-owning-status">
+                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>">
                                 <label class="label" for="owning-status-select"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
                                 <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
                                         <option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
@@ -492,7 +528,7 @@ wp_localize_script(
                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                 </button>
 
-                                <span id="owning-status-status" class="prs-help"></span>
+                                <span id="owning-status-status" class="prs-help"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
                                 <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
                                         <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
                                 </p>
@@ -506,42 +542,29 @@ wp_localize_script(
                                         <span id="derived-location-text"><?php echo $is_in_shelf ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
                                 </p>
 
-                                <?php
-                                        $needs_contact = in_array( $ub->owning_status, array( 'borrowed', 'borrowing', 'sold' ), true ) && ! $has_contact;
-                                ?>
-                                <div id="owning-contact-form" class="prs-contact-form" style="display: <?php echo ( $needs_contact && ! $is_digital ) ? 'block' : 'none'; ?>;">
-                                        <input type="text" id="owning-contact-name" class="prs-contact-input"
-                                                placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>"
-                                                value="<?php echo $ub->counterparty_name ? esc_attr( $ub->counterparty_name ) : ''; ?>" <?php disabled( $is_digital ); ?> />
-
-                                        <input type="email" id="owning-contact-email" class="prs-contact-input"
-                                                placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>"
-                                                value="<?php echo $ub->counterparty_email ? esc_attr( $ub->counterparty_email ) : ''; ?>" <?php disabled( $is_digital ); ?> />
-
-                                        <div class="prs-contact-actions">
-                                                <button type="button" id="owning-contact-save" class="prs-btn" <?php disabled( $is_digital ); ?>>Save</button>
-                                                <span id="owning-contact-status" class="prs-help"></span>
-                                        </div>
-                                </div>
-
-                                <div id="owning-contact-view">
-                                        <?php if ( $ub->counterparty_name ) : ?>
-                                                <p id="owning-contact-name-view"><?php echo esc_html( $ub->counterparty_name ); ?></p>
-                                        <?php endif; ?>
-
-                                        <?php if ( $ub->counterparty_email ) : ?>
-                                                <p id="owning-contact-email-view"><?php echo esc_html( $ub->counterparty_email ); ?></p>
-                                        <?php endif; ?>
-
-                                        <?php if ( $active_start_local ) : ?>
-                                                <p id="owning-contact-date-view"><?php echo esc_html( $active_start_local ); ?></p>
-                                        <?php endif; ?>
-                                </div>
                         </div>
                 </div>
                 </section>
         </div>
 
+        </div>
+</div>
+
+<div id="owning-overlay" class="prs-overlay" style="display:none;">
+        <div class="prs-overlay-backdrop"></div>
+
+        <div class="prs-overlay-content">
+                <h2 id="owning-overlay-title"><?php echo esc_html( $label_borrowing ); ?></h2>
+
+                <input type="text" id="owning-overlay-name" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>">
+                <input type="email" id="owning-overlay-email" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>">
+
+                <div class="prs-overlay-actions">
+                        <button type="button" id="owning-overlay-confirm" class="prs-btn"><?php esc_html_e( 'Confirm', 'politeia-reading' ); ?></button>
+                        <button type="button" id="owning-overlay-cancel" class="prs-btn prs-btn-secondary"><?php esc_html_e( 'Cancel', 'politeia-reading' ); ?></button>
+                </div>
+
+                <span id="owning-overlay-status" class="prs-help"></span>
         </div>
 </div>
 <?php
