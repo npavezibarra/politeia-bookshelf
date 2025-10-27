@@ -295,7 +295,7 @@ wp_localize_script(
                 <div class="prs-book-info__grid">
 
                 <!-- Columna izquierda: portada -->
-                <aside class="prs-book-info__cover">
+                <aside class="prs-book-info__cover" aria-label="<?php esc_attr_e( 'Book cover', 'politeia-reading' ); ?>">
                         <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
                 <figure class="prs-book-cover" id="prs-book-cover-figure">
                 <?php if ( $has_image ) : ?>
@@ -360,7 +360,7 @@ wp_localize_script(
                 </aside>
 
                 <!-- Arriba centro: título/info y metacampos -->
-                <section class="prs-book-info__main">
+                <section class="prs-book-info__main" aria-label="<?php esc_attr_e( 'Book information', 'politeia-reading' ); ?>">
                 <h2 class="prs-book-title">
                         <span class="prs-book-title__text"><?php echo esc_html( $book->title ); ?></span>
                         <button type="button" id="prs-session-recorder-open" class="prs-session-recorder-trigger" aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>" aria-controls="prs-session-modal" aria-expanded="false">
@@ -463,7 +463,7 @@ wp_localize_script(
                 </section>
 
                 <!-- Status Row -->
-                <aside class="prs-book-info__sidebar">
+                <aside class="prs-book-info__sidebar" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
                 <div id="prs-status-row" class="prs-status-row">
                         <div class="prs-field prs-status-field" id="fld-reading-status">
                                 <label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
