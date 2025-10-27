@@ -687,6 +687,40 @@
     const contactView = qs("#owning-contact-view", wrap);
     const note = qs("#owning-status-note", wrap);
 
+    function getContactDateText() {
+      if (!contactView) return "";
+      const dateEl = contactView.querySelector("#owning-contact-date-view");
+      return dateEl ? dateEl.textContent.trim() : "";
+    }
+
+    function renderContactView(name, email, date) {
+      if (!contactView) return;
+
+      contactView.innerHTML = "";
+
+      const entries = [
+        { id: "owning-contact-name-view", value: name },
+        { id: "owning-contact-email-view", value: email },
+        { id: "owning-contact-date-view", value: date }
+      ];
+
+      let hasContent = false;
+      entries.forEach(entry => {
+        if (!entry.value) {
+          return;
+        }
+        const p = document.createElement("p");
+        p.id = entry.id;
+        p.textContent = entry.value;
+        contactView.appendChild(p);
+        hasContent = true;
+      });
+
+      if (!hasContent) {
+        contactView.textContent = "";
+      }
+    }
+
     function isDigitalType() {
       const raw = (window.PRS_BOOK && typeof PRS_BOOK.type_book !== "undefined") ? PRS_BOOK.type_book : "";
       return String(raw || "").trim().toLowerCase() === "d";
@@ -801,10 +835,9 @@
             if (!json || !json.success) throw json;
             setStatus(contactStatus, "Saved.", true);
             // Actualiza la vista compacta (no tenemos la fecha del loan, así que solo nombre/email)
-            let v = "";
-            if (name) v += name;
-            if (email) v += (v ? " · " : "") + email;
-            if (contactView) contactView.textContent = v;
+            const responseData = json && json.data ? json.data : {};
+            const date = responseData.date ? String(responseData.date).trim() : getContactDateText();
+            renderContactView(name, email, date);
           })
           .catch(err => {
             const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving contact.";
