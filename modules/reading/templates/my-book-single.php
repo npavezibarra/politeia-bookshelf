@@ -133,18 +133,12 @@ wp_localize_script(
         }
         .prs-single-grid{
         display:grid;
-        grid-template-columns: 190px 1fr 1fr;
-        grid-template-rows: auto auto auto;
+        grid-template-columns: 1fr;
         gap:24px;
         margin: 16px 0 32px;
         }
-	.prs-box{ background:#f9f9f9; padding:16px; min-height:120px; }
-        #prs-book-cover{ grid-column:1; grid-row:1 / span 2; }
-        #prs-book-cover,
-        #prs-book-cover img,
-        .prs-cover-frame,
-        .prs-book-cover{ width:190px; height:auto; display:block; }
-        #prs-book-info{ grid-column:2; grid-row:1; min-height:140px; }
+        .prs-box{ background:#f9f9f9; padding:16px; min-height:120px; }
+        #prs-book-info{ min-height:140px; }
         #prs-book-stats{ grid-column:3; grid-row:1; min-height:auto; background:#ffffff;
         padding: 16px; border: 1px solid #dddddd; align-self:start; }
         #prs-reading-sessions{ grid-column:1 / 4; grid-row:3; min-height:320px; }
@@ -285,12 +279,11 @@ wp_localize_script(
 	.prs-pagination ul.page-numbers{ display:flex; gap:6px; list-style:none; justify-content: center; }
 	.prs-pagination .page-numbers{ padding:6px 10px; background:#fff; border:1px solid #ddd; border-radius:6px; text-decoration:none; width: fit-content; margin: auto; padding: 10px !important }
 	.prs-pagination .current{ font-weight:700; }
-	@media (max-width: 900px){
-	.prs-single-grid{ grid-template-columns: 1fr; grid-template-rows:auto; }
-	#prs-book-cover{ grid-row:auto; }
-	#prs-book-info, #prs-book-stats, #prs-reading-sessions{ grid-column:1; }
-	.prs-contact-form{ flex-direction:column; margin-left:0; }
-	}
+        @media (max-width: 900px){
+        .prs-single-grid{ grid-template-columns: 1fr; grid-template-rows:auto; }
+        #prs-book-info, #prs-book-stats, #prs-reading-sessions{ grid-column:1; }
+        .prs-contact-form{ flex-direction:column; margin-left:0; }
+        }
 </style>
 
 <div class="wrap">
@@ -298,9 +291,12 @@ wp_localize_script(
 
 	<div class="prs-single-grid">
 
-	<!-- Columna izquierda: portada -->
-	<div id="prs-book-cover" class="prs-box">
-                <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
+        <div id="prs-book-info" class="prs-box prs-book-info">
+                <div class="prs-book-info__grid">
+
+                <!-- Columna izquierda: portada -->
+                <aside class="prs-book-info__cover">
+                        <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
                 <figure class="prs-book-cover" id="prs-book-cover-figure">
                 <?php if ( $has_image ) : ?>
                         <?php
@@ -361,10 +357,10 @@ wp_localize_script(
                 </div>
                 <?php endif; ?>
                 </div>
-        </div>
+                </aside>
 
-	<!-- Arriba centro: título/info y metacampos -->
-        <div id="prs-book-info" class="prs-box">
+                <!-- Arriba centro: título/info y metacampos -->
+                <section class="prs-book-info__main">
                 <h2 class="prs-book-title">
                         <span class="prs-book-title__text"><?php echo esc_html( $book->title ); ?></span>
                         <button type="button" id="prs-session-recorder-open" class="prs-session-recorder-trigger" aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>" aria-controls="prs-session-modal" aria-expanded="false">
@@ -464,9 +460,11 @@ wp_localize_script(
                                 </span>
                         </div>
                 </div>
+                </section>
 
                 <!-- Status Row -->
-                <div class="prs-status-row">
+                <aside class="prs-book-info__sidebar">
+                <div id="prs-status-row" class="prs-status-row">
                         <div class="prs-field prs-status-field" id="fld-reading-status">
                                 <label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
                                 <select id="reading-status-select">
@@ -542,7 +540,9 @@ wp_localize_script(
                                 </div>
                         </div>
                 </div>
+                </aside>
 
+                </div>
         </div>
 
         </div>
