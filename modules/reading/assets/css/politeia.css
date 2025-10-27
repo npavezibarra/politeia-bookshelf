@@ -1228,7 +1228,7 @@ select#prs-type-book {
         display:grid;
         grid-template-columns:190px 1fr 1fr;
         gap:28px;
-        align-items:start;
+        align-items:stretch;
         width:100%;
         max-width:1280px;
         margin:0 auto;
@@ -1237,9 +1237,9 @@ select#prs-type-book {
         border:none;
         }
 
-        #prs-book-cover{ grid-column:1; width:190px; }
-        #prs-book-info__main{ grid-column:2; width:100%; }
-        #prs-book-info__sidebar{ grid-column:3; width:100%; }
+        #prs-book-cover{ grid-column:1; width:190px; align-self:start; }
+        #prs-book-info__main{ grid-column:2; width:100%; align-self:stretch; }
+        #prs-book-info__sidebar{ grid-column:3; width:100%; align-self:stretch; }
 
         #prs-book-cover,
         #prs-book-info__main,
@@ -1252,6 +1252,7 @@ select#prs-type-book {
         display:flex;
         flex-direction:column;
         gap:5px;
+        height:100%;
         }
 
         section#prs-book-info__main{
@@ -1267,6 +1268,9 @@ select#prs-type-book {
         border-radius:13px;
         padding:20px;
         box-shadow:0 1px 3px rgba(0,0,0,0.05);
+        display:flex;
+        flex-direction:column;
+        height:100%;
         }
 
         #prs-book-cover img{
