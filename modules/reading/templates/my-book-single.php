@@ -199,7 +199,8 @@ wp_add_inline_script(
         gap:10px;
         text-align:center;
         width:100%;
-        height:400px;
+        min-height:100%;
+        height:100%;
         padding:24px;
         border-radius:8px;
         background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
@@ -266,14 +267,24 @@ wp_add_inline_script(
         transform:translateY(10px);
         pointer-events:auto;
         }
+        .prs-cover-frame[data-cover-state="image"] .prs-cover-overlay{
+        display:flex;
+        }
+        .prs-cover-frame[data-cover-state="empty"] .prs-cover-overlay{
+        display:none;
+        }
         .prs-cover-frame.has-image:hover .prs-cover-overlay,
-        .prs-cover-frame.has-image:focus-within .prs-cover-overlay{
+        .prs-cover-frame.has-image:focus-within .prs-cover-overlay,
+        .prs-cover-frame[data-cover-state="image"]:hover .prs-cover-overlay,
+        .prs-cover-frame[data-cover-state="image"]:focus-within .prs-cover-overlay{
         opacity:1;
         background:rgba(0,0,0,0.25);
         pointer-events:auto;
         }
         .prs-cover-frame.has-image:hover .prs-cover-overlay .prs-cover-actions,
-        .prs-cover-frame.has-image:focus-within .prs-cover-overlay .prs-cover-actions{
+        .prs-cover-frame.has-image:focus-within .prs-cover-overlay .prs-cover-actions,
+        .prs-cover-frame[data-cover-state="image"]:hover .prs-cover-overlay .prs-cover-actions,
+        .prs-cover-frame[data-cover-state="image"]:focus-within .prs-cover-overlay .prs-cover-actions{
         opacity:1;
         transform:translateY(0);
         }
@@ -337,7 +348,10 @@ wp_add_inline_script(
 
                 <!-- Columna izquierda: portada -->
                 <section id="prs-book-cover" class="prs-book-info__cover" aria-label="<?php esc_attr_e( 'Book cover', 'politeia-reading' ); ?>">
-                        <div id="prs-cover-frame" class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>">
+                        <div
+                                id="prs-cover-frame"
+                                class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>"
+                                data-cover-state="<?php echo $has_image ? 'image' : 'empty'; ?>">
                 <figure class="prs-book-cover" id="prs-book-cover-figure">
                 <?php if ( $has_image ) : ?>
                         <?php

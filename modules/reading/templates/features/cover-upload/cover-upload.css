@@ -21,7 +21,9 @@
 .prs-cover-placeholder:hover .prs-cover-actions,
 .prs-cover-placeholder:focus-within .prs-cover-actions,
 .prs-cover-frame.has-image:hover .prs-cover-actions,
-.prs-cover-frame.has-image:focus-within .prs-cover-actions{
+.prs-cover-frame.has-image:focus-within .prs-cover-actions,
+.prs-cover-frame[data-cover-state="image"]:hover .prs-cover-actions,
+.prs-cover-frame[data-cover-state="image"]:focus-within .prs-cover-actions{
         opacity:1;
         transform:translateY(0);
 }
