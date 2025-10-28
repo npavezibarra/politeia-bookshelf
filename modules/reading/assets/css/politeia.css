@@ -1349,7 +1349,7 @@ display:inline-block;
         }
         }
 
-        @media (max-width:700px){
+@media (max-width:700px){
         .prs-book-info-grid{ grid-template-columns:1fr; }
         #prs-book-cover,
         #prs-book-info__main,
@@ -1357,7 +1357,52 @@ display:inline-block;
         grid-column:1;
         width:100%;
         }
+}
+
+/* ====== Small screens: keep one-row layout and shrink cover ====== */
+@media (max-width: 700px) {
+        /* Parent row: enforce two-column layout */
+        .prs-book-info-grid { /* parent that wraps #prs-book-cover + .prs-book-info__main */
+                display: grid;
+                grid-template-columns: 80px 1fr;  /* cover | main */
+                column-gap: 16px;
+                align-items: start;
         }
+
+        /* Cover column sizing: defeat any 100% rules */
+        #prs-book-cover {
+                width: 80px !important;
+                min-width: 80px !important;
+                flex: 0 0 80px !important;
+        }
+
+        /* Frame follows the column; keep aspect ratio of a book */
+        #prs-book-cover .prs-cover-frame {
+                width: 80px !important;
+                height: auto;
+                aspect-ratio: 3 / 5;            /* ~60% width-to-height (adjust if needed) */
+                overflow: hidden;
+                border-radius: 8px;
+        }
+
+        /* Hide placeholder text + action buttons only on small screens */
+        #prs-cover-placeholder .prs-cover-title,
+        #prs-cover-placeholder .prs-cover-author,
+        #prs-book-cover .prs-cover-actions {
+                display: none !important;
+        }
+
+        /* Ensure the info column expands */
+        .prs-book-info__main {
+                min-width: 0;
+        }
+
+        /* Sidebar drops below spanning full width */
+        #prs-book-info__sidebar {
+                grid-column: 1 / -1;
+                width: 100% !important;
+        }
+}
 
         .prs-cover-frame{
         position: relative;
