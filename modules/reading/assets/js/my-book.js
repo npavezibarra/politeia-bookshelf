@@ -10,6 +10,7 @@ window.PRS_isSaving = false;
 
   let overlayConfirmed = false;
   let currentReturnButton = null;
+  let currentBoughtContext = null;
 
   function triggerReturnAction() {
     if (!currentReturnButton || typeof currentReturnButton.__prsReturnHandler !== "function") {
@@ -96,6 +97,52 @@ window.PRS_isSaving = false;
     });
   }
 
+  function openBoughtOverlay(context) {
+    const overlay = document.getElementById("bought-overlay");
+    if (!overlay) {
+      if (context && typeof context.onConfirm === "function") {
+        context.onConfirm();
+      }
+      return;
+    }
+
+    const confirmBtn = document.getElementById("bought-overlay-confirm");
+    const cancelBtn = document.getElementById("bought-overlay-cancel");
+
+    if (!confirmBtn || !cancelBtn) {
+      overlay.style.display = "none";
+      if (context && typeof context.onConfirm === "function") {
+        context.onConfirm();
+      }
+      return;
+    }
+
+    overlay.style.display = "flex";
+    currentBoughtContext = context || null;
+
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+
+    const confirm = document.getElementById("bought-overlay-confirm");
+    const cancel = document.getElementById("bought-overlay-cancel");
+
+    confirm.addEventListener("click", () => {
+      overlay.style.display = "none";
+      if (currentBoughtContext && typeof currentBoughtContext.onConfirm === "function") {
+        currentBoughtContext.onConfirm();
+      }
+      currentBoughtContext = null;
+    });
+
+    cancel.addEventListener("click", () => {
+      overlay.style.display = "none";
+      if (currentBoughtContext && typeof currentBoughtContext.onCancel === "function") {
+        currentBoughtContext.onCancel();
+      }
+      currentBoughtContext = null;
+    });
+  }
+
   document.addEventListener("click", e => {
     const target = e.target;
     if (target && target.classList && target.classList.contains("owning-return-shelf")) {
@@ -152,7 +199,7 @@ window.PRS_isSaving = false;
     if (!readingSelect) return;
 
     const owningValue = getNormalizedOwningValue(owningSelect);
-    const shouldDisable = owningValue === "borrowing" || owningValue === "borrowed";
+    const shouldDisable = owningValue === "borrowing" || owningValue === "borrowed" || owningValue === "sold";
     const disabledText = readingSelect.getAttribute("data-disabled-text")
       || "Disabled while this book is being borrowed.";
 
@@ -195,7 +242,8 @@ window.PRS_isSaving = false;
     in_shelf: ["", "in_shelf", "borrowing", "sold", "lost"],
     borrowing: ["", "in_shelf", "borrowing", "sold", "lost"],
     borrowed: ["", "in_shelf", "borrowed"],
-    sold: ["sold"],
+    sold: ["sold", "bought"],
+    bought: ["", "in_shelf"],
     lost: ["", "in_shelf", "lost"],
   };
 
@@ -913,6 +961,7 @@ window.PRS_isSaving = false;
     const overlayTitle = qs("#owning-overlay-title");
     const nameInput = qs("#owning-overlay-name");
     const emailInput = qs("#owning-overlay-email");
+    const amountInput = qs("#owning-overlay-amount");
     const confirmBtn = qs("#owning-overlay-confirm");
     const cancelBtn = qs("#owning-overlay-cancel");
     const overlayStatus = qs("#owning-overlay-status");
@@ -1037,6 +1086,10 @@ window.PRS_isSaving = false;
             overlayTitle.textContent = labelBorrowing;
         }
       }
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = statusValue === "sold" ? "" : "none";
+      }
       if (statusValue === "sold" && priorState === "borrowing") {
         if (overlayTitle) {
           overlayTitle.textContent = "Borrowed person is buying this book:";
@@ -1058,6 +1111,10 @@ window.PRS_isSaving = false;
     function closeOverlay() {
       if (!overlay) return;
       overlay.style.display = "none";
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = "none";
+      }
     }
 
     function isDigitalType() {
@@ -1169,6 +1226,13 @@ window.PRS_isSaving = false;
 
       const rowEl = select.closest("tr");
 
+      let amountValue = "";
+      if (options && Object.prototype.hasOwnProperty.call(options, "amount")) {
+        amountValue = options.amount == null ? "" : String(options.amount);
+      } else if (amountInput && amountInput.style.display !== "none") {
+        amountValue = amountInput.value.trim();
+      }
+
       const body = new URLSearchParams({
         action: "save_owning_contact",
         book_id: String(bookId),
@@ -1177,6 +1241,7 @@ window.PRS_isSaving = false;
         contact_name: trimmedName,
         contact_email: trimmedEmail,
         transaction_type: transactionType,
+        amount: amountValue,
         nonce: owningNonce,
       });
 
@@ -1193,25 +1258,27 @@ window.PRS_isSaving = false;
           }
 
           const payload = res.data || {};
+          const savedStatus = typeof payload.owning_status === "string" ? payload.owning_status : normalizedStatus;
           const nextName = typeof payload.counterparty_name === "string" ? payload.counterparty_name : trimmedName;
           const nextEmail = typeof payload.counterparty_email === "string" ? payload.counterparty_email : trimmedEmail;
+          const normalizedSaved = normalizeOwningState(savedStatus);
 
           lastContactName = nextName || "";
-          savedOwningStatus = statusValue;
+          savedOwningStatus = savedStatus;
 
           wrap.setAttribute("data-contact-name", lastContactName);
           wrap.setAttribute("data-contact-email", nextEmail || "");
 
-          if (contactStatuses.indexOf(statusValue) !== -1) {
+          if (contactStatuses.indexOf(savedStatus) !== -1) {
             const today = new Date().toISOString().split("T")[0];
             setLoanDate(today);
           } else {
             setLoanDate("");
           }
 
-          updateDerived(statusValue);
-          applyStatusDescription(statusValue, lastContactName, {
-            rich: contactStatuses.indexOf(statusValue) !== -1 && !!loanDate,
+          updateDerived(savedStatus);
+          applyStatusDescription(savedStatus, lastContactName, {
+            rich: contactStatuses.indexOf(savedStatus) !== -1 && !!loanDate,
             date: loanDate,
           });
 
@@ -1227,12 +1294,12 @@ window.PRS_isSaving = false;
           }
 
           if (select) {
-            select.value = statusValue;
+            select.value = savedStatus;
           }
           toggleReadingStatusLock(select);
-          filterOwningOptions(select, statusValue);
+          filterOwningOptions(select, savedStatus);
           if (returnBtn) {
-            const shouldShowReturn = statusValue === "borrowing" || statusValue === "borrowed";
+            const shouldShowReturn = normalizedSaved === "borrowing" || normalizedSaved === "borrowed";
             returnBtn.style.display = shouldShowReturn ? "" : "none";
             returnBtn.disabled = false;
           }
@@ -1381,6 +1448,30 @@ window.PRS_isSaving = false;
             .finally(() => {
               filterOwningOptions(select, savedOwningStatus);
             });
+          return;
+        }
+
+        if (val === "bought") {
+          const revertSelection = () => {
+            select.value = savedOwningStatus;
+            toggleReadingStatusLock(select);
+            filterOwningOptions(select, savedOwningStatus);
+          };
+
+          revertSelection();
+
+          openBoughtOverlay({
+            onConfirm: () => {
+              saveOwningContact("bought", "", "", {
+                previousValue: savedOwningStatus,
+                fromOverlay: false,
+                amount: "",
+              }).catch(() => {
+                revertSelection();
+              });
+            },
+            onCancel: revertSelection,
+          });
           return;
         }
 
@@ -1871,6 +1962,7 @@ window.PRS_isSaving = false;
     const overlayTitle = qs("#owning-overlay-title");
     const nameInput = qs("#owning-overlay-name");
     const emailInput = qs("#owning-overlay-email");
+    const amountInput = qs("#owning-overlay-amount");
     const confirmBtn = qs("#owning-overlay-confirm");
     const cancelBtn = qs("#owning-overlay-cancel");
     const statusMsg = qs("#owning-overlay-status");
@@ -1939,6 +2031,10 @@ window.PRS_isSaving = false;
       currentRowInfo = null;
       previousValue = "";
       clearOverlayMessage();
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = "none";
+      }
     }
 
     function openOverlay(select, status, rowInfo) {
@@ -1966,6 +2062,11 @@ window.PRS_isSaving = false;
       }
       if (emailInput) {
         emailInput.value = select ? (select.dataset.contactEmail || "") : "";
+      }
+
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = status === "sold" ? "" : "none";
       }
 
       overlay.style.display = "flex";
@@ -2078,6 +2179,13 @@ window.PRS_isSaving = false;
         statusMsg.textContent = msgSaving;
       }
 
+      let amountValue = "";
+      if (options && Object.prototype.hasOwnProperty.call(options, "amount")) {
+        amountValue = options.amount == null ? "" : String(options.amount);
+      } else if (amountInput && amountInput.style.display !== "none") {
+        amountValue = amountInput.value.trim();
+      }
+
       const body = new URLSearchParams({
         action: "save_owning_contact",
         book_id: String(bookId),
@@ -2086,6 +2194,7 @@ window.PRS_isSaving = false;
         contact_name: trimmedName,
         contact_email: trimmedEmail,
         transaction_type: transactionType,
+        amount: amountValue,
         nonce,
       });
 
@@ -2295,6 +2404,33 @@ window.PRS_isSaving = false;
 
         const rawValue = normalizeStatus(select.value);
         const previous = select.dataset.currentValue || normalizeStatus(select.value);
+
+        if (rawValue === "bought") {
+          const revertSelection = () => {
+            select.value = previous;
+            select.dataset.currentValue = previous;
+            toggleReadingStatusLock(select);
+            filterOwningOptions(select, previous);
+          };
+
+          revertSelection();
+
+          openBoughtOverlay({
+            onConfirm: () => {
+              saveOwningContact(select, "bought", "", "", {
+                rowInfo,
+                previousValue: previous,
+                fromOverlay: false,
+                amount: "",
+              }).catch(() => {
+                revertSelection();
+              });
+            },
+            onCancel: revertSelection,
+          });
+          return;
+        }
+
         toggleReadingStatusLock(select);
         filterOwningOptions(select, rawValue);
 

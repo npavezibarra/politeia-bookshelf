@@ -444,15 +444,16 @@ function prs_maybe_create_loans_table() {
 		)
 	);
 
-	if ( ! $exists ) {
-		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
-		$charset_collate = $wpdb->get_charset_collate();
-		$sql             = "CREATE TABLE {$table} (
+        if ( ! $exists ) {
+                require_once ABSPATH . 'wp-admin/includes/upgrade.php';
+                $charset_collate = $wpdb->get_charset_collate();
+                $sql             = "CREATE TABLE {$table} (
           id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
           user_id BIGINT UNSIGNED NOT NULL,
           book_id BIGINT UNSIGNED NOT NULL,
           counterparty_name  VARCHAR(255) NULL,
           counterparty_email VARCHAR(190) NULL,
+          amount DECIMAL(10,2) NULL,
           start_date DATETIME NOT NULL,
           end_date   DATETIME NULL,
           notes TEXT NULL,
@@ -462,8 +463,20 @@ function prs_maybe_create_loans_table() {
           KEY idx_user_book (user_id, book_id),
           KEY idx_active (user_id, book_id, end_date)
         ) {$charset_collate};";
-		dbDelta( $sql );
-	}
+                dbDelta( $sql );
+        }
+
+        $columns = $wpdb->get_col(
+                $wpdb->prepare(
+                        'SELECT COLUMN_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s',
+                        DB_NAME,
+                        $table
+                )
+        );
+
+        if ( $columns && ! in_array( 'amount', array_map( 'strtolower', $columns ), true ) ) {
+                $wpdb->query( "ALTER TABLE {$table} ADD COLUMN amount DECIMAL(10,2) NULL AFTER counterparty_email" );
+        }
 }
 add_action( 'plugins_loaded', 'prs_maybe_create_loans_table' );
 
@@ -500,6 +513,7 @@ function prs_render_owning_overlay( $args = array() ) {
 
                         <input type="text" id="owning-overlay-name" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>">
                         <input type="email" id="owning-overlay-email" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>">
+                        <input type="number" id="owning-overlay-amount" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Amount (e.g. 12000)', 'politeia-reading' ); ?>" step="0.01" style="display:none;">
 
                         <div class="prs-overlay-actions">
                                 <button type="button" id="owning-overlay-confirm" class="prs-btn"><?php esc_html_e( 'Confirm', 'politeia-reading' ); ?></button>
@@ -507,6 +521,17 @@ function prs_render_owning_overlay( $args = array() ) {
                         </div>
 
                         <span id="owning-overlay-status" class="prs-help"></span>
+                </div>
+        </div>
+        <div id="bought-overlay" class="prs-overlay" style="display:none;">
+                <div class="prs-overlay-backdrop"></div>
+                <div class="prs-overlay-content" style="max-width:360px;">
+                        <h2><?php esc_html_e( 'Confirm Re-acquisition', 'politeia-reading' ); ?></h2>
+                        <p><?php esc_html_e( 'You are marking this book as Bought Again. It will return to your shelf and become editable.', 'politeia-reading' ); ?></p>
+                        <div class="prs-overlay-actions">
+                                <button type="button" id="bought-overlay-confirm" class="prs-btn"><?php esc_html_e( 'Confirm', 'politeia-reading' ); ?></button>
+                                <button type="button" id="bought-overlay-cancel" class="prs-btn prs-btn-secondary"><?php esc_html_e( 'Cancel', 'politeia-reading' ); ?></button>
+                        </div>
                 </div>
         </div>
         <?php

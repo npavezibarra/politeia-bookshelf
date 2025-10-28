@@ -16,7 +16,8 @@ class Politeia_Loan_Manager {
                         'in_shelf'  => array( 'borrowing', 'sold', 'lost' ),
                         'borrowing' => array( 'in_shelf', 'sold', 'lost' ),
                         'borrowed'  => array( 'in_shelf' ),
-                        'sold'      => array(),
+                        'sold'      => array( 'bought', 'in_shelf' ),
+                        'bought'    => array( 'in_shelf' ),
                         'lost'      => array( 'in_shelf' ),
                 );
         }
@@ -53,6 +54,7 @@ class Politeia_Loan_Manager {
                         'borrowing' => __( 'Borrowing', 'politeia-reading' ),
                         'borrowed'  => __( 'Borrowed', 'politeia-reading' ),
                         'sold'      => __( 'Sold', 'politeia-reading' ),
+                        'bought'    => __( 'Bought', 'politeia-reading' ),
                         'lost'      => __( 'Lost', 'politeia-reading' ),
                 );
 
@@ -138,6 +140,18 @@ class Politeia_Loan_Manager {
                 $counterparty_name  = isset( $args['counterparty_name'] ) ? $args['counterparty_name'] : null;
                 $counterparty_email = isset( $args['counterparty_email'] ) ? $args['counterparty_email'] : null;
 
+                $amount = null;
+                if ( array_key_exists( 'amount', $args ) ) {
+                        $raw_amount = $args['amount'];
+                        if ( is_string( $raw_amount ) ) {
+                                $raw_amount = trim( $raw_amount );
+                        }
+
+                        if ( '' !== $raw_amount && null !== $raw_amount && is_numeric( $raw_amount ) ) {
+                                $amount = number_format( (float) $raw_amount, 2, '.', '' );
+                        }
+                }
+
                 $end_date = $now_gmt;
 
                 $wpdb->insert(
@@ -147,13 +161,14 @@ class Politeia_Loan_Manager {
                                 'book_id'            => (int) $book_id,
                                 'counterparty_name'  => $counterparty_name ?: null,
                                 'counterparty_email' => $counterparty_email ?: null,
+                                'amount'             => null === $amount ? null : $amount,
                                 'start_date'         => $now_gmt,
                                 'end_date'           => $end_date,
                                 'notes'              => $notes,
                                 'created_at'         => $now_gmt,
                                 'updated_at'         => $now_gmt,
                         ),
-                        array( '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+                        array( '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
                 );
         }
 

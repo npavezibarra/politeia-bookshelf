@@ -911,6 +911,12 @@ select.reading-status-select[disabled] {
         cursor: not-allowed;
 }
 
+select.is-disabled {
+        opacity: 0.6;
+        pointer-events: none;
+        cursor: not-allowed;
+}
+
 #fld-owning-status .prs-btn[disabled] {
         cursor: not-allowed;
         opacity: 0.6;
@@ -1678,6 +1684,10 @@ p#derived-location {
         border-radius: 4px;
         font-size: 14px;
         box-sizing: border-box;
+}
+
+#owning-overlay-amount {
+        margin-top: 8px;
 }
 
 /* === CONTACT ACTIONS === */

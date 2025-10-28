@@ -460,6 +460,7 @@ add_shortcode(
                                                         'in_shelf'  => __( 'In Shelf', 'politeia-reading' ),
                                                         'borrowed'  => __( 'Borrowed', 'politeia-reading' ),
                                                         'borrowing' => __( 'Borrowing', 'politeia-reading' ),
+                                                        'bought'    => __( 'Bought', 'politeia-reading' ),
                                                         'sold'      => __( 'Sold', 'politeia-reading' ),
                                                         'lost'      => __( 'Lost', 'politeia-reading' ),
                                                 );
