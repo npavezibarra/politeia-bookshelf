@@ -14,9 +14,10 @@ global $wpdb;
 $user_id = get_current_user_id();
 $slug    = get_query_var( 'prs_book_slug' );
 
-$tbl_b     = $wpdb->prefix . 'politeia_books';
-$tbl_ub    = $wpdb->prefix . 'politeia_user_books';
-$tbl_loans = $wpdb->prefix . 'politeia_loans';
+$tbl_b        = $wpdb->prefix . 'politeia_books';
+$tbl_ub       = $wpdb->prefix . 'politeia_user_books';
+$tbl_loans    = $wpdb->prefix . 'politeia_loans';
+$tbl_sessions = $wpdb->prefix . 'politeia_reading_sessions';
 
 $book = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tbl_b} WHERE slug=%s LIMIT 1", $slug ) );
 if ( ! $book ) {
@@ -74,6 +75,14 @@ $active_start_gmt   = $wpdb->get_var(
         )
 );
 $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 'Y-m-d' ) : '';
+
+$sessions = $wpdb->get_results(
+        $wpdb->prepare(
+                "SELECT * FROM {$tbl_sessions} WHERE user_id = %d AND book_id = %d ORDER BY start_time ASC",
+                $user_id,
+                $book->id
+        )
+);
 
 $current_type = ( isset( $ub->type_book ) && in_array( $ub->type_book, array( 'p', 'd' ), true ) ) ? $ub->type_book : '';
 
@@ -584,6 +593,51 @@ wp_add_inline_script(
                 </div>
                 </section>
         </div>
+
+        <section id="prs-reading-sessions" class="prs-book-sessions">
+                <h2 class="prs-section-title"><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></h2>
+                <?php if ( $sessions ) : ?>
+                        <table class="prs-table prs-sessions-table">
+                                <thead>
+                                        <tr>
+                                                <th scope="col"><?php esc_html_e( '#', 'politeia-reading' ); ?></th>
+                                                <th scope="col"><?php esc_html_e( 'Start Time', 'politeia-reading' ); ?></th>
+                                                <th scope="col"><?php esc_html_e( 'End Time', 'politeia-reading' ); ?></th>
+                                                <th scope="col"><?php esc_html_e( 'Chapter', 'politeia-reading' ); ?></th>
+                                                <th scope="col"><?php esc_html_e( 'Duration', 'politeia-reading' ); ?></th>
+                                        </tr>
+                                </thead>
+                                <tbody>
+                                        <?php foreach ( $sessions as $i => $s ) :
+                                                $start_display = $s->start_time ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $s->start_time ) : '—';
+                                                $end_display   = $s->end_time ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $s->end_time ) : '—';
+                                                $duration_str  = '—';
+                                                if ( $s->start_time && $s->end_time ) {
+                                                        $duration = strtotime( $s->end_time ) - strtotime( $s->start_time );
+                                                        if ( $duration < 0 ) {
+                                                                $duration = 0;
+                                                        }
+                                                        $minutes = floor( $duration / 60 );
+                                                        $seconds = $duration % 60;
+                                                        /* translators: 1: minutes, 2: seconds. */
+                                                        $duration_str = sprintf( _x( '%1$d min %2$02d sec', 'reading session duration', 'politeia-reading' ), $minutes, $seconds );
+                                                }
+                                                $chapter_label = $s->chapter_name ? $s->chapter_name : '—';
+                                                ?>
+                                                <tr>
+                                                        <td><?php echo esc_html( $i + 1 ); ?></td>
+                                                        <td><?php echo esc_html( $start_display ); ?></td>
+                                                        <td><?php echo esc_html( $end_display ); ?></td>
+                                                        <td><?php echo esc_html( $chapter_label ); ?></td>
+                                                        <td><?php echo esc_html( $duration_str ); ?></td>
+                                                </tr>
+                                        <?php endforeach; ?>
+                                </tbody>
+                        </table>
+                <?php else : ?>
+                        <p class="prs-no-sessions"><?php esc_html_e( 'No sessions recorded for this book yet.', 'politeia-reading' ); ?></p>
+                <?php endif; ?>
+        </section>
 
         </div>
 </div>
