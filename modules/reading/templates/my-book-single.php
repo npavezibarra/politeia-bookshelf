@@ -41,6 +41,8 @@ $label_borrowing = __( 'Borrowing to:', 'politeia-reading' );
 $label_borrowed  = __( 'Borrowed from:', 'politeia-reading' );
 $label_sold      = __( 'Sold to:', 'politeia-reading' );
 $label_lost      = __( 'Last borrowed to:', 'politeia-reading' );
+$label_sold_on   = __( 'Sold on:', 'politeia-reading' );
+$label_lost_date = __( 'Lost:', 'politeia-reading' );
 $label_unknown   = __( 'Unknown', 'politeia-reading' );
 
 $owning_message = '';
@@ -535,7 +537,7 @@ wp_add_inline_script(
                         </div>
 
                         <!-- Owning Status (editable) + Contact (condicional) -->
-                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>" data-active-start="<?php echo esc_attr( $active_start_local ); ?>">
+                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-sold-on="<?php echo esc_attr( $label_sold_on ); ?>" data-label-lost-date="<?php echo esc_attr( $label_lost_date ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>" data-active-start="<?php echo esc_attr( $active_start_local ); ?>">
                                 <label class="label" for="owning-status-select"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
                                 <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
                                         <option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
@@ -559,7 +561,7 @@ wp_add_inline_script(
                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                 </button>
 
-                                <span id="owning-status-status" class="prs-help"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
+                                <span id="owning-status-status" class="prs-help owning-status-info" data-book-id="<?php echo (int) $book->id; ?>"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
                                 <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
                                         <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
                                 </p>
