@@ -50,14 +50,14 @@
 
 /* Title + Author */
 h2#prs-book-title-placeholder {
-    font-size: 22px;                  /* your value */
-    line-height: 1;                   /* your value */
+    font-size: 20px;
+    line-height: 1;
     font-weight: 700;
     margin-bottom: 6px;
 }
 
 h3#prs-book-author-placeholder {
-    font-size: 16px;
+    font-size: 12px;
     font-weight: 500;
     opacity: 0.85;
 }
@@ -79,6 +79,13 @@ h3#prs-book-author-placeholder {
     background: #fff;
     border: 1px solid #ccc;
     cursor: pointer;
+}
+
+button#prs-cover-open,
+button#prs-cover-search {
+    font-size: 12px;
+    border-radius: 6px;
+    background-color: black;
 }
 
 /* Hide any orphaned default actions when an image is present */
