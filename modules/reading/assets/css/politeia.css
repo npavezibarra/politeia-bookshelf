@@ -1,6 +1,49 @@
 .prs-table { width:100%; border-collapse: collapse; }
 .prs-table th, .prs-table td { padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
 
+.prs-book-sessions { margin-top:32px; }
+
+.prs-section-title {
+        font-size:18px;
+        font-weight:600;
+        margin-bottom:10px;
+        border-bottom:1px solid #ddd;
+        padding-bottom:4px;
+}
+
+.prs-sessions-table { width:100%; border-collapse:collapse; }
+
+.prs-sessions-table th,
+.prs-sessions-table td {
+        padding:6px 6px;
+        border-bottom:1px solid #e5e5e5;
+        font-size:13px;
+        text-align:left;
+}
+
+.prs-sessions-table th:nth-child(4),
+.prs-sessions-table th:nth-child(5),
+.prs-sessions-table th:nth-child(6) {
+        text-align:center;
+}
+
+.prs-sessions-table td:nth-child(4),
+.prs-sessions-table td:nth-child(5),
+.prs-sessions-table td:nth-child(6) {
+        text-align:center;
+}
+
+.prs-sessions-table th {
+        background:#fafafa;
+        font-weight:600;
+}
+
+.prs-no-sessions {
+        color:#666;
+        font-size:14px;
+        margin-top:8px;
+}
+
 /* My Library redesign */
 #prs-library {
         width: 100%;
