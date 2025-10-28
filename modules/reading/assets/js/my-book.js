@@ -307,6 +307,23 @@ window.PRS_isSaving = false;
     });
   }
 
+  function formatOwningDate(raw) {
+    if (!raw && raw !== 0) {
+      return "";
+    }
+    const value = String(raw).trim();
+    if (!value) {
+      return "";
+    }
+    if (value.includes("T")) {
+      return value.split("T")[0];
+    }
+    if (value.includes(" ")) {
+      return value.split(" ")[0];
+    }
+    return value;
+  }
+
   function formatAuthorName(raw) {
     if (typeof raw !== "string") return "";
 
@@ -990,6 +1007,8 @@ window.PRS_isSaving = false;
     const labelBorrowed = wrap.getAttribute("data-label-borrowed") || "Borrowed from:";
     const labelSold = wrap.getAttribute("data-label-sold") || "Sold to:";
     const labelLost = wrap.getAttribute("data-label-lost") || "Last borrowed to:";
+    const labelSoldOn = wrap.getAttribute("data-label-sold-on") || "Sold on:";
+    const labelLostDate = wrap.getAttribute("data-label-lost-date") || "Lost:";
     const labelUnknown = wrap.getAttribute("data-label-unknown") || "Unknown";
     const contactStatuses = ["borrowed", "borrowing", "sold"];
 
@@ -1059,6 +1078,28 @@ window.PRS_isSaving = false;
       if (!options.keepColor) {
         status.style.color = "";
       }
+    }
+
+    function updateOwningStatusInfoDate(statusValue, changeDate) {
+      const formattedDate = formatOwningDate(changeDate);
+      if (!formattedDate) {
+        return;
+      }
+
+      const normalized = normalizeOwningState(statusValue);
+      if (normalized !== "lost" && normalized !== "sold") {
+        return;
+      }
+
+      const infoEl = document.querySelector(`.owning-status-info[data-book-id="${bookId}"]`) || status;
+      if (!infoEl) {
+        return;
+      }
+
+      const label = normalized === "lost" ? labelLostDate : labelSoldOn;
+      const safeLabel = escapeHtml(label);
+      const safeDate = escapeHtml(formattedDate);
+      infoEl.innerHTML = `<strong>${safeLabel}</strong><br><small>${safeDate}</small>`;
     }
 
     function setLoanDate(value) {
@@ -1269,6 +1310,10 @@ window.PRS_isSaving = false;
           const nextName = typeof payload.counterparty_name === "string" ? payload.counterparty_name : trimmedName;
           const nextEmail = typeof payload.counterparty_email === "string" ? payload.counterparty_email : trimmedEmail;
           const normalizedSaved = normalizeOwningState(savedStatus);
+          const responseDate = formatOwningDate(payload.date);
+          const todayFormatted = formatOwningDate(new Date().toISOString());
+          const shouldShowChangeDate = normalizedSaved === "lost" || normalizedSaved === "sold";
+          const changeDate = shouldShowChangeDate ? (responseDate || todayFormatted) : "";
 
           lastContactName = nextName || "";
           savedOwningStatus = savedStatus;
@@ -1277,8 +1322,10 @@ window.PRS_isSaving = false;
           wrap.setAttribute("data-contact-email", nextEmail || "");
 
           if (contactStatuses.indexOf(savedStatus) !== -1) {
-            const today = new Date().toISOString().split("T")[0];
-            setLoanDate(today);
+            const nextLoanDate = normalizedSaved === "sold" && changeDate
+              ? changeDate
+              : (responseDate || todayFormatted);
+            setLoanDate(nextLoanDate);
           } else {
             setLoanDate("");
           }
@@ -1288,6 +1335,10 @@ window.PRS_isSaving = false;
             rich: contactStatuses.indexOf(savedStatus) !== -1 && !!loanDate,
             date: loanDate,
           });
+
+          if (changeDate) {
+            updateOwningStatusInfoDate(savedStatus, changeDate);
+          }
 
           if (useOverlay && overlayStatus) {
             overlayStatus.style.color = "green";
@@ -2010,6 +2061,8 @@ window.PRS_isSaving = false;
     const labelBorrowed = owningLabels.borrowed || "Borrowed from:";
     const labelSold = owningLabels.sold || "Sold to:";
     const labelLost = owningLabels.lost || "Last borrowed to:";
+    const labelSoldOn = owningLabels.sold_on || "Sold on:";
+    const labelLostDate = owningLabels.lost_date || "Lost:";
     const labelLocation = owningLabels.location || "Location";
     const labelInShelf = owningLabels.in_shelf || "In Shelf";
     const labelNotInShelf = owningLabels.not_in_shelf || "Not In Shelf";
@@ -2106,8 +2159,29 @@ window.PRS_isSaving = false;
     function updateInfoElement(el, status, name, date) {
       if (!el) return;
       const normalizedStatus = (status || "").trim();
+      const formattedDate = formatOwningDate(date);
+      const safeDate = formattedDate ? escapeHtml(formattedDate) : "";
       const safeName = escapeHtml(name || "");
-      const safeDate = date ? escapeHtml(date) : "";
+
+      if (normalizedStatus === "lost") {
+        if (safeDate) {
+          const lostLabel = escapeHtml(labelLostDate);
+          el.innerHTML = `<strong>${lostLabel}</strong><br><small>${safeDate}</small>`;
+        } else {
+          const locationLine = `<strong>${escapeHtml(labelLocation)}</strong>: ${escapeHtml(labelNotInShelf)}`;
+          el.innerHTML = locationLine;
+        }
+        return;
+      }
+
+      if (normalizedStatus === "sold") {
+        const soldLabel = escapeHtml(labelSoldOn);
+        const html = safeDate
+          ? `<strong>${soldLabel}</strong><br><small>${safeDate}</small>`
+          : `<strong>${soldLabel}</strong>`;
+        el.innerHTML = html;
+        return;
+      }
 
       if (requiresContact(normalizedStatus)) {
         const label = escapeHtml(getLabelFor(normalizedStatus));
@@ -2120,18 +2194,6 @@ window.PRS_isSaving = false;
           html += `<br><small>${safeDate}</small>`;
         }
         el.innerHTML = html;
-        return;
-      }
-
-      if (normalizedStatus === "lost") {
-        const locationLine = `<strong>${escapeHtml(labelLocation)}</strong>: ${escapeHtml(labelNotInShelf)}`;
-        const contactName = safeName || escapeHtml(labelUnknown);
-        if (contactName) {
-          const lostLabel = escapeHtml(labelLost);
-          el.innerHTML = `${locationLine}<br><strong>${lostLabel}</strong> ${contactName}`;
-        } else {
-          el.innerHTML = locationLine;
-        }
         return;
       }
 
@@ -2242,21 +2304,32 @@ window.PRS_isSaving = false;
           const savedStatus = typeof payload.owning_status === "string" ? payload.owning_status : normalizedStatus;
           const nextName = typeof payload.counterparty_name === "string" ? payload.counterparty_name : trimmedName;
           const nextEmail = typeof payload.counterparty_email === "string" ? payload.counterparty_email : trimmedEmail;
-          const dateString = requiresContact(savedStatus)
-            ? (options.dateString || select.dataset.activeStart || new Date().toISOString().split("T")[0])
-            : "";
+          const normalizedSaved = normalizeStatus(savedStatus);
+          const responseDate = formatOwningDate(payload.date);
+          const todayFormatted = formatOwningDate(new Date().toISOString());
+          const shouldShowChangeDate = normalizedSaved === "lost" || normalizedSaved === "sold";
+          const changeDate = shouldShowChangeDate ? (responseDate || todayFormatted) : "";
+          let activeDate = "";
+          if (requiresContact(savedStatus)) {
+            if (normalizedSaved === "sold") {
+              activeDate = changeDate || options.dateString || select.dataset.activeStart || todayFormatted;
+            } else {
+              activeDate = options.dateString || select.dataset.activeStart || (responseDate || todayFormatted);
+            }
+          }
+          const infoDate = changeDate || activeDate;
 
           finalizeSelect(select, savedStatus, {
             contactName: nextName,
             contactEmail: nextEmail,
-            activeStart: requiresContact(savedStatus) ? dateString : "",
+            activeStart: requiresContact(savedStatus) ? activeDate : "",
           });
 
           if (rowEl) {
             rowEl.setAttribute("data-owning-status", savedStatus ? savedStatus : "in_shelf");
           }
 
-          updateInfoElement(rowInfo, savedStatus, nextName, dateString);
+          updateInfoElement(rowInfo, savedStatus, nextName, infoDate);
 
           if (fromOverlay && statusMsg) {
             const successMsg = (payload && payload.message) ? payload.message : "Saved successfully.";
@@ -2537,7 +2610,7 @@ window.PRS_isSaving = false;
           rowInfo: currentRowInfo,
           previousValue,
           fromOverlay: true,
-          dateString: new Date().toISOString().split("T")[0],
+          dateString: formatOwningDate(new Date().toISOString()),
         })
           .catch(() => {})
           .finally(() => {

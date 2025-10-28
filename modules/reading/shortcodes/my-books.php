@@ -18,6 +18,8 @@ add_shortcode(
                         'borrowed'     => __( 'Borrowed from:', 'politeia-reading' ),
                         'sold'         => __( 'Sold to:', 'politeia-reading' ),
                         'lost'         => __( 'Last borrowed to:', 'politeia-reading' ),
+                        'sold_on'      => __( 'Sold on:', 'politeia-reading' ),
+                        'lost_date'    => __( 'Lost:', 'politeia-reading' ),
                         'location'     => __( 'Location', 'politeia-reading' ),
                         'in_shelf'     => __( 'In Shelf', 'politeia-reading' ),
                         'not_in_shelf' => __( 'Not In Shelf', 'politeia-reading' ),
@@ -492,7 +494,7 @@ add_shortcode(
                                                 >
                                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                                 </button>
-                                                <span class="owning-status-info"><?php echo $owning_info_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+                                                <span class="owning-status-info" data-book-id="<?php echo (int) $r->book_id; ?>"><?php echo $owning_info_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
                                                 <?php if ( $is_digital ) : ?>
                                                 <div class="prs-owning-status-note"><?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?></div>
                                                 <?php endif; ?>
