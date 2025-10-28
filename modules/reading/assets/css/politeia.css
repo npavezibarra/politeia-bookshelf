@@ -1349,7 +1349,7 @@ display:inline-block;
         }
         }
 
-        @media (max-width:700px){
+@media (max-width:700px){
         .prs-book-info-grid{ grid-template-columns:1fr; }
         #prs-book-cover,
         #prs-book-info__main,
@@ -1357,7 +1357,7 @@ display:inline-block;
         grid-column:1;
         width:100%;
         }
-        }
+}
 
         .prs-cover-frame{
         position: relative;
