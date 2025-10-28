@@ -324,6 +324,26 @@ window.PRS_isSaving = false;
     return value;
   }
 
+  function formatOwningAmount(raw) {
+    if (raw === null || typeof raw === "undefined") {
+      return "";
+    }
+    const value = String(raw).trim();
+    if (!value) {
+      return "";
+    }
+    const digits = value.replace(/[^0-9.,-]/g, "");
+    if (!digits) {
+      return "";
+    }
+    const normalized = digits.replace(/\./g, "").replace(/,/g, ".");
+    const amount = Number(normalized);
+    if (!Number.isFinite(amount) || Number.isNaN(amount)) {
+      return "";
+    }
+    return amount.toLocaleString("es-CL");
+  }
+
   function formatAuthorName(raw) {
     if (typeof raw !== "string") return "";
 
@@ -1011,11 +1031,13 @@ window.PRS_isSaving = false;
     const labelLostDate = wrap.getAttribute("data-label-lost-date") || "Lost:";
     const labelUnknown = wrap.getAttribute("data-label-unknown") || "Unknown";
     const contactStatuses = ["borrowed", "borrowing", "sold"];
+    const savedSaleAmountAttr = wrap.getAttribute("data-sale-amount") || "";
 
     let savedOwningStatus = select ? (select.value || "").trim() : "";
     let pendingStatus = "";
     let lastContactName = savedNameAttr;
     let loanDate = wrap.getAttribute("data-active-start") || "";
+    let lastSaleAmount = savedSaleAmountAttr;
 
     const bookId = (typeof window.PRS_BOOK_ID === "number" && window.PRS_BOOK_ID)
       || (window.PRS_BOOK && parseInt(PRS_BOOK.book_id, 10))
@@ -1051,19 +1073,50 @@ window.PRS_isSaving = false;
 
       const allowRich = !!options.rich && contactStatuses.indexOf(statusValue) !== -1;
       const date = (options.date || "").trim();
+      const amountRaw = typeof options.amount === "undefined" || options.amount === null
+        ? ""
+        : String(options.amount);
+      const formattedAmount = statusValue === "sold" ? formatOwningAmount(amountRaw) : "";
+      const textParts = [label];
+      if (normalizedName) {
+        textParts.push(normalizedName);
+      }
+      if (formattedAmount) {
+        textParts.push(`$${formattedAmount}`);
+      }
+      if (date) {
+        textParts.push(date);
+      }
 
-      if (allowRich && date) {
+      if (allowRich) {
         const safeLabel = escapeHtml(label);
         const safeName = escapeHtml(normalizedName);
         const safeDate = escapeHtml(date);
+        const safeAmount = formattedAmount ? escapeHtml(formattedAmount) : "";
+        let html = `<strong>${safeLabel}</strong>`;
+        if (statusValue === "sold") {
+          if (safeName) {
+            html += `<br>${safeName}`;
+            if (safeAmount) {
+              html += ` for $${safeAmount}`;
+            }
+          } else if (safeAmount) {
+            html += `<br>$${safeAmount}`;
+          }
+        } else if (safeName) {
+          html += `<br>${safeName}`;
+        }
+        if (safeDate) {
+          html += `<br><small>${safeDate}</small>`;
+        }
         return {
-          html: `<strong>${safeLabel}</strong><br>${safeName}${safeDate ? `<br><small>${safeDate}</small>` : ""}`,
-          text: `${label} ${normalizedName}`.trim(),
+          html,
+          text: textParts.join(" ").trim(),
         };
       }
 
       return {
-        text: `${label} ${normalizedName}`.trim(),
+        text: textParts.join(" ").trim(),
       };
     }
 
@@ -1080,12 +1133,7 @@ window.PRS_isSaving = false;
       }
     }
 
-    function updateOwningStatusInfoDate(statusValue, changeDate) {
-      const formattedDate = formatOwningDate(changeDate);
-      if (!formattedDate) {
-        return;
-      }
-
+    function updateOwningStatusInfo(statusValue, changeDate, contactName, saleAmountRaw) {
       const normalized = normalizeOwningState(statusValue);
       if (normalized !== "lost" && normalized !== "sold") {
         return;
@@ -1096,10 +1144,38 @@ window.PRS_isSaving = false;
         return;
       }
 
-      const label = normalized === "lost" ? labelLostDate : labelSoldOn;
-      const safeLabel = escapeHtml(label);
-      const safeDate = escapeHtml(formattedDate);
-      infoEl.innerHTML = `<strong>${safeLabel}</strong><br><small>${safeDate}</small>`;
+      const formattedDate = formatOwningDate(changeDate);
+      const safeDate = formattedDate ? escapeHtml(formattedDate) : "";
+
+      if (normalized === "lost") {
+        if (safeDate) {
+          const lostLabel = escapeHtml(labelLostDate);
+          infoEl.innerHTML = `<strong>${lostLabel}</strong><br><small>${safeDate}</small>`;
+        } else {
+          const lostLabel = escapeHtml(labelLostDate);
+          infoEl.innerHTML = `<strong>${lostLabel}</strong>`;
+        }
+        return;
+      }
+
+      const soldLabel = escapeHtml(labelSold);
+      const safeName = escapeHtml((contactName || "").trim());
+      const safeDisplayName = safeName || escapeHtml(labelUnknown);
+      const formattedAmount = formatOwningAmount(saleAmountRaw);
+      const safeAmount = formattedAmount ? escapeHtml(formattedAmount) : "";
+      let html = `<strong>${soldLabel}</strong>`;
+      if (safeDisplayName) {
+        html += `<br>${safeDisplayName}`;
+        if (safeAmount) {
+          html += ` for $${safeAmount}`;
+        }
+      } else if (safeAmount) {
+        html += `<br>$${safeAmount}`;
+      }
+      if (safeDate) {
+        html += `<br><small>${safeDate}</small>`;
+      }
+      infoEl.innerHTML = html;
     }
 
     function setLoanDate(value) {
@@ -1135,8 +1211,13 @@ window.PRS_isSaving = false;
         }
       }
       if (amountInput) {
-        amountInput.value = "";
-        amountInput.style.display = statusValue === "sold" ? "" : "none";
+        if (statusValue === "sold") {
+          amountInput.value = lastSaleAmount || "";
+          amountInput.style.display = "";
+        } else {
+          amountInput.value = "";
+          amountInput.style.display = "none";
+        }
       }
       if (statusValue === "sold" && priorState === "borrowing") {
         if (overlayTitle) {
@@ -1224,7 +1305,12 @@ window.PRS_isSaving = false;
             wrap.setAttribute("data-contact-name", "");
             wrap.setAttribute("data-contact-email", "");
             setLoanDate("");
-            applyStatusDescription("", "");
+            lastSaleAmount = "";
+            wrap.setAttribute("data-sale-amount", "");
+            if (select) {
+              delete select.dataset.saleAmount;
+            }
+            applyStatusDescription("", "", { amount: "" });
           }
         })
         .catch(err => {
@@ -1314,9 +1400,22 @@ window.PRS_isSaving = false;
           const todayFormatted = formatOwningDate(new Date().toISOString());
           const shouldShowChangeDate = normalizedSaved === "lost" || normalizedSaved === "sold";
           const changeDate = shouldShowChangeDate ? (responseDate || todayFormatted) : "";
+          const payloadAmount = typeof payload.amount !== "undefined" && payload.amount !== null
+            ? String(payload.amount)
+            : amountValue;
+          const nextSaleAmount = normalizedSaved === "sold" ? payloadAmount : "";
 
           lastContactName = nextName || "";
           savedOwningStatus = savedStatus;
+          lastSaleAmount = normalizedSaved === "sold" ? nextSaleAmount : "";
+          wrap.setAttribute("data-sale-amount", lastSaleAmount);
+          if (select) {
+            if (lastSaleAmount) {
+              select.dataset.saleAmount = lastSaleAmount;
+            } else {
+              delete select.dataset.saleAmount;
+            }
+          }
 
           wrap.setAttribute("data-contact-name", lastContactName);
           wrap.setAttribute("data-contact-email", nextEmail || "");
@@ -1332,12 +1431,13 @@ window.PRS_isSaving = false;
 
           updateDerived(savedStatus);
           applyStatusDescription(savedStatus, lastContactName, {
-            rich: contactStatuses.indexOf(savedStatus) !== -1 && !!loanDate,
+            rich: contactStatuses.indexOf(savedStatus) !== -1 && (normalizedSaved === "sold" || !!loanDate),
             date: loanDate,
+            amount: lastSaleAmount,
           });
 
-          if (changeDate) {
-            updateOwningStatusInfoDate(savedStatus, changeDate);
+          if (normalizedSaved === "sold" || (normalizedSaved === "lost" && changeDate)) {
+            updateOwningStatusInfo(savedStatus, changeDate, nextName, lastSaleAmount);
           }
 
           if (useOverlay && overlayStatus) {
@@ -1428,13 +1528,16 @@ window.PRS_isSaving = false;
           savedOwningStatus = "";
           pendingStatus = "";
           lastContactName = "";
+          lastSaleAmount = "";
           wrap.setAttribute("data-contact-name", "");
           wrap.setAttribute("data-contact-email", "");
+          wrap.setAttribute("data-sale-amount", "");
           setLoanDate("");
           updateDerived("");
 
           if (select) {
             select.value = "";
+            delete select.dataset.saleAmount;
           }
           toggleReadingStatusLock(select);
           filterOwningOptions(select, "");
@@ -1482,8 +1585,10 @@ window.PRS_isSaving = false;
       updateDerived(select.value || "");
       applyTypeLock();
       applyStatusDescription(savedOwningStatus, lastContactName, {
-        rich: contactStatuses.indexOf(savedOwningStatus) !== -1 && !!loanDate,
+        rich: contactStatuses.indexOf(savedOwningStatus) !== -1
+          && (normalizeOwningState(savedOwningStatus) === "sold" || !!loanDate),
         date: loanDate,
+        amount: lastSaleAmount,
       });
       toggleReadingStatusLock(select);
       filterOwningOptions(select, savedOwningStatus);
@@ -1586,7 +1691,13 @@ window.PRS_isSaving = false;
           return;
         }
 
-        saveOwningContact(pendingStatus, name, email, { previousValue: savedOwningStatus })
+        const saleAmount = amountInput && amountInput.style.display !== "none"
+          ? amountInput.value.trim()
+          : "";
+        saveOwningContact(pendingStatus, name, email, {
+          previousValue: savedOwningStatus,
+          amount: saleAmount,
+        })
           .then(() => {
             pendingStatus = "";
           })
@@ -1611,8 +1722,10 @@ window.PRS_isSaving = false;
       updateDerived(val);
       applyTypeLock();
       applyStatusDescription(savedOwningStatus, lastContactName, {
-        rich: contactStatuses.indexOf(savedOwningStatus) !== -1 && !!loanDate,
+        rich: contactStatuses.indexOf(savedOwningStatus) !== -1
+          && (normalizeOwningState(savedOwningStatus) === "sold" || !!loanDate),
         date: loanDate,
+        amount: lastSaleAmount,
       });
     });
   }
@@ -2144,8 +2257,13 @@ window.PRS_isSaving = false;
       }
 
       if (amountInput) {
-        amountInput.value = "";
-        amountInput.style.display = status === "sold" ? "" : "none";
+        if (status === "sold") {
+          amountInput.value = select ? (select.dataset.saleAmount || "") : "";
+          amountInput.style.display = "";
+        } else {
+          amountInput.value = "";
+          amountInput.style.display = "none";
+        }
       }
 
       overlay.style.display = "flex";
@@ -2156,12 +2274,15 @@ window.PRS_isSaving = false;
       }, 0);
     }
 
-    function updateInfoElement(el, status, name, date) {
+    function updateInfoElement(el, status, name, date, amount = "") {
       if (!el) return;
       const normalizedStatus = (status || "").trim();
       const formattedDate = formatOwningDate(date);
       const safeDate = formattedDate ? escapeHtml(formattedDate) : "";
       const safeName = escapeHtml(name || "");
+      const safeDisplayName = safeName || escapeHtml(labelUnknown);
+      const formattedAmount = normalizedStatus === "sold" ? formatOwningAmount(amount) : "";
+      const safeAmount = formattedAmount ? escapeHtml(formattedAmount) : "";
 
       if (normalizedStatus === "lost") {
         if (safeDate) {
@@ -2175,20 +2296,32 @@ window.PRS_isSaving = false;
       }
 
       if (normalizedStatus === "sold") {
-        const soldLabel = escapeHtml(labelSoldOn);
-        const html = safeDate
-          ? `<strong>${soldLabel}</strong><br><small>${safeDate}</small>`
-          : `<strong>${soldLabel}</strong>`;
+        const soldLabel = escapeHtml(labelSold);
+        let html = `<strong>${soldLabel}</strong>`;
+        if (safeDisplayName) {
+          html += `<br>${safeDisplayName}`;
+          if (safeAmount) {
+            html += ` for $${safeAmount}`;
+          }
+        } else if (safeAmount) {
+          html += `<br>$${safeAmount}`;
+        }
+        if (safeDate) {
+          html += `<br><small>${safeDate}</small>`;
+        }
         el.innerHTML = html;
         return;
       }
 
       if (requiresContact(normalizedStatus)) {
         const label = escapeHtml(getLabelFor(normalizedStatus));
-        const displayName = safeName || escapeHtml(labelUnknown);
+        const displayName = safeDisplayName;
         let html = label ? `<strong>${label}</strong>` : "";
         if (displayName) {
           html += (html ? "<br>" : "") + displayName;
+        }
+        if (safeAmount && normalizedStatus === "sold") {
+          html += `<br>$${safeAmount}`;
         }
         if (safeDate) {
           html += `<br><small>${safeDate}</small>`;
@@ -2215,6 +2348,15 @@ window.PRS_isSaving = false;
       }
       if (typeof meta.activeStart !== "undefined") {
         select.dataset.activeStart = meta.activeStart || "";
+      }
+      if (typeof meta.saleAmount !== "undefined") {
+        if (meta.saleAmount) {
+          select.dataset.saleAmount = meta.saleAmount;
+        } else {
+          delete select.dataset.saleAmount;
+        }
+      } else if (storedStatus !== "sold") {
+        delete select.dataset.saleAmount;
       }
 
       toggleReadingStatusLock(select);
@@ -2309,6 +2451,10 @@ window.PRS_isSaving = false;
           const todayFormatted = formatOwningDate(new Date().toISOString());
           const shouldShowChangeDate = normalizedSaved === "lost" || normalizedSaved === "sold";
           const changeDate = shouldShowChangeDate ? (responseDate || todayFormatted) : "";
+          const payloadAmount = typeof payload.amount !== "undefined" && payload.amount !== null
+            ? String(payload.amount)
+            : amountValue;
+          const nextSaleAmount = normalizedSaved === "sold" ? payloadAmount : "";
           let activeDate = "";
           if (requiresContact(savedStatus)) {
             if (normalizedSaved === "sold") {
@@ -2323,13 +2469,22 @@ window.PRS_isSaving = false;
             contactName: nextName,
             contactEmail: nextEmail,
             activeStart: requiresContact(savedStatus) ? activeDate : "",
+            saleAmount: normalizedSaved === "sold" ? nextSaleAmount : "",
           });
 
           if (rowEl) {
             rowEl.setAttribute("data-owning-status", savedStatus ? savedStatus : "in_shelf");
           }
 
-          updateInfoElement(rowInfo, savedStatus, nextName, infoDate);
+          if (rowInfo) {
+            if (normalizedSaved === "sold" && nextSaleAmount) {
+              rowInfo.dataset.saleAmount = nextSaleAmount;
+            } else {
+              delete rowInfo.dataset.saleAmount;
+            }
+          }
+
+          updateInfoElement(rowInfo, savedStatus, nextName, infoDate, nextSaleAmount);
 
           if (fromOverlay && statusMsg) {
             const successMsg = (payload && payload.message) ? payload.message : "Saved successfully.";
@@ -2359,7 +2514,13 @@ window.PRS_isSaving = false;
             const fallbackStatus = select.dataset.storedStatus || "";
             rowEl.setAttribute("data-owning-status", fallbackStatus ? fallbackStatus : "in_shelf");
           }
-          updateInfoElement(rowInfo, select.dataset.storedStatus || "", select.dataset.contactName || "", select.dataset.activeStart || "");
+          updateInfoElement(
+            rowInfo,
+            select.dataset.storedStatus || "",
+            select.dataset.contactName || "",
+            select.dataset.activeStart || "",
+            select.dataset.saleAmount || (rowInfo && rowInfo.dataset ? rowInfo.dataset.saleAmount : "") || ""
+          );
           toggleReadingStatusLock(select);
           filterOwningOptions(select, previous);
           const returnBtn = rowEl ? rowEl.querySelector(".owning-return-shelf") : null;
@@ -2414,6 +2575,7 @@ window.PRS_isSaving = false;
           select.dataset.contactName = "";
           select.dataset.contactEmail = "";
           select.dataset.activeStart = "";
+          delete select.dataset.saleAmount;
           select.value = "in_shelf";
 
           const row = select.closest("tr");
@@ -2421,7 +2583,11 @@ window.PRS_isSaving = false;
             row.setAttribute("data-owning-status", "in_shelf");
           }
 
-          updateInfoElement(rowInfo, "", "", "");
+          if (rowInfo && rowInfo.dataset) {
+            delete rowInfo.dataset.saleAmount;
+          }
+
+          updateInfoElement(rowInfo, "", "", "", "");
           toggleReadingStatusLock(select);
           filterOwningOptions(select, "");
 
@@ -2596,6 +2762,9 @@ window.PRS_isSaving = false;
 
         const name = nameInput ? nameInput.value.trim() : "";
         const email = emailInput ? emailInput.value.trim() : "";
+        const amountValue = amountInput && amountInput.style.display !== "none"
+          ? amountInput.value.trim()
+          : "";
 
         if (!name || !email) {
           if (statusMsg) {
@@ -2611,6 +2780,7 @@ window.PRS_isSaving = false;
           previousValue,
           fromOverlay: true,
           dateString: formatOwningDate(new Date().toISOString()),
+          amount: amountValue,
         })
           .catch(() => {})
           .finally(() => {
