@@ -184,7 +184,7 @@ wp_add_inline_script(
         .prs-single-grid{
         display:grid;
         grid-template-columns: 1fr;
-        gap:24px;
+        gap:0;
         margin: 16px 0 32px;
         }
         .prs-box{ background:#f9f9f9; padding:16px; min-height:120px; }
@@ -366,7 +366,7 @@ wp_add_inline_script(
 <div class="wrap">
         <p class="prs-back-link-wrap"><a class="prs-back-link" href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
 
-	<div class="prs-single-grid">
+        <div id="prs-single-grid" class="prs-single-grid">
 
         <div id="prs-book-info" class="prs-book-info-grid">
 
