@@ -199,9 +199,16 @@ window.PRS_isSaving = false;
     if (!readingSelect) return;
 
     const owningValue = getNormalizedOwningValue(owningSelect);
-    const shouldDisable = owningValue === "borrowing" || owningValue === "borrowed" || owningValue === "sold";
-    const disabledText = readingSelect.getAttribute("data-disabled-text")
+    const isBorrowRelated = owningValue === "borrowing" || owningValue === "borrowed";
+    const isSold = owningValue === "sold";
+    const isLost = owningValue === "lost";
+    const shouldDisable = isBorrowRelated || isSold || isLost;
+
+    const lostText = readingSelect.getAttribute("data-disabled-text-lost")
+      || "Disabled while this book is lost.";
+    const defaultDisabledText = readingSelect.getAttribute("data-disabled-text")
       || "Disabled while this book is being borrowed.";
+    const disabledText = isLost ? lostText : defaultDisabledText;
 
     if (shouldDisable) {
       if (!readingSelect.disabled) {
@@ -1380,6 +1387,16 @@ window.PRS_isSaving = false;
           }
           toggleReadingStatusLock(select);
           filterOwningOptions(select, "");
+
+          const readingSelect = document.querySelector(`.reading-status-select[data-book-id="${bookId}"]`)
+            || document.getElementById("reading-status-select");
+          if (readingSelect) {
+            readingSelect.disabled = false;
+            readingSelect.classList.remove("is-disabled");
+            readingSelect.setAttribute("aria-disabled", "false");
+            readingSelect.title = "";
+          }
+
           if (activeBtn) {
             activeBtn.style.display = "none";
             activeBtn.disabled = false;
@@ -1442,6 +1459,15 @@ window.PRS_isSaving = false;
         }
 
         if (val === "lost") {
+          const readingSelect = document.querySelector(`.reading-status-select[data-book-id="${bookId}"]`)
+            || document.getElementById("reading-status-select");
+          if (readingSelect) {
+            readingSelect.disabled = true;
+            readingSelect.classList.add("is-disabled");
+            readingSelect.setAttribute("aria-disabled", "true");
+            readingSelect.title = "Disabled while this book is lost.";
+          }
+
           const fallbackName = lastContactName || labelUnknown;
           saveOwningContact("lost", fallbackName, "", { fromOverlay: false, previousValue: savedOwningStatus })
             .catch(() => {})
@@ -2326,6 +2352,15 @@ window.PRS_isSaving = false;
           toggleReadingStatusLock(select);
           filterOwningOptions(select, "");
 
+          const readingSelect = document.querySelector(`.reading-status-select[data-book-id="${select.dataset.bookId || ""}"]`)
+            || document.getElementById("reading-status-select");
+          if (readingSelect) {
+            readingSelect.disabled = false;
+            readingSelect.classList.remove("is-disabled");
+            readingSelect.setAttribute("aria-disabled", "false");
+            readingSelect.title = "";
+          }
+
           if (returnBtn) {
             returnBtn.style.display = "none";
             returnBtn.disabled = false;
@@ -2439,7 +2474,17 @@ window.PRS_isSaving = false;
           return;
         }
 
+        const readingSelect = document.querySelector(`.reading-status-select[data-book-id="${select.dataset.bookId || ""}"]`)
+          || document.getElementById("reading-status-select");
+
         if (rawValue === "lost") {
+          if (readingSelect) {
+            readingSelect.disabled = true;
+            readingSelect.classList.add("is-disabled");
+            readingSelect.setAttribute("aria-disabled", "true");
+            readingSelect.title = "Disabled while this book is lost.";
+          }
+
           saveOwningContact(select, rawValue, select.dataset.contactName || "", select.dataset.contactEmail || "", {
             rowInfo,
             previousValue: previous,
@@ -2449,6 +2494,13 @@ window.PRS_isSaving = false;
         }
 
         if (rawValue === "in_shelf") {
+          if (readingSelect) {
+            readingSelect.disabled = false;
+            readingSelect.classList.remove("is-disabled");
+            readingSelect.setAttribute("aria-disabled", "false");
+            readingSelect.title = "";
+          }
+
           saveOwningContact(select, rawValue, "", "", {
             rowInfo,
             previousValue: previous,
