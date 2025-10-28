@@ -315,7 +315,22 @@ wp_add_inline_script(
         .prs-session-modal__close:focus-visible{ background:none; box-shadow:none; color:#000000; outline:none; }
         .prs-meta{ color:#555; margin-top:0px; }
 	.prs-table{ width:100%; border-collapse:collapse; background:#fff; }
-	.prs-table th, .prs-table td{ padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
+        .prs-table th, .prs-table td{ padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
+        .prs-sessions-table th,
+        .prs-sessions-table td {
+        padding:6px 6px;
+        font-size:13px;
+        }
+        .prs-sessions-table th:nth-child(4),
+        .prs-sessions-table th:nth-child(5),
+        .prs-sessions-table th:nth-child(6) {
+        text-align:center;
+        }
+        .prs-sessions-table td:nth-child(4),
+        .prs-sessions-table td:nth-child(5),
+        .prs-sessions-table td:nth-child(6) {
+        text-align:center;
+        }
 
         .prs-field{ margin-top:0px; }
 	.prs-field .label{ font-weight:600; display:block; margin-bottom:4px; }
@@ -600,11 +615,14 @@ wp_add_inline_script(
                         <table class="prs-table prs-sessions-table">
                                 <thead>
                                         <tr>
-                                                <th scope="col"><?php esc_html_e( '#', 'politeia-reading' ); ?></th>
-                                                <th scope="col"><?php esc_html_e( 'Start Time', 'politeia-reading' ); ?></th>
-                                                <th scope="col"><?php esc_html_e( 'End Time', 'politeia-reading' ); ?></th>
-                                                <th scope="col"><?php esc_html_e( 'Chapter', 'politeia-reading' ); ?></th>
-                                                <th scope="col"><?php esc_html_e( 'Duration', 'politeia-reading' ); ?></th>
+                                                <th>#</th>
+                                                <th>Start Time</th>
+                                                <th>End Time</th>
+                                                <th>Start Page</th>
+                                                <th>End Page</th>
+                                                <th>Total Pages</th>
+                                                <th>Chapter</th>
+                                                <th>Duration</th>
                                         </tr>
                                 </thead>
                                 <tbody>
@@ -622,12 +640,21 @@ wp_add_inline_script(
                                                         /* translators: 1: minutes, 2: seconds. */
                                                         $duration_str = sprintf( _x( '%1$d min %2$02d sec', 'reading session duration', 'politeia-reading' ), $minutes, $seconds );
                                                 }
+                                                $start_page     = isset( $s->start_page ) ? (int) $s->start_page : null;
+                                                $end_page       = isset( $s->end_page ) ? (int) $s->end_page : null;
+                                                $total_pages    = null;
+                                                if ( null !== $start_page && null !== $end_page ) {
+                                                        $total_pages = $end_page - $start_page;
+                                                }
                                                 $chapter_label = $s->chapter_name ? $s->chapter_name : '—';
                                                 ?>
                                                 <tr>
                                                         <td><?php echo esc_html( $i + 1 ); ?></td>
                                                         <td><?php echo esc_html( $start_display ); ?></td>
                                                         <td><?php echo esc_html( $end_display ); ?></td>
+                                                        <td><?php echo esc_html( ( null !== $start_page && $start_page >= 0 ) ? $start_page : '—' ); ?></td>
+                                                        <td><?php echo esc_html( ( null !== $end_page && $end_page >= 0 ) ? $end_page : '—' ); ?></td>
+                                                        <td><?php echo esc_html( ( null !== $total_pages && $total_pages > 0 ) ? $total_pages : '—' ); ?></td>
                                                         <td><?php echo esc_html( $chapter_label ); ?></td>
                                                         <td><?php echo esc_html( $duration_str ); ?></td>
                                                 </tr>
