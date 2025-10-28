@@ -1,10 +1,154 @@
 /* global PRS_BOOK, PRS_SESS, jQuery */
 
+window.PRS_isSaving = false;
+
 /**
  * Utilidades
  */
 (function () {
   "use strict";
+
+  let overlayConfirmed = false;
+  let currentReturnButton = null;
+  let currentBoughtContext = null;
+
+  function triggerReturnAction() {
+    if (!currentReturnButton || typeof currentReturnButton.__prsReturnHandler !== "function") {
+      currentReturnButton = null;
+      overlayConfirmed = false;
+      return Promise.resolve();
+    }
+
+    const handler = currentReturnButton.__prsReturnHandler;
+    currentReturnButton = null;
+
+    try {
+      const result = handler();
+      if (result && typeof result.finally === "function") {
+        return result.finally(() => {
+          overlayConfirmed = false;
+        });
+      }
+      overlayConfirmed = false;
+      return result;
+    } catch (err) {
+      overlayConfirmed = false;
+      throw err;
+    }
+  }
+
+  function openReturnOverlay(bookId, btnEl) {
+    currentReturnButton = btnEl || null;
+    const overlay = document.getElementById("return-overlay");
+
+    if (!overlay) {
+      if (currentReturnButton && typeof currentReturnButton.__prsReturnHandler === "function") {
+        overlayConfirmed = true;
+        const result = currentReturnButton.__prsReturnHandler();
+        if (result && typeof result.finally === "function") {
+          result.finally(() => {
+            overlayConfirmed = false;
+          });
+        } else {
+          overlayConfirmed = false;
+        }
+        if (result && typeof result.catch === "function") {
+          result.catch(() => {});
+        }
+      }
+      currentReturnButton = null;
+      return;
+    }
+
+    overlay.style.display = "flex";
+
+    const yesReturn = document.getElementById("return-overlay-yes");
+    const noReturn = document.getElementById("return-overlay-no");
+
+    if (!yesReturn || !noReturn) {
+      overlayConfirmed = true;
+      const action = triggerReturnAction();
+      if (action && typeof action.catch === "function") {
+        action.catch(() => {});
+      }
+      overlay.style.display = "none";
+      return;
+    }
+
+    yesReturn.replaceWith(yesReturn.cloneNode(true));
+    noReturn.replaceWith(noReturn.cloneNode(true));
+
+    const yes = document.getElementById("return-overlay-yes");
+    const no = document.getElementById("return-overlay-no");
+
+    yes.addEventListener("click", () => {
+      overlay.style.display = "none";
+      overlayConfirmed = true;
+      const action = triggerReturnAction();
+      if (action && typeof action.catch === "function") {
+        action.catch(() => {});
+      }
+    });
+
+    no.addEventListener("click", () => {
+      overlay.style.display = "none";
+      currentReturnButton = null;
+      overlayConfirmed = false;
+    });
+  }
+
+  function openBoughtOverlay(context) {
+    const overlay = document.getElementById("bought-overlay");
+    if (!overlay) {
+      if (context && typeof context.onConfirm === "function") {
+        context.onConfirm();
+      }
+      return;
+    }
+
+    const confirmBtn = document.getElementById("bought-overlay-confirm");
+    const cancelBtn = document.getElementById("bought-overlay-cancel");
+
+    if (!confirmBtn || !cancelBtn) {
+      overlay.style.display = "none";
+      if (context && typeof context.onConfirm === "function") {
+        context.onConfirm();
+      }
+      return;
+    }
+
+    overlay.style.display = "flex";
+    currentBoughtContext = context || null;
+
+    confirmBtn.replaceWith(confirmBtn.cloneNode(true));
+    cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+
+    const confirm = document.getElementById("bought-overlay-confirm");
+    const cancel = document.getElementById("bought-overlay-cancel");
+
+    confirm.addEventListener("click", () => {
+      overlay.style.display = "none";
+      if (currentBoughtContext && typeof currentBoughtContext.onConfirm === "function") {
+        currentBoughtContext.onConfirm();
+      }
+      currentBoughtContext = null;
+    });
+
+    cancel.addEventListener("click", () => {
+      overlay.style.display = "none";
+      if (currentBoughtContext && typeof currentBoughtContext.onCancel === "function") {
+        currentBoughtContext.onCancel();
+      }
+      currentBoughtContext = null;
+    });
+  }
+
+  document.addEventListener("click", e => {
+    const target = e.target;
+    if (target && target.classList && target.classList.contains("owning-return-shelf")) {
+      openReturnOverlay(target.dataset.bookId || "", target);
+    }
+  });
 
   // ---------- Helpers ----------
   function qs(sel, root) { return (root || document).querySelector(sel); }
@@ -55,7 +199,7 @@
     if (!readingSelect) return;
 
     const owningValue = getNormalizedOwningValue(owningSelect);
-    const shouldDisable = owningValue === "borrowing" || owningValue === "borrowed";
+    const shouldDisable = owningValue === "borrowing" || owningValue === "borrowed" || owningValue === "sold";
     const disabledText = readingSelect.getAttribute("data-disabled-text")
       || "Disabled while this book is being borrowed.";
 
@@ -98,7 +242,8 @@
     in_shelf: ["", "in_shelf", "borrowing", "sold", "lost"],
     borrowing: ["", "in_shelf", "borrowing", "sold", "lost"],
     borrowed: ["", "in_shelf", "borrowed"],
-    sold: ["sold"],
+    sold: ["sold", "bought"],
+    bought: ["", "in_shelf"],
     lost: ["", "in_shelf", "lost"],
   };
 
@@ -809,19 +954,25 @@
 
     const select = qs("#owning-status-select", wrap);
     const status = qs("#owning-status-status", wrap);
-    const returnBtn = qs("#owning-return-shelf", wrap);
+    const returnBtn = qs(".owning-return-shelf", wrap);
     const derivedText = qs("#derived-location-text", wrap);
     const note = qs("#owning-status-note", wrap);
     const overlay = qs("#owning-overlay");
     const overlayTitle = qs("#owning-overlay-title");
     const nameInput = qs("#owning-overlay-name");
     const emailInput = qs("#owning-overlay-email");
+    const amountInput = qs("#owning-overlay-amount");
     const confirmBtn = qs("#owning-overlay-confirm");
     const cancelBtn = qs("#owning-overlay-cancel");
     const overlayStatus = qs("#owning-overlay-status");
-    const returnOverlay = qs("#return-overlay");
-    const returnOverlayYes = qs("#return-overlay-yes");
-    const returnOverlayNo = qs("#return-overlay-no");
+    if (returnBtn) {
+      if (!returnBtn.dataset.bookId && bookId) {
+        returnBtn.dataset.bookId = String(bookId);
+      }
+      if (!returnBtn.dataset.userBookId && userBookId) {
+        returnBtn.dataset.userBookId = String(userBookId);
+      }
+    }
 
     const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
       || (window.PRS_BOOK && PRS_BOOK.ajax_url)
@@ -935,6 +1086,10 @@
             overlayTitle.textContent = labelBorrowing;
         }
       }
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = statusValue === "sold" ? "" : "none";
+      }
       if (statusValue === "sold" && priorState === "borrowing") {
         if (overlayTitle) {
           overlayTitle.textContent = "Borrowed person is buying this book:";
@@ -956,6 +1111,10 @@
     function closeOverlay() {
       if (!overlay) return;
       overlay.style.display = "none";
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = "none";
+      }
     }
 
     function isDigitalType() {
@@ -1040,6 +1199,11 @@
         return Promise.reject(new Error("configuration"));
       }
 
+      if (window.PRS_isSaving) {
+        return Promise.resolve(null);
+      }
+      window.PRS_isSaving = true;
+
       const trimmedName = (name || "").trim();
       const trimmedEmail = (email || "").trim();
       const previousState = normalizeOwningState(
@@ -1062,6 +1226,13 @@
 
       const rowEl = select.closest("tr");
 
+      let amountValue = "";
+      if (options && Object.prototype.hasOwnProperty.call(options, "amount")) {
+        amountValue = options.amount == null ? "" : String(options.amount);
+      } else if (amountInput && amountInput.style.display !== "none") {
+        amountValue = amountInput.value.trim();
+      }
+
       const body = new URLSearchParams({
         action: "save_owning_contact",
         book_id: String(bookId),
@@ -1070,6 +1241,7 @@
         contact_name: trimmedName,
         contact_email: trimmedEmail,
         transaction_type: transactionType,
+        amount: amountValue,
         nonce: owningNonce,
       });
 
@@ -1086,25 +1258,27 @@
           }
 
           const payload = res.data || {};
+          const savedStatus = typeof payload.owning_status === "string" ? payload.owning_status : normalizedStatus;
           const nextName = typeof payload.counterparty_name === "string" ? payload.counterparty_name : trimmedName;
           const nextEmail = typeof payload.counterparty_email === "string" ? payload.counterparty_email : trimmedEmail;
+          const normalizedSaved = normalizeOwningState(savedStatus);
 
           lastContactName = nextName || "";
-          savedOwningStatus = statusValue;
+          savedOwningStatus = savedStatus;
 
           wrap.setAttribute("data-contact-name", lastContactName);
           wrap.setAttribute("data-contact-email", nextEmail || "");
 
-          if (contactStatuses.indexOf(statusValue) !== -1) {
+          if (contactStatuses.indexOf(savedStatus) !== -1) {
             const today = new Date().toISOString().split("T")[0];
             setLoanDate(today);
           } else {
             setLoanDate("");
           }
 
-          updateDerived(statusValue);
-          applyStatusDescription(statusValue, lastContactName, {
-            rich: contactStatuses.indexOf(statusValue) !== -1 && !!loanDate,
+          updateDerived(savedStatus);
+          applyStatusDescription(savedStatus, lastContactName, {
+            rich: contactStatuses.indexOf(savedStatus) !== -1 && !!loanDate,
             date: loanDate,
           });
 
@@ -1120,10 +1294,15 @@
           }
 
           if (select) {
-            select.value = statusValue;
+            select.value = savedStatus;
           }
           toggleReadingStatusLock(select);
-          filterOwningOptions(select, statusValue);
+          filterOwningOptions(select, savedStatus);
+          if (returnBtn) {
+            const shouldShowReturn = normalizedSaved === "borrowing" || normalizedSaved === "borrowed";
+            returnBtn.style.display = shouldShowReturn ? "" : "none";
+            returnBtn.disabled = false;
+          }
 
           return res;
         })
@@ -1142,16 +1321,25 @@
           updateDerived(savedOwningStatus);
           toggleReadingStatusLock(select);
           filterOwningOptions(select, savedOwningStatus);
+          if (returnBtn) {
+            const shouldShowReturn = savedOwningStatus === "borrowing" || savedOwningStatus === "borrowed";
+            returnBtn.style.display = shouldShowReturn ? "" : "none";
+            returnBtn.disabled = false;
+          }
           throw err;
+        })
+        .finally(() => {
+          window.PRS_isSaving = false;
         });
     }
 
-    function markAsReturned() {
+    function markAsReturned(triggerBtn) {
       if (!ajaxUrl || !bookId || !userBookId) {
         console.warn("Missing owning overlay configuration.");
         return Promise.reject(new Error("configuration"));
       }
 
+      const activeBtn = triggerBtn || returnBtn;
       const body = new URLSearchParams({
         action: "mark_as_returned",
         book_id: String(bookId),
@@ -1163,8 +1351,8 @@
         status.style.color = "";
         status.textContent = "Saving...";
       }
-      if (returnBtn) {
-        returnBtn.disabled = true;
+      if (activeBtn) {
+        activeBtn.disabled = true;
       }
 
       return fetch(ajaxUrl, {
@@ -1192,9 +1380,9 @@
           }
           toggleReadingStatusLock(select);
           filterOwningOptions(select, "");
-          if (returnBtn) {
-            returnBtn.style.display = "none";
-            returnBtn.disabled = false;
+          if (activeBtn) {
+            activeBtn.style.display = "none";
+            activeBtn.disabled = false;
           }
 
           if (status) {
@@ -1211,11 +1399,14 @@
             status.style.color = "#b00020";
             status.textContent = msg;
           }
-          if (returnBtn) {
-            returnBtn.disabled = false;
+          if (activeBtn) {
+            activeBtn.disabled = false;
           }
           filterOwningOptions(select, savedOwningStatus);
           throw err;
+        })
+        .finally(() => {
+          overlayConfirmed = false;
         });
     }
 
@@ -1229,6 +1420,13 @@
       toggleReadingStatusLock(select);
       filterOwningOptions(select, savedOwningStatus);
       select.addEventListener("change", () => {
+        if (overlayConfirmed) {
+          overlayConfirmed = false;
+          return;
+        }
+        if (window.PRS_isSaving) {
+          return;
+        }
         if (select.disabled) {
           toggleReadingStatusLock(select);
           return;
@@ -1253,6 +1451,30 @@
           return;
         }
 
+        if (val === "bought") {
+          const revertSelection = () => {
+            select.value = savedOwningStatus;
+            toggleReadingStatusLock(select);
+            filterOwningOptions(select, savedOwningStatus);
+          };
+
+          revertSelection();
+
+          openBoughtOverlay({
+            onConfirm: () => {
+              saveOwningContact("bought", "", "", {
+                previousValue: savedOwningStatus,
+                fromOverlay: false,
+                amount: "",
+              }).catch(() => {
+                revertSelection();
+              });
+            },
+            onCancel: revertSelection,
+          });
+          return;
+        }
+
         if (val === "borrowed" || val === "borrowing" || val === "sold") {
           openOverlayFor(val, previousState);
           return;
@@ -1265,44 +1487,8 @@
       });
     }
 
-    function openReturnOverlay() {
-      if (returnOverlay) {
-        returnOverlay.style.display = "flex";
-      } else {
-        handleReturnConfirmation();
-      }
-    }
-
-    function closeReturnOverlay() {
-      if (returnOverlay) {
-        returnOverlay.style.display = "none";
-      }
-    }
-
-    function handleReturnConfirmation() {
-      closeReturnOverlay();
-      markAsReturned();
-    }
-
     if (returnBtn) {
-      returnBtn.addEventListener("click", () => {
-        if (returnBtn.disabled) {
-          return;
-        }
-        openReturnOverlay();
-      });
-    }
-
-    if (returnOverlayNo) {
-      returnOverlayNo.addEventListener("click", () => {
-        closeReturnOverlay();
-      });
-    }
-
-    if (returnOverlayYes) {
-      returnOverlayYes.addEventListener("click", () => {
-        handleReturnConfirmation();
-      });
+      returnBtn.__prsReturnHandler = () => markAsReturned(returnBtn);
     }
 
     if (confirmBtn) {
@@ -1776,6 +1962,7 @@
     const overlayTitle = qs("#owning-overlay-title");
     const nameInput = qs("#owning-overlay-name");
     const emailInput = qs("#owning-overlay-email");
+    const amountInput = qs("#owning-overlay-amount");
     const confirmBtn = qs("#owning-overlay-confirm");
     const cancelBtn = qs("#owning-overlay-cancel");
     const statusMsg = qs("#owning-overlay-status");
@@ -1844,6 +2031,10 @@
       currentRowInfo = null;
       previousValue = "";
       clearOverlayMessage();
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = "none";
+      }
     }
 
     function openOverlay(select, status, rowInfo) {
@@ -1871,6 +2062,11 @@
       }
       if (emailInput) {
         emailInput.value = select ? (select.dataset.contactEmail || "") : "";
+      }
+
+      if (amountInput) {
+        amountInput.value = "";
+        amountInput.style.display = status === "sold" ? "" : "none";
       }
 
       overlay.style.display = "flex";
@@ -1935,6 +2131,21 @@
 
       toggleReadingStatusLock(select);
       filterOwningOptions(select, storedStatus || "");
+
+      const row = select.closest("tr");
+      const returnBtn = row ? row.querySelector(".owning-return-shelf") : null;
+      if (returnBtn) {
+        const normalizedStatus = normalizeStatus(storedStatus || "");
+        const shouldShow = normalizedStatus === "borrowing" || normalizedStatus === "borrowed";
+        returnBtn.style.display = shouldShow ? "" : "none";
+        if (!returnBtn.dataset.bookId && select.dataset.bookId) {
+          returnBtn.dataset.bookId = select.dataset.bookId;
+        }
+        if (!returnBtn.dataset.userBookId && select.dataset.userBookId) {
+          returnBtn.dataset.userBookId = select.dataset.userBookId;
+        }
+        returnBtn.disabled = select.disabled;
+      }
     }
 
     function saveOwningContact(select, status, name, email, options = {}) {
@@ -1957,10 +2168,22 @@
         return Promise.reject(new Error("configuration"));
       }
 
+      if (window.PRS_isSaving) {
+        return Promise.resolve(null);
+      }
+      window.PRS_isSaving = true;
+
       const fromOverlay = !!options.fromOverlay;
       if (fromOverlay && statusMsg) {
         statusMsg.style.color = "";
         statusMsg.textContent = msgSaving;
+      }
+
+      let amountValue = "";
+      if (options && Object.prototype.hasOwnProperty.call(options, "amount")) {
+        amountValue = options.amount == null ? "" : String(options.amount);
+      } else if (amountInput && amountInput.style.display !== "none") {
+        amountValue = amountInput.value.trim();
       }
 
       const body = new URLSearchParams({
@@ -1971,6 +2194,7 @@
         contact_name: trimmedName,
         contact_email: trimmedEmail,
         transaction_type: transactionType,
+        amount: amountValue,
         nonce,
       });
 
@@ -2039,7 +2263,85 @@
           updateInfoElement(rowInfo, select.dataset.storedStatus || "", select.dataset.contactName || "", select.dataset.activeStart || "");
           toggleReadingStatusLock(select);
           filterOwningOptions(select, previous);
+          const returnBtn = rowEl ? rowEl.querySelector(".owning-return-shelf") : null;
+          if (returnBtn) {
+            const stored = normalizeStatus(select.dataset.storedStatus || "");
+            const shouldShow = stored === "borrowing" || stored === "borrowed";
+            returnBtn.style.display = shouldShow ? "" : "none";
+            returnBtn.disabled = select.disabled;
+          }
           return Promise.reject(err);
+        })
+        .finally(() => {
+          window.PRS_isSaving = false;
+        });
+    }
+
+    function markAsReturnedRow(select, returnBtn, rowInfo) {
+      const bookId = parseInt((returnBtn && returnBtn.dataset.bookId) || select.dataset.bookId || "", 10) || 0;
+      const userBookId = parseInt((returnBtn && returnBtn.dataset.userBookId) || select.dataset.userBookId || "", 10) || 0;
+
+      if (!ajaxUrl || !nonce || !bookId || !userBookId) {
+        console.warn("Missing owning overlay configuration.");
+        overlayConfirmed = false;
+        return Promise.reject(new Error("configuration"));
+      }
+
+      if (returnBtn) {
+        returnBtn.disabled = true;
+      }
+
+      const body = new URLSearchParams({
+        action: "mark_as_returned",
+        book_id: String(bookId),
+        user_book_id: String(userBookId),
+        nonce,
+      });
+
+      return fetch(ajaxUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        credentials: "same-origin",
+        body,
+      })
+        .then(r => r.json())
+        .then(res => {
+          if (!res || !res.success) {
+            throw res;
+          }
+
+          select.dataset.currentValue = "in_shelf";
+          select.dataset.storedStatus = "";
+          select.dataset.contactName = "";
+          select.dataset.contactEmail = "";
+          select.dataset.activeStart = "";
+          select.value = "in_shelf";
+
+          const row = select.closest("tr");
+          if (row) {
+            row.setAttribute("data-owning-status", "in_shelf");
+          }
+
+          updateInfoElement(rowInfo, "", "", "");
+          toggleReadingStatusLock(select);
+          filterOwningOptions(select, "");
+
+          if (returnBtn) {
+            returnBtn.style.display = "none";
+            returnBtn.disabled = false;
+          }
+
+          overlayConfirmed = false;
+          return res;
+        })
+        .catch(err => {
+          if (returnBtn) {
+            returnBtn.disabled = false;
+          }
+          const message = (err && err.data && err.data.message) ? err.data.message : msgAlert;
+          window.alert(message);
+          overlayConfirmed = false;
+          throw err;
         });
     }
 
@@ -2066,11 +2368,33 @@
         select.dataset.activeStart = "";
       }
 
-      const rowInfo = select.closest("tr") ? select.closest("tr").querySelector(".owning-status-info") : null;
+      const row = select.closest("tr");
+      const rowInfo = row ? row.querySelector(".owning-status-info") : null;
+      const returnBtn = row ? row.querySelector(".owning-return-shelf") : null;
+      if (returnBtn) {
+        if (!returnBtn.dataset.bookId && select.dataset.bookId) {
+          returnBtn.dataset.bookId = select.dataset.bookId;
+        }
+        if (!returnBtn.dataset.userBookId && select.dataset.userBookId) {
+          returnBtn.dataset.userBookId = select.dataset.userBookId;
+        }
+        const initialState = normalizeStatus(select.dataset.currentValue || select.value || "");
+        const shouldShowReturn = initialState === "borrowing" || initialState === "borrowed";
+        returnBtn.style.display = shouldShowReturn ? "" : "none";
+        returnBtn.disabled = select.disabled;
+        returnBtn.__prsReturnHandler = () => markAsReturnedRow(select, returnBtn, rowInfo);
+      }
       toggleReadingStatusLock(select);
       filterOwningOptions(select, select.dataset.currentValue || select.value || "");
 
       select.addEventListener("change", () => {
+        if (overlayConfirmed) {
+          overlayConfirmed = false;
+          return;
+        }
+        if (window.PRS_isSaving) {
+          return;
+        }
         if (select.disabled) {
           select.value = select.dataset.currentValue || select.value || "";
           toggleReadingStatusLock(select);
@@ -2080,6 +2404,33 @@
 
         const rawValue = normalizeStatus(select.value);
         const previous = select.dataset.currentValue || normalizeStatus(select.value);
+
+        if (rawValue === "bought") {
+          const revertSelection = () => {
+            select.value = previous;
+            select.dataset.currentValue = previous;
+            toggleReadingStatusLock(select);
+            filterOwningOptions(select, previous);
+          };
+
+          revertSelection();
+
+          openBoughtOverlay({
+            onConfirm: () => {
+              saveOwningContact(select, "bought", "", "", {
+                rowInfo,
+                previousValue: previous,
+                fromOverlay: false,
+                amount: "",
+              }).catch(() => {
+                revertSelection();
+              });
+            },
+            onCancel: revertSelection,
+          });
+          return;
+        }
+
         toggleReadingStatusLock(select);
         filterOwningOptions(select, rawValue);
 

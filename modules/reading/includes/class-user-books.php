@@ -405,22 +405,28 @@ class Politeia_Reading_User_Books {
 
                 $status_raw = isset( $_POST['owning_status'] ) ? wp_unslash( $_POST['owning_status'] ) : '';
                 $status_key = is_string( $status_raw ) ? sanitize_key( $status_raw ) : '';
+                $is_reacquire = ( 'bought' === $status_key );
                 $transaction_raw = isset( $_POST['transaction_type'] ) ? wp_unslash( $_POST['transaction_type'] ) : '';
                 $transaction_type = $transaction_raw ? sanitize_key( $transaction_raw ) : '';
 
                 $current_state = Politeia_Loan_Manager::normalize_state( $row->owning_status );
                 $requested_status = '';
-                if ( '' === $status_raw || null === $status_raw || 'in_shelf' === $status_key ) {
+                if ( '' === $status_raw || null === $status_raw || 'in_shelf' === $status_key || $is_reacquire ) {
                         $requested_status = '';
                 } else {
                         $requested_status = $status_key;
                 }
 
-                $next_state = Politeia_Loan_Manager::normalize_state( $requested_status );
+                $next_state = $is_reacquire
+                        ? Politeia_Loan_Manager::DEFAULT_STATE
+                        : Politeia_Loan_Manager::normalize_state( $requested_status );
                 $validation = Politeia_Loan_Manager::validate_transition(
                         $current_state,
                         $next_state,
-                        array( 'transaction_type' => $transaction_type )
+                        array(
+                                'transaction_type' => $transaction_type,
+                                'requested_state'  => $status_key,
+                        )
                 );
 
                 if ( is_wp_error( $validation ) ) {
@@ -437,6 +443,20 @@ class Politeia_Reading_User_Books {
                 $name_trimmed    = trim( $name_sanitized );
                 $email_sanitized = sanitize_email( $email_raw );
                 $email_trimmed   = $email_sanitized ? $email_sanitized : '';
+
+                $amount_raw = isset( $_POST['amount'] ) ? wp_unslash( $_POST['amount'] ) : '';
+                $amount_value = null;
+                if ( '' !== $amount_raw && null !== $amount_raw ) {
+                        if ( is_string( $amount_raw ) ) {
+                                $normalized_amount = str_replace( ',', '.', trim( $amount_raw ) );
+                        } else {
+                                $normalized_amount = $amount_raw;
+                        }
+
+                        if ( is_numeric( $normalized_amount ) ) {
+                                $amount_value = round( (float) $normalized_amount, 2 );
+                        }
+                }
 
                 $requires_contact = in_array( $next_state, array( 'borrowed', 'borrowing', 'sold' ), true );
 
@@ -494,6 +514,7 @@ class Politeia_Reading_User_Books {
                                         'counterparty_name'  => $update['counterparty_name'] ?? $safe_name,
                                         'counterparty_email' => $update['counterparty_email'] ?? $safe_email,
                                         'transaction_type'   => $transaction_type,
+                                        'amount'             => ( 'sold' === $next_state ) ? $amount_value : null,
                                 )
                         );
                 }
@@ -548,6 +569,20 @@ class Politeia_Reading_User_Books {
                         self::json_error( $validation->get_error_message(), 400 );
                 }
 
+                global $wpdb;
+                $table = self::loans_table();
+                $loan  = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT counterparty_name, counterparty_email FROM {$table} WHERE user_id=%d AND book_id=%d AND notes LIKE %s ORDER BY id DESC LIMIT 1",
+                                (int) $row->user_id,
+                                $book_id,
+                                '%"state":"borrowing"%'
+                        )
+                );
+
+                $counterparty_name  = $loan && ! empty( $loan->counterparty_name ) ? $loan->counterparty_name : $row->counterparty_name;
+                $counterparty_email = $loan && ! empty( $loan->counterparty_email ) ? $loan->counterparty_email : $row->counterparty_email;
+
                 $now_gmt = current_time( 'mysql', true );
 
                 self::update_user_book(
@@ -567,8 +602,8 @@ class Politeia_Reading_User_Books {
                         $current_state,
                         Politeia_Loan_Manager::DEFAULT_STATE,
                         array(
-                                'counterparty_name'  => null,
-                                'counterparty_email' => null,
+                                'counterparty_name'  => $counterparty_name ? $counterparty_name : null,
+                                'counterparty_email' => $counterparty_email ? $counterparty_email : null,
                         )
                 );
 

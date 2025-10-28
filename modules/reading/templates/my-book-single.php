@@ -541,12 +541,21 @@ wp_add_inline_script(
                                         <option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
                                         <option value="borrowed"  <?php selected( $ub->owning_status, 'borrowed' ); ?>><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
                                         <option value="borrowing" <?php selected( $ub->owning_status, 'borrowing' ); ?>><?php esc_html_e( 'Borrowing', 'politeia-reading' ); ?></option>
+                                        <option value="bought"    <?php selected( $ub->owning_status, 'bought' ); ?>><?php esc_html_e( 'Bought', 'politeia-reading' ); ?></option>
                                         <option value="sold"      <?php selected( $ub->owning_status, 'sold' ); ?>><?php esc_html_e( 'Sold', 'politeia-reading' ); ?></option>
                                         <option value="lost"      <?php selected( $ub->owning_status, 'lost' ); ?>><?php esc_html_e( 'Lost', 'politeia-reading' ); ?></option>
                                 </select>
 
                                 <?php $show_return_btn = in_array( $ub->owning_status, array( 'borrowed', 'borrowing' ), true ); ?>
-                                <button type="button" id="owning-return-shelf" class="prs-btn" style="<?php echo $show_return_btn ? '' : 'display:none;'; ?>" <?php disabled( $is_digital ); ?>>
+                                <button
+                                        type="button"
+                                        id="owning-return-shelf"
+                                        class="prs-btn owning-return-shelf"
+                                        data-book-id="<?php echo (int) $book->id; ?>"
+                                        data-user-book-id="<?php echo (int) $ub->id; ?>"
+                                        style="<?php echo $show_return_btn ? '' : 'display:none;'; ?>"
+                                        <?php disabled( $is_digital ); ?>
+                                >
                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                 </button>
 
