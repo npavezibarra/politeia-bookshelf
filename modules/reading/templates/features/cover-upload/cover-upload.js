@@ -705,6 +705,11 @@
     if (!frame) return;
 
     const placeholder = document.getElementById('prs-cover-placeholder');
+    const figure = document.getElementById('prs-book-cover-figure');
+    let transferredActions = null;
+    if (placeholder) {
+      transferredActions = placeholder.querySelector('.prs-cover-actions');
+    }
     if (placeholder && placeholder.parentNode) {
       placeholder.parentNode.removeChild(placeholder);
     }
@@ -714,7 +719,13 @@
       img = document.createElement('img');
       img.id = 'prs-cover-img';
       img.className = 'prs-cover-img';
-      frame.appendChild(img);
+      if (figure) {
+        figure.appendChild(img);
+      } else {
+        frame.appendChild(img);
+      }
+    } else if (figure && !figure.contains(img)) {
+      figure.appendChild(img);
     }
 
     let finalSrc = src;
@@ -725,7 +736,27 @@
     const { title } = getBookDetails();
     if (title) img.alt = title;
 
+    let overlay = frame.querySelector('.prs-cover-overlay');
+    if (!overlay) {
+      overlay = document.createElement('div');
+      overlay.className = 'prs-cover-overlay';
+      if (figure && figure.nextSibling) {
+        frame.insertBefore(overlay, figure.nextSibling);
+      } else {
+        frame.appendChild(overlay);
+      }
+    }
+
+    if (transferredActions) {
+      const existingActions = overlay.querySelector('.prs-cover-actions');
+      if (existingActions && existingActions !== transferredActions && existingActions.parentNode) {
+        existingActions.parentNode.removeChild(existingActions);
+      }
+      overlay.appendChild(transferredActions);
+    }
+
     frame.classList.add('has-image');
+    frame.setAttribute('data-cover-state', 'image');
     if (typeof source === 'string') {
       updateCoverAttribution(source);
     }

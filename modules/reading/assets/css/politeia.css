@@ -1304,7 +1304,8 @@ select#prs-type-book {
         background:none;
         }
 
-        #prs-book-cover .prs-cover-frame.has-image{
+        #prs-book-cover .prs-cover-frame.has-image,
+        #prs-book-cover .prs-cover-frame[data-cover-state="image"]{
         background:none;
         }
 
@@ -1419,13 +1420,17 @@ select#prs-type-book {
         pointer-events:auto;
         }
         .prs-cover-frame.has-image:hover .prs-cover-overlay,
-        .prs-cover-frame.has-image:focus-within .prs-cover-overlay{
+        .prs-cover-frame.has-image:focus-within .prs-cover-overlay,
+        .prs-cover-frame[data-cover-state="image"]:hover .prs-cover-overlay,
+        .prs-cover-frame[data-cover-state="image"]:focus-within .prs-cover-overlay{
         opacity:1;
         background:rgba(0,0,0,0.25);
         pointer-events:auto;
         }
         .prs-cover-frame.has-image:hover .prs-cover-overlay .prs-cover-actions,
-        .prs-cover-frame.has-image:focus-within .prs-cover-overlay .prs-cover-actions{
+        .prs-cover-frame.has-image:focus-within .prs-cover-overlay .prs-cover-actions,
+        .prs-cover-frame[data-cover-state="image"]:hover .prs-cover-overlay .prs-cover-actions,
+        .prs-cover-frame[data-cover-state="image"]:focus-within .prs-cover-overlay .prs-cover-actions{
         opacity:1;
         transform:translateY(0);
         }

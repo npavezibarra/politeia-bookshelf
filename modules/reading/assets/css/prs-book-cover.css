@@ -2,10 +2,28 @@
    DEFAULT COVER (NO IMAGE)
    =========================== */
 /* When there is NO image */
-.prs-cover-frame:not(.has-image),
-.prs-cover-frame:has(.prs-cover-placeholder) {
+.prs-cover-frame[data-cover-state="empty"] {
+    inline-size: 190px;
+    block-size: 280px;                 /* ← fixed height */
     width: 190px;
-    height: 280px;                    /* ← fixed height */
+    height: 280px;
+    background: linear-gradient(180deg, #b88a4c 0%, #3a230f 100%);
+    color: #1c1c1c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-radius: 3px;
+    overflow: hidden;
+    position: relative;
+}
+
+/* Fallback if attribute missing but placeholder is present */
+.prs-cover-frame:not([data-cover-state]):not(.has-image) {
+    inline-size: 190px;
+    block-size: 280px;
+    width: 190px;
+    height: 280px;
     background: linear-gradient(180deg, #b88a4c 0%, #3a230f 100%);
     color: #1c1c1c;
     display: flex;
@@ -45,14 +63,16 @@ h3#prs-book-author-placeholder {
 }
 
 /* Buttons shown only in default mode */
-.prs-cover-frame:not(.has-image) .prs-cover-actions {
+.prs-cover-frame[data-cover-state="empty"] .prs-cover-actions,
+.prs-cover-frame:not([data-cover-state]) .prs-cover-actions {
     display: flex;
     justify-content: center;
     gap: 6px;
     margin-top: 10px;
 }
 
-.prs-cover-frame:not(.has-image) .prs-cover-btn {
+.prs-cover-frame[data-cover-state="empty"] .prs-cover-btn,
+.prs-cover-frame:not([data-cover-state]) .prs-cover-btn {
     font-size: 13px;
     border-radius: 6px;
     padding: 6px 12px;
@@ -61,7 +81,8 @@ h3#prs-book-author-placeholder {
     cursor: pointer;
 }
 
-/* Hide buttons when image exists */
-.prs-cover-frame.has-image .prs-cover-actions {
+/* Hide any orphaned default actions when an image is present */
+.prs-cover-frame[data-cover-state="image"] > .prs-cover-actions,
+.prs-cover-frame[data-cover-state="image"] .prs-cover-placeholder .prs-cover-actions {
     display: none !important;
 }
