@@ -1,0 +1,62 @@
+/* ===========================
+   DEFAULT COVER (NO IMAGE)
+   =========================== */
+.prs-cover-frame:not(.has-image) {
+    height: 280px;
+    background: linear-gradient(180deg, #b88a4c 0%, #3a230f 100%);
+    color: #1c1c1c;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    border-radius: 3px;
+    position: relative;
+}
+
+/* Title + Author */
+.prs-cover-frame:not(.has-image) .prs-cover-title {
+    font-size: 22px;
+    font-weight: 700;
+    line-height: 1.1;
+    margin-bottom: 6px;
+}
+
+.prs-cover-frame:not(.has-image) .prs-cover-author {
+    font-size: 16px;
+    font-weight: 500;
+    opacity: 0.85;
+}
+
+/* Upload/Search buttons visible in default mode */
+.prs-cover-frame:not(.has-image) .prs-cover-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-top: 12px;
+}
+
+/* Style the buttons themselves */
+.prs-cover-frame:not(.has-image) .prs-cover-btn {
+    font-size: 13px;
+    border-radius: 6px;
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+/* Hide actions when an image exists */
+.prs-cover-frame.has-image .prs-cover-actions {
+    display: none;
+}
+
+/* Placeholder box itself */
+.prs-cover-placeholder {
+    border-radius: 0px;
+    width: 100%;
+    padding: 20px;
+}
+
+/* Maintain consistent layout */
+.prs-book-cover {
+    width: 100%;
+}
+
