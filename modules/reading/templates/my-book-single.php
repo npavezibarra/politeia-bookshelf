@@ -175,10 +175,10 @@ wp_add_inline_script(
         color:#868686;
         outline:0;
         text-decoration:none;
-        border:1px solid #b3b3b3;
-        padding:1px 6px;
-        border-radius:4px;
-        background:#ffffff;
+        border:none;
+        padding:0;
+        border-radius:0;
+        background:none;
         display:inline-block;
         }
         .prs-single-grid{
