@@ -1399,6 +1399,72 @@ display:inline-block;
         font-size:clamp(14px, 2vw, 18px);
         }
 
+/* ============================================
+   Responsive Book Header Layout
+   Aims to replicate the Tailwind demo behavior
+   without changing HTML structure.
+   ============================================ */
+
+/* Mobile-first: ≤700px */
+#prs-book-info.prs-book-info-grid {
+        display:flex;
+        flex-wrap:wrap;
+        align-items:flex-start;
+        gap:0;
+}
+
+/* 1) Book cover — fixed column on the left */
+#prs-book-info > #prs-book-cover {
+        width:190px;
+        flex:0 0 190px;
+        order:1;
+}
+
+/* 2) Main info — flexible column to the right of the cover */
+#prs-book-info > #prs-book-info__main {
+        flex:1 1 auto;
+        order:2;
+        margin-left:16px;
+        min-width:0;
+        width:auto;
+}
+
+/* 3) Sidebar — full-width row underneath */
+#prs-book-info > #prs-book-info__sidebar {
+        flex:0 0 100%;
+        width:100%;
+        order:3;
+        margin-top:16px;
+        min-width:0;
+}
+
+/* Desktop: >700px — one-row, three columns */
+@media (min-width: 701px) {
+        #prs-book-info.prs-book-info-grid {
+                flex-wrap:nowrap;
+                gap:24px;
+        }
+
+        #prs-book-info > #prs-book-cover {
+                order:1;
+                width:190px;
+                flex:0 0 190px;
+        }
+
+        #prs-book-info > #prs-book-info__main {
+                order:2;
+                margin-left:0;
+                flex:1 1 0;
+        }
+
+        #prs-book-info > #prs-book-info__sidebar {
+                order:3;
+                margin-top:0;
+                flex:1 1 0;
+                width:auto;
+        }
+}
+
         h2#prs-book-title-placeholder{
         font-size:20px !important;
         line-height:1 !important;
