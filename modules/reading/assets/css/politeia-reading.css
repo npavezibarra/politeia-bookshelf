@@ -98,6 +98,25 @@
    ============================================ */
 .prs-book-cover,
 .prs-cover-frame,
-.prs-book-cover img {
+.prs-book-cover img,
+.prs-cover-placeholder {
         border-radius: 0 !important;
+}
+
+/* ============================================
+   Placeholder sizing adjustments — <900px
+   ============================================ */
+@media (max-width: 900px) {
+        div#prs-cover-placeholder {
+                padding: 12px 8px;
+        }
+
+        h2#prs-book-title-placeholder {
+                font-size: 10px !important;
+        }
+
+        h3#prs-book-author-placeholder {
+                font-size: 8px !important;
+                line-height: 1;
+        }
 }
