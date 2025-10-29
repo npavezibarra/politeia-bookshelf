@@ -81,3 +81,47 @@
                 max-height: 140px;
         }
 }
+
+/* ============================================
+   Mobile adjustments (≤580px)
+   ============================================ */
+@media (max-width: 580px) {
+
+        /* 1. Stack rating and format vertically */
+        .prs-field--rating-type {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+        }
+
+        /* 2. Add spacing between stars and format selector */
+        .prs-rating-block,
+        .prs-type-book {
+                margin-top: 5px;
+                margin-bottom: 5px;
+                width: 100%;
+        }
+
+        /* 3. Adjust font sizes for readability */
+        span.prs-book-title__text {
+                font-size: 18px;
+        }
+
+        .prs-meta {
+                font-size: 13px;
+        }
+
+        .prs-field .label {
+                font-weight: 600;
+                display: block;
+                margin-bottom: 4px;
+                font-size: 12px;
+        }
+
+        /* 4. Standardize widths for Reading and Owning Status selectors */
+        #reading-status-select,
+        #owning-status-select {
+                width: 100%;
+                max-width: 220px;
+        }
+}
