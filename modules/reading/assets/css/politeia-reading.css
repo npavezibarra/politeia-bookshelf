@@ -1,0 +1,42 @@
+/* ============================================
+   Responsive layout for Book Cover / Main / Sidebar
+   ============================================ */
+
+/* Base mobile-first layout (≤700px) */
+.prs-book-info {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 16px;
+}
+
+.prs-book-cover {
+    flex: 0 0 190px;
+    max-width: 190px;
+}
+
+.prs-book-info__main {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+.prs-book-info__sidebar {
+    flex: 1 0 100%;
+    max-width: 100%;
+}
+
+/* --------------------------------------------
+   Desktop layout (≥701px): three-column row
+   -------------------------------------------- */
+@media (min-width: 701px) {
+    .prs-book-info {
+        flex-wrap: nowrap;
+        gap: 24px;
+    }
+
+    .prs-book-info__main,
+    .prs-book-info__sidebar {
+        flex: 1 1 50%;
+        max-width: none;
+    }
+}
