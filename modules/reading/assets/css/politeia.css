@@ -1178,6 +1178,41 @@ select#prs-type-book {
         }
 }
 
+@media screen and (max-width: 550px) {
+        span.prs-book-title__text {
+                font-size: 18px;
+        }
+
+        .prs-meta {
+                font-size: 13px;
+        }
+
+        .prs-field .label {
+                font-weight: 600;
+                display: block;
+                margin-bottom: 4px;
+                font-size: 12px;
+        }
+
+        #fld-reading-status select,
+        #fld-owning-status select {
+                width: 100%;
+                max-width: 220px;
+        }
+
+        div#prs-cover-placeholder {
+                padding: 15px 10px;
+        }
+
+        h2#prs-book-title-placeholder {
+                font-size: 10px !important;
+        }
+
+        h3#prs-book-author-placeholder {
+                font-size: 8px;
+        }
+}
+
 /* Full reset so no theme/UA button styles sneak in */
 .prs-star {
         all: unset;                 /* wipe default <button> styles */
@@ -1276,6 +1311,11 @@ display:inline-block;
         padding:0;
         }
 
+        .prs-cover-frame,
+        .prs-book-cover img{
+        border-radius:0 !important;
+        }
+
         /* Book info layout */
         .prs-book-info-grid{
         display:grid;
@@ -1330,7 +1370,7 @@ display:inline-block;
         display:block;
         width:100%;
         height:auto;
-        border-radius:6px;
+        border-radius:0 !important;
         box-shadow:0 1px 3px rgba(0,0,0,0.15);
         background:none;
         }
@@ -1363,8 +1403,15 @@ display:inline-block;
         position: relative;
         overflow: hidden;
         background: #eee;
-        border-radius: 0;
+        border-radius:0 !important;
         align-self: flex-start;
+        }
+
+        @media screen and (max-width: 950px) and (min-width: 900px){
+        .prs-cover-frame,
+        .prs-book-cover{
+        height:140px !important;
+        }
         }
         .prs-cover-img{ width:100%; height:auto; object-fit:contain; display:block; border-radius:inherit; }
         .prs-cover-placeholder{
@@ -1601,6 +1648,20 @@ div#fld-user-rating {
         border-top: 1px solid #e4e5e9;
         border-bottom: 1px solid #e4e5e9;
         padding: 10px 0px;
+}
+
+@media screen and (max-width: 580px) {
+        #fld-user-rating {
+                display: flex;
+                flex-direction: column;
+                align-items: flex-start;
+        }
+
+        #fld-user-rating .prs-rating-block,
+        #fld-user-rating .prs-type-book {
+                margin-top: 5px;
+                margin-bottom: 5px;
+        }
 }
 
 /* === PURCHASE ROW LAYOUT === */
