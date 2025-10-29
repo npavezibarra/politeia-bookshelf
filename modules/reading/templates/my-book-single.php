@@ -675,6 +675,27 @@ wp_add_inline_script(
         </div>
 </div>
 
+<div
+        id="prs-session-modal"
+        class="prs-session-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-hidden="true"
+        aria-label="<?php esc_attr_e( 'Session recorder', 'politeia-reading' ); ?>"
+>
+        <div class="prs-session-modal__content">
+                <button
+                        type="button"
+                        id="prs-session-recorder-close"
+                        class="prs-session-modal__close"
+                        aria-label="<?php esc_attr_e( 'Close session recorder', 'politeia-reading' ); ?>"
+                >
+                        ×
+                </button>
+                <?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $book->id . '"]' ); ?>
+        </div>
+</div>
+
 <?php prs_render_owning_overlay( array( 'heading' => $label_borrowing ) ); ?>
 
 <div id="return-overlay" class="prs-overlay" style="display:none;">
