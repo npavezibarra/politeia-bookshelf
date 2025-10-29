@@ -1863,3 +1863,43 @@ p#derived-location {
     min-width: 0;
   }
 }
+
+/* ===========================
+   Desktop layout (≥700px)
+   =========================== */
+@media (min-width: 700px) {
+
+  .prs-book-info-grid {
+    --prs-sidebar-width: 400px;
+  }
+
+  /* Keep header row horizontal */
+  .prs-book-header-wrap {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 32px;
+    justify-content: flex-start;
+    grid-column: 1 / span 2;
+  }
+
+  /* Cover sizing: natural proportions */
+  #prs-book-cover {
+    flex: 0 0 auto;
+    width: auto;
+    max-width: 240px;
+  }
+
+  /* Match main info width to sidebar width */
+  .prs-book-info__main {
+    flex: 0 1 var(--prs-sidebar-width, 400px);
+    width: 100%;
+    max-width: var(--prs-sidebar-width, 400px);
+    min-width: 0;
+  }
+
+  .prs-book-info__sidebar {
+    width: 100%;
+    max-width: var(--prs-sidebar-width, 400px);
+  }
+}
