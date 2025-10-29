@@ -1,0 +1,44 @@
+@media (max-width: 700px) {
+    #prs-book-info.prs-book-info-grid {
+        display: flex;
+        flex-direction: row;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    #prs-book-info.prs-book-info-grid .prs-book-info__cover,
+    #prs-book-info.prs-book-info-grid #prs-book-cover {
+        flex: 0 0 80px;
+        max-width: 80px;
+        width: 80px;
+    }
+
+    #prs-book-info.prs-book-info-grid .prs-cover-frame {
+        inline-size: 80px;
+        block-size: auto;
+        width: 80px;
+        max-width: 80px;
+        flex: 0 0 80px;
+        aspect-ratio: 2 / 3;
+    }
+
+    #prs-book-info.prs-book-info-grid .prs-cover-img {
+        width: 100%;
+        height: auto;
+    }
+
+    #prs-book-info.prs-book-info-grid .prs-cover-placeholder {
+        padding: 0;
+    }
+
+    #prs-book-info.prs-book-info-grid .prs-cover-placeholder .prs-cover-title,
+    #prs-book-info.prs-book-info-grid .prs-cover-placeholder .prs-cover-author,
+    #prs-book-info.prs-book-info-grid .prs-cover-placeholder .prs-cover-actions {
+        display: none !important;
+    }
+
+    #prs-book-info.prs-book-info-grid .prs-book-info__main {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+}
