@@ -217,7 +217,7 @@ wp_add_inline_script(
         min-height:100%;
         height:100%;
         padding:24px;
-        border-radius:8px;
+        border-radius:0px;
         background:linear-gradient(180deg, #b98a55 0%, #3a1d0b 100%);
         color:#111;
         font-family:'Inter', sans-serif;
