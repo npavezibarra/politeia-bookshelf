@@ -60,9 +60,9 @@
 }
 
 /* ============================================
-   Layout Fix — Small screens (≤700px)
+   Layout Fix — Small/Medium screens (≤950px)
    ============================================ */
-@media (max-width: 700px) {
+@media (max-width: 950px) {
         .prs-single-grid {
                 display: block;
                 grid-template-columns: 1fr;
