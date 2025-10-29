@@ -129,6 +129,12 @@ $has_image = ( $final_cover_id > 0 ) || '' !== $cover_url;
 
 /** Encolar assets */
 wp_enqueue_style( 'politeia-reading' );
+wp_enqueue_style(
+        'politeia-reading-layout',
+        POLITEIA_READING_URL . 'assets/css/politeia-reading.css',
+        array( 'politeia-reading' ),
+        POLITEIA_READING_VERSION
+);
 wp_enqueue_script( 'politeia-my-book' ); // asegúrate de registrar este JS en tu plugin/tema
 
 /** Datos al JS principal */
@@ -368,10 +374,10 @@ wp_add_inline_script(
 
         <div id="prs-single-grid" class="prs-single-grid">
 
-        <div id="prs-book-info" class="prs-book-info-grid">
+        <div id="prs-book-info" class="prs-book-info prs-book-info-grid">
 
                 <!-- Columna izquierda: portada -->
-                <section id="prs-book-cover" class="prs-book-info__cover" aria-label="<?php esc_attr_e( 'Book cover', 'politeia-reading' ); ?>">
+                <section id="prs-book-cover" class="prs-book-info__cover prs-book-cover" aria-label="<?php esc_attr_e( 'Book cover', 'politeia-reading' ); ?>">
                         <div
                                 id="prs-cover-frame"
                                 class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>"
@@ -609,7 +615,7 @@ wp_add_inline_script(
                 </section>
         </div>
 
-        <section id="prs-reading-sessions" class="prs-book-sessions">
+        <section id="prs-reading-sessions" class="prs-book-sessions prs-reading-sessions">
                 <h2 class="prs-section-title"><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></h2>
                 <?php if ( $sessions ) : ?>
                         <table class="prs-table prs-sessions-table">
