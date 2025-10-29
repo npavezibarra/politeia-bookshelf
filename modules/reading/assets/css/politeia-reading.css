@@ -2,6 +2,7 @@
    Responsive Book Info Layout — Adjusted
    ============================================ */
 
+/* Mobile-first: ≤950px */
 #prs-book-info.prs-book-info {
         display: flex;
         flex-wrap: wrap;
@@ -29,7 +30,8 @@
         min-width: 0;
 }
 
-@media (min-width: 701px) {
+/* Desktop: >950px — one-row, three columns */
+@media (min-width: 951px) {
         #prs-book-info.prs-book-info {
                 flex-wrap: nowrap;
                 gap: 24px;

@@ -1405,7 +1405,7 @@ display:inline-block;
    without changing HTML structure.
    ============================================ */
 
-/* Mobile-first: ≤700px */
+/* Mobile-first: ≤950px */
 #prs-book-info.prs-book-info-grid {
         display:flex;
         flex-wrap:wrap;
@@ -1415,8 +1415,8 @@ display:inline-block;
 
 /* 1) Book cover — fixed column on the left */
 #prs-book-info > #prs-book-cover {
-        width:190px;
-        flex:0 0 190px;
+        width:90px;
+        flex:0 0 90px;
         order:1;
 }
 
@@ -1438,8 +1438,8 @@ display:inline-block;
         min-width:0;
 }
 
-/* Desktop: >700px — one-row, three columns */
-@media (min-width: 701px) {
+/* Desktop: >950px — one-row, three columns */
+@media (min-width: 951px) {
         #prs-book-info.prs-book-info-grid {
                 flex-wrap:nowrap;
                 gap:24px;
@@ -1454,13 +1454,13 @@ display:inline-block;
         #prs-book-info > #prs-book-info__main {
                 order:2;
                 margin-left:0;
-                flex:1 1 0;
+                flex:1 1 50%;
         }
 
         #prs-book-info > #prs-book-info__sidebar {
                 order:3;
                 margin-top:0;
-                flex:1 1 0;
+                flex:1 1 50%;
                 width:auto;
         }
 }
