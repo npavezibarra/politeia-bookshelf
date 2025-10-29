@@ -1,0 +1,60 @@
+/* ============================================
+   Responsive Book Info Layout — Adjusted
+   ============================================ */
+
+#prs-book-info.prs-book-info {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+}
+
+#prs-book-info.prs-book-info > #prs-book-cover {
+        width: 90px;
+        flex: 0 0 90px;
+        order: 1;
+}
+
+#prs-book-info.prs-book-info > #prs-book-info__main {
+        flex: 1 1 auto;
+        order: 2;
+        margin-left: 16px;
+        min-width: 0;
+}
+
+#prs-book-info.prs-book-info > #prs-book-info__sidebar {
+        flex: 0 0 100%;
+        width: 100%;
+        order: 3;
+        margin-top: 16px;
+        min-width: 0;
+}
+
+@media (min-width: 701px) {
+        #prs-book-info.prs-book-info {
+                flex-wrap: nowrap;
+                gap: 24px;
+        }
+
+        #prs-book-info.prs-book-info > #prs-book-cover {
+                width: 190px;
+                flex: 0 0 190px;
+        }
+
+        #prs-book-info.prs-book-info > #prs-book-info__main {
+                margin-left: 0;
+                flex: 1 1 50%;
+        }
+
+        #prs-book-info.prs-book-info > #prs-book-info__sidebar {
+                margin-top: 0;
+                flex: 1 1 50%;
+                width: auto;
+        }
+}
+
+.prs-reading-sessions {
+        clear: both;
+        margin-top: 32px;
+        width: 100%;
+        display: block;
+}
