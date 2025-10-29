@@ -1209,7 +1209,7 @@ select#prs-type-book {
         }
 
         h3#prs-book-author-placeholder {
-                font-size: 8px;
+                font-size: 8px !important;
         }
 }
 
@@ -1425,7 +1425,7 @@ display:inline-block;
         min-height:100%;
         height:100%;
         padding:24px;
-        border-radius:0;
+        border-radius:0 !important;
         background:url(https://t4.ftcdn.net/jpg/00/77/94/87/240_F_77948758_BLL65doqVcQ5rwKzGIDOJ22htv6kWDhX.jpg);
         color:#111;
         font-family:'Inter', sans-serif;
