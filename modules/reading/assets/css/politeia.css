@@ -1330,9 +1330,21 @@ display:inline-block;
         display:block;
         width:100%;
         height:auto;
-        border-radius:6px;
+        border-radius:0 !important;
         box-shadow:0 1px 3px rgba(0,0,0,0.15);
         background:none;
+        }
+
+        .prs-cover-frame,
+        .prs-book-cover img{
+        border-radius:0 !important;
+        }
+
+        @media screen and (max-width:950px) and (min-width:900px){
+        .prs-cover-frame,
+        .prs-book-cover{
+        height:140px !important;
+        }
         }
 
         #prs-book-cover .prs-cover-frame.has-image,
@@ -1473,6 +1485,20 @@ display:inline-block;
         h3#prs-book-author-placeholder{
         font-size:12px !important;
         }
+        span.prs-book-title__text{
+        font-size:18px;
+        }
+
+        .prs-meta{
+        font-size:13px;
+        }
+
+        .prs-field .label{
+        font-weight:600;
+        display:block;
+        margin-bottom:4px;
+        font-size:12px;
+        }
         .prs-book-cover{ margin:0; display:block; }
         .prs-book-cover__caption{ margin:0; padding:8px 10px; text-align:center; font-size:12px; background:#fff; color:#0a58ca; border-top:1px solid rgba(0,0,0,.08); }
         .prs-book-cover__caption.is-hidden{ display:none; }
@@ -1603,6 +1629,20 @@ div#fld-user-rating {
         padding: 10px 0px;
 }
 
+@media screen and (max-width:580px){
+#fld-user-rating{
+display:flex;
+flex-direction:column;
+align-items:flex-start;
+}
+
+#fld-user-rating .prs-rating-block,
+#fld-user-rating .prs-type-book{
+margin-top:5px;
+margin-bottom:5px;
+}
+}
+
 /* === PURCHASE ROW LAYOUT === */
 .prs-purchase-row {
         display: grid;
@@ -1655,6 +1695,12 @@ div#fld-user-rating {
 
 #fld-pages .prs-inline-actions:hover {
         text-decoration: underline;
+}
+
+#fld-reading-status select,
+#fld-owning-status select{
+        width:100%;
+        max-width:220px;
 }
 
 #pages-hint {
@@ -1745,7 +1791,7 @@ button#purchase-date-save {
         display: block;
         font-weight: 600;
         color: #333;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
 }
 
 /* === FORM ELEMENTS (Selects, Inputs, Buttons) === */
