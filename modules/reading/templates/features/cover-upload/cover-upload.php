@@ -239,141 +239,81 @@ class PRS_Cover_Upload_Feature {
         * y actualiza politeia_user_books.cover_reference
          */
         public static function ajax_save_crop() {
-                if ( ! is_user_logged_in() ) {
-                        wp_send_json_error( array( 'message' => 'auth' ), 401 );
-                }
+                error_log( '[Cover] ajax_save_crop() started' );
+                error_log( '[Cover] POST keys: ' . implode( ', ', array_keys( $_POST ) ) );
 
-                $nonce = '';
+                check_ajax_referer( 'prs_cover_upload_nonce', '_wpnonce' );
 
-                if ( isset( $_POST['nonce'] ) ) {
-                        $nonce = wp_unslash( $_POST['nonce'] );
-                } elseif ( isset( $_POST['_wpnonce'] ) ) {
-                        $nonce = wp_unslash( $_POST['_wpnonce'] );
-                }
-
-                if ( ! $nonce || ! wp_verify_nonce( $nonce, 'prs_cover_save_crop' ) ) {
-                        wp_send_json_error( array( 'message' => 'bad_nonce' ), 403 );
-                }
-
-                $user_id      = get_current_user_id();
+                $image_data   = isset( $_POST['image'] ) ? wp_unslash( $_POST['image'] ) : '';
                 $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
                 $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
-                $post_id      = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 
-                if ( ! $user_book_id || ! $book_id ) {
-                        wp_send_json_error( array( 'message' => 'missing_params' ), 400 );
-                }
-
-		// Validar pertenencia del user_book
-		global $wpdb;
-		$t   = $wpdb->prefix . 'politeia_user_books';
-		$row = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$t} WHERE id=%d AND user_id=%d AND book_id=%d LIMIT 1",
-				$user_book_id,
-				$user_id,
-				$book_id
-			)
-		);
-		if ( ! $row ) {
-			wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
-		}
-
-                // Decode the base64 image
-                $raw_image = '';
-                if ( isset( $_POST['image'] ) ) {
-                        $raw_image = wp_unslash( $_POST['image'] );
-                } elseif ( isset( $_POST['data'] ) ) {
-                        $raw_image = wp_unslash( $_POST['data'] );
-                }
-
-                $image_data = sanitize_text_field( $raw_image );
                 if ( empty( $image_data ) ) {
-                        wp_send_json_error( array( 'message' => 'No image data received.' ) );
+                        error_log( '[Cover] Missing image data' );
+                        wp_send_json_error( array( 'message' => 'No image data received' ) );
                 }
 
-                $image_data = str_replace( 'data:image/png;base64,', '', $image_data );
-                $image_data = str_replace( 'data:image/jpeg;base64,', '', $image_data );
-                $image_data = str_replace( 'data:image/jpg;base64,', '', $image_data );
+                $image_data = preg_replace( '#^data:image/\w+;base64,#i', '', $image_data );
                 $image_data = str_replace( ' ', '+', $image_data );
                 $decoded    = base64_decode( $image_data );
 
                 if ( ! $decoded ) {
-                        wp_send_json_error( array( 'message' => 'Invalid base64 payload.' ) );
+                        error_log( '[Cover] Base64 decode failed' );
+                        wp_send_json_error( array( 'message' => 'Invalid image payload' ) );
                 }
 
-                // Prepare upload path
                 $upload_dir = wp_upload_dir();
-                if ( ! empty( $upload_dir['error'] ) ) {
-                        wp_send_json_error( array( 'message' => 'Failed to resolve upload directory.' ) );
-                }
-
-                if ( ! wp_mkdir_p( $upload_dir['path'] ) ) {
-                        wp_send_json_error( array( 'message' => 'Failed to prepare upload directory.' ) );
-                }
-
                 $file_name  = 'book-cover-' . uniqid() . '.png';
                 $file_path  = trailingslashit( $upload_dir['path'] ) . $file_name;
 
-                // Write file
-                $result = file_put_contents( $file_path, $decoded );
-                if ( ! $result ) {
-                        wp_send_json_error( array( 'message' => 'Failed to write file to uploads directory.' ) );
+                if ( false === file_put_contents( $file_path, $decoded ) ) {
+                        error_log( '[Cover] File write failed at ' . $file_path );
+                        wp_send_json_error( array( 'message' => 'Failed to write image' ) );
                 }
 
-                // Create attachment
                 $wp_filetype   = wp_check_filetype( $file_name, null );
                 $attachment    = array(
                         'post_mime_type' => $wp_filetype['type'],
                         'post_title'     => sanitize_file_name( $file_name ),
-                        'post_content'   => '',
-                        'post_status'    => 'inherit'
+                        'post_status'    => 'inherit',
                 );
-                $attachment_id = wp_insert_attachment( $attachment, $file_path, $post_id );
+                $attachment_id = wp_insert_attachment( $attachment, $file_path );
+
                 if ( ! $attachment_id ) {
-                        @unlink( $file_path );
-                        wp_send_json_error( array( 'message' => 'Attachment creation failed.' ) );
+                        error_log( '[Cover] Attachment insert failed' );
+                        wp_send_json_error( array( 'message' => 'Attachment creation failed' ) );
                 }
 
                 require_once ABSPATH . 'wp-admin/includes/image.php';
-                $attach_data   = wp_generate_attachment_metadata( $attachment_id, $file_path );
+                $attach_data = wp_generate_attachment_metadata( $attachment_id, $file_path );
                 wp_update_attachment_metadata( $attachment_id, $attach_data );
 
-                $key = self::build_cover_key( $user_id, $user_book_id );
+                $attachment_url = wp_get_attachment_url( $attachment_id );
+                error_log( '[Cover] Upload OK: ' . $attachment_url );
 
-                update_post_meta( $attachment_id, '_prs_cover_user_id', $user_id );
-                update_post_meta( $attachment_id, '_prs_cover_user_book_id', $user_book_id );
-                update_post_meta( $attachment_id, '_prs_cover_key', $key );
-                delete_post_meta( $attachment_id, '_prs_cover_source' );
-
-                self::cleanup_cover_attachments( $user_id, $user_book_id, $attachment_id );
-
-                // Persistir en politeia_user_books
-                $wpdb->update(
-                        $t,
-                        array(
-                                'cover_reference' => (string) (int) $attachment_id,
-                                'updated_at'      => current_time( 'mysql', true ),
-                        ),
-                        array( 'id' => $user_book_id ),
-                        array( '%s', '%s' ),
-                        array( '%d' )
-                );
-
-                // Responder con URL para reemplazar la portada en el front
-                $src = wp_get_attachment_image_url( $attachment_id, 'large' );
-                if ( ! $src ) {
-                        $src = wp_get_attachment_url( $attachment_id );
+                global $wpdb;
+                $table = $wpdb->prefix . 'politeia_user_books';
+                if ( $user_book_id > 0 ) {
+                        $wpdb->update(
+                                $table,
+                                array(
+                                        'cover_attachment_id_user' => $attachment_id,
+                                        'cover_url'                 => $attachment_url,
+                                        'updated_at'                => current_time( 'mysql' ),
+                                ),
+                                array( 'id' => $user_book_id ),
+                                array( '%d', '%s', '%s' ),
+                                array( '%d' )
+                        );
+                        error_log( "[Cover] User book #{$user_book_id} updated with attachment {$attachment_id}" );
                 }
-
-                $response_src = $src ?: '';
 
                 wp_send_json_success(
                         array(
-                                'attachment_id' => (int) $attachment_id,
-                                'url'           => $response_src,
-                                'src'           => $response_src,
-                                'id'            => (int) $attachment_id,
+                                'attachment_id' => $attachment_id,
+                                'url'           => $attachment_url,
+                                'user_book_id'  => $user_book_id,
+                                'book_id'       => $book_id,
                         )
                 );
         }
