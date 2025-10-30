@@ -177,18 +177,18 @@
         color:#6b7280;
         line-height:1.2;
 }
-.prs-cover-caption{
+.prs-cover-attribution{
         margin-top:4px;
         font-size:8px;
         color:#9ca3af;
         font-family:'Inter', sans-serif;
 }
-.prs-cover-caption a{
+.prs-cover-attribution a{
         color:#9ca3af;
         text-decoration:none;
 }
-.prs-cover-caption a:hover,
-.prs-cover-caption a:focus{
+.prs-cover-attribution a:hover,
+.prs-cover-attribution a:focus{
         color:#6b7280;
         text-decoration:underline;
 }
