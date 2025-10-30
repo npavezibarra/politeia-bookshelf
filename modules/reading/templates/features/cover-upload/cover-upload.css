@@ -80,25 +80,38 @@
         min-height:20px;
 }
 .prs-cover-search-modal__grid{
-        display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
-        gap:16px;
         margin:20px 0 12px;
 }
+.prs-cover-grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+        gap:16px;
+        justify-items:center;
+        margin-top:1rem;
+        width:100%;
+}
 .prs-cover-option{
-        background:#f7f7f7;
-        border-radius:12px;
-        overflow:hidden;
+        background:#fff;
+        border:1px solid #ddd;
+        border-radius:6px;
         position:relative;
-        transition:box-shadow .2s ease, transform .2s ease;
+        transition:transform .2s ease, box-shadow .2s ease;
         display:flex;
         flex-direction:column;
-        align-items:stretch;
+        cursor:pointer;
+        text-align:center;
+        max-height:220px;
+        overflow:hidden;
+        width:100%;
 }
 .prs-cover-option:hover,
 .prs-cover-option:focus-within{
+        transform:scale(1.02);
         box-shadow:0 6px 20px rgba(0,0,0,.18);
-        transform:translateY(-2px);
+}
+.prs-cover-option:focus-visible{
+        outline:3px solid rgba(17,17,17,.5);
+        outline-offset:3px;
 }
 .prs-cover-option.is-selected{
         box-shadow:0 0 0 2px #111 inset;
@@ -106,60 +119,85 @@
 .prs-cover-option.is-selected::after{
         content:"\2713";
         position:absolute;
-        top:10px;
-        right:10px;
-        width:28px;
-        height:28px;
+        top:8px;
+        right:8px;
+        width:24px;
+        height:24px;
         border-radius:50%;
         background:#111;
         color:#fff;
-        font-size:16px;
+        font-size:14px;
         font-weight:700;
         display:flex;
         align-items:center;
         justify-content:center;
         box-shadow:0 4px 12px rgba(0,0,0,.3);
 }
-.prs-cover-option__select{
-        border:none;
-        background:none;
-        padding:0;
-        cursor:pointer;
+.prs-cover-figure{
+        margin:0;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        flex:1 1 auto;
+        min-height:0;
+        padding:8px 8px 0;
+        width:100%;
+}
+.prs-cover-frame{
         position:relative;
-        display:block;
+        display:flex;
+        align-items:center;
+        justify-content:center;
         width:100%;
+        flex:1 1 auto;
+        min-height:0;
 }
-.prs-cover-option__select img{
-        width:100%;
+.prs-cover-frame img{
+        max-height:100%;
+        width:auto;
+        max-width:100%;
+        border-radius:6px;
+        object-fit:contain;
+        box-shadow:0 3px 10px rgba(0,0,0,.12);
+}
+.prs-cover-meta{
+        margin:0;
+        padding:6px 8px;
+        display:flex;
+        flex-direction:column;
+        gap:2px;
+        font-size:11px;
+        color:#374151;
+        flex:0 0 auto;
+        text-align:center;
+}
+.prs-cover-title{
+        font-weight:600;
+        line-height:1.2;
         display:block;
-        aspect-ratio:2 / 3;
-        object-fit:cover;
+        word-break:break-word;
 }
-.prs-cover-option__select:focus{
-        outline:3px solid rgba(17,17,17,.6);
-        outline-offset:4px;
-        transform:translateY(-1px);
-}
-.prs-cover-option__select:focus-visible{
-        outline:3px solid rgba(17,17,17,.6);
-        outline-offset:4px;
-        transform:translateY(-1px);
+.prs-cover-author{
+        font-size:11px;
+        color:#6b7280;
+        line-height:1.2;
+        word-break:break-word;
 }
 .prs-cover-attribution{
-        display:block;
-        padding:10px 12px 12px;
-        font-size:12px;
-        text-align:center;
-        color:#0a58ca;
-        text-decoration:none;
-        border-top:1px solid rgba(0,0,0,.05);
-        background:#fff;
+        margin-top:4px;
+        font-size:8px;
+        color:#9ca3af;
+        font-family:'Inter', sans-serif;
 }
-.prs-cover-attribution:hover,
-.prs-cover-attribution:focus{
+.prs-cover-attribution a{
+        color:#9ca3af;
+        text-decoration:none;
+}
+.prs-cover-attribution a:hover,
+.prs-cover-attribution a:focus{
+        color:#6b7280;
         text-decoration:underline;
 }
-.prs-cover-attribution.is-hidden{ display:none; }
 .prs-cover-search-modal__footer{
         display:flex;
         justify-content:flex-end;
