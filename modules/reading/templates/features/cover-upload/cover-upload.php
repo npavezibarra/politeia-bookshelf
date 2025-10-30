@@ -901,14 +901,26 @@ class PRS_Cover_Upload_Feature {
                         wp_send_json_error( array( 'message' => 'missing_title' ), 400 );
                 }
 
-                $api_key = trim( (string) get_option( 'politeia_bookshelf_google_api_key' ) );
+                $api_key_data = self::get_google_books_api_key();
+                $api_key      = $api_key_data['key'];
                 if ( '' === $api_key ) {
                         wp_send_json_error( array( 'message' => 'missing_api_key' ), 400 );
                 }
 
-                $query = $title;
-                if ( $author ) {
-                        $query .= ' inauthor:' . $author;
+                $query_segments = array();
+                $title_segment  = self::build_google_query_segment( 'intitle', $title );
+                if ( '' !== $title_segment ) {
+                        $query_segments[] = $title_segment;
+                }
+
+                $author_segment = self::build_google_query_segment( 'inauthor', $author );
+                if ( '' !== $author_segment ) {
+                        $query_segments[] = $author_segment;
+                }
+
+                $query = implode( ' ', $query_segments );
+                if ( '' === $query ) {
+                        $query = trim( $title );
                 }
 
                 $args = array(
@@ -927,11 +939,13 @@ class PRS_Cover_Upload_Feature {
                         array(
                                 'query'    => $query,
                                 'language' => $language,
+                                'segments' => $query_segments,
                                 'params'   => array(
                                         'maxResults'  => $args['maxResults'],
                                         'printType'   => $args['printType'],
                                         'langRestrict' => isset( $args['langRestrict'] ) ? $args['langRestrict'] : '',
                                 ),
+                                'api_key_source' => $api_key_data['source'],
                         )
                 );
 
@@ -991,16 +1005,12 @@ class PRS_Cover_Upload_Feature {
                         wp_send_json_error( array( 'message' => 'no_results' ), 404 );
                 }
 
-                $preferred        = array();
-                $fallback         = array();
-                $seen             = array();
-                $accepted_sources = array();
-                $accepted_count   = 0;
-                $rejected_count   = 0;
+                $preferred = array();
+                $fallback  = array();
+                $seen      = array();
 
                 foreach ( $data['items'] as $entry ) {
                         if ( ! is_array( $entry ) ) {
-                                $rejected_count++;
                                 continue;
                         }
 
@@ -1100,10 +1110,6 @@ class PRS_Cover_Upload_Feature {
                         }
 
                         $info_host = strtolower( (string) wp_parse_url( $info_link, PHP_URL_HOST ) );
-                        if ( $info_host ) {
-                                $accepted_sources[ $info_host ] = true;
-                        }
-
                         if ( isset( $seen[ $cover_url ] ) ) {
                                 self::log_debug(
                                         'google_cover_candidate_skip',
@@ -1132,8 +1138,6 @@ class PRS_Cover_Upload_Feature {
                                 $preferred[] = $item;
                         }
 
-                        $accepted_count++;
-
                         self::log_debug(
                                 'google_cover_candidate_accepted',
                                 array(
@@ -1145,8 +1149,6 @@ class PRS_Cover_Upload_Feature {
                                 )
                         );
                 }
-
-                $rejected_count = max( $rejected_count, max( $total_candidates - $accepted_count, 0 ) );
 
                 $items = array_merge( $preferred, $fallback );
                 if ( empty( $items ) ) {
@@ -1177,14 +1179,21 @@ class PRS_Cover_Upload_Feature {
                         )
                 );
 
-                $accepted_hosts = implode( ', ', array_keys( $accepted_sources ) );
+                $log_host = '-';
+                if ( ! empty( $items ) ) {
+                        $host = wp_parse_url( $items[0]['source'], PHP_URL_HOST );
+                        if ( $host ) {
+                                $log_host = strtolower( (string) $host );
+                        }
+                }
+
                 error_log(
                         sprintf(
-                                '[BooksCoverSearch] %s — Found=%d Accepted=%d Sources=%s',
+                                '[BooksCoverSearch] %s — Found=%d Accepted=%d Source=%s',
                                 $title,
                                 $total_candidates,
-                                $accepted_count,
-                                $accepted_hosts ? $accepted_hosts : '-'
+                                count( $items ),
+                                $log_host
                         )
                 );
 
@@ -1287,6 +1296,47 @@ class PRS_Cover_Upload_Feature {
 
                 $overlap = count( array_intersect( $words_a, $words_b ) );
                 return $overlap / max( count( $words_a ), count( $words_b ) );
+        }
+
+        private static function build_google_query_segment( $field, $value ) {
+                $field = trim( (string) $field );
+                if ( '' === $field ) {
+                        return '';
+                }
+
+                $value = trim( (string) $value );
+                if ( '' === $value ) {
+                        return '';
+                }
+
+                $escaped = addcslashes( $value, '"' );
+
+                return sprintf( '%s:"%s"', $field, $escaped );
+        }
+
+        private static function get_google_books_api_key() {
+                $primary   = trim( (string) get_option( 'politeia_bookshelf_google_api_key' ) );
+                $secondary = '';
+
+                if ( '' !== $primary ) {
+                        return array(
+                                'key'    => $primary,
+                                'source' => 'politeia_bookshelf_google_api_key',
+                        );
+                }
+
+                $secondary = trim( (string) get_option( 'politeia_google_books_api_key' ) );
+                if ( '' !== $secondary ) {
+                        return array(
+                                'key'    => $secondary,
+                                'source' => 'politeia_google_books_api_key',
+                        );
+                }
+
+                return array(
+                        'key'    => '',
+                        'source' => 'missing',
+                );
         }
 
         private static function is_allowed_google_host( $host, ?array $needles = null ) {
