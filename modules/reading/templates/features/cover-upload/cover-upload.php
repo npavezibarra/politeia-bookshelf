@@ -30,9 +30,6 @@ class PRS_Cover_Upload_Feature {
                 add_action( 'wp_ajax_prs_cover_search_google', array( __CLASS__, 'ajax_search_google' ) );
                 add_action( 'wp_ajax_prs_save_cover_url', array( __CLASS__, 'ajax_save_cover_url' ) );
 
-		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			error_log( '[Cover] Hook registered: wp_ajax_prs_cover_save_crop' );
-		}
         }
 
 	public static function assets() {
@@ -242,12 +239,6 @@ class PRS_Cover_Upload_Feature {
         * y actualiza politeia_user_books.cover_reference
          */
         public static function ajax_save_crop() {
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-                        $post_keys = implode( ', ', array_keys( $_POST ) );
-                        error_log( '[Cover] ajax_save_crop() started' );
-                        error_log( '[Cover] POST keys: ' . $post_keys );
-                }
-
                 if ( ! is_user_logged_in() ) {
                         wp_send_json_error( array( 'message' => 'auth' ), 401 );
                 }
@@ -267,17 +258,11 @@ class PRS_Cover_Upload_Feature {
                 $user_id      = get_current_user_id();
                 $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
                 $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
-                $data_url     = '';
+                $post_id      = isset( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 
-                if ( isset( $_POST['image'] ) ) {
-                        $data_url = (string) wp_unslash( $_POST['image'] );
-                } elseif ( isset( $_POST['data'] ) ) {
-                        $data_url = (string) wp_unslash( $_POST['data'] );
+                if ( ! $user_book_id || ! $book_id ) {
+                        wp_send_json_error( array( 'message' => 'missing_params' ), 400 );
                 }
-
-		if ( ! $user_book_id || ! $book_id || ! $data_url ) {
-			wp_send_json_error( array( 'message' => 'missing_params' ), 400 );
-		}
 
 		// Validar pertenencia del user_book
 		global $wpdb;
@@ -294,87 +279,80 @@ class PRS_Cover_Upload_Feature {
 			wp_send_json_error( array( 'message' => 'forbidden' ), 403 );
 		}
 
-		// Decodificar dataURL
-		if ( ! preg_match( '#^data:image/(png|jpeg);base64,#i', $data_url, $m ) ) {
-			wp_send_json_error( array( 'message' => 'bad_image' ), 400 );
-		}
-		$ext = strtolower( $m[1] ) === 'png' ? 'png' : 'jpg';
-		$bin = base64_decode( preg_replace( '#^data:image/\w+;base64,#i', '', $data_url ) );
-		if ( ! $bin ) {
-			wp_send_json_error( array( 'message' => 'decode_fail' ), 400 );
-		}
+                // Decode the base64 image
+                $raw_image = '';
+                if ( isset( $_POST['image'] ) ) {
+                        $raw_image = wp_unslash( $_POST['image'] );
+                } elseif ( isset( $_POST['data'] ) ) {
+                        $raw_image = wp_unslash( $_POST['data'] );
+                }
 
-		// Guardar archivo en uploads
-		$up = wp_upload_dir();
-		if ( ! empty( $up['error'] ) ) {
-			wp_send_json_error( array( 'message' => 'upload_dir_error' ), 500 );
-		}
+                $image_data = sanitize_text_field( $raw_image );
+                if ( empty( $image_data ) ) {
+                        wp_send_json_error( array( 'message' => 'No image data received.' ) );
+                }
 
-                $key      = self::build_cover_key( $user_id, $user_book_id );
-                $filename = 'book-cover-' . $key . '-' . gmdate( 'Ymd-His' ) . '.' . $ext;
-		$path     = trailingslashit( $up['path'] ) . $filename;
+                $image_data = str_replace( 'data:image/png;base64,', '', $image_data );
+                $image_data = str_replace( 'data:image/jpeg;base64,', '', $image_data );
+                $image_data = str_replace( 'data:image/jpg;base64,', '', $image_data );
+                $image_data = str_replace( ' ', '+', $image_data );
+                $decoded    = base64_decode( $image_data );
 
-		if ( ! wp_mkdir_p( $up['path'] ) ) {
-			wp_send_json_error( array( 'message' => 'mkdir_fail' ), 500 );
-		}
-		if ( ! file_put_contents( $path, $bin ) ) {
-			wp_send_json_error( array( 'message' => 'write_fail' ), 500 );
-		}
+                if ( ! $decoded ) {
+                        wp_send_json_error( array( 'message' => 'Invalid base64 payload.' ) );
+                }
 
-		// Insertar attachment
-		$filetype = wp_check_filetype( $path, null );
-		$att_id   = wp_insert_attachment(
-			array(
-				'post_mime_type' => $filetype['type'],
-				'post_title'     => sanitize_file_name( preg_replace( '/\.[^.]+$/', '', $filename ) ),
-				'post_content'   => '',
-				'post_status'    => 'inherit',
-				'post_author'    => $user_id,
-			),
-			$path
-		);
+                // Prepare upload path
+                $upload_dir = wp_upload_dir();
+                if ( ! empty( $upload_dir['error'] ) ) {
+                        wp_send_json_error( array( 'message' => 'Failed to resolve upload directory.' ) );
+                }
 
-		if ( ! $att_id ) {
-			@unlink( $path );
-			wp_send_json_error( array( 'message' => 'attach_fail' ), 500 );
-		}
+                if ( ! wp_mkdir_p( $upload_dir['path'] ) ) {
+                        wp_send_json_error( array( 'message' => 'Failed to prepare upload directory.' ) );
+                }
 
-		require_once ABSPATH . 'wp-admin/includes/image.php';
-		$meta = wp_generate_attachment_metadata( $att_id, $path );
-		wp_update_attachment_metadata( $att_id, $meta );
+                $file_name  = 'book-cover-' . uniqid() . '.png';
+                $file_path  = trailingslashit( $upload_dir['path'] ) . $file_name;
 
-		// Etiquetas para poder limpiar
-                update_post_meta( $att_id, '_prs_cover_user_id', $user_id );
-                update_post_meta( $att_id, '_prs_cover_user_book_id', $user_book_id );
-                update_post_meta( $att_id, '_prs_cover_key', $key );
-                delete_post_meta( $att_id, '_prs_cover_source' );
+                // Write file
+                $result = file_put_contents( $file_path, $decoded );
+                if ( ! $result ) {
+                        wp_send_json_error( array( 'message' => 'Failed to write file to uploads directory.' ) );
+                }
 
-		// Borrar otras portadas del mismo user_book
-                $others = get_posts(
-			array(
-				'post_type'      => 'attachment',
-				'post_status'    => 'inherit',
-				'fields'         => 'ids',
-				'posts_per_page' => -1,
-				'author'         => $user_id,
-				'exclude'        => array( $att_id ),
-				'meta_query'     => array(
-					array(
-						'key'   => '_prs_cover_key',
-						'value' => $key,
-					),
-				),
-			)
-		);
-		foreach ( $others as $oid ) {
-			wp_delete_attachment( $oid, true );
-		}
+                // Create attachment
+                $wp_filetype   = wp_check_filetype( $file_name, null );
+                $attachment    = array(
+                        'post_mime_type' => $wp_filetype['type'],
+                        'post_title'     => sanitize_file_name( $file_name ),
+                        'post_content'   => '',
+                        'post_status'    => 'inherit'
+                );
+                $attachment_id = wp_insert_attachment( $attachment, $file_path, $post_id );
+                if ( ! $attachment_id ) {
+                        @unlink( $file_path );
+                        wp_send_json_error( array( 'message' => 'Attachment creation failed.' ) );
+                }
 
-		// Persistir en politeia_user_books
+                require_once ABSPATH . 'wp-admin/includes/image.php';
+                $attach_data   = wp_generate_attachment_metadata( $attachment_id, $file_path );
+                wp_update_attachment_metadata( $attachment_id, $attach_data );
+
+                $key = self::build_cover_key( $user_id, $user_book_id );
+
+                update_post_meta( $attachment_id, '_prs_cover_user_id', $user_id );
+                update_post_meta( $attachment_id, '_prs_cover_user_book_id', $user_book_id );
+                update_post_meta( $attachment_id, '_prs_cover_key', $key );
+                delete_post_meta( $attachment_id, '_prs_cover_source' );
+
+                self::cleanup_cover_attachments( $user_id, $user_book_id, $attachment_id );
+
+                // Persistir en politeia_user_books
                 $wpdb->update(
                         $t,
                         array(
-                                'cover_reference' => (string) (int) $att_id,
+                                'cover_reference' => (string) (int) $attachment_id,
                                 'updated_at'      => current_time( 'mysql', true ),
                         ),
                         array( 'id' => $user_book_id ),
@@ -383,19 +361,19 @@ class PRS_Cover_Upload_Feature {
                 );
 
                 // Responder con URL para reemplazar la portada en el front
-                $src = wp_get_attachment_image_url( $att_id, 'large' );
+                $src = wp_get_attachment_image_url( $attachment_id, 'large' );
                 if ( ! $src ) {
-                        $src = wp_get_attachment_url( $att_id );
+                        $src = wp_get_attachment_url( $attachment_id );
                 }
 
                 $response_src = $src ?: '';
 
                 wp_send_json_success(
                         array(
-                                'id'            => (int) $att_id,
-                                'attachment_id' => (int) $att_id,
-                                'src'           => $response_src,
+                                'attachment_id' => (int) $attachment_id,
                                 'url'           => $response_src,
+                                'src'           => $response_src,
+                                'id'            => (int) $attachment_id,
                         )
                 );
         }
