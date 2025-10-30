@@ -63,7 +63,7 @@
   function resolveBookLanguage(details) {
     const metaCode = normalizeLanguageCode(details.language);
     if (metaCode) return metaCode;
-    return 'en';
+    return '';
   }
 
   // ====== Upload & crop modal ======
@@ -1100,6 +1100,7 @@
       return;
     }
 
+    const rendered = [];
     items.forEach((item) => {
       if (!item || !item.url) return;
       const option = el('div', 'prs-cover-option');
@@ -1145,7 +1146,13 @@
       option.appendChild(attribution);
 
       searchGridEl.appendChild(option);
+      rendered.push({ item, option });
     });
+
+    if (rendered.length === 1) {
+      const only = rendered[0];
+      selectSearchResult(only.item, only.option);
+    }
   }
 
   function selectSearchResult(option, node) {
@@ -1230,7 +1237,9 @@
         return;
       }
       renderSearchResults(results, language);
-      if (language) {
+      if (results.length === 1) {
+        setSearchMessage('Only one cover found. Click “Set Cover” to confirm.');
+      } else if (language) {
         setSearchMessage(`Select a cover below and click “Set Cover”. Showing ${language.toUpperCase()} results when possible.`);
       } else {
         setSearchMessage('Select a cover below and click “Set Cover”.');

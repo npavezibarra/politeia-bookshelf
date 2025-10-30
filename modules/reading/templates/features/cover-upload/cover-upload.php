@@ -485,7 +485,7 @@ class PRS_Cover_Upload_Feature {
                 }
 
                 $image_host = wp_parse_url( $image_url, PHP_URL_HOST );
-                if ( ! $image_host || false === stripos( $image_host, 'books.google' ) ) {
+                if ( ! $image_host || ! self::is_allowed_google_host( strtolower( (string) $image_host ), array( 'books.google', 'googleusercontent.com', 'ggpht.com' ) ) ) {
                         wp_send_json_error( array( 'message' => 'invalid_image_host' ), 400 );
                 }
 
@@ -500,7 +500,7 @@ class PRS_Cover_Upload_Feature {
                         }
 
                         $source_host = wp_parse_url( $source_link, PHP_URL_HOST );
-                        if ( ! $source_host || false === stripos( $source_host, 'books.google' ) ) {
+                        if ( ! $source_host || ! self::is_allowed_google_host( strtolower( (string) $source_host ), array( 'books.google', 'play.google' ) ) ) {
                                 wp_send_json_error( array( 'message' => 'invalid_source_host' ), 400 );
                         }
                 }
@@ -578,7 +578,7 @@ class PRS_Cover_Upload_Feature {
                 }
 
                 $host = wp_parse_url( $cover_url, PHP_URL_HOST );
-                if ( ! $host || false === stripos( $host, 'books.google' ) ) {
+                if ( ! $host || ! self::is_allowed_google_host( strtolower( (string) $host ), array( 'books.google', 'googleusercontent.com', 'ggpht.com' ) ) ) {
                         error_log( sprintf( '[PRS_COVER] Cover host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
                         wp_send_json_error( 'Cover host not permitted.', 400 );
                 }
@@ -596,7 +596,7 @@ class PRS_Cover_Upload_Feature {
                         }
 
                         $source_host = wp_parse_url( $cover_source, PHP_URL_HOST );
-                        if ( ! $source_host || false === stripos( $source_host, 'books.google' ) ) {
+                        if ( ! $source_host || ! self::is_allowed_google_host( strtolower( (string) $source_host ), array( 'books.google', 'play.google' ) ) ) {
                                 error_log( sprintf( '[PRS_COVER] Source host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
                                 wp_send_json_error( 'Source host not permitted.', 400 );
                         }
@@ -883,6 +883,7 @@ class PRS_Cover_Upload_Feature {
                 return $data;
         }
 
+
         public static function ajax_search_google() {
                 if ( ! is_user_logged_in() ) {
                         wp_send_json_error( array( 'message' => 'auth' ), 401 );
@@ -912,7 +913,7 @@ class PRS_Cover_Upload_Feature {
 
                 $args = array(
                         'q'          => $query,
-                        'maxResults' => 5,
+                        'maxResults' => 15,
                         'printType'  => 'books',
                         'key'        => $api_key,
                 );
@@ -920,6 +921,19 @@ class PRS_Cover_Upload_Feature {
                 if ( $language ) {
                         $args['langRestrict'] = $language;
                 }
+
+                self::log_debug(
+                        'google_cover_search_request',
+                        array(
+                                'query'    => $query,
+                                'language' => $language,
+                                'params'   => array(
+                                        'maxResults'  => $args['maxResults'],
+                                        'printType'   => $args['printType'],
+                                        'langRestrict' => isset( $args['langRestrict'] ) ? $args['langRestrict'] : '',
+                                ),
+                        )
+                );
 
                 $url      = add_query_arg( $args, 'https://www.googleapis.com/books/v1/volumes' );
                 $response = wp_remote_get(
@@ -930,6 +944,13 @@ class PRS_Cover_Upload_Feature {
                 );
 
                 if ( is_wp_error( $response ) ) {
+                        self::log_debug(
+                                'google_cover_search_response_error',
+                                array(
+                                        'query'   => $query,
+                                        'message' => $response->get_error_message(),
+                                )
+                        );
                         wp_send_json_error( array( 'message' => 'api_error' ), 500 );
                 }
 
@@ -943,10 +964,30 @@ class PRS_Cover_Upload_Feature {
 
                 if ( $code >= 400 ) {
                         $message = isset( $data['error']['message'] ) ? (string) $data['error']['message'] : 'api_error';
+                        self::log_debug(
+                                'google_cover_search_response_error',
+                                array(
+                                        'query'   => $query,
+                                        'code'    => $code,
+                                        'message' => $message,
+                                )
+                        );
                         wp_send_json_error( array( 'message' => $message ), $code );
                 }
 
+                $total_candidates = ( isset( $data['items'] ) && is_array( $data['items'] ) ) ? count( $data['items'] ) : 0;
+
                 if ( empty( $data['items'] ) || ! is_array( $data['items'] ) ) {
+                        self::log_debug(
+                                'google_cover_search_summary',
+                                array(
+                                        'query'            => $query,
+                                        'language'         => $language,
+                                        'total_candidates' => $total_candidates,
+                                        'accepted'         => 0,
+                                        'result'           => 'no_items',
+                                )
+                        );
                         wp_send_json_error( array( 'message' => 'no_results' ), 404 );
                 }
 
@@ -959,34 +1000,99 @@ class PRS_Cover_Upload_Feature {
                                 continue;
                         }
 
-                        $volume = isset( $entry['volumeInfo'] ) && is_array( $entry['volumeInfo'] ) ? $entry['volumeInfo'] : array();
+                        $volume    = isset( $entry['volumeInfo'] ) && is_array( $entry['volumeInfo'] ) ? $entry['volumeInfo'] : array();
                         $vol_title = isset( $volume['title'] ) ? (string) $volume['title'] : '';
                         if ( '' === $vol_title ) {
+                                self::log_debug(
+                                        'google_cover_candidate_skip',
+                                        array(
+                                                'id'     => isset( $entry['id'] ) ? (string) $entry['id'] : '',
+                                                'reason' => 'missing_title',
+                                        )
+                                );
                                 continue;
                         }
 
                         $similarity = self::title_similarity( $title, $vol_title );
-                        if ( $similarity < 0.7 ) {
+                        if ( $similarity < 0.5 ) {
+                                self::log_debug(
+                                        'google_cover_candidate_skip',
+                                        array(
+                                                'id'         => isset( $entry['id'] ) ? (string) $entry['id'] : '',
+                                                'title'      => $vol_title,
+                                                'similarity' => $similarity,
+                                                'reason'     => 'low_similarity',
+                                        )
+                                );
                                 continue;
                         }
 
                         $links = isset( $volume['imageLinks'] ) && is_array( $volume['imageLinks'] ) ? $volume['imageLinks'] : array();
                         $best  = self::best_image_link( $links );
                         if ( '' === $best ) {
+                                self::log_debug(
+                                        'google_cover_candidate_skip',
+                                        array(
+                                                'id'     => isset( $entry['id'] ) ? (string) $entry['id'] : '',
+                                                'title'  => $vol_title,
+                                                'reason' => 'missing_image_link',
+                                        )
+                                );
                                 continue;
                         }
 
                         $cover_url = self::sanitize_google_image_url( $best );
                         if ( '' === $cover_url ) {
+                                self::log_debug(
+                                        'google_cover_candidate_skip',
+                                        array(
+                                                'id'     => isset( $entry['id'] ) ? (string) $entry['id'] : '',
+                                                'title'  => $vol_title,
+                                                'reason' => 'invalid_image_host',
+                                        )
+                                );
                                 continue;
                         }
 
-                        $info_link = isset( $volume['infoLink'] ) ? self::sanitize_google_info_link( (string) $volume['infoLink'] ) : '';
+                        $info_sources = array();
+                        if ( isset( $volume['infoLink'] ) ) {
+                                $info_sources[] = (string) $volume['infoLink'];
+                        }
+                        if ( isset( $volume['previewLink'] ) ) {
+                                $info_sources[] = (string) $volume['previewLink'];
+                        }
+                        if ( isset( $volume['canonicalVolumeLink'] ) ) {
+                                $info_sources[] = (string) $volume['canonicalVolumeLink'];
+                        }
+
+                        $info_link = '';
+                        foreach ( $info_sources as $candidate_link ) {
+                                $info_link = self::sanitize_google_info_link( $candidate_link );
+                                if ( '' !== $info_link ) {
+                                        break;
+                                }
+                        }
                         if ( '' === $info_link ) {
+                                self::log_debug(
+                                        'google_cover_candidate_skip',
+                                        array(
+                                                'id'     => isset( $entry['id'] ) ? (string) $entry['id'] : '',
+                                                'title'  => $vol_title,
+                                                'reason' => 'invalid_info_link',
+                                        )
+                                );
                                 continue;
                         }
 
                         if ( isset( $seen[ $cover_url ] ) ) {
+                                self::log_debug(
+                                        'google_cover_candidate_skip',
+                                        array(
+                                                'id'     => isset( $entry['id'] ) ? (string) $entry['id'] : '',
+                                                'title'  => $vol_title,
+                                                'reason' => 'duplicate_image',
+                                        )
+                                );
                                 continue;
                         }
 
@@ -1005,14 +1111,46 @@ class PRS_Cover_Upload_Feature {
                         } else {
                                 $preferred[] = $item;
                         }
+
+                        self::log_debug(
+                                'google_cover_candidate_accepted',
+                                array(
+                                        'id'         => isset( $entry['id'] ) ? (string) $entry['id'] : '',
+                                        'title'      => $vol_title,
+                                        'similarity' => $similarity,
+                                        'language'   => $vol_language,
+                                )
+                        );
                 }
 
                 $items = array_merge( $preferred, $fallback );
                 if ( empty( $items ) ) {
+                        self::log_debug(
+                                'google_cover_search_summary',
+                                array(
+                                        'query'            => $query,
+                                        'language'         => $language,
+                                        'total_candidates' => $total_candidates,
+                                        'accepted'         => 0,
+                                        'result'           => 'filtered_out',
+                                )
+                        );
                         wp_send_json_error( array( 'message' => 'no_results' ), 404 );
                 }
 
                 $items = array_slice( $items, 0, 3 );
+
+                self::log_debug(
+                        'google_cover_search_summary',
+                        array(
+                                'query'            => $query,
+                                'language'         => $language,
+                                'total_candidates' => $total_candidates,
+                                'accepted'         => count( $items ),
+                                'preferred_count'  => count( $preferred ),
+                                'fallback_count'   => count( $fallback ),
+                        )
+                );
 
                 wp_send_json_success(
                         array(
@@ -1020,6 +1158,7 @@ class PRS_Cover_Upload_Feature {
                         )
                 );
         }
+
 
         private static function normalize_language( $code ) {
                 $code = strtolower( trim( (string) $code ) );
@@ -1086,8 +1225,58 @@ class PRS_Cover_Upload_Feature {
                 return $overlap / max( count( $words_a ), count( $words_b ) );
         }
 
+        private static function is_allowed_google_host( $host, ?array $needles = null ) {
+                if ( '' === $host ) {
+                        return false;
+                }
+
+                $host = strtolower( $host );
+                if ( null === $needles ) {
+                        $needles = array( 'books.google', 'googleusercontent.com', 'ggpht.com', 'play.google' );
+                }
+
+                foreach ( $needles as $needle ) {
+                        if ( false !== strpos( $host, $needle ) ) {
+                                return true;
+                        }
+                }
+
+                return false;
+        }
+
+        private static function log_debug( $event, array $context = array() ) {
+                if ( ! $event ) {
+                        return;
+                }
+
+                $uploads = wp_upload_dir();
+                if ( empty( $uploads['basedir'] ) ) {
+                        return;
+                }
+
+                $dir  = trailingslashit( $uploads['basedir'] );
+                $path = $dir . 'politeia-debug.log';
+
+                if ( ! is_dir( $dir ) ) {
+                        wp_mkdir_p( $dir );
+                }
+
+                $record = array(
+                        'time'    => current_time( 'mysql' ),
+                        'event'   => $event,
+                        'context' => $context,
+                );
+
+                $line = wp_json_encode( $record );
+                if ( false === $line ) {
+                        return;
+                }
+
+                file_put_contents( $path, $line . PHP_EOL, FILE_APPEND | LOCK_EX );
+        }
+
         private static function best_image_link( array $links ) {
-                $order = array( 'extraLarge', 'large', 'medium', 'thumbnail', 'smallThumbnail' );
+                $order = array( 'extraLarge', 'large', 'medium', 'small', 'thumbnail', 'smallThumbnail' );
                 foreach ( $order as $key ) {
                         if ( ! empty( $links[ $key ] ) ) {
                                 return (string) $links[ $key ];
@@ -1103,7 +1292,8 @@ class PRS_Cover_Upload_Feature {
 
                 $url = str_replace( 'http://', 'https://', trim( (string) $url ) );
                 $parts = wp_parse_url( $url );
-                if ( empty( $parts['host'] ) || false === stripos( $parts['host'], 'books.google' ) ) {
+                $host  = isset( $parts['host'] ) ? strtolower( $parts['host'] ) : '';
+                if ( empty( $host ) || ! self::is_allowed_google_host( $host, array( 'books.google', 'googleusercontent.com', 'ggpht.com' ) ) ) {
                         return '';
                 }
 
@@ -1117,7 +1307,8 @@ class PRS_Cover_Upload_Feature {
 
                 $url   = str_replace( 'http://', 'https://', trim( (string) $url ) );
                 $parts = wp_parse_url( $url );
-                if ( empty( $parts['host'] ) || false === stripos( $parts['host'], 'books.google' ) ) {
+                $host  = isset( $parts['host'] ) ? strtolower( $parts['host'] ) : '';
+                if ( empty( $host ) || ! self::is_allowed_google_host( $host, array( 'books.google', 'play.google' ) ) ) {
                         return '';
                 }
 

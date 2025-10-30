@@ -86,11 +86,12 @@
         margin:20px 0 12px;
 }
 .prs-cover-option{
-        background:#f7f7f7;
+        background:#fdfdfd;
+        border:1px solid rgba(0,0,0,.08);
         border-radius:12px;
         overflow:hidden;
         position:relative;
-        transition:box-shadow .2s ease, transform .2s ease;
+        transition:box-shadow .2s ease, transform .2s ease, border-color .2s ease;
         display:flex;
         flex-direction:column;
         align-items:stretch;
@@ -99,9 +100,11 @@
 .prs-cover-option:focus-within{
         box-shadow:0 6px 20px rgba(0,0,0,.18);
         transform:translateY(-2px);
+        border-color:rgba(0,0,0,.16);
 }
 .prs-cover-option.is-selected{
         box-shadow:0 0 0 2px #111 inset;
+        border-color:#111;
 }
 .prs-cover-option.is-selected::after{
         content:"\2713";
