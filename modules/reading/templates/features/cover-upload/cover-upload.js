@@ -800,9 +800,11 @@
     }
 
     const payload = new URLSearchParams({
-      action: 'prs_save_cropped_cover',
+      action: 'prs_cover_save_crop',
       _wpnonce: nonce,
+      nonce,
       data: dataURL,
+      image: dataURL,
       mime: mime || 'image/png',
     });
 
@@ -900,13 +902,14 @@
           mime: preferredMime,
         });
 
-        if (!payload || !payload.url) {
-          setStatus('Error', '#ef4444');
-          return;
-        }
+    const coverUrl = payload.url || payload.src || '';
+    if (!coverUrl) {
+      setStatus('Error', '#ef4444');
+      return;
+    }
 
-        setStatus('Saved', '#16a34a');
-        replaceCover(payload.url, true, '');
+    setStatus('Saved', '#16a34a');
+    replaceCover(coverUrl, true, '');
         closeModal();
       } catch (error) {
         const message = error?.message || 'Error';

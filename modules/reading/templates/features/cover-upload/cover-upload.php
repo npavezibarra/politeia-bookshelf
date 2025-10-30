@@ -229,14 +229,29 @@ class PRS_Cover_Upload_Feature {
                 if ( ! is_user_logged_in() ) {
                         wp_send_json_error( array( 'message' => 'auth' ), 401 );
                 }
-                if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'prs_cover_save_crop' ) ) {
-			wp_send_json_error( array( 'message' => 'bad_nonce' ), 403 );
-		}
 
-		$user_id      = get_current_user_id();
-		$user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
-		$book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
-		$data_url     = isset( $_POST['image'] ) ? (string) $_POST['image'] : '';
+                $nonce = '';
+
+                if ( isset( $_POST['nonce'] ) ) {
+                        $nonce = wp_unslash( $_POST['nonce'] );
+                } elseif ( isset( $_POST['_wpnonce'] ) ) {
+                        $nonce = wp_unslash( $_POST['_wpnonce'] );
+                }
+
+                if ( ! $nonce || ! wp_verify_nonce( $nonce, 'prs_cover_save_crop' ) ) {
+                        wp_send_json_error( array( 'message' => 'bad_nonce' ), 403 );
+                }
+
+                $user_id      = get_current_user_id();
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $data_url     = '';
+
+                if ( isset( $_POST['image'] ) ) {
+                        $data_url = (string) wp_unslash( $_POST['image'] );
+                } elseif ( isset( $_POST['data'] ) ) {
+                        $data_url = (string) wp_unslash( $_POST['data'] );
+                }
 
 		if ( ! $user_book_id || ! $book_id || ! $data_url ) {
 			wp_send_json_error( array( 'message' => 'missing_params' ), 400 );
@@ -347,10 +362,14 @@ class PRS_Cover_Upload_Feature {
 
                 // Responder con URL para reemplazar la portada en el front
                 $src = wp_get_attachment_image_url( $att_id, 'large' );
+                $response_src = $src ?: '';
+
                 wp_send_json_success(
                         array(
-                                'id'  => (int) $att_id,
-                                'src' => $src ?: '',
+                                'id'            => (int) $att_id,
+                                'attachment_id' => (int) $att_id,
+                                'src'           => $response_src,
+                                'url'           => $response_src,
                         )
                 );
         }
