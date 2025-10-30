@@ -911,12 +911,15 @@ class PRS_Cover_Upload_Feature {
                 }
 
                 $args = array(
-                        'q'            => $query,
-                        'langRestrict' => $language ? $language : 'en',
-                        'maxResults'   => 5,
-                        'printType'    => 'books',
-                        'key'          => $api_key,
+                        'q'          => $query,
+                        'maxResults' => 5,
+                        'printType'  => 'books',
+                        'key'        => $api_key,
                 );
+
+                if ( $language ) {
+                        $args['langRestrict'] = $language;
+                }
 
                 $url      = add_query_arg( $args, 'https://www.googleapis.com/books/v1/volumes' );
                 $response = wp_remote_get(
