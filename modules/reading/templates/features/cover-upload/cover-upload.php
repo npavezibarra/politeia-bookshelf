@@ -997,6 +997,7 @@ class PRS_Cover_Upload_Feature {
 
                 foreach ( $data['items'] as $entry ) {
                         if ( ! is_array( $entry ) ) {
+                                $rejected_count++;
                                 continue;
                         }
 
@@ -1095,6 +1096,11 @@ class PRS_Cover_Upload_Feature {
                                 continue;
                         }
 
+                        $info_host = strtolower( (string) wp_parse_url( $info_link, PHP_URL_HOST ) );
+                        if ( $info_host ) {
+                                $accepted_sources[ $info_host ] = true;
+                        }
+
                         if ( isset( $seen[ $cover_url ] ) ) {
                                 self::log_debug(
                                         'google_cover_candidate_skip',
@@ -1134,6 +1140,8 @@ class PRS_Cover_Upload_Feature {
                                 )
                         );
                 }
+
+                $rejected_count = max( $rejected_count, max( $total_candidates - $accepted_count, 0 ) );
 
                 $items = array_merge( $preferred, $fallback );
                 if ( empty( $items ) ) {
