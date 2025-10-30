@@ -975,9 +975,10 @@ class PRS_Cover_Upload_Feature {
                         wp_send_json_error( array( 'message' => $message ), $code );
                 }
 
-                $total_candidates = ( isset( $data['items'] ) && is_array( $data['items'] ) ) ? count( $data['items'] ) : 0;
-                $accepted_count   = 0;
-                $rejected_count   = 0;
+                $total_candidates  = ( isset( $data['items'] ) && is_array( $data['items'] ) ) ? count( $data['items'] ) : 0;
+                $accepted_count    = 0;
+                $rejected_count    = 0;
+                $accepted_sources  = array();
 
                 if ( empty( $data['items'] ) || ! is_array( $data['items'] ) ) {
                         self::log_debug(
@@ -990,7 +991,7 @@ class PRS_Cover_Upload_Feature {
                                         'result'           => 'no_items',
                                 )
                         );
-                        self::log_cover_summary_line( $title, $author, 0, $rejected_count );
+                        self::log_cover_summary_line( $title, $author, $total_candidates, 0 );
                         wp_send_json_error( array( 'message' => 'no_results' ), 404 );
                 }
 
@@ -1104,6 +1105,11 @@ class PRS_Cover_Upload_Feature {
                                 continue;
                         }
 
+                        $info_host = strtolower( (string) wp_parse_url( $info_link, PHP_URL_HOST ) );
+                        if ( $info_host ) {
+                                $accepted_sources[ $info_host ] = true;
+                        }
+
                         if ( isset( $seen[ $cover_url ] ) ) {
                                 self::log_debug(
                                         'google_cover_candidate_skip',
@@ -1141,6 +1147,7 @@ class PRS_Cover_Upload_Feature {
                                         'candidate'  => $candidate_title,
                                         'similarity' => $similarity,
                                         'language'   => $vol_language,
+                                        'source_host'=> $info_host,
                                 )
                         );
                         $accepted_count++;
@@ -1160,7 +1167,7 @@ class PRS_Cover_Upload_Feature {
                                         'result'           => 'filtered_out',
                                 )
                         );
-                        self::log_cover_summary_line( $title, $author, 0, $rejected_count );
+                        self::log_cover_summary_line( $title, $author, $total_candidates, 0 );
                         wp_send_json_error( array( 'message' => 'no_results' ), 404 );
                 }
 
@@ -1178,7 +1185,7 @@ class PRS_Cover_Upload_Feature {
                                 'fallback_count'   => count( $fallback ),
                         )
                 );
-                self::log_cover_summary_line( $title, $author, $accepted_count, $rejected_count );
+                self::log_cover_summary_line( $title, $author, $total_candidates, $accepted_count, array_keys( $accepted_sources ) );
 
                 wp_send_json_success(
                         array(
@@ -1331,7 +1338,7 @@ class PRS_Cover_Upload_Feature {
                 file_put_contents( $path, $line . PHP_EOL, FILE_APPEND | LOCK_EX );
         }
 
-        private static function log_cover_summary_line( $title, $author, $accepted, $rejected ) {
+        private static function log_cover_summary_line( $title, $author, $found, $accepted, array $sources = array() ) {
                 $uploads = wp_upload_dir();
                 if ( empty( $uploads['basedir'] ) ) {
                         return;
@@ -1346,12 +1353,25 @@ class PRS_Cover_Upload_Feature {
 
                 $clean_title  = self::sanitize_log_field( $title );
                 $clean_author = self::sanitize_log_field( $author );
-                $message      = sprintf(
-                        '[BooksCoverSearch] Title="%s" Author="%s" Accepted=%d Rejected=%d',
+                $sources = array_filter(
+                        array_map(
+                                array( __CLASS__, 'sanitize_log_field' ),
+                                array_unique( $sources )
+                        )
+                );
+
+                $source_field = '';
+                if ( ! empty( $sources ) ) {
+                        $source_field = sprintf( ' Source=%s', implode( ',', $sources ) );
+                }
+
+                $message = sprintf(
+                        '[BooksCoverSearch] Title="%s" Author="%s" Found=%d Accepted=%d%s',
                         $clean_title,
                         $clean_author,
+                        (int) $found,
                         (int) $accepted,
-                        (int) $rejected
+                        $source_field
                 );
 
                 file_put_contents( $path, $message . PHP_EOL, FILE_APPEND | LOCK_EX );
@@ -1405,7 +1425,7 @@ class PRS_Cover_Upload_Feature {
                 }
 
                 $books_pattern = '/(^|\.)books\.google\.(com|cl|es|co|com\.ar|com\.mx)$/';
-                $play_pattern  = '/(^|\.)play\.google\.[a-z\.]+$/';
+                $play_pattern  = '/(^|\.)play\.google\.(com|cl|es|co|com\.ar|com\.mx)$/';
 
                 $is_allowed = false;
 
