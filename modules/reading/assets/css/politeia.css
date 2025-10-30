@@ -107,7 +107,7 @@
 #prs-library .prs-library__cover-image {
         display: block;
         width: 100%;
-        height: auto;
+        height: 80px;
         border-radius: 0px;
         object-fit: cover;
 }
@@ -1558,8 +1558,7 @@ display:inline-block;
         transition:background 0.2s ease-in-out;
         }
 
-        button#prs-cover-open,
-        button#prs-cover-search{
+        button#prs-cover-open{
         font-size:12px !important;
         border-radius:6px !important;
         background-color:#000000 !important;
