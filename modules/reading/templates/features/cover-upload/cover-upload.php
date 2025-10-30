@@ -362,6 +362,10 @@ class PRS_Cover_Upload_Feature {
 
                 // Responder con URL para reemplazar la portada en el front
                 $src = wp_get_attachment_image_url( $att_id, 'large' );
+                if ( ! $src ) {
+                        $src = wp_get_attachment_url( $att_id );
+                }
+
                 $response_src = $src ?: '';
 
                 wp_send_json_success(

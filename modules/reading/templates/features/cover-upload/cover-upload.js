@@ -902,14 +902,14 @@
           mime: preferredMime,
         });
 
-    const coverUrl = payload.url || payload.src || '';
-    if (!coverUrl) {
-      setStatus('Error', '#ef4444');
-      return;
-    }
+        const coverUrl = (payload && (payload.url || payload.src)) || '';
+        if (!coverUrl) {
+          setStatus('Error', '#ef4444');
+          return;
+        }
 
-    setStatus('Saved', '#16a34a');
-    replaceCover(coverUrl, true, '');
+        setStatus('Saved', '#16a34a');
+        replaceCover(coverUrl, true, '');
         closeModal();
       } catch (error) {
         const message = error?.message || 'Error';
