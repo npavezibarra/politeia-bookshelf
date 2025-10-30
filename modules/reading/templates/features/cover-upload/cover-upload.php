@@ -242,6 +242,12 @@ class PRS_Cover_Upload_Feature {
         * y actualiza politeia_user_books.cover_reference
          */
         public static function ajax_save_crop() {
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                        $post_keys = implode( ', ', array_keys( $_POST ) );
+                        error_log( '[Cover] ajax_save_crop() started' );
+                        error_log( '[Cover] POST keys: ' . $post_keys );
+                }
+
                 if ( ! is_user_logged_in() ) {
                         wp_send_json_error( array( 'message' => 'auth' ), 401 );
                 }

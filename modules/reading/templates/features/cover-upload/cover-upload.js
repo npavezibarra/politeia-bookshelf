@@ -821,6 +821,14 @@
       payload.append('book_id', String(book_id));
     }
 
+    if (window.console && console.log) {
+      console.log('Posting cover upload to:', ajaxUrl);
+      console.log('Action:', payload.get('action'));
+      console.log('Nonce:', payload.get('_wpnonce') || payload.get('nonce'));
+      console.log('User Book ID:', payload.get('user_book_id'));
+      console.log('Book ID:', payload.get('book_id'));
+    }
+
     const response = await fetch(ajaxUrl, {
       method: 'POST',
       credentials: 'same-origin',
