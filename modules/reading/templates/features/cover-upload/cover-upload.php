@@ -77,6 +77,7 @@ class PRS_Cover_Upload_Feature {
                         array(
                                 'ajax'        => $ajax_url,
                                 'nonce'       => $crop_nonce,
+                                'cropNonce'   => $crop_nonce,
                                 'coverWidth'  => 240,
                                 'coverHeight' => 450,
                                 'onlyOne'     => 1,
@@ -98,9 +99,10 @@ class PRS_Cover_Upload_Feature {
                 );
 
                 $inline_config = sprintf(
-                        "window.PRS_SAVE_URL = %s;\nwindow.PRS_NONCE = %s;\nwindow.PRS_POST_ID = %s;",
+                        "window.PRS_SAVE_URL = %s;\nwindow.PRS_NONCE = %s;\nwindow.PRS_COVER_CROP_NONCE = %s;\nwindow.PRS_POST_ID = %s;",
                         wp_json_encode( $ajax_url ),
                         wp_json_encode( $save_nonce ),
+                        wp_json_encode( $crop_nonce ),
                         wp_json_encode( (int) $post_id )
                 );
 
@@ -242,7 +244,56 @@ class PRS_Cover_Upload_Feature {
                 error_log( '[Cover] ajax_save_crop() started' );
                 error_log( '[Cover] POST keys: ' . implode( ', ', array_keys( $_POST ) ) );
 
-               check_ajax_referer( 'prs_cover_save_crop', '_wpnonce' );
+                if ( ! is_user_logged_in() ) {
+                        error_log( '[Cover] Permission denied: user not logged in' );
+                        wp_send_json_error( array( 'message' => 'Permission denied' ), 401 );
+                }
+
+                $nonce_primary   = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
+                $nonce_secondary = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+                $nonce_sources   = array_filter(
+                        array( $nonce_primary, $nonce_secondary ),
+                        static function ( $value ) {
+                                return '' !== $value;
+                        }
+                );
+
+                $nonce_valid = false;
+                foreach ( $nonce_sources as $token ) {
+                        if ( wp_verify_nonce( $token, 'prs_cover_save_crop' ) ) {
+                                $nonce_valid = true;
+                                break;
+                        }
+                }
+
+                if ( ! $nonce_valid ) {
+                        foreach ( $nonce_sources as $token ) {
+                                if ( wp_verify_nonce( $token, 'prs_cover_nonce' ) ) {
+                                        $nonce_valid = true;
+                                        break;
+                                }
+                        }
+                }
+
+                if ( ! $nonce_valid ) {
+                        $token_lengths = array_map(
+                                static function ( $value ) {
+                                        return strlen( $value ) . ' chars';
+                                },
+                                $nonce_sources
+                        );
+
+                        error_log(
+                                sprintf(
+                                        '[Cover] Nonce validation failed for user %d (tokens: %s)',
+                                        get_current_user_id(),
+                                        implode( ', ', $token_lengths )
+                                )
+                        );
+                        wp_send_json_error( array( 'message' => 'Permission denied' ), 403 );
+                }
+
+                error_log( '[Cover] Nonce validated' );
 
                 $image_data   = isset( $_POST['image'] ) ? wp_unslash( $_POST['image'] ) : '';
                 $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
@@ -263,6 +314,18 @@ class PRS_Cover_Upload_Feature {
                 }
 
                 $upload_dir = wp_upload_dir();
+
+                if ( ! empty( $upload_dir['error'] ) ) {
+                        error_log( '[Cover] Upload dir error: ' . $upload_dir['error'] );
+                        wp_send_json_error( array( 'message' => 'Upload directory unavailable' ) );
+                }
+
+                if ( ! wp_mkdir_p( $upload_dir['path'] ) ) {
+                        error_log( '[Cover] Failed to ensure upload directory: ' . $upload_dir['path'] );
+                        wp_send_json_error( array( 'message' => 'Upload directory unavailable' ) );
+                }
+
+                error_log( '[Cover] Upload path prepared: ' . $upload_dir['path'] );
                 $file_name  = 'book-cover-' . uniqid() . '.png';
                 $file_path  = trailingslashit( $upload_dir['path'] ) . $file_name;
 
@@ -270,6 +333,8 @@ class PRS_Cover_Upload_Feature {
                         error_log( '[Cover] File write failed at ' . $file_path );
                         wp_send_json_error( array( 'message' => 'Failed to write image' ) );
                 }
+
+                error_log( '[Cover] File saved: ' . $file_path . ' (' . strlen( $decoded ) . ' bytes)' );
 
                 $wp_filetype   = wp_check_filetype( $file_name, null );
                 $attachment    = array(
@@ -294,19 +359,26 @@ class PRS_Cover_Upload_Feature {
                 global $wpdb;
                 $table = $wpdb->prefix . 'politeia_user_books';
                 if ( $user_book_id > 0 ) {
-                        $wpdb->update(
+                        $update = $wpdb->update(
                                 $table,
                                 array(
                                         'cover_attachment_id_user' => $attachment_id,
+                                        'cover_reference'           => (string) $attachment_id,
                                         'cover_url'                 => $attachment_url,
                                         'updated_at'                => current_time( 'mysql' ),
                                 ),
                                 array( 'id' => $user_book_id ),
-                                array( '%d', '%s', '%s' ),
+                                array( '%d', '%s', '%s', '%s' ),
                                 array( '%d' )
                         );
-                        error_log( "[Cover] User book #{$user_book_id} updated with attachment {$attachment_id}" );
+                        if ( false === $update ) {
+                                error_log( sprintf( '[Cover] Database update failed for user book %d (attachment %d)', $user_book_id, $attachment_id ) );
+                        } else {
+                                error_log( "[Cover] User book #{$user_book_id} updated with attachment {$attachment_id}" );
+                        }
                 }
+
+                error_log( sprintf( '[Cover] ajax_save_crop() completed for attachment %d', $attachment_id ) );
 
                 wp_send_json_success(
                         array(

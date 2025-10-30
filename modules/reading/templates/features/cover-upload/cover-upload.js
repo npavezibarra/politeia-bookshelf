@@ -774,15 +774,19 @@
       || (window.prs_cover_data && window.prs_cover_data.ajaxurl)
       || window.ajaxurl
       || '';
-    const nonce = window.PRS_NONCE
-      || coverConfig.saveNonce
+    const globalNonce = (typeof window.PRS_NONCE === 'string' && window.PRS_NONCE) || '';
+    const cropNonce = (typeof window.PRS_COVER_CROP_NONCE === 'string' && window.PRS_COVER_CROP_NONCE)
+      || coverConfig.cropNonce
       || coverConfig.nonce
+      || (window.prs_cover_data && window.prs_cover_data.nonce)
+      || coverConfig.saveNonce
+      || globalNonce
       || '';
     const postId = window.PRS_POST_ID
       || coverConfig.postId
       || 0;
 
-    return { ajaxUrl, nonce, postId };
+    return { ajaxUrl, nonce: cropNonce, postId };
   }
 
   async function uploadCroppedCover({ dataURL, mime, postId }) {
