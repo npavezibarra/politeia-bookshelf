@@ -774,15 +774,19 @@
       || (window.prs_cover_data && window.prs_cover_data.ajaxurl)
       || window.ajaxurl
       || '';
-    const nonce = window.PRS_NONCE
-      || coverConfig.saveNonce
+    const globalNonce = (typeof window.PRS_NONCE === 'string' && window.PRS_NONCE) || '';
+    const cropNonce = (typeof window.PRS_COVER_CROP_NONCE === 'string' && window.PRS_COVER_CROP_NONCE)
+      || coverConfig.cropNonce
       || coverConfig.nonce
+      || (window.prs_cover_data && window.prs_cover_data.nonce)
+      || coverConfig.saveNonce
+      || globalNonce
       || '';
     const postId = window.PRS_POST_ID
       || coverConfig.postId
       || 0;
 
-    return { ajaxUrl, nonce, postId };
+    return { ajaxUrl, nonce: cropNonce, postId };
   }
 
   async function uploadCroppedCover({ dataURL, mime, postId }) {
@@ -800,9 +804,11 @@
     }
 
     const payload = new URLSearchParams({
-      action: 'prs_save_cropped_cover',
+      action: 'prs_cover_save_crop',
       _wpnonce: nonce,
+      nonce,
       data: dataURL,
+      image: dataURL,
       mime: mime || 'image/png',
     });
 
@@ -817,6 +823,14 @@
     }
     if (book_id) {
       payload.append('book_id', String(book_id));
+    }
+
+    if (window.console && console.log) {
+      console.log('Posting cover upload to:', ajaxUrl);
+      console.log('Action:', payload.get('action'));
+      console.log('Nonce:', payload.get('_wpnonce') || payload.get('nonce'));
+      console.log('User Book ID:', payload.get('user_book_id'));
+      console.log('Book ID:', payload.get('book_id'));
     }
 
     const response = await fetch(ajaxUrl, {
@@ -900,13 +914,14 @@
           mime: preferredMime,
         });
 
-        if (!payload || !payload.url) {
+        const coverUrl = (payload && (payload.url || payload.src)) || '';
+        if (!coverUrl) {
           setStatus('Error', '#ef4444');
           return;
         }
 
         setStatus('Saved', '#16a34a');
-        replaceCover(payload.url, true, '');
+        replaceCover(coverUrl, true, '');
         closeModal();
       } catch (error) {
         const message = error?.message || 'Error';
