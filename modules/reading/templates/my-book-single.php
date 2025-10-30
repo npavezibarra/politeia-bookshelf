@@ -498,6 +498,32 @@ wp_add_inline_script(
                         </div>
                 </div>
 
+                <?php
+                $total_pages      = ( isset( $ub->pages ) && $ub->pages ) ? (int) $ub->pages : 0;
+                $density_sessions = array();
+
+                if ( $total_pages > 0 && ! empty( $sessions ) ) {
+                        foreach ( $sessions as $session ) {
+                                if ( isset( $session->start_page, $session->end_page ) ) {
+                                        $density_sessions[] = array(
+                                                'start_page' => (int) $session->start_page,
+                                                'end_page'   => (int) $session->end_page,
+                                        );
+                                }
+                        }
+                }
+                ?>
+
+                <?php if ( $total_pages > 0 && ! empty( $density_sessions ) ) : ?>
+                <div class="prs-reading-density-bar mt-4">
+                        <canvas
+                                id="prs-reading-density-canvas"
+                                data-total-pages="<?php echo esc_attr( $total_pages ); ?>"
+                                data-sessions='<?php echo esc_attr( wp_json_encode( $density_sessions ) ); ?>'
+                        ></canvas>
+                </div>
+                <?php endif; ?>
+
                <!-- Purchase Date & Channel -->
                <div class="prs-purchase-row">
                         <div class="prs-field prs-purchase-field" id="fld-purchase-date">

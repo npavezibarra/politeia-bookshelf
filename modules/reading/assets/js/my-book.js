@@ -2801,9 +2801,81 @@ window.PRS_isSaving = false;
     }
   }
 
+  function setupReadingDensityBar() {
+    const canvas = document.getElementById("prs-reading-density-canvas");
+    if (!canvas) return;
+
+    const rawTotal = canvas.getAttribute("data-total-pages") || "";
+    const totalPages = parseInt(rawTotal, 10);
+    if (!Number.isFinite(totalPages) || totalPages <= 0) return;
+
+    const rawSessions = canvas.getAttribute("data-sessions") || "";
+    let sessions = [];
+
+    try {
+      sessions = JSON.parse(rawSessions);
+    } catch (err) {
+      sessions = [];
+    }
+
+    if (!Array.isArray(sessions) || sessions.length === 0) {
+      return;
+    }
+
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const container = canvas.parentElement || canvas;
+
+    function renderDensity() {
+      const width = container.offsetWidth || canvas.clientWidth || 0;
+      const height = container.offsetHeight || canvas.clientHeight || 0;
+
+      if (width === 0 || height === 0) {
+        return;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const pageDensity = new Array(totalPages).fill(0);
+
+      sessions.forEach(session => {
+        const startValue = parseInt(session.start_page, 10);
+        const endValue = parseInt(session.end_page, 10);
+        const start = Math.min(totalPages, Math.max(1, Number.isFinite(startValue) ? startValue : 0));
+        const end = Math.min(totalPages, Math.max(start, Number.isFinite(endValue) ? endValue : 0));
+
+        for (let i = start - 1; i < end; i++) {
+          pageDensity[i] += 1;
+        }
+      });
+
+      ctx.clearRect(0, 0, width, height);
+
+      const pageWidth = width / totalPages;
+
+      for (let i = 0; i < totalPages; i++) {
+        const density = pageDensity[i];
+        if (density === 0) {
+          continue;
+        }
+
+        const clamped = Math.min(density, 5);
+        const lightness = 70 - (clamped - 1) * 10;
+        ctx.fillStyle = `hsl(210, 90%, ${lightness}%)`;
+        ctx.fillRect(i * pageWidth, 0, pageWidth + 0.5, height);
+      }
+    }
+
+    renderDensity();
+    window.addEventListener("resize", renderDensity);
+  }
+
 
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
+    setupReadingDensityBar();
     setupCoverPlaceholder();
     setupPages();
     setupLibraryPagesInlineEdit();
