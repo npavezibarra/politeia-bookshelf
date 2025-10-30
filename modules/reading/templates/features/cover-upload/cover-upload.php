@@ -242,7 +242,7 @@ class PRS_Cover_Upload_Feature {
                 error_log( '[Cover] ajax_save_crop() started' );
                 error_log( '[Cover] POST keys: ' . implode( ', ', array_keys( $_POST ) ) );
 
-                check_ajax_referer( 'prs_cover_upload_nonce', '_wpnonce' );
+               check_ajax_referer( 'prs_cover_save_crop', '_wpnonce' );
 
                 $image_data   = isset( $_POST['image'] ) ? wp_unslash( $_POST['image'] ) : '';
                 $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
