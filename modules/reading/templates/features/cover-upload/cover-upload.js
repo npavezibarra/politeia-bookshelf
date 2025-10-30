@@ -1112,6 +1112,7 @@
       option.tabIndex = 0;
       option.setAttribute('aria-pressed', 'false');
 
+      const figure = el('figure', 'prs-cover-figure');
       const frame = el('div', 'prs-cover-frame');
       const img = el('img');
       img.src = item.url;
@@ -1128,7 +1129,23 @@
         frame.appendChild(badge);
       }
 
-      option.appendChild(frame);
+      figure.appendChild(frame);
+
+      const caption = el('figcaption', 'prs-cover-caption');
+      if (item.source) {
+        const link = el('a');
+        link.href = item.source;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'View on Google Books';
+        caption.appendChild(link);
+      } else {
+        caption.textContent = 'View on Google Books';
+        caption.setAttribute('aria-hidden', 'true');
+      }
+      figure.appendChild(caption);
+
+      option.appendChild(figure);
 
       if (item.title || item.author) {
         const meta = el('div', 'prs-cover-meta');
@@ -1145,23 +1162,10 @@
         option.appendChild(meta);
       }
 
-      const attribution = el('a', 'prs-cover-attribution');
-      attribution.textContent = 'View on Google Books';
-      attribution.target = '_blank';
-      attribution.rel = 'noopener noreferrer';
-      if (item.source) {
-        attribution.href = item.source;
-        attribution.setAttribute('aria-hidden', 'false');
-      } else {
-        attribution.classList.add('is-hidden');
-        attribution.setAttribute('aria-hidden', 'true');
-      }
-      option.appendChild(attribution);
-
       const handleSelect = (event) => {
         if (event) {
           const target = event.target;
-          if (target instanceof HTMLElement && target.closest('.prs-cover-attribution')) {
+          if (target instanceof HTMLElement && target.closest('.prs-cover-caption a')) {
             return;
           }
           event.preventDefault();

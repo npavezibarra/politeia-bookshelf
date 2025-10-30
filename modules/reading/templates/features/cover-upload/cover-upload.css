@@ -84,16 +84,16 @@
 }
 .prs-cover-grid{
         display:grid;
-        grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+        grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
         gap:16px;
         justify-items:center;
+        margin-top:1rem;
         width:100%;
 }
 .prs-cover-option{
         background:#fdfdfd;
         border:1px solid rgba(0,0,0,.08);
         border-radius:12px;
-        overflow:hidden;
         position:relative;
         transition:box-shadow .2s ease, transform .2s ease, border-color .2s ease;
         display:flex;
@@ -134,6 +134,13 @@
         justify-content:center;
         box-shadow:0 4px 12px rgba(0,0,0,.3);
 }
+.prs-cover-figure{
+        margin:0;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        width:100%;
+}
 .prs-cover-frame{
         position:relative;
         display:flex;
@@ -151,11 +158,11 @@
         box-shadow:0 3px 10px rgba(0,0,0,.12);
 }
 .prs-cover-meta{
-        margin-top:12px;
+        margin-top:6px;
         display:flex;
         flex-direction:column;
         gap:4px;
-        font-size:13px;
+        font-size:12px;
         color:#374151;
         width:100%;
 }
@@ -169,21 +176,21 @@
         color:#6b7280;
         line-height:1.2;
 }
-.prs-cover-attribution{
-        display:block;
-        padding:10px 12px 12px;
-        font-size:12px;
-        text-align:center;
-        color:#0a58ca;
-        text-decoration:none;
-        border-top:1px solid rgba(0,0,0,.05);
-        background:#fff;
+.prs-cover-caption{
+        margin-top:4px;
+        font-size:8px;
+        color:#9ca3af;
+        font-family:'Inter', sans-serif;
 }
-.prs-cover-attribution:hover,
-.prs-cover-attribution:focus{
+.prs-cover-caption a{
+        color:#9ca3af;
+        text-decoration:none;
+}
+.prs-cover-caption a:hover,
+.prs-cover-caption a:focus{
+        color:#6b7280;
         text-decoration:underline;
 }
-.prs-cover-attribution.is-hidden{ display:none; }
 .prs-cover-search-modal__footer{
         display:flex;
         justify-content:flex-end;
