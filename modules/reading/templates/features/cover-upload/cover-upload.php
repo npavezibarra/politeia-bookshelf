@@ -1000,8 +1000,14 @@ class PRS_Cover_Upload_Feature {
                                 continue;
                         }
 
-                        $volume    = isset( $entry['volumeInfo'] ) && is_array( $entry['volumeInfo'] ) ? $entry['volumeInfo'] : array();
-                        $vol_title = isset( $volume['title'] ) ? (string) $volume['title'] : '';
+                        $volume           = isset( $entry['volumeInfo'] ) && is_array( $entry['volumeInfo'] ) ? $entry['volumeInfo'] : array();
+                        $vol_title        = isset( $volume['title'] ) ? (string) $volume['title'] : '';
+                        $vol_subtitle     = isset( $volume['subtitle'] ) ? (string) $volume['subtitle'] : '';
+                        $candidate_title  = $vol_title;
+                        if ( $vol_subtitle ) {
+                                $candidate_title .= ' ' . $vol_subtitle;
+                        }
+
                         if ( '' === $vol_title ) {
                                 self::log_debug(
                                         'google_cover_candidate_skip',
@@ -1013,18 +1019,23 @@ class PRS_Cover_Upload_Feature {
                                 continue;
                         }
 
-                        $similarity = self::title_similarity( $title, $vol_title );
-                        if ( $similarity < 0.5 ) {
+                        $similarity = self::title_similarity( $title, $candidate_title );
+                        if ( $similarity < 0.7 ) {
                                 self::log_debug(
                                         'google_cover_candidate_skip',
                                         array(
                                                 'id'         => isset( $entry['id'] ) ? (string) $entry['id'] : '',
                                                 'title'      => $vol_title,
+                                                'candidate'  => $candidate_title,
                                                 'similarity' => $similarity,
                                                 'reason'     => 'low_similarity',
                                         )
                                 );
                                 continue;
+                        }
+
+                        if ( $similarity < 0.8 ) {
+                                error_log( sprintf( "📚 Overlap for '%s' vs '%s' = %.3f", $title, $candidate_title, $similarity ) );
                         }
 
                         $links = isset( $volume['imageLinks'] ) && is_array( $volume['imageLinks'] ) ? $volume['imageLinks'] : array();
@@ -1117,6 +1128,7 @@ class PRS_Cover_Upload_Feature {
                                 array(
                                         'id'         => isset( $entry['id'] ) ? (string) $entry['id'] : '',
                                         'title'      => $vol_title,
+                                        'candidate'  => $candidate_title,
                                         'similarity' => $similarity,
                                         'language'   => $vol_language,
                                 )
@@ -1205,7 +1217,35 @@ class PRS_Cover_Upload_Feature {
                 $title = preg_replace( "/[\"'`\x{2018}\x{2019}\x{201C}\x{201D}]/u", '', $title );
                 $title = preg_replace( '/[^\p{L}\p{N}\s]/u', ' ', $title );
                 $title = preg_replace( '/\s+/u', ' ', $title );
-                return trim( $title );
+                $title = trim( $title );
+
+                if ( '' === $title ) {
+                        return '';
+                }
+
+                $words = preg_split( '/\s+/', $title, -1, PREG_SPLIT_NO_EMPTY );
+                if ( empty( $words ) ) {
+                        return '';
+                }
+
+                static $stopwords = null;
+                if ( null === $stopwords ) {
+                        $stopwords = array(
+                                'a', 'an', 'and', 'the', 'of', 'for', 'to', 'in', 'on', 'at', 'by', 'with', 'de', 'del', 'la', 'el',
+                                'los', 'las', 'una', 'un', 'unas', 'unos', 'y', 'en', 'por', 'para', 'con', 'da', 'do', 'das', 'dos',
+                        );
+                }
+
+                $words = array_values(
+                        array_filter(
+                                $words,
+                                static function ( $word ) use ( $stopwords ) {
+                                        return '' !== $word && ! in_array( $word, $stopwords, true );
+                                }
+                        )
+                );
+
+                return implode( ' ', $words );
         }
 
         private static function title_similarity( $a, $b ) {
