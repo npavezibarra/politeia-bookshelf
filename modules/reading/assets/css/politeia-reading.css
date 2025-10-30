@@ -30,8 +30,8 @@
         min-width: 0;
 }
 
-/* Desktop: >950px — one-row, three columns */
-@media (min-width: 951px) {
+/* Desktop: ≥950px — one-row, three columns */
+@media (min-width: 950px) {
         #prs-book-info.prs-book-info {
                 flex-wrap: nowrap;
                 gap: 24px;
@@ -40,6 +40,11 @@
         #prs-book-info.prs-book-info > #prs-book-cover {
                 width: 190px;
                 flex: 0 0 190px;
+        }
+
+        #prs-cover-frame:not(.has-image)[data-cover-state="empty"] > #prs-book-cover-figure,
+        #prs-cover-frame:not(.has-image):not([data-cover-state]) > #prs-book-cover-figure {
+                height: 280px;
         }
 
         #prs-book-info.prs-book-info > #prs-book-info__main {
