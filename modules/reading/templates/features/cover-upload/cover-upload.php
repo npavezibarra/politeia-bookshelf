@@ -8,7 +8,19 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class PRS_Cover_Upload_Feature {
 
+	/**
+	 * Tracks whether hooks have already been registered for this feature.
+	 *
+	 * @var bool
+	 */
+	private static $bootstrapped = false;
+
 	public static function init() {
+		if ( self::$bootstrapped ) {
+			return;
+		}
+
+		self::$bootstrapped = true;
                 add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
                 add_shortcode( 'prs_cover_button', array( __CLASS__, 'shortcode_button' ) );
                 add_action( 'wp_ajax_prs_save_cropped_cover', array( __CLASS__, 'ajax_save_cropped_cover' ) );
@@ -17,6 +29,10 @@ class PRS_Cover_Upload_Feature {
                 add_action( 'wp_ajax_prs_cover_save_external', array( __CLASS__, 'ajax_save_external' ) );
                 add_action( 'wp_ajax_prs_cover_search_google', array( __CLASS__, 'ajax_search_google' ) );
                 add_action( 'wp_ajax_prs_save_cover_url', array( __CLASS__, 'ajax_save_cover_url' ) );
+
+		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+			error_log( '[Cover] Hook registered: wp_ajax_prs_cover_save_crop' );
+		}
         }
 
 	public static function assets() {
@@ -1109,4 +1125,13 @@ class PRS_Cover_Upload_Feature {
                 return esc_url_raw( $url );
         }
 }
-PRS_Cover_Upload_Feature::init();
+
+$prs_cover_upload_bootstrap = static function () {
+	PRS_Cover_Upload_Feature::init();
+};
+
+if ( did_action( 'plugins_loaded' ) ) {
+	$prs_cover_upload_bootstrap();
+} else {
+	add_action( 'plugins_loaded', $prs_cover_upload_bootstrap );
+}
