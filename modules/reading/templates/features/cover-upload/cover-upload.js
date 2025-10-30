@@ -998,7 +998,8 @@
     searchMessageEl = el('p', 'prs-cover-search-modal__message');
     searchMessageEl.textContent = '';
 
-    searchGridEl = el('div', 'prs-cover-search-modal__grid');
+    searchGridEl = el('div', 'prs-cover-search-modal__grid prs-cover-grid');
+    searchGridEl.id = 'prs-cover-options';
 
     const footer = el('div', 'prs-cover-search-modal__footer');
     const cancel = el('button', 'prs-btn prs-btn--ghost');
@@ -1107,14 +1108,16 @@
       option.dataset.coverUrl = item.url;
       if (item.source) option.dataset.sourceLink = item.source;
       if (item.language) option.dataset.language = item.language;
+      option.setAttribute('role', 'button');
+      option.tabIndex = 0;
+      option.setAttribute('aria-pressed', 'false');
 
-      const selectBtn = el('button', 'prs-cover-option__select');
-      selectBtn.type = 'button';
+      const frame = el('div', 'prs-cover-frame');
       const img = el('img');
       img.src = item.url;
       img.alt = item.title ? `Cover for ${item.title}` : 'Book cover option';
       img.loading = 'lazy';
-      selectBtn.appendChild(img);
+      frame.appendChild(img);
 
       if (item.language) {
         const badge = el('span', 'prs-cover-search-modal__lang');
@@ -1122,15 +1125,25 @@
         if (preferredLanguage && item.language.toLowerCase() !== preferredLanguage.toLowerCase()) {
           badge.classList.add('is-mismatch');
         }
-        selectBtn.appendChild(badge);
+        frame.appendChild(badge);
       }
 
-      selectBtn.addEventListener('click', (event) => {
-        event.preventDefault();
-        selectSearchResult(item, option);
-      });
+      option.appendChild(frame);
 
-      option.appendChild(selectBtn);
+      if (item.title || item.author) {
+        const meta = el('div', 'prs-cover-meta');
+        if (item.title) {
+          const title = el('span', 'prs-cover-title');
+          title.textContent = item.title;
+          meta.appendChild(title);
+        }
+        if (item.author) {
+          const author = el('span', 'prs-cover-author');
+          author.textContent = item.author;
+          meta.appendChild(author);
+        }
+        option.appendChild(meta);
+      }
 
       const attribution = el('a', 'prs-cover-attribution');
       attribution.textContent = 'View on Google Books';
@@ -1144,6 +1157,24 @@
         attribution.setAttribute('aria-hidden', 'true');
       }
       option.appendChild(attribution);
+
+      const handleSelect = (event) => {
+        if (event) {
+          const target = event.target;
+          if (target instanceof HTMLElement && target.closest('.prs-cover-attribution')) {
+            return;
+          }
+          event.preventDefault();
+        }
+        selectSearchResult(item, option);
+      };
+
+      option.addEventListener('click', handleSelect);
+      option.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar' || event.key === 'Space') {
+          handleSelect(event);
+        }
+      });
 
       searchGridEl.appendChild(option);
       rendered.push({ item, option });
@@ -1165,7 +1196,11 @@
     };
     if (searchGridEl) {
       Array.from(searchGridEl.children).forEach((child) => {
-        child.classList.toggle('is-selected', child === node);
+        const isMatch = child === node;
+        child.classList.toggle('is-selected', isMatch);
+        if (child instanceof HTMLElement) {
+          child.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
+        }
       });
     }
     if (searchSetBtn) {
@@ -1210,7 +1245,8 @@
       url: item.url || '',
       language: item.language || '',
       source: item.source || '',
-      title: item.title || ''
+      title: item.title || '',
+      author: item.author || ''
     })).filter((item) => !!item.url);
   }
 
