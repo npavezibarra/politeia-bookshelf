@@ -1131,7 +1131,7 @@
 
       figure.appendChild(frame);
 
-      const caption = el('figcaption', 'prs-cover-attribution');
+      const caption = el('figcaption', 'prs-cover-caption');
       if (item.source) {
         const link = el('a');
         link.href = item.source;
@@ -1165,7 +1165,7 @@
       const handleSelect = (event) => {
         if (event) {
           const target = event.target;
-          if (target instanceof HTMLElement && target.closest('.prs-cover-attribution a')) {
+          if (target instanceof HTMLElement && target.closest('.prs-cover-caption a')) {
             return;
           }
           event.preventDefault();

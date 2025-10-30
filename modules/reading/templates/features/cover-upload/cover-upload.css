@@ -91,23 +91,24 @@
         width:100%;
 }
 .prs-cover-option{
-        background:#fff;
-        border:1px solid #ddd;
-        border-radius:6px;
+        background:#fdfdfd;
+        border:1px solid rgba(0,0,0,.08);
+        border-radius:12px;
         position:relative;
-        transition:transform .2s ease, box-shadow .2s ease;
+        transition:box-shadow .2s ease, transform .2s ease, border-color .2s ease;
         display:flex;
         flex-direction:column;
+        align-items:center;
+        padding:12px 12px 8px;
         cursor:pointer;
         text-align:center;
-        max-height:220px;
-        overflow:hidden;
-        width:100%;
 }
 .prs-cover-option:hover,
 .prs-cover-option:focus-within{
         transform:scale(1.02);
         box-shadow:0 6px 20px rgba(0,0,0,.18);
+        transform:translateY(-2px);
+        border-color:rgba(0,0,0,.16);
 }
 .prs-cover-option:focus-visible{
         outline:3px solid rgba(17,17,17,.5);
@@ -115,6 +116,7 @@
 }
 .prs-cover-option.is-selected{
         box-shadow:0 0 0 2px #111 inset;
+        border-color:#111;
 }
 .prs-cover-option.is-selected::after{
         content:"\2713";
@@ -138,9 +140,6 @@
         display:flex;
         flex-direction:column;
         align-items:center;
-        flex:1 1 auto;
-        min-height:0;
-        padding:8px 8px 0;
         width:100%;
 }
 .prs-cover-frame{
@@ -149,11 +148,10 @@
         align-items:center;
         justify-content:center;
         width:100%;
-        flex:1 1 auto;
-        min-height:0;
+        min-height:160px;
 }
 .prs-cover-frame img{
-        max-height:100%;
+        max-height:220px;
         width:auto;
         max-width:100%;
         border-radius:6px;
@@ -161,40 +159,36 @@
         box-shadow:0 3px 10px rgba(0,0,0,.12);
 }
 .prs-cover-meta{
-        margin:0;
-        padding:6px 8px;
+        margin-top:6px;
         display:flex;
         flex-direction:column;
-        gap:2px;
-        font-size:11px;
+        gap:4px;
+        font-size:12px;
         color:#374151;
-        flex:0 0 auto;
-        text-align:center;
+        width:100%;
 }
 .prs-cover-title{
         font-weight:600;
-        line-height:1.2;
+        line-height:1.3;
         display:block;
-        word-break:break-word;
 }
 .prs-cover-author{
-        font-size:11px;
+        font-size:12px;
         color:#6b7280;
         line-height:1.2;
-        word-break:break-word;
 }
-.prs-cover-attribution{
+.prs-cover-caption{
         margin-top:4px;
         font-size:8px;
         color:#9ca3af;
         font-family:'Inter', sans-serif;
 }
-.prs-cover-attribution a{
+.prs-cover-caption a{
         color:#9ca3af;
         text-decoration:none;
 }
-.prs-cover-attribution a:hover,
-.prs-cover-attribution a:focus{
+.prs-cover-caption a:hover,
+.prs-cover-caption a:focus{
         color:#6b7280;
         text-decoration:underline;
 }
