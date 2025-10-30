@@ -26,7 +26,13 @@ if ( ! $book ) {
 	get_footer();
 	exit; }
 
-$ub = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d LIMIT 1", $user_id, $book->id ) );
+$ub = $wpdb->get_row(
+        $wpdb->prepare(
+                "SELECT * FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
+                $user_id,
+                $book->id
+        )
+);
 if ( ! $ub ) {
 	status_header( 403 );
 	echo '<div class="wrap"><h1>No access</h1><p>This book is not in your library.</p></div>';
@@ -68,7 +74,7 @@ if ( $contact_name ) {
 $active_start_gmt   = $wpdb->get_var(
         $wpdb->prepare(
                 "SELECT start_date FROM {$tbl_loans}
-   WHERE user_id=%d AND book_id=%d AND end_date IS NULL
+   WHERE user_id=%d AND book_id=%d AND end_date IS NULL AND deleted_at IS NULL
    ORDER BY id DESC LIMIT 1",
                 $user_id,
                 $book->id
@@ -78,7 +84,7 @@ $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 
 
 $sessions = $wpdb->get_results(
         $wpdb->prepare(
-                "SELECT * FROM {$tbl_sessions} WHERE user_id = %d AND book_id = %d ORDER BY start_time ASC",
+                "SELECT * FROM {$tbl_sessions} WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL ORDER BY start_time ASC",
                 $user_id,
                 $book->id
         )

@@ -36,22 +36,22 @@ add_shortcode(
 		// Última página de la última sesión (si existe)
 		$last_end_page = $wpdb->get_var(
 			$wpdb->prepare(
-				"SELECT end_page FROM {$tbl_rs}
-     WHERE user_id = %d AND book_id = %d AND end_time IS NOT NULL
+                                "SELECT end_page FROM {$tbl_rs}
+     WHERE user_id = %d AND book_id = %d AND end_time IS NOT NULL AND deleted_at IS NULL
      ORDER BY end_time DESC LIMIT 1",
-				$user_id,
-				$book_id
-			)
-		);
+                                $user_id,
+                                $book_id
+                        )
+                );
 
-		// Owning status y pages actuales del usuario para este libro
-		$row_ub        = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT owning_status, pages FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d LIMIT 1",
-				$user_id,
-				$book_id
-			)
-		);
+                // Owning status y pages actuales del usuario para este libro
+                $row_ub        = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT owning_status, pages FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
+                                $user_id,
+                                $book_id
+                        )
+                );
 		$owning_status = $row_ub && $row_ub->owning_status ? (string) $row_ub->owning_status : 'in_shelf';
 		$total_pages   = $row_ub && $row_ub->pages ? (int) $row_ub->pages : 0;
 

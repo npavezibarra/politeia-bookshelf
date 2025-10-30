@@ -152,12 +152,12 @@ class Politeia_Reading_Sessions {
 
 		$session_id = isset( $_POST['session_id'] ) ? absint( $_POST['session_id'] ) : 0;
 		if ( $session_id > 0 ) {
-			$row = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT id,user_id,book_id FROM {$t} WHERE id=%d LIMIT 1",
-					$session_id
-				)
-			);
+                        $row = $wpdb->get_row(
+                                $wpdb->prepare(
+                                        "SELECT id,user_id,book_id FROM {$t} WHERE id=%d AND deleted_at IS NULL LIMIT 1",
+                                        $session_id
+                                )
+                        );
 			if ( $row && (int) $row->user_id === $user_id && (int) $row->book_id === $book_id ) {
 				$wpdb->update(
 					$t,
@@ -345,8 +345,8 @@ class Politeia_Reading_Sessions {
                 $t    = $wpdb->prefix . 'politeia_reading_sessions';
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT start_page, end_page FROM {$t}
-             WHERE user_id=%d AND book_id=%d AND end_time IS NOT NULL",
+                                "SELECT start_page, end_page FROM {$t}
+             WHERE user_id=%d AND book_id=%d AND end_time IS NOT NULL AND deleted_at IS NULL",
 				$user_id,
 				$book_id
 			),
@@ -413,13 +413,13 @@ class Politeia_Reading_Sessions {
 	private static function get_user_book_row( $user_id, $book_id ) {
 		global $wpdb;
 		$t = $wpdb->prefix . 'politeia_user_books';
-		return $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$t} WHERE user_id=%d AND book_id=%d LIMIT 1",
-				$user_id,
-				$book_id
-			)
-		);
+                return $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT * FROM {$t} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
+                                $user_id,
+                                $book_id
+                        )
+                );
 	}
 
 	private static function blocked_by_status( $status ) {
@@ -478,7 +478,7 @@ class Politeia_Reading_Sessions {
 		$paged    = max( 1, (int) $paged );
 		$offset   = ( $paged - 1 ) * $per_page;
 
-		$where = 'WHERE user_id=%d AND book_id=%d';
+                $where = 'WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL';
 		$args  = array( $user_id, $book_id );
 
 		if ( $only_finished ) {

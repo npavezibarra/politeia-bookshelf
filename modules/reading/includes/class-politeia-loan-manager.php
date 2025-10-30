@@ -192,7 +192,7 @@ class Politeia_Loan_Manager {
                 $user_books_table = $wpdb->prefix . 'politeia_user_books';
                 $state            = $wpdb->get_var(
                         $wpdb->prepare(
-                                "SELECT owning_status FROM {$user_books_table} WHERE user_id=%d AND book_id=%d LIMIT 1",
+                                "SELECT owning_status FROM {$user_books_table} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
                                 $user_id,
                                 $book_id
                         )
@@ -205,7 +205,7 @@ class Politeia_Loan_Manager {
                 $loans_table = $wpdb->prefix . 'politeia_loans';
                 $notes       = $wpdb->get_var(
                         $wpdb->prepare(
-                                "SELECT notes FROM {$loans_table} WHERE user_id=%d AND book_id=%d ORDER BY id DESC LIMIT 1",
+                                "SELECT notes FROM {$loans_table} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL ORDER BY id DESC LIMIT 1",
                                 $user_id,
                                 $book_id
                         )

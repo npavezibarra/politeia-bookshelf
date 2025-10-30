@@ -90,6 +90,7 @@ add_shortcode(
         FROM $ub ub
         JOIN $b  b ON b.id = ub.book_id
         WHERE ub.user_id = %d
+          AND ub.deleted_at IS NULL
           AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
     ",
                                $user_id
@@ -145,6 +146,7 @@ add_shortcode(
         FROM $ub ub
         JOIN $b b ON b.id = ub.book_id
         WHERE ub.user_id = %d
+          AND ub.deleted_at IS NULL
           AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
         ORDER BY b.title ASC
         LIMIT %d OFFSET %d
@@ -518,7 +520,12 @@ add_shortcode(
                                                         <span class="prs-library__progress-value"><?php echo (int) $progress; ?>%</span>
                                                 </div>
                                         </div>
-                                        <button type="button" class="prs-library__remove" aria-label="<?php esc_attr_e( 'Remove book', 'politeia-reading' ); ?>">
+                                        <button
+                                                type="button"
+                                                class="prs-library__remove prs-remove-book"
+                                                data-id="<?php echo esc_attr( $r->user_book_id ); ?>"
+                                                data-nonce="<?php echo esc_attr( wp_create_nonce( 'remove_user_book_' . (int) $r->user_book_id ) ); ?>"
+                                                aria-label="<?php esc_attr_e( 'Remove book', 'politeia-reading' ); ?>">
                                                 <?php esc_html_e( 'Remove', 'politeia-reading' ); ?>
                                         </button>
                                 </div>
