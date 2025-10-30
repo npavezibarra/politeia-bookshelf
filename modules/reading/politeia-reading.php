@@ -17,7 +17,7 @@ if ( ! defined( 'POLITEIA_READING_VERSION' ) ) {
         define( 'POLITEIA_READING_VERSION', '0.2.3' );
 }
 if ( ! defined( 'POLITEIA_READING_DB_VERSION' ) ) {
-        define( 'POLITEIA_READING_DB_VERSION', '1.2' );
+        define( 'POLITEIA_READING_DB_VERSION', '1.3' );
 }
 if ( ! defined( 'POLITEIA_READING_PATH' ) ) {
 	define( 'POLITEIA_READING_PATH', plugin_dir_path( __FILE__ ) );
@@ -41,6 +41,7 @@ require_once POLITEIA_READING_PATH . 'includes/class-books.php';
 require_once POLITEIA_READING_PATH . 'includes/class-user-books.php';
 require_once POLITEIA_READING_PATH . 'includes/class-reading-sessions.php';
 require_once POLITEIA_READING_PATH . 'includes/class-politeia-loan-manager.php';
+require_once POLITEIA_READING_PATH . 'includes/class-prs-ajax-user-books.php';
 require_once POLITEIA_READING_PATH . 'includes/helpers.php';
 require_once POLITEIA_READING_PATH . 'templates/features/cover-upload/cover-upload.php';
 require_once POLITEIA_READING_PATH . 'includes/class-routes.php';

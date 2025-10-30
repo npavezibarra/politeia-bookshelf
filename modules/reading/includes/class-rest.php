@@ -45,13 +45,23 @@ class Politeia_Reading_REST {
 		}
 
 		global $wpdb;
-		$table = $wpdb->prefix . 'politeia_user_books';
+                $table = $wpdb->prefix . 'politeia_user_books';
 
-		// Ownership check
-		$owner = $wpdb->get_var( $wpdb->prepare( "SELECT user_id FROM $table WHERE id=%d", $id ) );
-		if ( (int) $owner !== (int) $user_id ) {
-			return new WP_REST_Response( array( 'error' => 'forbidden' ), 403 );
-		}
+                // Ownership check
+                $row = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT user_id FROM $table WHERE id=%d AND deleted_at IS NULL",
+                                $id
+                        )
+                );
+
+                if ( ! $row ) {
+                        return new WP_REST_Response( array( 'error' => 'not_found' ), 404 );
+                }
+
+                if ( (int) $row->user_id !== (int) $user_id ) {
+                        return new WP_REST_Response( array( 'error' => 'forbidden' ), 403 );
+                }
 
 		$data = array();
 		if ( $reading ) {

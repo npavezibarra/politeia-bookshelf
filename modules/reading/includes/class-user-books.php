@@ -686,7 +686,7 @@ class Politeia_Reading_User_Books {
                 $t = $wpdb->prefix . 'politeia_user_books';
                 return $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT * FROM {$t} WHERE id=%d AND user_id=%d LIMIT 1",
+                                "SELECT * FROM {$t} WHERE id=%d AND user_id=%d AND deleted_at IS NULL LIMIT 1",
                                 $user_book_id,
                                 $user_id
                         )
@@ -698,7 +698,7 @@ class Politeia_Reading_User_Books {
                 $t = $wpdb->prefix . 'politeia_user_books';
                 return $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT * FROM {$t} WHERE user_id=%d AND book_id=%d LIMIT 1",
+                                "SELECT * FROM {$t} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
                                 $user_id,
                                 $book_id
                         )
@@ -726,15 +726,15 @@ class Politeia_Reading_User_Books {
 	private static function get_active_loan_id( $user_id, $book_id ) {
 		global $wpdb;
 		$t = self::loans_table();
-		return (int) $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT id FROM {$t}
-             WHERE user_id=%d AND book_id=%d AND end_date IS NULL
+                return (int) $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$t}
+             WHERE user_id=%d AND book_id=%d AND end_date IS NULL AND deleted_at IS NULL
              ORDER BY id DESC LIMIT 1",
-				$user_id,
-				$book_id
-			)
-		);
+                                $user_id,
+                                $book_id
+                        )
+                );
 	}
 
 	/**
@@ -813,7 +813,7 @@ class Politeia_Reading_User_Books {
                                 $wpdb->prepare(
                                         "UPDATE {$t}
              SET status=%s, end_date=%s, updated_at=%s
-             WHERE user_id=%d AND book_id=%d AND end_date IS NULL",
+             WHERE user_id=%d AND book_id=%d AND end_date IS NULL AND deleted_at IS NULL",
                                         $status,
                                         $end_gmt,
                                         $now,
@@ -826,7 +826,7 @@ class Politeia_Reading_User_Books {
                                 $wpdb->prepare(
                                         "UPDATE {$t}
              SET end_date=%s, updated_at=%s
-             WHERE user_id=%d AND book_id=%d AND end_date IS NULL",
+             WHERE user_id=%d AND book_id=%d AND end_date IS NULL AND deleted_at IS NULL",
                                         $end_gmt,
                                         $now,
                                         $user_id,

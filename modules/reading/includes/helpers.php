@@ -110,16 +110,27 @@ function prs_ensure_user_book( $user_id, $book_id ) {
 	$table = $wpdb->prefix . 'politeia_user_books';
 
 	// Unique (user_id, book_id)
-	$id = $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT id FROM {$table} WHERE user_id = %d AND book_id = %d LIMIT 1",
-			$user_id,
-			$book_id
-		)
-	);
-	if ( $id ) {
-		return (int) $id;
-	}
+        $row = $wpdb->get_row(
+                $wpdb->prepare(
+                        "SELECT id, deleted_at FROM {$table} WHERE user_id = %d AND book_id = %d LIMIT 1",
+                        $user_id,
+                        $book_id
+                )
+        );
+        if ( $row ) {
+                $id = (int) $row->id;
+                if ( ! empty( $row->deleted_at ) ) {
+                        $wpdb->update(
+                                $table,
+                                array(
+                                        'deleted_at' => null,
+                                        'updated_at' => current_time( 'mysql' ),
+                                ),
+                                array( 'id' => $id )
+                        );
+                }
+                return $id;
+        }
 
 	$wpdb->insert(
 		$table,

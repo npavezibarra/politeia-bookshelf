@@ -2873,6 +2873,57 @@ window.PRS_isSaving = false;
   }
 
 
+  jQuery(document).on("click", ".prs-remove-book", function () {
+    const btn = jQuery(this);
+    const id = parseInt(String(btn.data("id") || 0), 10);
+    const nonce = String(btn.data("nonce") || "");
+    const originalText = btn.text();
+
+    if (!id || !nonce) {
+      return;
+    }
+
+    if (!window.confirm("Are you sure you want to remove this book from your library?")) {
+      return;
+    }
+
+    btn.prop("disabled", true).text("Removing...");
+
+    const ajaxUrl = (typeof PRS_LIBRARY !== "undefined" && PRS_LIBRARY && PRS_LIBRARY.ajax_url)
+      ? PRS_LIBRARY.ajax_url
+      : (typeof ajaxurl !== "undefined" ? ajaxurl : "");
+
+    if (!ajaxUrl) {
+      window.alert("Error removing book.");
+      btn.prop("disabled", false).text(originalText);
+      return;
+    }
+
+    jQuery.post(ajaxUrl, {
+      action: "politeia_remove_user_book",
+      id,
+      nonce,
+    })
+      .done(response => {
+        if (response && response.success) {
+          const row = btn.closest("tr");
+          if (row && row.length) {
+            row.fadeOut(300, function () {
+              jQuery(this).remove();
+            });
+          }
+        } else {
+          window.alert((response && response.data) || "Error removing book.");
+          btn.prop("disabled", false).text(originalText);
+        }
+      })
+      .fail(() => {
+        window.alert("Error removing book.");
+        btn.prop("disabled", false).text(originalText);
+      });
+  });
+
+
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     setupReadingDensityBar();

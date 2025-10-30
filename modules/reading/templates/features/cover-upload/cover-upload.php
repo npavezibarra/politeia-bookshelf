@@ -160,7 +160,7 @@ class PRS_Cover_Upload_Feature {
                         $table = $wpdb->prefix . 'politeia_user_books';
                         $row   = $wpdb->get_row(
                                 $wpdb->prepare(
-                                        "SELECT id FROM {$table} WHERE id=%d AND user_id=%d AND book_id=%d LIMIT 1",
+                                        "SELECT id FROM {$table} WHERE id=%d AND user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
                                         $user_book_id,
                                         $user_id,
                                         $book_id
@@ -510,7 +510,7 @@ class PRS_Cover_Upload_Feature {
 
                 $row = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id FROM {$user_books_table} WHERE id=%d AND user_id=%d AND book_id=%d LIMIT 1",
+                                "SELECT id FROM {$user_books_table} WHERE id=%d AND user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
                                 $user_book_id,
                                 $user_id,
                                 $book_id
@@ -608,7 +608,7 @@ class PRS_Cover_Upload_Feature {
 
                 $row = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id FROM {$user_books_table} WHERE book_id = %d AND user_id = %d LIMIT 1",
+                                "SELECT id FROM {$user_books_table} WHERE book_id = %d AND user_id = %d AND deleted_at IS NULL LIMIT 1",
                                 $book_id,
                                 $user_id
                         )
