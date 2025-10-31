@@ -44,6 +44,190 @@
 .prs-cover-btn:focus-visible{ background:#2a2a2a; }
 
 /* Botón base ya usado en tu tema */
+/* Modal de búsqueda de portadas */
+.prs-cover-search-modal{
+        position:fixed;
+        inset:0;
+        background:rgba(0,0,0,.6);
+        z-index:100001;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        padding:24px;
+}
+.prs-cover-search-modal__content{
+        background:#fff;
+        border-radius:12px;
+        width:560px;
+        max-width:calc(100vw - 32px);
+        max-height:calc(100vh - 32px);
+        display:flex;
+        flex-direction:column;
+        padding:20px;
+        box-shadow:0 10px 30px rgba(0,0,0,.2);
+        outline:none;
+}
+.prs-cover-search-modal__content:focus{ outline:2px solid #111; outline-offset:4px; }
+.prs-cover-search-modal__title{
+        font-size:20px;
+        font-weight:700;
+        margin:0 0 12px;
+}
+.prs-cover-search-modal__message{
+        margin:0;
+        color:#444;
+        font-size:14px;
+        min-height:20px;
+}
+.prs-cover-search-modal__grid{
+        margin:20px 0 12px;
+}
+.prs-cover-grid{
+        display:grid;
+        grid-template-columns:repeat(auto-fit,minmax(120px,1fr));
+        gap:16px;
+        justify-items:center;
+        margin-top:1rem;
+        width:100%;
+}
+.prs-cover-option{
+        background:#fdfdfd;
+        border:1px solid rgba(0,0,0,.08);
+        border-radius:12px;
+        position:relative;
+        transition:box-shadow .2s ease, transform .2s ease, border-color .2s ease;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        padding:12px 12px 8px;
+        cursor:pointer;
+        text-align:center;
+}
+.prs-cover-option:hover,
+.prs-cover-option:focus-within{
+        transform:scale(1.02);
+        box-shadow:0 6px 20px rgba(0,0,0,.18);
+        transform:translateY(-2px);
+        border-color:rgba(0,0,0,.16);
+}
+.prs-cover-option:focus-visible{
+        outline:3px solid rgba(17,17,17,.5);
+        outline-offset:3px;
+}
+.prs-cover-option.is-selected{
+        box-shadow:0 0 0 2px #111 inset;
+        border-color:#111;
+}
+.prs-cover-option.is-selected::after{
+        content:"\2713";
+        position:absolute;
+        top:8px;
+        right:8px;
+        width:24px;
+        height:24px;
+        border-radius:50%;
+        background:#111;
+        color:#fff;
+        font-size:14px;
+        font-weight:700;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        box-shadow:0 4px 12px rgba(0,0,0,.3);
+}
+.prs-cover-figure{
+        margin:0;
+        display:flex;
+        flex-direction:column;
+        align-items:center;
+        width:100%;
+}
+.prs-cover-frame{
+        position:relative;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        width:100%;
+        min-height:160px;
+}
+.prs-cover-frame img{
+        max-height:220px;
+        width:auto;
+        max-width:100%;
+        border-radius:6px;
+        object-fit:contain;
+        box-shadow:0 3px 10px rgba(0,0,0,.12);
+}
+.prs-cover-meta{
+        margin-top:6px;
+        display:flex;
+        flex-direction:column;
+        gap:4px;
+        font-size:12px;
+        color:#374151;
+        width:100%;
+}
+.prs-cover-title{
+        font-weight:600;
+        line-height:1.3;
+        display:block;
+}
+.prs-cover-author{
+        font-size:12px;
+        color:#6b7280;
+        line-height:1.2;
+}
+.prs-cover-caption{
+        margin-top:4px;
+        font-size:8px;
+        color:#9ca3af;
+        font-family:'Inter', sans-serif;
+}
+.prs-cover-caption a{
+        color:#9ca3af;
+        text-decoration:none;
+}
+.prs-cover-caption a:hover,
+.prs-cover-caption a:focus{
+        color:#6b7280;
+        text-decoration:underline;
+}
+.prs-cover-search-modal__footer{
+        display:flex;
+        justify-content:flex-end;
+        gap:10px;
+        margin-top:auto;
+}
+.prs-cover-search-modal__footer .prs-btn{
+        min-width:110px;
+}
+.prs-cover-search-modal__empty{
+        margin:20px 0;
+        color:#555;
+        text-align:center;
+        font-size:14px;
+}
+.prs-cover-search-modal__lang{
+        position:absolute;
+        top:10px;
+        left:10px;
+        background:rgba(17,17,17,.85);
+        color:#fff;
+        font-size:11px;
+        font-weight:600;
+        letter-spacing:.04em;
+        text-transform:uppercase;
+        padding:4px 6px;
+        border-radius:6px;
+}
+.prs-cover-search-modal__lang.is-mismatch{
+        background:rgba(102,102,102,.85);
+}
+
+body.prs-cover-search--loading .prs-cover-search-modal__content{
+        cursor:progress;
+}
+
 #cropStage{
         position:relative;
         overflow:hidden;

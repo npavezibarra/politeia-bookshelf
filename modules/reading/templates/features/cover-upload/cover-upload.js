@@ -23,6 +23,49 @@
     };
   }
 
+  function normalizeLanguageCode(code) {
+    if (!code || typeof code !== 'string') return '';
+    let normalized = code.trim().toLowerCase();
+    if (!normalized) return '';
+    normalized = normalized.replace(/^\/?languages\//, '');
+    normalized = normalized.replace(/^\/?lang\//, '');
+    normalized = normalized.replace(/_/g, '-');
+
+    if (normalized.length === 2) {
+      return normalized;
+    }
+
+    const map = {
+      eng: 'en',
+      spa: 'es',
+      esl: 'es',
+      fre: 'fr',
+      fra: 'fr',
+      por: 'pt',
+      ger: 'de',
+      deu: 'de',
+      ita: 'it',
+      cat: 'ca',
+      glg: 'gl',
+    };
+
+    if (map[normalized]) {
+      return map[normalized];
+    }
+
+    if (normalized.length > 2) {
+      return normalized.slice(0, 2);
+    }
+
+    return normalized;
+  }
+
+  function resolveBookLanguage(details) {
+    const metaCode = normalizeLanguageCode(details.language);
+    if (metaCode) return metaCode;
+    return '';
+  }
+
   // ====== Upload & crop modal ======
   const MIN_CROP_SIZE = 40;
 
@@ -892,6 +935,451 @@
     };
 
     sourceImage.src = imgEl.src;
+  }
+
+  // ====== Search modal ======
+  let searchModal;
+  let searchMessageEl;
+  let searchGridEl;
+  let searchSetBtn;
+  let selectedSearchOption = null;
+  let searchPrevFocus = null;
+  let searchKeydownListener = null;
+
+  function getAjaxConfig() {
+    const config = window.prs_cover_data || {};
+    const ajaxUrl = config.ajaxurl || window.ajaxurl || (window.PRS_COVER && PRS_COVER.ajax) || '';
+    const nonce = config.nonce || '';
+    return { ajaxUrl, nonce };
+  }
+
+  function getSearchFocusableElements() {
+    if (!searchModal) return [];
+    const selectors = [
+      'button',
+      '[href]',
+      'input',
+      'select',
+      'textarea',
+      '[tabindex]:not([tabindex="-1"])'
+    ];
+    return Array.from(searchModal.querySelectorAll(selectors.join(','))).filter((node) => {
+      if (!(node instanceof HTMLElement)) return false;
+      if (node.hasAttribute('disabled')) return false;
+      if (node.getAttribute('aria-hidden') === 'true') return false;
+      return true;
+    });
+  }
+
+  function setSearchLoadingState(isLoading) {
+    if (isLoading) {
+      document.body.classList.add('prs-cover-search--loading');
+    } else {
+      document.body.classList.remove('prs-cover-search--loading');
+    }
+  }
+
+  function openSearchModal() {
+    closeSearchModal();
+
+    searchPrevFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    searchModal = el('div', 'prs-cover-search-modal');
+    const panel = el('div', 'prs-cover-search-modal__content');
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-labelledby', 'prs-cover-search-modal-title');
+    panel.setAttribute('tabindex', '-1');
+
+    const title = el('h2', 'prs-cover-search-modal__title');
+    title.id = 'prs-cover-search-modal-title';
+    title.textContent = 'Select a Cover';
+
+    searchMessageEl = el('p', 'prs-cover-search-modal__message');
+    searchMessageEl.textContent = '';
+
+    searchGridEl = el('div', 'prs-cover-search-modal__grid prs-cover-grid');
+    searchGridEl.id = 'prs-cover-options';
+
+    const footer = el('div', 'prs-cover-search-modal__footer');
+    const cancel = el('button', 'prs-btn prs-btn--ghost');
+    cancel.type = 'button';
+    cancel.textContent = 'Cancel';
+    searchSetBtn = el('button', 'prs-btn prs-cover-set');
+    searchSetBtn.type = 'button';
+    searchSetBtn.textContent = 'Set Cover';
+    searchSetBtn.disabled = true;
+    const { book_id } = getContext();
+    if (book_id) {
+      searchSetBtn.dataset.bookId = book_id;
+    } else if (searchSetBtn.dataset) {
+      delete searchSetBtn.dataset.bookId;
+    }
+    footer.append(cancel, searchSetBtn);
+
+    panel.append(title, searchMessageEl, searchGridEl, footer);
+    searchModal.appendChild(panel);
+    document.body.appendChild(searchModal);
+
+    selectedSearchOption = null;
+
+    searchModal.addEventListener('click', (e) => {
+      if (e.target === searchModal) closeSearchModal();
+    });
+    cancel.addEventListener('click', closeSearchModal);
+    searchSetBtn.addEventListener('click', onSearchSetCover);
+
+    panel.focus();
+
+    searchKeydownListener = (event) => {
+      if (!searchModal) return;
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        closeSearchModal();
+        return;
+      }
+      if (event.key === 'Tab') {
+        const focusable = getSearchFocusableElements();
+        if (!focusable.length) {
+          event.preventDefault();
+          return;
+        }
+        const currentIndex = focusable.indexOf(document.activeElement);
+        let nextIndex = currentIndex;
+        if (event.shiftKey) {
+          nextIndex = currentIndex <= 0 ? focusable.length - 1 : currentIndex - 1;
+        } else {
+          nextIndex = currentIndex === focusable.length - 1 ? 0 : currentIndex + 1;
+        }
+        event.preventDefault();
+        focusable[nextIndex].focus();
+      }
+    };
+
+    document.addEventListener('keydown', searchKeydownListener, true);
+  }
+
+  function closeSearchModal() {
+    if (searchModal) {
+      searchModal.remove();
+    }
+    searchModal = null;
+    searchMessageEl = null;
+    searchGridEl = null;
+    searchSetBtn = null;
+    selectedSearchOption = null;
+    setSearchLoadingState(false);
+    if (searchKeydownListener) {
+      document.removeEventListener('keydown', searchKeydownListener, true);
+    }
+    searchKeydownListener = null;
+    if (searchPrevFocus && typeof searchPrevFocus.focus === 'function') {
+      searchPrevFocus.focus();
+    }
+    searchPrevFocus = null;
+  }
+
+  function setSearchMessage(message) {
+    if (searchMessageEl) {
+      searchMessageEl.textContent = message || '';
+    }
+  }
+
+  function renderSearchResults(items, preferredLanguage) {
+    if (!searchGridEl) return;
+    searchGridEl.innerHTML = '';
+    selectedSearchOption = null;
+    if (searchSetBtn) {
+      searchSetBtn.disabled = true;
+      searchSetBtn.textContent = 'Set Cover';
+    }
+
+    if (!items.length) {
+      const empty = el('div', 'prs-cover-search-modal__empty');
+      empty.textContent = 'No covers found. You can upload your own image instead.';
+      searchGridEl.appendChild(empty);
+      return;
+    }
+
+    const rendered = [];
+    items.forEach((item) => {
+      if (!item || !item.url) return;
+      const option = el('div', 'prs-cover-option');
+      option.dataset.coverUrl = item.url;
+      if (item.source) option.dataset.sourceLink = item.source;
+      if (item.language) option.dataset.language = item.language;
+      option.setAttribute('role', 'button');
+      option.tabIndex = 0;
+      option.setAttribute('aria-pressed', 'false');
+
+      const figure = el('figure', 'prs-cover-figure');
+      const frame = el('div', 'prs-cover-frame');
+      const img = el('img');
+      img.src = item.url;
+      img.alt = item.title ? `Cover for ${item.title}` : 'Book cover option';
+      img.loading = 'lazy';
+      frame.appendChild(img);
+
+      if (item.language) {
+        const badge = el('span', 'prs-cover-search-modal__lang');
+        badge.textContent = item.language.toUpperCase();
+        if (preferredLanguage && item.language.toLowerCase() !== preferredLanguage.toLowerCase()) {
+          badge.classList.add('is-mismatch');
+        }
+        frame.appendChild(badge);
+      }
+
+      figure.appendChild(frame);
+
+      const caption = el('figcaption', 'prs-cover-caption');
+      if (item.source) {
+        const link = el('a');
+        link.href = item.source;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = 'View on Google Books';
+        caption.appendChild(link);
+      } else {
+        caption.textContent = 'View on Google Books';
+        caption.setAttribute('aria-hidden', 'true');
+      }
+      figure.appendChild(caption);
+
+      option.appendChild(figure);
+
+      if (item.title || item.author) {
+        const meta = el('div', 'prs-cover-meta');
+        if (item.title) {
+          const title = el('span', 'prs-cover-title');
+          title.textContent = item.title;
+          meta.appendChild(title);
+        }
+        if (item.author) {
+          const author = el('span', 'prs-cover-author');
+          author.textContent = item.author;
+          meta.appendChild(author);
+        }
+        option.appendChild(meta);
+      }
+
+      const handleSelect = (event) => {
+        if (event) {
+          const target = event.target;
+          if (target instanceof HTMLElement && target.closest('.prs-cover-caption a')) {
+            return;
+          }
+          event.preventDefault();
+        }
+        selectSearchResult(item, option);
+      };
+
+      option.addEventListener('click', handleSelect);
+      option.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ' || event.key === 'Spacebar' || event.key === 'Space') {
+          handleSelect(event);
+        }
+      });
+
+      searchGridEl.appendChild(option);
+      rendered.push({ item, option });
+    });
+
+    if (rendered.length === 1) {
+      const only = rendered[0];
+      selectSearchResult(only.item, only.option);
+    }
+  }
+
+  function selectSearchResult(option, node) {
+    const dataset = (node && node.dataset) || {};
+    selectedSearchOption = {
+      url: option?.url || dataset.coverUrl || '',
+      source: option?.source || dataset.sourceLink || '',
+      language: option?.language || dataset.language || '',
+      title: option?.title || ''
+    };
+    if (searchGridEl) {
+      Array.from(searchGridEl.children).forEach((child) => {
+        const isMatch = child === node;
+        child.classList.toggle('is-selected', isMatch);
+        if (child instanceof HTMLElement) {
+          child.setAttribute('aria-pressed', isMatch ? 'true' : 'false');
+        }
+      });
+    }
+    if (searchSetBtn) {
+      searchSetBtn.disabled = false;
+    }
+    setSearchMessage('Click “Set Cover” to use the selected image.');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const initialSource = (window.PRS_BOOK && typeof window.PRS_BOOK.cover_source === 'string')
+      ? window.PRS_BOOK.cover_source
+      : '';
+    updateCoverAttribution(initialSource || '');
+  });
+
+  async function fetchGoogleCovers(title, author, language) {
+    const body = new URLSearchParams({
+      action: 'prs_cover_search_google',
+      nonce: (window.PRS_COVER && PRS_COVER.searchNonce) || '',
+      title,
+      author: author || '',
+      language: language || ''
+    });
+
+    const response = await fetch((window.PRS_COVER && PRS_COVER.ajax) || '', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+      credentials: 'same-origin',
+      body
+    });
+
+    const out = await response.json();
+    if (!out || !out.success) {
+      const message = (out && out.data && out.data.message) || out?.message || 'search_failed';
+      const error = new Error(message);
+      error.code = message;
+      throw error;
+    }
+
+    const items = Array.isArray(out.data?.items) ? out.data.items : [];
+    return items.slice(0, 3).map((item) => ({
+      url: item.url || '',
+      language: item.language || '',
+      source: item.source || '',
+      title: item.title || '',
+      author: item.author || ''
+    })).filter((item) => !!item.url);
+  }
+
+  async function handleSearchClick() {
+    openSearchModal();
+    setSearchLoadingState(true);
+    setSearchMessage('Searching for covers…');
+    renderSearchResults([]);
+
+    const details = getBookDetails();
+    const { title, author } = details;
+    if (!title) {
+      setSearchLoadingState(false);
+      setSearchMessage('No book title available. Add a title to search or upload a cover manually.');
+      return;
+    }
+
+    try {
+      const language = resolveBookLanguage(details);
+      const results = await fetchGoogleCovers(title, author, language);
+      setSearchLoadingState(false);
+      if (!results.length) {
+        setSearchMessage('No covers found. You can upload your own image instead.');
+        return;
+      }
+      renderSearchResults(results, language);
+      if (results.length === 1) {
+        setSearchMessage('Only one cover found. Click “Set Cover” to confirm.');
+      } else if (language) {
+        setSearchMessage(`Select a cover below and click “Set Cover”. Showing ${language.toUpperCase()} results when possible.`);
+      } else {
+        setSearchMessage('Select a cover below and click “Set Cover”.');
+      }
+    } catch (error) {
+      console.error('[PRS] cover search error', error);
+      setSearchLoadingState(false);
+      const msg = error?.code || error?.message;
+      if (msg === 'missing_api_key') {
+        setSearchMessage('Google Books API key is missing. Add it in the plugin settings.');
+      } else if (msg === 'no_results') {
+        setSearchMessage('No covers found. You can upload your own image instead.');
+      } else {
+        setSearchMessage('There was an error searching for covers. Please try again later.');
+      }
+    }
+  }
+
+  function onSearchSetCover() {
+    if (!selectedSearchOption || !selectedSearchOption.url) return;
+    if (!searchSetBtn) return;
+
+    const originalText = searchSetBtn.textContent;
+    searchSetBtn.disabled = true;
+    searchSetBtn.textContent = 'Saving…';
+    setSearchMessage('Saving selected cover…');
+
+    const ajax = getAjaxConfig();
+    const bookId = parseInt(searchSetBtn.dataset.bookId || getContext().book_id || 0, 10);
+
+    if (!ajax.ajaxUrl || !bookId) {
+      setSearchMessage('Could not save the selected cover. Please try again.');
+      searchSetBtn.disabled = false;
+      searchSetBtn.textContent = originalText;
+      return;
+    }
+
+    const payload = {
+      action: 'prs_save_cover_url',
+      nonce: ajax.nonce,
+      book_id: bookId,
+      cover_url: selectedSearchOption.url,
+      cover_source: selectedSearchOption.source || ''
+    };
+
+    const jq = window.jQuery;
+
+    if (!jq || typeof jq.ajax !== 'function') {
+      searchSetBtn.disabled = false;
+      searchSetBtn.textContent = originalText;
+      setSearchMessage('Could not save the selected cover. Please try again.');
+      return;
+    }
+
+    console.log('Attempting to save cover:', {
+      coverUrl: payload.cover_url,
+      coverSource: payload.cover_source,
+      bookId
+    });
+
+    jq.ajax({
+      url: ajax.ajaxUrl,
+      method: 'POST',
+      dataType: 'json',
+      data: payload,
+    }).done((res) => {
+      console.log('AJAX response:', res);
+      if (!res || !res.success) {
+        const errorMessage = res && res.data ? String(res.data) : 'Could not save the selected cover. Please try again.';
+        setSearchMessage(errorMessage);
+        searchSetBtn.disabled = false;
+        searchSetBtn.textContent = originalText;
+        return;
+      }
+
+      const data = res.data || {};
+      const src = data.src || selectedSearchOption.url;
+      const sourceLink = data.source || selectedSearchOption.source || '';
+      replaceCover(src, false, sourceLink);
+      if (window.PRS_BOOK) {
+        window.PRS_BOOK.cover_url = src;
+        window.PRS_BOOK.cover_source = sourceLink;
+      }
+      if (searchSetBtn) {
+        searchSetBtn.disabled = false;
+        searchSetBtn.textContent = originalText;
+      }
+      closeSearchModal();
+    }).fail((xhr, status, error) => {
+      console.error('AJAX ERROR:', { xhr, status, error });
+      const responseText = xhr && typeof xhr.responseText === 'string' ? xhr.responseText : '';
+      if (responseText) {
+        console.error('Server Response:', responseText);
+      }
+      const responseJSON = xhr && xhr.responseJSON ? xhr.responseJSON : null;
+      const message = responseJSON && responseJSON.data ? responseJSON.data : (responseText || 'Server error. Please try again later.');
+      setSearchMessage(String(message));
+      searchSetBtn.disabled = false;
+      searchSetBtn.textContent = originalText;
+    });
   }
 
   // ====== Event bindings ======
