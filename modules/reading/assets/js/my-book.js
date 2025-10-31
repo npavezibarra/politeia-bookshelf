@@ -2924,6 +2924,42 @@ window.PRS_isSaving = false;
   });
 
 
+
+
+  function setupSearchCoverOverlay() {
+    const searchBtn = document.getElementById("prs-cover-search");
+    const overlay = document.getElementById("prs-search-cover-overlay");
+    const options = overlay ? overlay.querySelectorAll(".prs-cover-option") : [];
+    const setCoverBtn = document.getElementById("prs-set-cover");
+
+    if (searchBtn && overlay) {
+      searchBtn.addEventListener("click", () => {
+        overlay.classList.remove("is-hidden");
+      });
+    }
+
+    if (overlay) {
+      overlay.addEventListener("click", e => {
+        if (e.target === overlay) {
+          overlay.classList.add("is-hidden");
+        }
+      });
+    }
+
+    Array.prototype.forEach.call(options, opt => {
+      opt.addEventListener("click", () => {
+        Array.prototype.forEach.call(options, o => o.classList.remove("selected"));
+        opt.classList.add("selected");
+      });
+    });
+
+    if (setCoverBtn && overlay) {
+      setCoverBtn.addEventListener("click", () => {
+        overlay.classList.add("is-hidden");
+      });
+    }
+  }
+
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     setupReadingDensityBar();
@@ -2942,5 +2978,6 @@ window.PRS_isSaving = false;
     setupSessionsAjax();
     setupSessionRecorderModal();
     setupLibraryFilterDashboard();
+    setupSearchCoverOverlay();
   });
 })();

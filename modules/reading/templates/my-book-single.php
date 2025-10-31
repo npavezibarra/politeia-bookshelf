@@ -267,6 +267,13 @@ wp_add_inline_script(
         cursor:pointer;
         transition:background 0.2s ease-in-out;
         }
+        .prs-cover-actions .prs-cover-search-button{
+        display:none;
+        margin-top:10px;
+        }
+        .prs-cover-frame[data-cover-state="image"] .prs-cover-actions .prs-cover-search-button{
+        display:inline-block;
+        }
         .prs-cover-btn:hover,
         .prs-cover-btn:focus-visible{
         background:#2a2a2a;
@@ -308,6 +315,52 @@ wp_add_inline_script(
         .prs-cover-frame[data-cover-state="image"]:focus-within .prs-cover-overlay .prs-cover-actions{
         opacity:1;
         transform:translateY(0);
+        }
+        .prs-search-cover-overlay{
+        position:fixed;
+        inset:0;
+        background-color:rgba(0,0,0,0.6);
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        z-index:1000;
+        }
+        .prs-search-cover-overlay.is-hidden{
+        display:none;
+        }
+        .prs-search-cover-modal{
+        background:#fff;
+        padding:30px;
+        border-radius:8px;
+        width:80%;
+        max-width:800px;
+        text-align:center;
+        }
+        .prs-search-cover-title{
+        font-size:20px;
+        font-weight:600;
+        margin-bottom:20px;
+        }
+        .prs-search-cover-options{
+        display:flex;
+        justify-content:space-between;
+        margin-bottom:20px;
+        }
+        .prs-cover-option{
+        flex:1;
+        border:1px solid #ccc;
+        border-radius:4px;
+        padding:60px 0;
+        margin:0 10px;
+        cursor:pointer;
+        user-select:none;
+        }
+        .prs-cover-option.selected{
+        border-color:#000;
+        background-color:#f0f0f0;
+        }
+        .prs-set-cover-button{
+        padding:10px 20px;
         }
 
 	/* Tipos y tablas */
@@ -444,7 +497,7 @@ wp_add_inline_script(
                 </figure>
                 <?php if ( $has_image ) : ?>
                 <div class="prs-cover-overlay">
-                        <?php echo do_shortcode( '[prs_cover_button]' ); ?>
+                        <?php echo do_shortcode( '[prs_cover_button show_search="true"]' ); ?>
                 </div>
                 <?php endif; ?>
                 </div>
@@ -725,6 +778,20 @@ wp_add_inline_script(
                         ×
                 </button>
                 <?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $book->id . '"]' ); ?>
+        </div>
+</div>
+
+<div id="prs-search-cover-overlay" class="prs-search-cover-overlay is-hidden">
+        <div class="prs-search-cover-modal">
+                <h2 class="prs-search-cover-title"><?php esc_html_e( 'SEARCH BOOK COVER', 'politeia-reading' ); ?></h2>
+
+                <div class="prs-search-cover-options">
+                        <div class="prs-cover-option" data-option="1"><?php esc_html_e( 'Option 1', 'politeia-reading' ); ?></div>
+                        <div class="prs-cover-option" data-option="2"><?php esc_html_e( 'Option 2', 'politeia-reading' ); ?></div>
+                        <div class="prs-cover-option" data-option="3"><?php esc_html_e( 'Option 3', 'politeia-reading' ); ?></div>
+                </div>
+
+                <button id="prs-set-cover" class="prs-btn prs-set-cover-button" type="button"><?php esc_html_e( 'SET COVER', 'politeia-reading' ); ?></button>
         </div>
 </div>
 
