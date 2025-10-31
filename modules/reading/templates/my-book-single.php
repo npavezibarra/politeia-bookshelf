@@ -401,6 +401,9 @@ wp_add_inline_script(
         outline:none;
         border-radius:6px;
         }
+        #prs-cover-save{
+        background-color:var(--bb-primary-button-background-regular);
+        }
         .prs-search-cover-actions .prs-btn{
         flex:1;
         max-width:200px;

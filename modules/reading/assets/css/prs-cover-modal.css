@@ -283,6 +283,10 @@
   font-size: 12px;
 }
 
+#prs-cover-save {
+  background-color: var(--bb-primary-button-background-regular);
+}
+
 .prs-btn:not(.prs-btn--ghost):hover {
   background-color: #2563eb;
 }
