@@ -804,7 +804,7 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'invalid_cover', 400 );
                 }
 
-                $cover_url = preg_replace( '#^http://#i', 'https://', $cover_raw );
+                $cover_url = self::normalize_cover_url( $cover_raw );
                 $cover_url = esc_url_raw( $cover_url );
 
                 if ( ! $cover_url ) {
@@ -853,6 +853,35 @@ class Politeia_Reading_User_Books {
                                 'user_book_id'    => (int) $row->id,
                         )
                 );
+        }
+
+        private static function normalize_cover_url( $url ) {
+                if ( ! is_string( $url ) ) {
+                        return '';
+                }
+
+                $trimmed = trim( $url );
+                if ( '' === $trimmed ) {
+                        return '';
+                }
+
+                $normalized = preg_replace( '#^http://#i', 'https://', $trimmed );
+                if ( ! $normalized ) {
+                        return '';
+                }
+
+                $parts = wp_parse_url( $normalized );
+                $host  = isset( $parts['host'] ) ? strtolower( $parts['host'] ) : '';
+
+                if ( $host && false !== strpos( $host, 'books.google' ) && false !== stripos( $normalized, '/books/content' ) ) {
+                        if ( preg_match( '/([?&])zoom=\d+/i', $normalized ) ) {
+                                $normalized = preg_replace( '/([?&]zoom=)(\d+)/i', '$13', $normalized, 1 );
+                        } else {
+                                $normalized .= ( false === strpos( $normalized, '?' ) ? '?' : '&' ) . 'zoom=3';
+                        }
+                }
+
+                return $normalized;
         }
 
         /*

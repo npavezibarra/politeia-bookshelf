@@ -3010,11 +3010,121 @@ window.PRS_isSaving = false;
       if (!url) {
         return "";
       }
+
       const trimmed = String(url).trim();
       if (!trimmed) {
         return "";
       }
-      return trimmed.replace(/^http:\/\//i, "https://");
+
+      let normalized = trimmed.replace(/^http:\/\//i, "https://");
+      if (/\/books\/content/i.test(normalized) && /books\.google/i.test(normalized)) {
+        if (/([?&])zoom=\d+/i.test(normalized)) {
+          normalized = normalized.replace(/([?&]zoom=)(\d+)/i, (match, prefix) => `${prefix}3`);
+        } else {
+          normalized += (normalized.includes("?") ? "&" : "?") + "zoom=3";
+        }
+      }
+
+      return normalized;
+    }
+
+    function selectBestCoverUrl(imageLinks) {
+      if (!imageLinks || typeof imageLinks !== "object") {
+        return "";
+      }
+
+      const priority = [
+        "extraLarge",
+        "large",
+        "medium",
+        "small",
+        "thumbnail",
+        "smallThumbnail",
+      ];
+
+      for (let i = 0; i < priority.length; i += 1) {
+        const key = priority[i];
+        if (typeof imageLinks[key] === "string" && imageLinks[key].trim()) {
+          const normalized = normalizeImageUrl(imageLinks[key]);
+          if (normalized) {
+            return normalized;
+          }
+        }
+      }
+
+      return "";
+    }
+
+    function sanitizeCoverImage(img) {
+      if (!img) {
+        return;
+      }
+
+      img.removeAttribute("width");
+      img.removeAttribute("height");
+      img.removeAttribute("srcset");
+      img.removeAttribute("sizes");
+
+      if (img.style && typeof img.style.removeProperty === "function") {
+        img.style.removeProperty("width");
+        img.style.removeProperty("height");
+        img.style.removeProperty("max-width");
+        img.style.removeProperty("max-height");
+      } else if (img.style) {
+        img.style.width = "";
+        img.style.height = "";
+        img.style.maxWidth = "";
+        img.style.maxHeight = "";
+      }
+
+      const classesToRemove = [
+        "size-thumbnail",
+        "size-medium",
+        "size-large",
+        "size-full",
+        "wp-post-image",
+        "attachment-thumbnail",
+        "attachment-medium",
+        "attachment-large",
+        "attachment-full",
+      ];
+
+      classesToRemove.forEach(cls => {
+        if (img.classList && img.classList.contains(cls)) {
+          img.classList.remove(cls);
+        }
+      });
+    }
+
+    function prepareExistingCoverFrame() {
+      const frame = document.getElementById("prs-cover-frame");
+      if (!frame) {
+        return;
+      }
+
+      const img = frame.querySelector("img.prs-cover-img");
+      if (!img) {
+        return;
+      }
+
+      sanitizeCoverImage(img);
+
+      const currentSrc = img.getAttribute("src") || "";
+      const normalized = normalizeImageUrl(currentSrc);
+      if (normalized && normalized !== currentSrc) {
+        img.src = normalized;
+      }
+
+      if (!frame.classList.contains("has-image")) {
+        frame.classList.add("has-image");
+      }
+
+      if (!frame.getAttribute("data-cover-state")) {
+        frame.setAttribute("data-cover-state", "image");
+      }
+
+      window.PRS_BOOK = window.PRS_BOOK || {};
+      window.PRS_BOOK.cover_url = normalized || currentSrc;
     }
 
     function buildRequestBody(params) {
@@ -3059,7 +3169,7 @@ window.PRS_isSaving = false;
 
         const volume = entry.volumeInfo || {};
         const imageLinks = volume.imageLinks || {};
-        const imageUrl = normalizeImageUrl(imageLinks.thumbnail || imageLinks.smallThumbnail || "");
+        const imageUrl = selectBestCoverUrl(imageLinks);
 
         if (!imageUrl) {
           continue;
@@ -3119,7 +3229,15 @@ window.PRS_isSaving = false;
         figure.insertBefore(img, figure.firstChild || null);
       }
 
-      img.src = url;
+      sanitizeCoverImage(img);
+
+      const normalizedUrl = normalizeImageUrl(url);
+      if (normalizedUrl) {
+        img.src = normalizedUrl;
+      } else {
+        img.src = url;
+      }
+
       const selectedTitle = option && option.dataset.coverTitle ? option.dataset.coverTitle : "";
       const fallbackTitle = (window.PRS_BOOK && typeof PRS_BOOK.title === "string") ? PRS_BOOK.title : "";
       const altTitle = selectedTitle || fallbackTitle;
@@ -3153,7 +3271,7 @@ window.PRS_isSaving = false;
       }
 
       window.PRS_BOOK = window.PRS_BOOK || {};
-      window.PRS_BOOK.cover_url = url;
+      window.PRS_BOOK.cover_url = normalizedUrl || url;
     }
 
     function handleSearchClick(event) {
@@ -3291,6 +3409,8 @@ window.PRS_isSaving = false;
         });
     }
 
+    prepareExistingCoverFrame();
+
     if (searchBtn) {
       searchBtn.addEventListener("click", handleSearchClick);
     }
@@ -3310,33 +3430,37 @@ window.PRS_isSaving = false;
       setCoverBtn.disabled = true;
     }
 
-    optionsContainer.addEventListener("click", event => {
-      const option = event.target.closest(".prs-cover-option");
-      if (!option) {
-        return;
-      }
-      event.preventDefault();
-      selectOption(option);
-    });
+    if (optionsContainer) {
+      optionsContainer.addEventListener("click", event => {
+        const option = event.target.closest(".prs-cover-option");
+        if (!option) {
+          return;
+        }
+        event.preventDefault();
+        selectOption(option);
+      });
 
-    optionsContainer.addEventListener("keydown", event => {
-      if (event.key !== "Enter" && event.key !== " ") {
-        return;
-      }
-      const option = event.target.closest(".prs-cover-option");
-      if (!option) {
-        return;
-      }
-      event.preventDefault();
-      selectOption(option);
-    });
+      optionsContainer.addEventListener("keydown", event => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        const option = event.target.closest(".prs-cover-option");
+        if (!option) {
+          return;
+        }
+        event.preventDefault();
+        selectOption(option);
+      });
+    }
 
-    overlay.addEventListener("click", event => {
-      if (event.target === overlay) {
-        setOverlayVisibility(false);
-        resetSelection();
-      }
-    });
+    if (overlay) {
+      overlay.addEventListener("click", event => {
+        if (event.target === overlay) {
+          setOverlayVisibility(false);
+          resetSelection();
+        }
+      });
+    }
   }
 
   // ---------- Boot ----------
