@@ -786,10 +786,10 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'api_error', 500 );
                 }
 
-                // --- Fallback query if no results found ---
-                if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] === 0 && $title ) {
-                        $fallback_url = add_query_arg(
-                                array(
+               // --- Fallback #1: retry with intitle only ---
+               if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] === 0 && $title ) {
+                       $fallback_url = add_query_arg(
+                               array(
                                         'q'          => sprintf( 'intitle:"%s"', $title ),
                                         'key'        => $api_token,
                                         'maxResults' => 5,
@@ -804,6 +804,27 @@ class Politeia_Reading_User_Books {
                                 $data = $fallback_data;
                         }
                 }
+
+               // --- Fallback #2: relax query if still few or irrelevant results ---
+               if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] <= 1 && $title ) {
+                       $relaxed_query = sprintf( '"%s"', $title );
+                       $relaxed_url   = add_query_arg(
+                               array(
+                                       'q'            => $relaxed_query,
+                                       'key'          => $api_token,
+                                       'maxResults'   => 5,
+                                       'orderBy'      => 'relevance',
+                                       'printType'    => 'books',
+                                       'langRestrict' => 'es',
+                               ),
+                               'https://www.googleapis.com/books/v1/volumes'
+                       );
+                       $relaxed_response = wp_remote_get( $relaxed_url, array( 'timeout' => 10 ) );
+                       $relaxed_data     = json_decode( wp_remote_retrieve_body( $relaxed_response ), true );
+                       if ( isset( $relaxed_data['totalItems'] ) && (int) $relaxed_data['totalItems'] > 0 ) {
+                               $data = $relaxed_data;
+                       }
+               }
 
                 self::json_success( $data );
         }
