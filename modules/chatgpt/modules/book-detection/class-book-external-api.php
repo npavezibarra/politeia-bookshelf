@@ -38,13 +38,21 @@ class Politeia_Book_External_API {
 
     /**
      * @param string|null $google_api_key  Optional Google Books API key.
-     *                                     If null, uses WP option 'politeia_google_books_api_key' if present.
+     *                                     If null, uses the stored option value from the Politeia Bookshelf plugin.
      */
     public function __construct( $google_api_key = null ) {
         $this->google_api_key = $google_api_key;
         if ( $this->google_api_key === null ) {
-            $opt = get_option( 'politeia_google_books_api_key' );
-            if ( is_string( $opt ) && $opt !== '' ) {
+            if ( function_exists( 'politeia_bookshelf_get_google_books_api_key' ) ) {
+                $opt = politeia_bookshelf_get_google_books_api_key();
+            } else {
+                $opt = get_option( 'politeia_bookshelf_google_api_key', '' );
+                if ( '' === $opt ) {
+                    $opt = get_option( 'politeia_google_books_api_key', '' );
+                }
+            }
+
+            if ( is_string( $opt ) && '' !== $opt ) {
                 $this->google_api_key = $opt;
             }
         }
