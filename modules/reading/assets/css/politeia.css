@@ -1425,6 +1425,12 @@ display:inline-block;
         align-self: flex-start;
         }
 
+        #prs-cover-frame.has-image img{
+        width:100%;
+        height:auto;
+        max-width:100%;
+        }
+
         @media screen and (max-width: 950px){
         .prs-cover-frame,
         .prs-book-cover{
