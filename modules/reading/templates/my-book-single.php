@@ -153,6 +153,7 @@ wp_enqueue_script( 'politeia-my-book' ); // asegúrate de registrar este JS en t
 /** Datos al JS principal */
 $owning_nonce        = wp_create_nonce( 'save_owning_contact' );
 $meta_update_nonce   = wp_create_nonce( 'prs_update_user_book_meta' );
+$cover_actions_nonce = wp_create_nonce( 'politeia_bookshelf_cover_actions' );
 wp_localize_script(
         'politeia-my-book',
         'PRS_BOOK',
@@ -169,6 +170,8 @@ wp_localize_script(
                 'title'         => (string) $book->title,
                 'author'        => (string) $book->author,
                 'cover_url'     => $cover_url,
+                'cover_nonce'   => $cover_actions_nonce,
+                'user_id'       => (int) $user_id,
                 'language'      => isset( $book->language ) ? (string) $book->language : '',
                 'cover_source'  => $cover_source,
         )
@@ -852,7 +855,7 @@ wp_add_inline_script(
         </div>
 </div>
 
-<div id="prs-search-cover-overlay" class="prs-search-cover-overlay is-hidden">
+<div id="prs-search-cover-overlay" class="prs-search-cover-overlay is-hidden" aria-hidden="true">
         <div class="prs-search-cover-modal">
                 <h2 class="prs-search-cover-title"><?php esc_html_e( 'SEARCH BOOK COVER', 'politeia-reading' ); ?></h2>
 
@@ -864,7 +867,7 @@ wp_add_inline_script(
 
                 <div class="prs-search-cover-actions">
                         <button id="prs-cancel-cover" class="prs-btn prs-cancel-cover-button" type="button"><?php esc_html_e( 'CANCEL', 'politeia-reading' ); ?></button>
-                        <button id="prs-set-cover" class="prs-btn prs-set-cover-button" type="button"><?php esc_html_e( 'SET COVER', 'politeia-reading' ); ?></button>
+                        <button id="prs-set-cover" class="prs-btn prs-set-cover-button" type="button" disabled="disabled"><?php esc_html_e( 'SET COVER', 'politeia-reading' ); ?></button>
                 </div>
         </div>
 </div>

@@ -17,7 +17,8 @@ class Politeia_Reading_User_Books {
                 add_action( 'wp_ajax_prs_update_pages', array( __CLASS__, 'ajax_update_pages' ) );
                 add_action( 'wp_ajax_save_owning_contact', array( __CLASS__, 'ajax_save_owning_contact' ) );
                 add_action( 'wp_ajax_mark_as_returned', array( __CLASS__, 'ajax_mark_as_returned' ) );
-                // (Sin acciones de portada/imagen)
+                add_action( 'wp_ajax_politeia_bookshelf_search_cover', array( __CLASS__, 'ajax_search_cover' ) );
+                add_action( 'wp_ajax_politeia_bookshelf_save_cover', array( __CLASS__, 'ajax_save_cover' ) );
         }
 
 	/*
@@ -665,9 +666,198 @@ class Politeia_Reading_User_Books {
                 );
         }
 
-	/*
-	=========================
-	 * Validaciones permitidas
+        /**
+         * AJAX: busca cubiertas en Google Books para el libro actual.
+         */
+        public static function ajax_search_cover() {
+                if ( ! is_user_logged_in() ) {
+                        self::json_error( 'auth', 401 );
+                }
+
+                $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+                if ( ! wp_verify_nonce( $nonce, 'politeia_bookshelf_cover_actions' ) ) {
+                        self::json_error( 'bad_nonce', 403 );
+                }
+
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+
+                if ( ! $book_id ) {
+                        self::json_error( 'invalid_book', 400 );
+                }
+
+                $user_id = get_current_user_id();
+                if ( $user_book_id ) {
+                        $row = self::get_user_book_row( $user_book_id, $user_id );
+                } else {
+                        $row = self::get_user_book_by_book( $user_id, $book_id );
+                }
+
+                if ( ! $row ) {
+                        self::json_error( 'forbidden', 403 );
+                }
+
+                global $wpdb;
+                $books_table = $wpdb->prefix . 'politeia_books';
+                $book        = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT id, title, author FROM {$books_table} WHERE id=%d LIMIT 1",
+                                $book_id
+                        )
+                );
+
+                if ( ! $book ) {
+                        self::json_error( 'not_found', 404 );
+                }
+
+                $title_raw  = isset( $book->title ) ? (string) $book->title : '';
+                $author_raw = isset( $book->author ) ? (string) $book->author : '';
+
+                $title  = $title_raw ? wp_strip_all_tags( $title_raw ) : '';
+                $author = $author_raw ? wp_strip_all_tags( $author_raw ) : '';
+
+                $title  = trim( str_replace( "\"", '', $title ) );
+                $author = trim( str_replace( "\"", '', $author ) );
+
+                if ( '' === $title && '' === $author ) {
+                        self::json_error( 'missing_metadata', 400 );
+                }
+
+                $api_token = function_exists( 'politeia_bookshelf_get_google_books_api_key' )
+                        ? politeia_bookshelf_get_google_books_api_key()
+                        : '';
+                $api_token = is_string( $api_token ) ? trim( $api_token ) : '';
+
+                if ( '' === $api_token ) {
+                        self::json_error( 'missing_api_key', 400 );
+                }
+
+                $segments = array();
+                if ( $title ) {
+                        $segments[] = sprintf( 'intitle:"%s"', $title );
+                }
+                if ( $author ) {
+                        $segments[] = sprintf( 'inauthor:"%s"', $author );
+                }
+
+                $query = trim( implode( ' ', $segments ) );
+                if ( '' === $query ) {
+                        self::json_error( 'missing_metadata', 400 );
+                }
+
+                $url = add_query_arg(
+                        array(
+                                'q'          => $query,
+                                'key'        => $api_token,
+                                'maxResults' => 5,
+                                'orderBy'    => 'relevance',
+                        ),
+                        'https://www.googleapis.com/books/v1/volumes'
+                );
+
+                $response = wp_remote_get(
+                        $url,
+                        array(
+                                'timeout' => 10,
+                        )
+                );
+
+                if ( is_wp_error( $response ) ) {
+                        self::json_error( 'api_error', 500 );
+                }
+
+                $code = (int) wp_remote_retrieve_response_code( $response );
+                $body = wp_remote_retrieve_body( $response );
+                $data = json_decode( $body, true );
+
+                if ( $code >= 400 ) {
+                        self::json_error( 'api_error', $code );
+                }
+
+                if ( null === $data || ! is_array( $data ) ) {
+                        self::json_error( 'api_error', 500 );
+                }
+
+                self::json_success( $data );
+        }
+
+        /**
+         * AJAX: guarda la URL de la cubierta seleccionada.
+         */
+        public static function ajax_save_cover() {
+                if ( ! is_user_logged_in() ) {
+                        self::json_error( 'auth', 401 );
+                }
+
+                $nonce = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
+                if ( ! wp_verify_nonce( $nonce, 'politeia_bookshelf_cover_actions' ) ) {
+                        self::json_error( 'bad_nonce', 403 );
+                }
+
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+                $cover_raw    = isset( $_POST['cover_url'] ) ? wp_unslash( $_POST['cover_url'] ) : '';
+
+                $cover_raw = is_string( $cover_raw ) ? trim( $cover_raw ) : '';
+
+                if ( '' === $cover_raw ) {
+                        self::json_error( 'invalid_cover', 400 );
+                }
+
+                $cover_url = preg_replace( '#^http://#i', 'https://', $cover_raw );
+                $cover_url = esc_url_raw( $cover_url );
+
+                if ( ! $cover_url ) {
+                        self::json_error( 'invalid_cover', 400 );
+                }
+
+                if ( ! $user_book_id && ! $book_id ) {
+                        self::json_error( 'invalid_book', 400 );
+                }
+
+                $user_id = get_current_user_id();
+                if ( $user_book_id ) {
+                        $row = self::get_user_book_row( $user_book_id, $user_id );
+                } else {
+                        $row = self::get_user_book_by_book( $user_id, $book_id );
+                }
+
+                if ( ! $row ) {
+                        self::json_error( 'forbidden', 403 );
+                }
+
+                if ( $book_id && (int) $row->book_id !== $book_id ) {
+                        self::json_error( 'forbidden', 403 );
+                }
+
+                $reference = maybe_serialize(
+                        array(
+                                'external_cover' => $cover_url,
+                        )
+                );
+
+                self::update_user_book(
+                        (int) $row->id,
+                        array(
+                                'cover_attachment_id_user' => 0,
+                                'cover_reference'          => $reference,
+                                'cover_url'                => $cover_url,
+                                'cover_source'             => '',
+                        )
+                );
+
+                self::json_success(
+                        array(
+                                'cover_url'       => $cover_url,
+                                'cover_reference' => $reference,
+                                'user_book_id'    => (int) $row->id,
+                        )
+                );
+        }
+
+        /*
+        =========================
+         * Validaciones permitidas
 	 * ========================= */
 	private static function allowed_reading_status() {
 		return array( 'not_started', 'started', 'finished' );
@@ -868,7 +1058,7 @@ class Politeia_Reading_User_Books {
 		wp_send_json_success( $data );
 	}
 
-	/* ===== (Sin métodos de portada/imagen) ===== */
+        /* ===== End of class ===== */
 }
 
 Politeia_Reading_User_Books::init();

@@ -135,7 +135,7 @@ class PRS_Cover_Upload_Feature {
                 $output .= '<button type="button" id="prs-cover-open" class="prs-btn prs-cover-btn prs-cover-upload-button">' . $upload_label . '</button>';
 
                 if ( $show_search ) {
-                        $output .= '<button type="button" id="prs-cover-search" class="prs-btn prs-cover-btn prs-cover-search-button">' . $search_label . '</button>';
+                        $output .= '<button type="button" id="prs-cover-search" class="prs-btn prs-cover-btn prs-cover-search-button prs-search-cover-button">' . $search_label . '</button>';
                 }
 
                 $output .= '<a href="#" id="prs-cover-remove" class="prs-cover-remove">' . $remove_label . '</a>';
