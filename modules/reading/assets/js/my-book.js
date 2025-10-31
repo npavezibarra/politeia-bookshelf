@@ -3029,7 +3029,15 @@ window.PRS_isSaving = false;
     }
 
     function selectBestCoverUrl(imageLinks) {
-      if (!imageLinks || typeof imageLinks !== "object") {
+      if (!imageLinks) {
+        return "";
+      }
+
+      if (typeof imageLinks === "string") {
+        return normalizeImageUrl(imageLinks);
+      }
+
+      if (typeof imageLinks !== "object") {
         return "";
       }
 
@@ -3044,7 +3052,7 @@ window.PRS_isSaving = false;
 
       for (let i = 0; i < priority.length; i += 1) {
         const key = priority[i];
-        if (typeof imageLinks[key] === "string" && imageLinks[key].trim()) {
+        if (Object.prototype.hasOwnProperty.call(imageLinks, key) && imageLinks[key]) {
           const normalized = normalizeImageUrl(imageLinks[key]);
           if (normalized) {
             return normalized;
@@ -3052,7 +3060,33 @@ window.PRS_isSaving = false;
         }
       }
 
+      // Some Google Books responses include a direct `smallThumbnail` URL nested in other keys.
+      const fallbackKeys = Object.keys(imageLinks);
+      for (let i = 0; i < fallbackKeys.length; i += 1) {
+        const candidate = imageLinks[fallbackKeys[i]];
+        const normalized = normalizeImageUrl(candidate);
+        if (normalized) {
+          return normalized;
+        }
+      }
+
       return "";
+    }
+
+    function resolveImageLinks(entry) {
+      if (!entry || typeof entry !== "object") {
+        return {};
+      }
+
+      if (entry.volumeInfo && entry.volumeInfo.imageLinks) {
+        return entry.volumeInfo.imageLinks;
+      }
+
+      if (entry.imageLinks) {
+        return entry.imageLinks;
+      }
+
+      return {};
     }
 
     function sanitizeCoverImage(img) {
@@ -3168,7 +3202,7 @@ window.PRS_isSaving = false;
         }
 
         const volume = entry.volumeInfo || {};
-        const imageLinks = volume.imageLinks || {};
+        const imageLinks = resolveImageLinks(entry);
         const imageUrl = selectBestCoverUrl(imageLinks);
 
         if (!imageUrl) {
@@ -3324,7 +3358,18 @@ window.PRS_isSaving = false;
             return;
           }
 
-          const items = data.data && Array.isArray(data.data.items) ? data.data.items : [];
+          if (typeof window !== "undefined" && window.console) {
+            console.log("[PRS] Google Books response:", data);
+            if (data && data.data && data.data.items) {
+              console.log("[PRS] Found items:", data.data.items.length);
+            }
+          }
+
+          const items = data.data && Array.isArray(data.data.items)
+            ? data.data.items
+            : Array.isArray(data.items)
+              ? data.items
+              : [];
           renderResults(items);
         })
         .catch(() => {
