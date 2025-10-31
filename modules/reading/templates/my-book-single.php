@@ -404,6 +404,9 @@ wp_add_inline_script(
         #prs-cover-save{
         background-color:var(--bb-primary-button-background-regular);
         }
+        #prs-cover-save:hover{
+        background-color:var(--bb-primary-button-background-hover, #1E42DD);
+        }
         .prs-search-cover-actions .prs-btn{
         flex:1;
         max-width:200px;

@@ -287,6 +287,10 @@
   background-color: var(--bb-primary-button-background-regular);
 }
 
+#prs-cover-save:hover {
+  background-color: var(--bb-primary-button-background-hover, #1E42DD);
+}
+
 .prs-btn:not(.prs-btn--ghost):hover {
   background-color: #2563eb;
 }
