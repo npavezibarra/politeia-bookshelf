@@ -858,7 +858,93 @@ class Politeia_Reading_User_Books {
 			}
 		}
 
-                self::json_success( $data );
+                $items = ( isset( $data['items'] ) && is_array( $data['items'] ) ) ? $data['items'] : array();
+
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $items ) ) {
+                        $titles = array();
+                        foreach ( $items as $raw_item ) {
+                                if ( isset( $raw_item['volumeInfo']['title'] ) ) {
+                                        $titles[] = $raw_item['volumeInfo']['title'];
+                                }
+                        }
+                        if ( ! empty( $titles ) ) {
+                                error_log( 'Google Books titles: ' . implode( ', ', $titles ) );
+                        }
+                }
+
+                if ( empty( $items ) ) {
+                        self::json_success(
+                                array(
+                                        'html' => '<p>No results found.</p>',
+                                )
+                        );
+                }
+
+                $results     = array();
+                $max_results = 3;
+
+                foreach ( $items as $item ) {
+                        if ( count( $results ) >= $max_results ) {
+                                break;
+                        }
+
+                        $info   = isset( $item['volumeInfo'] ) && is_array( $item['volumeInfo'] ) ? $item['volumeInfo'] : array();
+                        $title  = sanitize_text_field( isset( $info['title'] ) ? $info['title'] : '' );
+                        $author = sanitize_text_field(
+                                ( isset( $info['authors'] ) && is_array( $info['authors'] ) && isset( $info['authors'][0] ) )
+                                        ? $info['authors'][0]
+                                        : ''
+                        );
+
+                        $image_links = isset( $info['imageLinks'] ) && is_array( $info['imageLinks'] ) ? $info['imageLinks'] : array();
+                        $image       = '';
+                        if ( isset( $image_links['thumbnail'] ) && $image_links['thumbnail'] ) {
+                                $image = $image_links['thumbnail'];
+                        } elseif ( isset( $image_links['smallThumbnail'] ) && $image_links['smallThumbnail'] ) {
+                                $image = $image_links['smallThumbnail'];
+                        }
+
+                        if ( $image ) {
+                                $image = str_replace( 'http://', 'https://', $image );
+                                if ( strpos( $image, 'zoom=' ) !== false ) {
+                                        $image = preg_replace( '/zoom=\d+/', 'zoom=3', $image );
+                                } else {
+                                        $image = add_query_arg( 'zoom', '3', $image );
+                                }
+                        }
+
+                        if ( ! $image ) {
+                                continue;
+                        }
+
+                        $normalized_image = esc_url( $image );
+
+                        $results[] = sprintf(
+                                '<div class="prs-cover-option" role="button" tabindex="0" data-cover-title="%1$s" data-cover-author="%2$s" data-cover-url="%3$s" data-image-url="%3$s">'
+                                . '<img src="%3$s" alt="%4$s" class="prs-cover-image" loading="lazy" />'
+                                . '</div>',
+                                esc_attr( $title ),
+                                esc_attr( $author ),
+                                $normalized_image,
+                                esc_attr( $title )
+                        );
+                }
+
+                if ( empty( $results ) ) {
+                        self::json_success(
+                                array(
+                                        'html' => '<p>No results found.</p>',
+                                )
+                        );
+                }
+
+                $html = implode( "\n", $results );
+
+                self::json_success(
+                        array(
+                                'html' => $html,
+                        )
+                );
         }
 
         /**

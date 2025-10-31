@@ -3177,9 +3177,62 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
     }
 
-    function renderResults(items) {
+    function renderResults(payload) {
+      resetSelection();
       optionsContainer.innerHTML = "";
       toggleAttribution(false);
+
+      const html = payload && typeof payload === "object" && payload !== null && typeof payload.html === "string"
+        ? payload.html.trim()
+        : typeof payload === "string"
+          ? payload.trim()
+          : "";
+
+      const items = Array.isArray(payload)
+        ? payload
+        : payload && typeof payload === "object" && Array.isArray(payload.items)
+          ? payload.items
+          : [];
+
+      if (html) {
+        optionsContainer.innerHTML = html;
+        const options = optionsContainer.querySelectorAll(".prs-cover-option");
+        if (!options.length) {
+          const fallbackMessage = optionsContainer.textContent.trim() || "No covers found.";
+          renderMessage(fallbackMessage, "prs-search-cover-empty");
+          return;
+        }
+
+        let hasImages = false;
+
+        options.forEach(option => {
+          const rawUrl = option.getAttribute("data-image-url")
+            || option.getAttribute("data-cover-url")
+            || option.getAttribute("data-thumbnail")
+            || "";
+          const normalized = prsNormalizeCoverUrl(String(rawUrl || ""));
+          if (normalized) {
+            option.setAttribute("data-image-url", normalized);
+            option.setAttribute("data-cover-url", normalized);
+            option.dataset.coverUrl = normalized;
+            option.dataset.imageUrl = normalized;
+            option.dataset.thumbnail = normalized;
+
+            const img = option.querySelector("img");
+            if (img) {
+              const imgSrc = img.getAttribute("src") || "";
+              const normalizedImg = prsNormalizeCoverUrl(imgSrc);
+              if (normalizedImg && normalizedImg !== imgSrc) {
+                img.setAttribute("src", normalizedImg);
+              }
+              hasImages = true;
+            }
+          }
+        });
+
+        toggleAttribution(hasImages);
+        return;
+      }
 
       if (!Array.isArray(items) || items.length === 0) {
         renderMessage("No covers found.", "prs-search-cover-empty");
@@ -3188,7 +3241,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
       let appended = 0;
       let displayed = 0;
-      const limit = 5;
+      const limit = 3;
 
       for (let i = 0; i < items.length && displayed < limit; i += 1) {
         const entry = items[i];
@@ -3202,6 +3255,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           (imageLinks && imageLinks.thumbnail)
             || (imageLinks && imageLinks.smallThumbnail),
         );
+
+        if (!imageUrl) {
+          continue;
+        }
 
         const option = document.createElement("div");
         option.className = "prs-cover-option";
@@ -3220,31 +3277,24 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           option.dataset.coverAuthor = author;
         }
 
-        if (imageUrl) {
-          option.dataset.coverUrl = imageUrl;
-          option.setAttribute("data-image-url", imageUrl);
-          option.setAttribute("data-thumbnail", imageUrl);
+        option.dataset.coverUrl = imageUrl;
+        option.setAttribute("data-cover-url", imageUrl);
+        option.setAttribute("data-image-url", imageUrl);
+        option.setAttribute("data-thumbnail", imageUrl);
 
-          const img = document.createElement("img");
-          img.src = imageUrl;
-          img.alt = title || "";
-          img.className = "prs-cover-image";
-          img.loading = "lazy";
-          option.appendChild(img);
-
-          appended += 1;
-        } else {
-          const placeholder = document.createElement("div");
-          placeholder.className = "prs-cover-option__placeholder";
-          placeholder.textContent = "image not available";
-          option.appendChild(placeholder);
-        }
+        const img = document.createElement("img");
+        img.src = imageUrl;
+        img.alt = title || "";
+        img.className = "prs-cover-image";
+        img.loading = "lazy";
+        option.appendChild(img);
 
         optionsContainer.appendChild(option);
+        appended += 1;
         displayed += 1;
       }
 
-      if (displayed === 0) {
+      if (!appended) {
         renderMessage("No covers found.", "prs-search-cover-empty");
         return;
       }
@@ -3406,12 +3456,20 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
             }
           }
 
-          const items = data.data && Array.isArray(data.data.items)
+          const html = data && data.data && typeof data.data.html === "string"
+            ? data.data.html
+            : "";
+          const items = data && data.data && Array.isArray(data.data.items)
             ? data.data.items
             : Array.isArray(data.items)
               ? data.items
               : [];
-          renderResults(items);
+
+          if (html) {
+            renderResults({ html, items });
+          } else {
+            renderResults(items);
+          }
         })
         .catch(() => {
           renderMessage("Unable to search for covers.", "prs-search-cover-error");
