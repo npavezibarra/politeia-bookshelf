@@ -740,41 +740,26 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'missing_api_key', 400 );
                 }
 
-		// --- Build canonical Google Books query ---
-		$title_clean  = trim( $title );
-		$author_clean = trim( $author );
+                $base_url    = 'https://www.googleapis.com/books/v1/volumes';
+                $max_results = 3;
 
-		$encoded_title  = rawurlencode( $title_clean );
-		$encoded_author = rawurlencode( $author_clean );
+                $title_clean  = trim( $title );
+                $author_clean = trim( $author );
 
-		$query_parts = array();
+                $query = 'intitle:"' . rawurlencode( $title_clean ) . '"';
+                if ( '' !== $author_clean ) {
+                        $query .= '+inauthor:"' . rawurlencode( $author_clean ) . '"';
+                }
 
-		if ( '' !== $encoded_title ) {
-			$query_parts[] = sprintf( 'intitle:%%22%s%%22', $encoded_title );
-		}
-
-		if ( '' !== $encoded_author ) {
-			$query_parts[] = sprintf( 'inauthor:%%22%s%%22', $encoded_author );
-		}
-
-		$query = implode( '+', $query_parts );
-
-		if ( '' === $query ) {
-			self::json_error( 'missing_metadata', 400 );
-		}
-
-		$url = sprintf(
-			'https://www.googleapis.com/books/v1/volumes?q=%s&key=%s&maxResults=5&orderBy=relevance&printType=books&langRestrict=es',
-			$query,
-			$api_token
-		);
-
-                $response = wp_remote_get(
-                        $url,
-                        array(
-                                'timeout' => 10,
-                        )
+                $url = sprintf(
+                        '%s?q=%s&maxResults=%d&printType=books&projection=lite&key=%s',
+                        $base_url,
+                        $query,
+                        $max_results,
+                        $api_token
                 );
+
+                $response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 
                 if ( is_wp_error( $response ) ) {
                         self::json_error( 'api_error', 500 );
@@ -784,32 +769,6 @@ class Politeia_Reading_User_Books {
                 $body = wp_remote_retrieve_body( $response );
                 $data = json_decode( $body, true );
 
-                // --- Reorder results to prioritize exact title matches ---
-                if ( isset( $data['items'] ) && is_array( $data['items'] ) && $title ) {
-                        $normalized_title = mb_strtolower( trim( preg_replace( '/\s+/', ' ', $title ) ) );
-
-                        usort(
-                                $data['items'],
-                                function ( $a, $b ) use ( $normalized_title ) {
-                                        $a_title = isset( $a['volumeInfo']['title'] ) ? mb_strtolower( $a['volumeInfo']['title'] ) : '';
-                                        $b_title = isset( $b['volumeInfo']['title'] ) ? mb_strtolower( $b['volumeInfo']['title'] ) : '';
-
-                                        $a_exact = strpos( $a_title, $normalized_title ) !== false;
-                                        $b_exact = strpos( $b_title, $normalized_title ) !== false;
-
-                                        if ( $a_exact && ! $b_exact ) {
-                                                return -1;
-                                        }
-
-                                        if ( $b_exact && ! $a_exact ) {
-                                                return 1;
-                                        }
-
-                                        return 0;
-                                }
-                        );
-                }
-
                 if ( $code >= 400 ) {
                         self::json_error( 'api_error', $code );
                 }
@@ -818,45 +777,33 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'api_error', 500 );
                 }
 
-		// --- Fallback #1: retry with intitle only ---
-		if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] === 0 && $title ) {
-			$fallback_url = add_query_arg(
-				array(
-					'q'          => sprintf( 'intitle:"%s"', $title ),
-					'key'        => $api_token,
-					'maxResults' => 5,
-					'orderBy'    => 'relevance',
-					'printType'  => 'books',
-				),
-				'https://www.googleapis.com/books/v1/volumes'
-			);
-			$fallback_response = wp_remote_get( $fallback_url, array( 'timeout' => 10 ) );
-			$fallback_data     = json_decode( wp_remote_retrieve_body( $fallback_response ), true );
-			if ( isset( $fallback_data['totalItems'] ) && (int) $fallback_data['totalItems'] > 0 ) {
-				$data = $fallback_data;
-			}
-		}
+                if ( empty( $data['items'] ) ) {
+                        $fallback_url = sprintf(
+                                '%s?q=intitle:"%s"&maxResults=%d&printType=books&projection=lite&key=%s',
+                                $base_url,
+                                rawurlencode( $title_clean ),
+                                $max_results,
+                                $api_token
+                        );
 
-		// --- Fallback #2: relax query if still few or irrelevant results ---
-		if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] <= 1 && $title ) {
-			$relaxed_query = sprintf( '"%s"', $title );
-			$relaxed_url   = add_query_arg(
-				array(
-					'q'            => $relaxed_query,
-					'key'          => $api_token,
-					'maxResults'   => 5,
-					'orderBy'      => 'relevance',
-					'printType'    => 'books',
-					'langRestrict' => 'es',
-				),
-				'https://www.googleapis.com/books/v1/volumes'
-			);
-			$relaxed_response = wp_remote_get( $relaxed_url, array( 'timeout' => 10 ) );
-			$relaxed_data     = json_decode( wp_remote_retrieve_body( $relaxed_response ), true );
-			if ( isset( $relaxed_data['totalItems'] ) && (int) $relaxed_data['totalItems'] > 0 ) {
-				$data = $relaxed_data;
-			}
-		}
+                        $fallback_response = wp_remote_get( $fallback_url, array( 'timeout' => 10 ) );
+
+                        if ( is_wp_error( $fallback_response ) ) {
+                                self::json_error( 'api_error', 500 );
+                        }
+
+                        $fallback_code = (int) wp_remote_retrieve_response_code( $fallback_response );
+                        $fallback_body = wp_remote_retrieve_body( $fallback_response );
+                        $data          = json_decode( $fallback_body, true );
+
+                        if ( $fallback_code >= 400 ) {
+                                self::json_error( 'api_error', $fallback_code );
+                        }
+
+                        if ( null === $data || ! is_array( $data ) ) {
+                                self::json_error( 'api_error', 500 );
+                        }
+                }
 
                 $items = ( isset( $data['items'] ) && is_array( $data['items'] ) ) ? $data['items'] : array();
 
@@ -875,7 +822,7 @@ class Politeia_Reading_User_Books {
                 if ( empty( $items ) ) {
                         self::json_success(
                                 array(
-                                        'html' => '<p>No results found.</p>',
+                                        'html' => '<p>No cover images found for this book.</p>',
                                 )
                         );
                 }
@@ -906,11 +853,7 @@ class Politeia_Reading_User_Books {
 
                         if ( $image ) {
                                 $image = str_replace( 'http://', 'https://', $image );
-                                if ( strpos( $image, 'zoom=' ) !== false ) {
-                                        $image = preg_replace( '/zoom=\d+/', 'zoom=3', $image );
-                                } else {
-                                        $image = add_query_arg( 'zoom', '3', $image );
-                                }
+                                $image = preg_replace( '/zoom=\d+/', 'zoom=3', $image );
                         }
 
                         if ( ! $image ) {
@@ -930,15 +873,7 @@ class Politeia_Reading_User_Books {
                         );
                 }
 
-                if ( empty( $results ) ) {
-                        self::json_success(
-                                array(
-                                        'html' => '<p>No results found.</p>',
-                                )
-                        );
-                }
-
-                $html = implode( "\n", $results );
+                $html = ! empty( $results ) ? implode( "\n", $results ) : '<p>No cover images found for this book.</p>';
 
                 self::json_success(
                         array(
