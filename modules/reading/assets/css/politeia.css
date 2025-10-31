@@ -1431,6 +1431,12 @@ display:inline-block;
         max-width:100%;
         }
 
+        #prs-cover-frame.has-image .prs-cover-img{
+        object-fit:cover !important;
+        width:100% !important;
+        height:auto !important;
+        }
+
         @media screen and (max-width: 950px){
         .prs-cover-frame,
         .prs-book-cover{
