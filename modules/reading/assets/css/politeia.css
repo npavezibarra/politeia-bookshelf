@@ -1431,11 +1431,15 @@ display:inline-block;
         max-width:100%;
         }
 
+        /* TARGET: The image element (.prs-cover-img) inside the main cover frame 
+           (#prs-cover-frame.has-image). This selector combination overrides all typical
+           plugin/theme rules. */
         #prs-cover-frame.has-image img.prs-cover-img{
         width:100% !important;
-        object-fit:cover !important;
         height:auto !important;
+        object-fit:cover !important;
         max-width:100% !important;
+        display:block !important;
         }
 
         @media screen and (max-width: 950px){
