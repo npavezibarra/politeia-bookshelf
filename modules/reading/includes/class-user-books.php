@@ -740,28 +740,34 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'missing_api_key', 400 );
                 }
 
-                $segments = array();
-                if ( $title ) {
-                        $segments[] = sprintf( 'intitle:"%s"', $title );
-                }
-                if ( $author ) {
-                        $segments[] = sprintf( 'inauthor:"%s"', $author );
-                }
+		// --- Build canonical Google Books query ---
+		$title_clean  = trim( $title );
+		$author_clean = trim( $author );
 
-                $query = trim( implode( ' ', $segments ) );
-                if ( '' === $query ) {
-                        self::json_error( 'missing_metadata', 400 );
-                }
+		$encoded_title  = rawurlencode( $title_clean );
+		$encoded_author = rawurlencode( $author_clean );
 
-                $url = add_query_arg(
-                        array(
-                                'q'          => $query,
-                                'key'        => $api_token,
-                                'maxResults' => 5,
-                                'orderBy'    => 'relevance',
-                        ),
-                        'https://www.googleapis.com/books/v1/volumes'
-                );
+		$query_parts = array();
+
+		if ( '' !== $encoded_title ) {
+			$query_parts[] = sprintf( 'intitle:%%22%s%%22', $encoded_title );
+		}
+
+		if ( '' !== $encoded_author ) {
+			$query_parts[] = sprintf( 'inauthor:%%22%s%%22', $encoded_author );
+		}
+
+		$query = implode( '+', $query_parts );
+
+		if ( '' === $query ) {
+			self::json_error( 'missing_metadata', 400 );
+		}
+
+		$url = sprintf(
+			'https://www.googleapis.com/books/v1/volumes?q=%s&key=%s&maxResults=5&orderBy=relevance&printType=books&langRestrict=es',
+			$query,
+			$api_token
+		);
 
                 $response = wp_remote_get(
                         $url,
@@ -786,45 +792,45 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'api_error', 500 );
                 }
 
-               // --- Fallback #1: retry with intitle only ---
-               if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] === 0 && $title ) {
-                       $fallback_url = add_query_arg(
-                               array(
-                                        'q'          => sprintf( 'intitle:"%s"', $title ),
-                                        'key'        => $api_token,
-                                        'maxResults' => 5,
-                                        'orderBy'    => 'relevance',
-                                        'printType'  => 'books',
-                                ),
-                                'https://www.googleapis.com/books/v1/volumes'
-                        );
-                        $fallback_response = wp_remote_get( $fallback_url, array( 'timeout' => 10 ) );
-                        $fallback_data     = json_decode( wp_remote_retrieve_body( $fallback_response ), true );
-                        if ( isset( $fallback_data['totalItems'] ) && (int) $fallback_data['totalItems'] > 0 ) {
-                                $data = $fallback_data;
-                        }
-                }
+		// --- Fallback #1: retry with intitle only ---
+		if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] === 0 && $title ) {
+			$fallback_url = add_query_arg(
+				array(
+					'q'          => sprintf( 'intitle:"%s"', $title ),
+					'key'        => $api_token,
+					'maxResults' => 5,
+					'orderBy'    => 'relevance',
+					'printType'  => 'books',
+				),
+				'https://www.googleapis.com/books/v1/volumes'
+			);
+			$fallback_response = wp_remote_get( $fallback_url, array( 'timeout' => 10 ) );
+			$fallback_data     = json_decode( wp_remote_retrieve_body( $fallback_response ), true );
+			if ( isset( $fallback_data['totalItems'] ) && (int) $fallback_data['totalItems'] > 0 ) {
+				$data = $fallback_data;
+			}
+		}
 
-               // --- Fallback #2: relax query if still few or irrelevant results ---
-               if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] <= 1 && $title ) {
-                       $relaxed_query = sprintf( '"%s"', $title );
-                       $relaxed_url   = add_query_arg(
-                               array(
-                                       'q'            => $relaxed_query,
-                                       'key'          => $api_token,
-                                       'maxResults'   => 5,
-                                       'orderBy'      => 'relevance',
-                                       'printType'    => 'books',
-                                       'langRestrict' => 'es',
-                               ),
-                               'https://www.googleapis.com/books/v1/volumes'
-                       );
-                       $relaxed_response = wp_remote_get( $relaxed_url, array( 'timeout' => 10 ) );
-                       $relaxed_data     = json_decode( wp_remote_retrieve_body( $relaxed_response ), true );
-                       if ( isset( $relaxed_data['totalItems'] ) && (int) $relaxed_data['totalItems'] > 0 ) {
-                               $data = $relaxed_data;
-                       }
-               }
+		// --- Fallback #2: relax query if still few or irrelevant results ---
+		if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] <= 1 && $title ) {
+			$relaxed_query = sprintf( '"%s"', $title );
+			$relaxed_url   = add_query_arg(
+				array(
+					'q'            => $relaxed_query,
+					'key'          => $api_token,
+					'maxResults'   => 5,
+					'orderBy'      => 'relevance',
+					'printType'    => 'books',
+					'langRestrict' => 'es',
+				),
+				'https://www.googleapis.com/books/v1/volumes'
+			);
+			$relaxed_response = wp_remote_get( $relaxed_url, array( 'timeout' => 10 ) );
+			$relaxed_data     = json_decode( wp_remote_retrieve_body( $relaxed_response ), true );
+			if ( isset( $relaxed_data['totalItems'] ) && (int) $relaxed_data['totalItems'] > 0 ) {
+				$data = $relaxed_data;
+			}
+		}
 
                 self::json_success( $data );
         }
