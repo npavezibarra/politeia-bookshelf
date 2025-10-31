@@ -2932,10 +2932,35 @@ window.PRS_isSaving = false;
     const cancelBtn = document.getElementById("prs-cancel-cover");
     const setCoverBtn = document.getElementById("prs-set-cover");
     const optionsContainer = overlay ? overlay.querySelector(".prs-search-cover-options") : null;
+    let attributionEl = null;
 
     if (!overlay || !optionsContainer) {
       return;
     }
+
+    function ensureAttributionElement() {
+      if (attributionEl && attributionEl.isConnected) {
+        return attributionEl;
+      }
+      attributionEl = document.createElement("p");
+      attributionEl.className = "prs-search-cover-attribution";
+      attributionEl.textContent = "Images from Google Books";
+      const parent = optionsContainer.parentNode;
+      if (parent) {
+        parent.insertBefore(attributionEl, optionsContainer.nextSibling);
+      }
+      return attributionEl;
+    }
+
+    function toggleAttribution(isVisible) {
+      const node = ensureAttributionElement();
+      if (!node) {
+        return;
+      }
+      node.style.display = isVisible ? "" : "none";
+    }
+
+    toggleAttribution(false);
 
     const ajaxUrl = (window.PRS_BOOK && PRS_BOOK.ajax_url)
       || (typeof window.ajaxurl === "string" ? window.ajaxurl : "");
@@ -2970,6 +2995,7 @@ window.PRS_isSaving = false;
 
     function renderMessage(message, className) {
       optionsContainer.innerHTML = "";
+      toggleAttribution(false);
       const wrapper = document.createElement("p");
       wrapper.textContent = message;
       wrapper.className = className || "prs-search-cover-message";
@@ -3015,6 +3041,7 @@ window.PRS_isSaving = false;
 
     function renderResults(items) {
       optionsContainer.innerHTML = "";
+      toggleAttribution(false);
 
       if (!Array.isArray(items) || items.length === 0) {
         renderMessage("No covers found.", "prs-search-cover-empty");
@@ -3058,23 +3085,10 @@ window.PRS_isSaving = false;
 
         const img = document.createElement("img");
         img.src = imageUrl;
-        img.alt = title ? `Cover for ${title}` : "Book cover";
+        img.alt = "Book cover";
         img.className = "prs-cover-image";
+        img.loading = "lazy";
         option.appendChild(img);
-
-        const meta = document.createElement("div");
-        meta.className = "prs-cover-metadata";
-        option.appendChild(meta);
-
-        const titleEl = document.createElement("p");
-        titleEl.className = "prs-cover-title";
-        titleEl.textContent = title || (volume.subtitle ? String(volume.subtitle).trim() : "");
-        meta.appendChild(titleEl);
-
-        const authorEl = document.createElement("p");
-        authorEl.className = "prs-cover-author";
-        authorEl.textContent = author;
-        meta.appendChild(authorEl);
 
         optionsContainer.appendChild(option);
         appended += 1;
@@ -3082,7 +3096,10 @@ window.PRS_isSaving = false;
 
       if (appended === 0) {
         renderMessage("No covers found.", "prs-search-cover-empty");
+        return;
       }
+
+      toggleAttribution(true);
     }
 
     function applyCoverUpdate(url, option) {

@@ -371,21 +371,39 @@ wp_add_inline_script(
         }
         .prs-search-cover-options{
         display:flex;
-        justify-content:space-between;
-        margin-bottom:20px;
+        flex-wrap:wrap;
+        gap:20px;
+        justify-content:center;
+        margin-bottom:12px;
         }
         .prs-cover-option{
-        flex:1;
+        flex:1 1 160px;
+        max-width:220px;
         border:1px solid #ccc;
-        border-radius:4px;
-        padding:60px 0;
-        margin:0 10px;
+        border-radius:8px;
+        padding:12px;
         cursor:pointer;
         user-select:none;
+        display:flex;
+        justify-content:center;
+        align-items:center;
+        background-color:#fff;
         }
         .prs-cover-option.selected{
         border-color:#000;
         background-color:#f0f0f0;
+        }
+        .prs-cover-image{
+        max-height:200px;
+        width:auto;
+        max-width:100%;
+        object-fit:contain;
+        }
+        .prs-search-cover-attribution{
+        font-size:12px;
+        color:#555;
+        text-align:center;
+        margin:12px 0 0;
         }
         .prs-search-cover-actions{
         display:flex;
@@ -857,13 +875,9 @@ wp_add_inline_script(
 
 <div id="prs-search-cover-overlay" class="prs-search-cover-overlay is-hidden" aria-hidden="true">
         <div class="prs-search-cover-modal">
-                <h2 class="prs-search-cover-title"><?php esc_html_e( 'SEARCH BOOK COVER', 'politeia-reading' ); ?></h2>
+                <h2 class="prs-search-cover-title"><?php esc_html_e( 'Search Book Cover', 'politeia-reading' ); ?></h2>
 
-                <div class="prs-search-cover-options">
-                        <div class="prs-cover-option" data-option="1"><?php esc_html_e( 'Option 1', 'politeia-reading' ); ?></div>
-                        <div class="prs-cover-option" data-option="2"><?php esc_html_e( 'Option 2', 'politeia-reading' ); ?></div>
-                        <div class="prs-cover-option" data-option="3"><?php esc_html_e( 'Option 3', 'politeia-reading' ); ?></div>
-                </div>
+                <div class="prs-search-cover-options"></div>
 
                 <div class="prs-search-cover-actions">
                         <button id="prs-cancel-cover" class="prs-btn prs-cancel-cover-button" type="button"><?php esc_html_e( 'CANCEL', 'politeia-reading' ); ?></button>
