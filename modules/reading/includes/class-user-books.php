@@ -719,6 +719,14 @@ class Politeia_Reading_User_Books {
                 $title  = trim( str_replace( "\"", '', $title ) );
                 $author = trim( str_replace( "\"", '', $author ) );
 
+                // --- Normalize metadata for Google Books ---
+                $title  = preg_replace( '/:.*/', '', $title );
+                $title  = preg_replace( '/\s+/', ' ', $title );
+                $author = preg_replace( '/\([^)]*\)/', '', $author );
+                $author = preg_replace( '/II|III|IV|V/', '', $author );
+                $author = preg_replace( '/\s+/', ' ', $author );
+                $author = trim( $author );
+
                 if ( '' === $title && '' === $author ) {
                         self::json_error( 'missing_metadata', 400 );
                 }
@@ -776,6 +784,25 @@ class Politeia_Reading_User_Books {
 
                 if ( null === $data || ! is_array( $data ) ) {
                         self::json_error( 'api_error', 500 );
+                }
+
+                // --- Fallback query if no results found ---
+                if ( isset( $data['totalItems'] ) && (int) $data['totalItems'] === 0 && $title ) {
+                        $fallback_url = add_query_arg(
+                                array(
+                                        'q'          => sprintf( 'intitle:"%s"', $title ),
+                                        'key'        => $api_token,
+                                        'maxResults' => 5,
+                                        'orderBy'    => 'relevance',
+                                        'printType'  => 'books',
+                                ),
+                                'https://www.googleapis.com/books/v1/volumes'
+                        );
+                        $fallback_response = wp_remote_get( $fallback_url, array( 'timeout' => 10 ) );
+                        $fallback_data     = json_decode( wp_remote_retrieve_body( $fallback_response ), true );
+                        if ( isset( $fallback_data['totalItems'] ) && (int) $fallback_data['totalItems'] > 0 ) {
+                                $data = $fallback_data;
+                        }
                 }
 
                 self::json_success( $data );
