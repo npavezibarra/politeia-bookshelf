@@ -265,12 +265,13 @@ wp_add_inline_script(
         transform:translateY(0);
         }
         .prs-cover-btn{
-        background:#111;
+        background:#000000;
         color:#fff;
         border:none;
-        border-radius:14px;
+        border-radius:6px;
         padding:10px 20px;
         font-weight:600;
+        font-size:12px;
         cursor:pointer;
         transition:background 0.2s ease-in-out;
         }
