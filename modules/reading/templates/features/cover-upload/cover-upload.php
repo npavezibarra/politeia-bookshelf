@@ -26,6 +26,9 @@ class PRS_Cover_Upload_Feature {
                 add_action( 'wp_ajax_prs_save_cropped_cover', array( __CLASS__, 'ajax_save_cropped_cover' ) );
                 add_action( 'wp_ajax_nopriv_prs_save_cropped_cover', array( __CLASS__, 'ajax_save_cropped_cover' ) );
                 add_action( 'wp_ajax_prs_cover_save_crop', array( __CLASS__, 'ajax_save_crop' ) );
+                add_action( 'wp_ajax_prs_save_cover_url', array( __CLASS__, 'ajax_save_cover_url' ) );
+                add_action( 'wp_ajax_prs_cover_search_google', array( __CLASS__, 'ajax_search_google' ) );
+                add_action( 'wp_ajax_prs_remove_cover', array( __CLASS__, 'ajax_remove_cover' ) );
 
         }
 
@@ -114,7 +117,7 @@ class PRS_Cover_Upload_Feature {
         public static function shortcode_button( $atts ) {
                 $atts = shortcode_atts(
                         array(
-                                'show_search' => false,
+                                'show_search' => true,
                         ),
                         $atts,
                         'prs_cover_button'
@@ -125,17 +128,89 @@ class PRS_Cover_Upload_Feature {
                 // Botón compacto para insertar sobre la portada
                 $upload_label = esc_html__( 'Upload Book Cover', 'politeia-reading' );
                 $search_label = esc_html__( 'Search Cover', 'politeia-reading' );
+                $remove_label = esc_html__( 'Remove book cover', 'politeia-reading' );
+                $remove_confirm = esc_html__( 'Are you sure you want to remove this book cover?', 'politeia-reading' );
 
-                $output  = '<div class="prs-cover-actions" data-search-label="' . esc_attr( $search_label ) . '">';
+                $output  = '<div class="prs-cover-actions" data-search-label="' . esc_attr( $search_label ) . '" data-remove-label="' . esc_attr( $remove_label ) . '" data-remove-confirm="' . esc_attr( $remove_confirm ) . '">';
                 $output .= '<button type="button" id="prs-cover-open" class="prs-btn prs-cover-btn prs-cover-upload-button">' . $upload_label . '</button>';
 
                 if ( $show_search ) {
                         $output .= '<button type="button" id="prs-cover-search" class="prs-btn prs-cover-btn prs-cover-search-button">' . $search_label . '</button>';
                 }
 
+                $output .= '<a href="#" id="prs-cover-remove" class="prs-cover-remove">' . $remove_label . '</a>';
+
                 $output .= '</div>';
 
                 return $output;
+        }
+
+        /**
+         * Removes the current custom cover for a user book.
+         */
+        public static function ajax_remove_cover() {
+                if ( ! is_user_logged_in() ) {
+                        wp_send_json_error( array( 'message' => 'auth' ), 401 );
+                }
+
+                $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
+                if ( ! wp_verify_nonce( $nonce, 'prs_cover_nonce' ) ) {
+                        wp_send_json_error( array( 'message' => 'bad_nonce' ), 403 );
+                }
+
+                $user_id      = get_current_user_id();
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+
+                if ( ! $user_book_id && ! $book_id ) {
+                        wp_send_json_error( array( 'message' => 'invalid_payload' ), 400 );
+                }
+
+                global $wpdb;
+                $table = $wpdb->prefix . 'politeia_user_books';
+
+                if ( $user_book_id ) {
+                        $row = $wpdb->get_row(
+                                $wpdb->prepare(
+                                        "SELECT id FROM {$table} WHERE id=%d AND user_id=%d AND deleted_at IS NULL LIMIT 1",
+                                        $user_book_id,
+                                        $user_id
+                                )
+                        );
+                } else {
+                        $row = $wpdb->get_row(
+                                $wpdb->prepare(
+                                        "SELECT id FROM {$table} WHERE book_id=%d AND user_id=%d AND deleted_at IS NULL LIMIT 1",
+                                        $book_id,
+                                        $user_id
+                                )
+                        );
+                }
+
+                if ( ! $row ) {
+                        wp_send_json_error( array( 'message' => 'not_found' ), 404 );
+                }
+
+                $updated = $wpdb->update(
+                        $table,
+                        array(
+                                'cover_attachment_id_user' => 0,
+                                'cover_reference'          => '',
+                                'cover_url'                => '',
+                                'updated_at'               => current_time( 'mysql', true ),
+                        ),
+                        array( 'id' => (int) $row->id ),
+                        array( '%d', '%s', '%s', '%s' ),
+                        array( '%d' )
+                );
+
+                if ( false === $updated ) {
+                        wp_send_json_error( array( 'message' => 'db_error' ), 500 );
+                }
+
+                self::cleanup_cover_attachments( $user_id, (int) $row->id, 0 );
+
+                wp_send_json_success( array( 'removed' => true ) );
         }
 
         public static function ajax_save_cropped_cover() {

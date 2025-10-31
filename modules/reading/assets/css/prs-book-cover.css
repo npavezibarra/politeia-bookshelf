@@ -93,10 +93,26 @@ button#prs-cover-open {
     display: none !important;
 }
 .prs-cover-actions .prs-cover-search-button {
-    display: none;
-    margin-top: 10px;
-}
-.prs-cover-frame[data-cover-state="image"] .prs-cover-actions .prs-cover-search-button {
     display: inline-flex;
     justify-content: center;
+}
+.prs-cover-remove {
+    display: none;
+    font-size: 12px;
+    color: #fff;
+    text-decoration: underline;
+    align-self: center;
+    margin-top: 4px;
+}
+.prs-cover-frame[data-cover-state="image"] .prs-cover-remove {
+    display: inline-block;
+}
+.prs-cover-remove:hover,
+.prs-cover-remove:focus-visible {
+    color: #fff;
+    text-decoration: none;
+}
+.prs-cover-remove.is-disabled {
+    opacity: 0.6;
+    pointer-events: none;
 }

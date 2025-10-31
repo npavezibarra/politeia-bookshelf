@@ -133,6 +133,13 @@ if ( $user_cover_url ) {
 
 $has_image = ( $final_cover_id > 0 ) || '' !== $cover_url;
 
+$placeholder_title       = __( 'Untitled Book', 'politeia-reading' );
+$placeholder_author      = __( 'Unknown Author', 'politeia-reading' );
+$placeholder_label       = __( 'Default book cover', 'politeia-reading' );
+$search_cover_label      = __( 'Search Cover', 'politeia-reading' );
+$remove_cover_label      = __( 'Remove book cover', 'politeia-reading' );
+$remove_cover_confirm    = __( 'Are you sure you want to remove this book cover?', 'politeia-reading' );
+
 /** Encolar assets */
 wp_enqueue_style( 'politeia-reading' );
 wp_enqueue_style(
@@ -268,12 +275,28 @@ wp_add_inline_script(
         transition:background 0.2s ease-in-out;
         }
         .prs-cover-actions .prs-cover-search-button{
-        display:none;
-        margin-top:10px;
-        }
-        .prs-cover-frame[data-cover-state="image"] .prs-cover-actions .prs-cover-search-button{
         display:inline-flex;
         justify-content:center;
+        }
+        .prs-cover-remove{
+        display:none;
+        font-size:12px;
+        color:#fff;
+        text-decoration:underline;
+        align-self:center;
+        margin-top:4px;
+        }
+        .prs-cover-frame[data-cover-state="image"] .prs-cover-remove{
+        display:inline-block;
+        }
+        .prs-cover-remove:hover,
+        .prs-cover-remove:focus-visible{
+        color:#fff;
+        text-decoration:none;
+        }
+        .prs-cover-remove.is-disabled{
+        opacity:0.6;
+        pointer-events:none;
         }
         .prs-cover-btn:hover,
         .prs-cover-btn:focus-visible{
@@ -441,7 +464,13 @@ wp_add_inline_script(
                         <div
                                 id="prs-cover-frame"
                                 class="prs-cover-frame <?php echo $has_image ? 'has-image' : ''; ?>"
-                                data-cover-state="<?php echo $has_image ? 'image' : 'empty'; ?>">
+                                data-cover-state="<?php echo $has_image ? 'image' : 'empty'; ?>"
+                                data-placeholder-title="<?php echo esc_attr( $placeholder_title ); ?>"
+                                data-placeholder-author="<?php echo esc_attr( $placeholder_author ); ?>"
+                                data-placeholder-label="<?php echo esc_attr( $placeholder_label ); ?>"
+                                data-search-label="<?php echo esc_attr( $search_cover_label ); ?>"
+                                data-remove-label="<?php echo esc_attr( $remove_cover_label ); ?>"
+                                data-remove-confirm="<?php echo esc_attr( $remove_cover_confirm ); ?>">
                 <figure class="prs-book-cover" id="prs-book-cover-figure">
                 <?php if ( $has_image ) : ?>
                         <?php
@@ -476,9 +505,9 @@ wp_add_inline_script(
                                 id="prs-cover-placeholder"
                                 class="prs-cover-placeholder"
                                 role="img"
-                                aria-label="<?php esc_attr_e( 'Default book cover', 'politeia-reading' ); ?>">
-                                <h2 id="prs-book-title-placeholder" class="prs-cover-title"><?php esc_html_e( 'Untitled Book', 'politeia-reading' ); ?></h2>
-                                <h3 id="prs-book-author-placeholder" class="prs-cover-author"><?php esc_html_e( 'Unknown Author', 'politeia-reading' ); ?></h3>
+                                aria-label="<?php echo esc_attr( $placeholder_label ); ?>">
+                                <h2 id="prs-book-title-placeholder" class="prs-cover-title"><?php echo esc_html( $placeholder_title ); ?></h2>
+                                <h3 id="prs-book-author-placeholder" class="prs-cover-author"><?php echo esc_html( $placeholder_author ); ?></h3>
                                 <?php echo do_shortcode( '[prs_cover_button]' ); ?>
                         </div>
                 <?php endif; ?>
