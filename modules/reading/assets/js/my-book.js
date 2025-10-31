@@ -3054,6 +3054,7 @@ window.PRS_isSaving = false;
         "attachment-medium",
         "attachment-large",
         "attachment-full",
+        "is-placeholder",
       ];
 
       classesToRemove.forEach(cls => {
@@ -3209,10 +3210,15 @@ window.PRS_isSaving = false;
       sanitizeCoverImage(img);
 
       const normalizedUrl = normalizeImageUrl(url);
-      if (normalizedUrl) {
-        img.src = normalizedUrl;
+      const finalUrl = normalizedUrl || (url ? String(url) : "");
+      if (finalUrl) {
+        img.src = finalUrl;
       } else {
-        img.src = url;
+        img.removeAttribute("src");
+      }
+
+      if (img.classList && img.classList.contains("is-placeholder")) {
+        img.classList.remove("is-placeholder");
       }
 
       const selectedTitle = option && option.dataset.coverTitle ? option.dataset.coverTitle : "";
@@ -3247,8 +3253,13 @@ window.PRS_isSaving = false;
         attributionLink.removeAttribute("href");
       }
 
+      const coverInput = document.getElementById("prs-cover-url");
+      if (coverInput) {
+        coverInput.value = finalUrl;
+      }
+
       window.PRS_BOOK = window.PRS_BOOK || {};
-      window.PRS_BOOK.cover_url = normalizedUrl || url;
+      window.PRS_BOOK.cover_url = finalUrl;
     }
 
     function handleSearchClick(event) {
@@ -3334,7 +3345,9 @@ window.PRS_isSaving = false;
         return;
       }
 
-      const coverUrl = currentSelection.dataset.coverUrl || "";
+      const rawCoverUrl = currentSelection.dataset.coverUrl || "";
+      const coverUrl = normalizeImageUrl(rawCoverUrl) || rawCoverUrl;
+
       if (!coverUrl) {
         return;
       }
@@ -3382,7 +3395,8 @@ window.PRS_isSaving = false;
           }
 
           const savedUrl = data.data && data.data.cover_url ? String(data.data.cover_url) : coverUrl;
-          applyCoverUpdate(savedUrl, currentSelection);
+          const normalizedSavedUrl = normalizeImageUrl(savedUrl) || savedUrl;
+          applyCoverUpdate(normalizedSavedUrl, currentSelection);
           resetSelection();
           setOverlayVisibility(false);
         })
