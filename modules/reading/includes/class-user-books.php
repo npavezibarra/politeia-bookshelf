@@ -784,6 +784,32 @@ class Politeia_Reading_User_Books {
                 $body = wp_remote_retrieve_body( $response );
                 $data = json_decode( $body, true );
 
+                // --- Reorder results to prioritize exact title matches ---
+                if ( isset( $data['items'] ) && is_array( $data['items'] ) && $title ) {
+                        $normalized_title = mb_strtolower( trim( preg_replace( '/\s+/', ' ', $title ) ) );
+
+                        usort(
+                                $data['items'],
+                                function ( $a, $b ) use ( $normalized_title ) {
+                                        $a_title = isset( $a['volumeInfo']['title'] ) ? mb_strtolower( $a['volumeInfo']['title'] ) : '';
+                                        $b_title = isset( $b['volumeInfo']['title'] ) ? mb_strtolower( $b['volumeInfo']['title'] ) : '';
+
+                                        $a_exact = strpos( $a_title, $normalized_title ) !== false;
+                                        $b_exact = strpos( $b_title, $normalized_title ) !== false;
+
+                                        if ( $a_exact && ! $b_exact ) {
+                                                return -1;
+                                        }
+
+                                        if ( $b_exact && ! $a_exact ) {
+                                                return 1;
+                                        }
+
+                                        return 0;
+                                }
+                        );
+                }
+
                 if ( $code >= 400 ) {
                         self::json_error( 'api_error', $code );
                 }
