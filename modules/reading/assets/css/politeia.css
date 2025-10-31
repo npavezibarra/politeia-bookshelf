@@ -1431,10 +1431,11 @@ display:inline-block;
         max-width:100%;
         }
 
-        #prs-cover-frame.has-image .prs-cover-img{
-        object-fit:cover !important;
+        #prs-cover-frame.has-image img.prs-cover-img{
         width:100% !important;
+        object-fit:cover !important;
         height:auto !important;
+        max-width:100% !important;
         }
 
         @media screen and (max-width: 950px){
