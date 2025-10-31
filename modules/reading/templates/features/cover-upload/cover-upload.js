@@ -1388,13 +1388,6 @@
     if (uploadBtn) {
       event.preventDefault();
       openModal();
-      return;
-    }
-
-    const searchBtn = event.target.closest('#prs-cover-search');
-    if (searchBtn) {
-      event.preventDefault();
-      handleSearchClick();
     }
   });
 })();

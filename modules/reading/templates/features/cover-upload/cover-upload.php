@@ -26,9 +26,6 @@ class PRS_Cover_Upload_Feature {
                 add_action( 'wp_ajax_prs_save_cropped_cover', array( __CLASS__, 'ajax_save_cropped_cover' ) );
                 add_action( 'wp_ajax_nopriv_prs_save_cropped_cover', array( __CLASS__, 'ajax_save_cropped_cover' ) );
                 add_action( 'wp_ajax_prs_cover_save_crop', array( __CLASS__, 'ajax_save_crop' ) );
-                add_action( 'wp_ajax_prs_cover_save_external', array( __CLASS__, 'ajax_save_external' ) );
-                add_action( 'wp_ajax_prs_cover_search_google', array( __CLASS__, 'ajax_search_google' ) );
-                add_action( 'wp_ajax_prs_save_cover_url', array( __CLASS__, 'ajax_save_cover_url' ) );
 
         }
 
@@ -60,15 +57,10 @@ class PRS_Cover_Upload_Feature {
                         add_action( 'wp_footer', array( __CLASS__, 'render_modal_template' ) );
                 }
 
-                // Datos para AJAX
-                global $wpdb;
-                // Necesitamos el user_book_id y book_id que ya tienes en PRS_BOOK.
-                // Si por alguna razón no están, el JS leerá de window.PRS_BOOK.
+                // Datos para AJAX.
                 $ajax_url       = admin_url( 'admin-ajax.php' );
                 $crop_nonce     = wp_create_nonce( 'prs_cover_save_crop' );
                 $save_nonce     = wp_create_nonce( 'prs_cover_nonce' );
-                $external_nonce = wp_create_nonce( 'prs_cover_save_external' );
-                $search_nonce   = wp_create_nonce( 'prs_cover_search_google' );
                 $post_id        = get_queried_object_id();
 
                 wp_localize_script(
@@ -81,8 +73,6 @@ class PRS_Cover_Upload_Feature {
                                 'coverWidth'  => 240,
                                 'coverHeight' => 450,
                                 'onlyOne'     => 1,
-                                'externalNonce' => $external_nonce,
-                                'searchNonce'   => $search_nonce,
                                 'saveUrl'       => $ajax_url,
                                 'saveNonce'     => $save_nonce,
                                 'postId'        => (int) $post_id,
@@ -125,7 +115,6 @@ class PRS_Cover_Upload_Feature {
                 // Botón compacto para insertar sobre la portada
                 return '<div class="prs-cover-actions">'
                         . '<button type="button" id="prs-cover-open" class="prs-btn prs-cover-btn prs-cover-upload-button">Upload Book Cover</button>'
-                        . '<button type="button" id="prs-cover-search" class="prs-btn prs-cover-btn prs-cover-search-button">Search Cover</button>'
                         . '</div>';
         }
 
