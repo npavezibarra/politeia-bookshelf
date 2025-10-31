@@ -699,6 +699,61 @@
     }
   }
 
+  function ensureCoverControls(actions) {
+    if (!actions) {
+      return { search: null, remove: null };
+    }
+
+    const frame = document.getElementById('prs-cover-frame');
+
+    const frameSearchLabel = frame && frame.getAttribute('data-search-label');
+    const searchLabelRaw = actions.getAttribute('data-search-label') || frameSearchLabel || 'Search Cover';
+    const searchLabel = String(searchLabelRaw || '').trim();
+    if (searchLabel && !actions.getAttribute('data-search-label')) {
+      actions.setAttribute('data-search-label', searchLabel);
+    }
+
+    let searchBtn = actions.querySelector('#prs-cover-search');
+    if (!searchBtn) {
+      searchBtn = document.createElement('button');
+      searchBtn.type = 'button';
+      searchBtn.id = 'prs-cover-search';
+      searchBtn.className = 'prs-btn prs-cover-btn prs-cover-search-button';
+      searchBtn.textContent = searchLabel || 'Search Cover';
+      actions.appendChild(searchBtn);
+    } else if (!searchBtn.textContent || !searchBtn.textContent.trim()) {
+      searchBtn.textContent = searchLabel || 'Search Cover';
+    }
+
+    const frameRemoveLabel = frame && frame.getAttribute('data-remove-label');
+    const removeLabelRaw = actions.getAttribute('data-remove-label') || frameRemoveLabel || 'Remove book cover';
+    const removeLabel = String(removeLabelRaw || '').trim();
+    if (removeLabel && !actions.getAttribute('data-remove-label')) {
+      actions.setAttribute('data-remove-label', removeLabel);
+    }
+
+    const frameRemoveConfirm = frame && frame.getAttribute('data-remove-confirm');
+    const removeConfirmRaw = actions.getAttribute('data-remove-confirm') || frameRemoveConfirm || '';
+    const removeConfirm = String(removeConfirmRaw || '').trim();
+    if (removeConfirm && !actions.getAttribute('data-remove-confirm')) {
+      actions.setAttribute('data-remove-confirm', removeConfirm);
+    }
+
+    let removeLink = actions.querySelector('#prs-cover-remove');
+    if (!removeLink) {
+      removeLink = document.createElement('a');
+      removeLink.id = 'prs-cover-remove';
+      removeLink.className = 'prs-cover-remove';
+      removeLink.href = '#';
+      removeLink.textContent = removeLabel || 'Remove book cover';
+      actions.appendChild(removeLink);
+    } else if (!removeLink.textContent || !removeLink.textContent.trim()) {
+      removeLink.textContent = removeLabel || 'Remove book cover';
+    }
+
+    return { search: searchBtn, remove: removeLink };
+  }
+
   function replaceCover(src, bustCache, source) {
     if (!src) return;
     const frame = document.getElementById('prs-cover-frame');
@@ -753,6 +808,12 @@
         existingActions.parentNode.removeChild(existingActions);
       }
       overlay.appendChild(transferredActions);
+      ensureCoverControls(transferredActions);
+    } else {
+      const overlayActions = overlay.querySelector('.prs-cover-actions');
+      if (overlayActions) {
+        ensureCoverControls(overlayActions);
+      }
     }
 
     frame.classList.add('has-image');
@@ -763,6 +824,102 @@
     if (window.PRS_BOOK) {
       window.PRS_BOOK.cover_url = src;
       window.PRS_BOOK.cover_source = typeof source === 'string' ? source : '';
+    }
+  }
+
+  function restoreCoverPlaceholder(existingActions) {
+    const frame = document.getElementById('prs-cover-frame');
+    if (!frame) return;
+
+    const figure = document.getElementById('prs-book-cover-figure');
+    if (!figure) return;
+
+    let actions = existingActions || null;
+    if (actions && actions.parentNode) {
+      actions.parentNode.removeChild(actions);
+    }
+
+    const overlay = frame.querySelector('.prs-cover-overlay');
+    if (!actions && overlay) {
+      const overlayActions = overlay.querySelector('.prs-cover-actions');
+      if (overlayActions && overlayActions.parentNode) {
+        overlayActions.parentNode.removeChild(overlayActions);
+        actions = overlayActions;
+      }
+    }
+
+    if (overlay && overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay);
+    }
+
+    const img = document.getElementById('prs-cover-img');
+    if (img && img.parentNode) {
+      img.parentNode.removeChild(img);
+    }
+
+    const previousPlaceholder = document.getElementById('prs-cover-placeholder');
+    if (previousPlaceholder && previousPlaceholder.parentNode) {
+      previousPlaceholder.parentNode.removeChild(previousPlaceholder);
+    }
+
+    const placeholder = document.createElement('div');
+    placeholder.id = 'prs-cover-placeholder';
+    placeholder.className = 'prs-cover-placeholder';
+    placeholder.setAttribute('role', 'img');
+    const ariaLabel = frame.getAttribute('data-placeholder-label') || 'Default book cover';
+    placeholder.setAttribute('aria-label', ariaLabel);
+
+    const details = getBookDetails();
+    const defaultTitle = frame.getAttribute('data-placeholder-title') || 'Untitled Book';
+    const defaultAuthor = frame.getAttribute('data-placeholder-author') || 'Unknown Author';
+
+    const titleEl = document.createElement('h2');
+    titleEl.id = 'prs-book-title-placeholder';
+    titleEl.className = 'prs-cover-title';
+    titleEl.textContent = details.title || defaultTitle;
+    placeholder.appendChild(titleEl);
+
+    const authorEl = document.createElement('h3');
+    authorEl.id = 'prs-book-author-placeholder';
+    authorEl.className = 'prs-cover-author';
+    authorEl.textContent = details.author || defaultAuthor;
+    placeholder.appendChild(authorEl);
+
+    if (!actions) {
+      actions = document.createElement('div');
+      actions.className = 'prs-cover-actions';
+    }
+
+    const searchLabel = frame.getAttribute('data-search-label');
+    if (searchLabel) {
+      actions.setAttribute('data-search-label', searchLabel);
+    }
+    const removeLabel = frame.getAttribute('data-remove-label');
+    if (removeLabel) {
+      actions.setAttribute('data-remove-label', removeLabel);
+    }
+    const removeConfirm = frame.getAttribute('data-remove-confirm');
+    if (removeConfirm) {
+      actions.setAttribute('data-remove-confirm', removeConfirm);
+    }
+
+    placeholder.appendChild(actions);
+    ensureCoverControls(actions);
+
+    const attribution = document.getElementById('prs-cover-attribution-wrap');
+    if (attribution && attribution.parentNode === figure) {
+      figure.insertBefore(placeholder, attribution);
+    } else {
+      figure.appendChild(placeholder);
+    }
+
+    frame.classList.remove('has-image');
+    frame.setAttribute('data-cover-state', 'empty');
+
+    updateCoverAttribution('');
+    if (window.PRS_BOOK) {
+      window.PRS_BOOK.cover_url = '';
+      window.PRS_BOOK.cover_source = '';
     }
   }
 
@@ -1298,6 +1455,62 @@
     }
   }
 
+  async function handleRemoveClick(link) {
+    const actions = link.closest('.prs-cover-actions');
+    const confirmMessage = actions && actions.getAttribute('data-remove-confirm');
+    if (confirmMessage) {
+      if (!window.confirm(confirmMessage)) {
+        return;
+      }
+    } else if (!window.confirm('Remove this book cover?')) {
+      return;
+    }
+
+    const ajax = getAjaxConfig();
+    const context = getContext();
+    const userBookId = parseInt(context.user_book_id || 0, 10) || 0;
+    const bookId = parseInt(context.book_id || 0, 10) || 0;
+    const nonceValue = ajax.nonce || (window.PRS_COVER && window.PRS_COVER.saveNonce) || '';
+
+    if (!ajax.ajaxUrl || !nonceValue || (!userBookId && !bookId)) {
+      window.alert('Unable to remove the book cover.');
+      return;
+    }
+
+    link.classList.add('is-disabled');
+    link.setAttribute('aria-busy', 'true');
+
+    const payload = new URLSearchParams();
+    payload.append('action', 'prs_remove_cover');
+    payload.append('nonce', nonceValue);
+    if (userBookId) {
+      payload.append('user_book_id', String(userBookId));
+    }
+    if (bookId) {
+      payload.append('book_id', String(bookId));
+    }
+
+    try {
+      const response = await fetch(ajax.ajaxUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+        credentials: 'same-origin',
+        body: payload,
+      });
+      const json = await response.json().catch(() => null);
+      if (!response.ok || !json || !json.success) {
+        throw new Error((json && json.data && json.data.message) || (json && json.data) || (json && json.message) || 'remove_failed');
+      }
+      restoreCoverPlaceholder(actions || null);
+    } catch (error) {
+      console.error('[PRS] remove cover error', error);
+      window.alert('Could not remove the cover. Please try again.');
+    } finally {
+      link.classList.remove('is-disabled');
+      link.removeAttribute('aria-busy');
+    }
+  }
+
   function onSearchSetCover() {
     if (!selectedSearchOption || !selectedSearchOption.url) return;
     if (!searchSetBtn) return;
@@ -1384,6 +1597,13 @@
 
   // ====== Event bindings ======
   document.addEventListener('click', (event) => {
+    const removeLink = event.target.closest('#prs-cover-remove');
+    if (removeLink) {
+      event.preventDefault();
+      handleRemoveClick(removeLink);
+      return;
+    }
+
     const uploadBtn = event.target.closest('#prs-cover-open');
     if (uploadBtn) {
       event.preventDefault();

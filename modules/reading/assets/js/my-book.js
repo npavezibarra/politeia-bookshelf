@@ -2924,6 +2924,46 @@ window.PRS_isSaving = false;
   });
 
 
+
+
+  function setupSearchCoverOverlay() {
+    const overlay = document.getElementById("prs-search-cover-overlay");
+    if (!overlay) {
+      return;
+    }
+
+    function openOverlay() {
+      overlay.classList.remove("is-hidden");
+    }
+
+    document.addEventListener("click", event => {
+      const trigger = event.target.closest("#prs-cover-search");
+      if (trigger) {
+        event.preventDefault();
+        openOverlay();
+      }
+    });
+
+    overlay.addEventListener("click", event => {
+      if (event.target === overlay) {
+        overlay.classList.add("is-hidden");
+        return;
+      }
+
+      if (event.target.closest("#prs-set-cover")) {
+        overlay.classList.add("is-hidden");
+        return;
+      }
+
+      const option = event.target.closest(".prs-cover-option");
+      if (option && overlay.contains(option)) {
+        overlay.querySelectorAll(".prs-cover-option").forEach(node => {
+          node.classList.toggle("selected", node === option);
+        });
+      }
+    });
+  }
+
   // ---------- Boot ----------
   document.addEventListener("DOMContentLoaded", function () {
     setupReadingDensityBar();
@@ -2942,5 +2982,6 @@ window.PRS_isSaving = false;
     setupSessionsAjax();
     setupSessionRecorderModal();
     setupLibraryFilterDashboard();
+    setupSearchCoverOverlay();
   });
 })();
