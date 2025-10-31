@@ -2927,39 +2927,46 @@ window.PRS_isSaving = false;
 
 
   function setupSearchCoverOverlay() {
+    const searchBtn = document.getElementById("prs-cover-search");
     const overlay = document.getElementById("prs-search-cover-overlay");
+    const cancelBtn = document.getElementById("prs-cancel-cover");
+    const setCoverBtn = document.getElementById("prs-set-cover");
+
     if (!overlay) {
       return;
     }
 
-    function openOverlay() {
-      overlay.classList.remove("is-hidden");
+    const options = overlay.querySelectorAll(".prs-cover-option");
+
+    if (searchBtn) {
+      searchBtn.addEventListener("click", event => {
+        event.preventDefault();
+        overlay.classList.remove("is-hidden");
+      });
     }
 
-    document.addEventListener("click", event => {
-      const trigger = event.target.closest("#prs-cover-search");
-      if (trigger) {
-        event.preventDefault();
-        openOverlay();
-      }
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", () => {
+        overlay.classList.add("is-hidden");
+      });
+    }
+
+    options.forEach(opt => {
+      opt.addEventListener("click", () => {
+        options.forEach(o => o.classList.remove("selected"));
+        opt.classList.add("selected");
+      });
     });
+
+    if (setCoverBtn) {
+      setCoverBtn.addEventListener("click", () => {
+        overlay.classList.add("is-hidden");
+      });
+    }
 
     overlay.addEventListener("click", event => {
       if (event.target === overlay) {
         overlay.classList.add("is-hidden");
-        return;
-      }
-
-      if (event.target.closest("#prs-set-cover")) {
-        overlay.classList.add("is-hidden");
-        return;
-      }
-
-      const option = event.target.closest(".prs-cover-option");
-      if (option && overlay.contains(option)) {
-        overlay.querySelectorAll(".prs-cover-option").forEach(node => {
-          node.classList.toggle("selected", node === option);
-        });
       }
     });
   }
