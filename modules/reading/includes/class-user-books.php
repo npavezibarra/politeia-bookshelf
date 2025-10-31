@@ -759,15 +759,30 @@ class Politeia_Reading_User_Books {
                         $api_token
                 );
 
+                error_log( '🔍 [GoogleBooks] Requesting URL: ' . $url );
+
                 $response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 
                 if ( is_wp_error( $response ) ) {
-                        self::json_error( 'api_error', 500 );
+                        error_log( '❌ [GoogleBooks] Request failed: ' . $response->get_error_message() );
+                        self::json_success(
+                                array(
+                                        'html' => '<p>Google Books request failed.</p>',
+                                )
+                        );
+                        return;
                 }
 
                 $code = (int) wp_remote_retrieve_response_code( $response );
                 $body = wp_remote_retrieve_body( $response );
                 $data = json_decode( $body, true );
+
+                if ( ! empty( $data['items'][0] ) ) {
+                        $first = isset( $data['items'][0]['volumeInfo']['title'] ) ? $data['items'][0]['volumeInfo']['title'] : '(no title)';
+                        error_log( '✅ [GoogleBooks] First result: ' . $first );
+                } else {
+                        error_log( '⚠️ [GoogleBooks] No items returned for query.' );
+                }
 
                 if ( $code >= 400 ) {
                         self::json_error( 'api_error', $code );
@@ -786,15 +801,30 @@ class Politeia_Reading_User_Books {
                                 $api_token
                         );
 
+                        error_log( '🔍 [GoogleBooks] Requesting URL: ' . $fallback_url );
+
                         $fallback_response = wp_remote_get( $fallback_url, array( 'timeout' => 10 ) );
 
                         if ( is_wp_error( $fallback_response ) ) {
-                                self::json_error( 'api_error', 500 );
+                                error_log( '❌ [GoogleBooks] Request failed: ' . $fallback_response->get_error_message() );
+                                self::json_success(
+                                        array(
+                                                'html' => '<p>Google Books request failed.</p>',
+                                        )
+                                );
+                                return;
                         }
 
                         $fallback_code = (int) wp_remote_retrieve_response_code( $fallback_response );
                         $fallback_body = wp_remote_retrieve_body( $fallback_response );
                         $data          = json_decode( $fallback_body, true );
+
+                        if ( ! empty( $data['items'][0] ) ) {
+                                $first = isset( $data['items'][0]['volumeInfo']['title'] ) ? $data['items'][0]['volumeInfo']['title'] : '(no title)';
+                                error_log( '✅ [GoogleBooks] First result: ' . $first );
+                        } else {
+                                error_log( '⚠️ [GoogleBooks] No items returned for query.' );
+                        }
 
                         if ( $fallback_code >= 400 ) {
                                 self::json_error( 'api_error', $fallback_code );
@@ -822,7 +852,7 @@ class Politeia_Reading_User_Books {
                 if ( empty( $items ) ) {
                         self::json_success(
                                 array(
-                                        'html' => '<p>No cover images found for this book.</p>',
+                                        'html' => '<p>No covers found in Google Books for this title/author. Check spelling or try another title.</p>',
                                 )
                         );
                 }
@@ -873,7 +903,7 @@ class Politeia_Reading_User_Books {
                         );
                 }
 
-                $html = ! empty( $results ) ? implode( "\n", $results ) : '<p>No cover images found for this book.</p>';
+                $html = ! empty( $results ) ? implode( "\n", $results ) : '<p>No covers found in Google Books for this title/author. Check spelling or try another title.</p>';
 
                 self::json_success(
                         array(
