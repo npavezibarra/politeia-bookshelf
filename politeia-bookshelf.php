@@ -14,6 +14,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Autoload de Composer.
 require_once __DIR__ . '/vendor/autoload.php';
 
+// Cargar utilidades del administrador.
+require_once __DIR__ . '/admin/google-books-settings.php';
+
 // Inicializar módulos.
 Politeia\Reading\Init::register();
 Politeia\ChatGPT\Init::register();
