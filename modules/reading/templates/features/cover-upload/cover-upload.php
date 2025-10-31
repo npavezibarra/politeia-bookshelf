@@ -1429,11 +1429,20 @@ class PRS_Cover_Upload_Feature {
                         return '';
                 }
 
-                $url = str_replace( 'http://', 'https://', trim( (string) $url ) );
+                $url   = str_replace( 'http://', 'https://', trim( (string) $url ) );
                 $parts = wp_parse_url( $url );
                 $host  = isset( $parts['host'] ) ? strtolower( $parts['host'] ) : '';
+
                 if ( empty( $host ) || ! self::is_allowed_google_host( $host, array( 'books.google', 'googleusercontent.com', 'ggpht.com' ) ) ) {
                         return '';
+                }
+
+                if ( false !== strpos( $host, 'books.google' ) && false !== stripos( $url, '/books/content' ) ) {
+                        if ( preg_match( '/([?&])zoom=\d+/i', $url ) ) {
+                                $url = preg_replace( '/([?&]zoom=)(\d+)/i', '$13', $url, 1 );
+                        } else {
+                                $url .= ( false === strpos( $url, '?' ) ? '?' : '&' ) . 'zoom=3';
+                        }
                 }
 
                 return esc_url_raw( $url );

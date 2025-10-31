@@ -1425,6 +1425,34 @@ display:inline-block;
         align-self: flex-start;
         }
 
+        #prs-cover-frame{
+        width:90px;
+        height:140px;
+        aspect-ratio:2 / 3;
+        }
+
+        @media (min-width: 950px){
+        #prs-cover-frame{
+        width:190px !important;
+        height:280px !important;
+        }
+        }
+
+        /* Keep the saved Google cover stretched to the full frame at all breakpoints. */
+        #prs-cover-frame.has-image img.prs-cover-img{
+        display:block !important;
+        width:100% !important;
+        height:100% !important;
+        object-fit:cover !important;
+        max-width:none !important;
+        max-height:none !important;
+        }
+
+        #prs-cover-frame.has-image img.prs-cover-img,
+        .prs-cover-frame.has-image img.prs-cover-img{
+        max-width:none !important;
+        }
+
         @media screen and (max-width: 950px){
         .prs-cover-frame,
         .prs-book-cover{
