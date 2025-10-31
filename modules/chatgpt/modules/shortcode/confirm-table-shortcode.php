@@ -252,13 +252,13 @@ function politeia_confirm_table_shortcode() {
                 .pol-table{width:100%;border-collapse:collapse;}
                 .pol-table thead{background:#f8f8f8;}
                 .pol-table th,.pol-table td{padding:14px 16px;border-top:1px solid #eee;text-align:left;vertical-align:middle;}
-                .pol-btn{padding:6px 10px;border-radius:8px;border:1px solid #e6e6e6;background:#f7f7f7;cursor:pointer;font:inherit}
+                .pol-btn{padding:6px 10px;border-radius:6px;border:1px solid #e6e6e6;background:#f7f7f7;cursor:pointer;font:inherit}
                 .pol-btn[disabled]{opacity:.45;cursor:not-allowed}
                 .pol-btn-primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
                 .pol-btn-ghost{background:#eaf2fe;border-color:#1b73e8;color:#1b73e8;border:none}
                 .pol-actions{width:120px}
                 .pol-btn-ghost:hover{background:#1b73e8;color:#fff}
-                .pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:8px;padding:4px 6px;cursor:pointer;color:#1b73e8}
+                .pol-edit{margin-left:8px;font-size:12px;line-height:1;border:0;background:#f0f0f0;border-radius:6px;padding:4px 6px;cursor:pointer;color:#1b73e8}
                 .pol-edit:hover{background:#1b73e8;color:#fff}
                 .pol-input{width:100%;max-width:600px;padding:6px 8px;border:1px solid #ddd;border-radius:8px;font:inherit;}
                 button.pol-btn.pol-btn-ghost.pol-confirm-one{font-size:13px;border-radius:6px;padding:3px 8px}

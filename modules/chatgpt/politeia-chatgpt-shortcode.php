@@ -59,7 +59,7 @@ function politeia_chatgpt_shortcode_callback() {
                         width:100%;
                         margin:0;
                 }
-                .politeia-icon-button { background:transparent; border:none; cursor:pointer; padding:8px; display:inline-flex; align-items:center; justify-content:center; color:#555; border-radius:50%; }
+                .politeia-icon-button { background:transparent; border:none; cursor:pointer; padding:8px; display:inline-flex; align-items:center; justify-content:center; color:#555; border-radius:6px; }
                 .politeia-icon-button:hover { background-color:#f0f0f0; }
                 #politeia-chat-status { margin-top:10px; text-align:center; color:#333; min-height:1.2em; }
                 .politeia-chat-confirm { margin-top:0px; }

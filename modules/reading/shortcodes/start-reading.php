@@ -134,7 +134,7 @@ add_shortcode(
 		cursor:pointer;
 		box-shadow:none;
 		outline:none;
-		border-radius:10px;
+		border-radius:6px;
 	}
 	.prs-btn[disabled] { opacity:.4; cursor:not-allowed; }
 	.prs-btn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
