@@ -30,10 +30,27 @@ function politeia_bookshelf_register_menu() {
         __( 'Politeia Bookshelf', 'politeia-bookshelf' ),
         'manage_options',
         'politeia-bookshelf',
-        '',
+        'politeia_bookshelf_render_admin_page',
         'dashicons-book-alt',
         6
     );
 
+    add_submenu_page(
+        'politeia-bookshelf',
+        __( 'Overview', 'politeia-bookshelf' ),
+        __( 'Overview', 'politeia-bookshelf' ),
+        'manage_options',
+        'politeia-bookshelf',
+        'politeia_bookshelf_render_admin_page'
+    );
+
+    add_submenu_page(
+        'politeia-bookshelf',
+        __( 'Google Books API', 'politeia-bookshelf' ),
+        __( 'Google Books API', 'politeia-bookshelf' ),
+        'manage_options',
+        'politeia-bookshelf-google-books',
+        'politeia_bookshelf_render_admin_page'
+    );
 }
 add_action( 'admin_menu', 'politeia_bookshelf_register_menu' );

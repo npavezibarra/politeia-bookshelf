@@ -890,7 +890,14 @@ class PRS_Cover_Upload_Feature {
                         wp_send_json_error( array( 'message' => 'missing_title' ), 400 );
                 }
 
-                $api_key = trim( (string) get_option( 'politeia_bookshelf_google_api_key' ) );
+                if ( function_exists( 'politeia_bookshelf_get_google_books_api_key' ) ) {
+                        $api_key = trim( politeia_bookshelf_get_google_books_api_key() );
+                } else {
+                        $api_key = trim( (string) get_option( 'politeia_bookshelf_google_api_key' ) );
+                        if ( '' === $api_key ) {
+                                $api_key = trim( (string) get_option( 'politeia_google_books_api_key' ) );
+                        }
+                }
                 if ( '' === $api_key ) {
                         wp_send_json_error( array( 'message' => 'missing_api_key' ), 400 );
                 }
