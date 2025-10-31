@@ -731,12 +731,12 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'missing_metadata', 400 );
                 }
 
-                $api_token = function_exists( 'politeia_bookshelf_get_google_books_api_key' )
+                $api_key = function_exists( 'politeia_bookshelf_get_google_books_api_key' )
                         ? politeia_bookshelf_get_google_books_api_key()
                         : '';
-                $api_token = is_string( $api_token ) ? trim( $api_token ) : '';
+                $api_key = is_string( $api_key ) ? trim( $api_key ) : '';
 
-                if ( '' === $api_token ) {
+                if ( '' === $api_key ) {
                         self::json_error( 'missing_api_key', 400 );
                 }
 
@@ -746,20 +746,22 @@ class Politeia_Reading_User_Books {
                 $title_clean  = trim( $title );
                 $author_clean = trim( $author );
 
-                $query = 'intitle:"' . rawurlencode( $title_clean ) . '"';
-                if ( '' !== $author_clean ) {
-                        $query .= '+inauthor:"' . rawurlencode( $author_clean ) . '"';
+                // Sanitize and prepare query
+                $post_title  = sanitize_text_field( isset( $_POST['title'] ) ? wp_unslash( $_POST['title'] ) : '' );
+                $post_author = sanitize_text_field( isset( $_POST['author'] ) ? wp_unslash( $_POST['author'] ) : '' );
+
+                $query = trim( $post_title . ' ' . $post_author );
+                if ( '' === $query ) {
+                        $query = trim( $title_clean . ' ' . $author_clean );
                 }
+                $query = str_replace( ' ', '+', $query );
 
-                $url = sprintf(
-                        '%s?q=%s&maxResults=%d&printType=books&projection=lite&key=%s',
-                        $base_url,
-                        $query,
-                        $max_results,
-                        $api_token
-                );
+                // Build request URL (max 3 results for options)
+                $url = 'https://www.googleapis.com/books/v1/volumes?q=' . $query .
+                        '&maxResults=3&printType=books&projection=lite&key=' . $api_key;
 
-                error_log( '🔍 [GoogleBooks] Requesting URL: ' . $url );
+                // Debug log for inspection
+                error_log( '🔍 [GoogleBooks] Request URL (simplified): ' . $url );
 
                 $response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 
@@ -793,12 +795,13 @@ class Politeia_Reading_User_Books {
                 }
 
                 if ( empty( $data['items'] ) ) {
-                        $fallback_url = sprintf(
-                                '%s?q=intitle:"%s"&maxResults=%d&printType=books&projection=lite&key=%s',
+                        $fallback_query = 'intitle:"' . rawurlencode( $title_clean ) . '"';
+                        $fallback_url   = sprintf(
+                                '%s?q=%s&maxResults=%d&printType=books&projection=lite&key=%s',
                                 $base_url,
-                                rawurlencode( $title_clean ),
+                                $fallback_query,
                                 $max_results,
-                                $api_token
+                                $api_key
                         );
 
                         error_log( '🔍 [GoogleBooks] Requesting URL: ' . $fallback_url );
