@@ -2,6 +2,9 @@
 
 window.PRS_isSaving = false;
 
+// Debug flag (safe no-op in production if left false)
+window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
+
 /**
  * Utilidades
  */
@@ -157,6 +160,68 @@ window.PRS_isSaving = false;
   function setText(el, txt) { if (el) el.textContent = txt; }
   function show(el) { if (el) el.style.display = ""; }
   function hide(el) { if (el) el.style.display = "none"; }
+
+  function prsNormalizeCoverUrl(url) {
+    if (!url || typeof url !== "string") return "";
+
+    let normalized = url.replace(/\\\//g, "/").trim();
+    normalized = normalized.replace(/^http:\/\//i, "https://");
+
+    try {
+      const parsed = new URL(normalized);
+      const isGoogleBooks = parsed.hostname.includes("books.google")
+        && parsed.pathname.includes("/books/content");
+      if (isGoogleBooks) {
+        if (!parsed.searchParams.has("zoom")) {
+          parsed.searchParams.set("zoom", "3");
+        }
+        if (!parsed.searchParams.has("img")) {
+          parsed.searchParams.set("img", "1");
+        }
+        normalized = parsed.toString();
+      }
+    } catch (e) {
+      // ignore malformed URLs; fall back to normalized string
+    }
+
+    return normalized;
+  }
+
+  function prsPreloadImage(src) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(src);
+      img.onerror = () => reject(new Error("Image failed to load: " + src));
+      img.src = src;
+    });
+  }
+
+  function prsCoverLog(...args) {
+    if (window.__PRS_DEBUG_COVER__) {
+      console.log("[PRS Cover]", ...args);
+    }
+  }
+
+  function attachCoverImgGuards() {
+    if (typeof jQuery !== "function") {
+      return;
+    }
+
+    const $img = jQuery("#prs-cover-img");
+    if (!$img.length) {
+      return;
+    }
+
+    $img.off("load.prs error.prs")
+      .on("load.prs", function () {
+        prsCoverLog("IMG load ok:", this.src, `${this.naturalWidth}x${this.naturalHeight}`);
+        jQuery("#prs-cover-frame").attr("data-cover-state", "image").addClass("has-image");
+        jQuery("#prs-book-cover-figure").removeClass("is-placeholder");
+      })
+      .on("error.prs", function () {
+        prsCoverLog("IMG load error for:", this.src);
+      });
+  }
 
   function getNormalizedOwningValue(select) {
     if (!select) return "";
@@ -3006,22 +3071,6 @@ window.PRS_isSaving = false;
       renderMessage("Searching covers…", "prs-search-cover-loading");
     }
 
-    function normalizeImageUrl(url) {
-      if (!url) return null;
-
-      let normalized = String(url);
-
-      // Fix escaped slashes from JSON (e.g. "http:\/\/" → "http://")
-      normalized = normalized.replace(/\\\//g, "/");
-
-      // Force HTTPS to avoid mixed content blocking
-      if (normalized.startsWith("http://")) {
-        normalized = normalized.replace("http://", "https://");
-      }
-
-      return normalized;
-    }
-
     function sanitizeCoverImage(img) {
       if (!img) {
         return;
@@ -3078,9 +3127,13 @@ window.PRS_isSaving = false;
       sanitizeCoverImage(img);
 
       const currentSrc = img.getAttribute("src") || "";
-      const normalized = normalizeImageUrl(currentSrc);
+      const normalized = prsNormalizeCoverUrl(currentSrc);
       if (normalized && normalized !== currentSrc) {
         img.src = normalized;
+      }
+
+      if (img.classList && img.classList.contains("is-placeholder")) {
+        img.classList.remove("is-placeholder");
       }
 
       if (!frame.classList.contains("has-image")) {
@@ -3091,8 +3144,15 @@ window.PRS_isSaving = false;
         frame.setAttribute("data-cover-state", "image");
       }
 
+      const figure = document.getElementById("prs-book-cover-figure");
+      if (figure) {
+        figure.classList.remove("is-placeholder");
+      }
+
       window.PRS_BOOK = window.PRS_BOOK || {};
       window.PRS_BOOK.cover_url = normalized || currentSrc;
+
+      attachCoverImgGuards();
     }
 
     function buildRequestBody(params) {
@@ -3138,7 +3198,7 @@ window.PRS_isSaving = false;
 
         const volume = entry.volumeInfo || {};
         const imageLinks = volume.imageLinks || null;
-        const imageUrl = normalizeImageUrl(
+        const imageUrl = prsNormalizeCoverUrl(
           (imageLinks && imageLinks.thumbnail)
             || (imageLinks && imageLinks.smallThumbnail),
         );
@@ -3162,6 +3222,8 @@ window.PRS_isSaving = false;
 
         if (imageUrl) {
           option.dataset.coverUrl = imageUrl;
+          option.setAttribute("data-image-url", imageUrl);
+          option.setAttribute("data-thumbnail", imageUrl);
 
           const img = document.createElement("img");
           img.src = imageUrl;
@@ -3190,7 +3252,7 @@ window.PRS_isSaving = false;
       toggleAttribution(appended > 0);
     }
 
-    function applyCoverUpdate(url, option) {
+    function applyCoverToDom(url, option) {
       const frame = document.getElementById("prs-cover-frame");
       const figure = document.getElementById("prs-book-cover-figure");
       if (!frame || !figure) {
@@ -3209,14 +3271,14 @@ window.PRS_isSaving = false;
 
       sanitizeCoverImage(img);
 
-      const normalizedUrl = normalizeImageUrl(url);
+      const normalizedUrl = prsNormalizeCoverUrl(url);
       const finalUrl = normalizedUrl || (url ? String(url) : "");
-      if (finalUrl) {
-        img.src = finalUrl;
-      } else {
-        img.removeAttribute("src");
+      if (!finalUrl) {
+        prsCoverLog("No final URL provided to applyCoverToDom.");
+        return;
       }
 
+      img.src = finalUrl;
       if (img.classList && img.classList.contains("is-placeholder")) {
         img.classList.remove("is-placeholder");
       }
@@ -3243,14 +3305,30 @@ window.PRS_isSaving = false;
 
       frame.classList.add("has-image");
       frame.setAttribute("data-cover-state", "image");
+      figure.classList.remove("is-placeholder");
 
       const attributionWrap = document.getElementById("prs-cover-attribution-wrap");
       const attributionLink = document.getElementById("prs-cover-attribution");
       if (attributionWrap && attributionLink) {
-        attributionLink.classList.add("is-hidden");
-        attributionWrap.classList.add("is-hidden");
-        attributionWrap.setAttribute("aria-hidden", "true");
-        attributionLink.removeAttribute("href");
+        try {
+          const parsed = new URL(finalUrl);
+          if (parsed.hostname.includes("books.google")) {
+            attributionLink.setAttribute("href", "https://books.google.com/");
+            attributionLink.classList.remove("is-hidden");
+            attributionWrap.classList.remove("is-hidden");
+            attributionWrap.setAttribute("aria-hidden", "false");
+          } else {
+            attributionLink.classList.add("is-hidden");
+            attributionWrap.classList.add("is-hidden");
+            attributionWrap.setAttribute("aria-hidden", "true");
+            attributionLink.removeAttribute("href");
+          }
+        } catch (err) {
+          attributionLink.classList.add("is-hidden");
+          attributionWrap.classList.add("is-hidden");
+          attributionWrap.setAttribute("aria-hidden", "true");
+          attributionLink.removeAttribute("href");
+        }
       }
 
       const coverInput = document.getElementById("prs-cover-url");
@@ -3260,6 +3338,15 @@ window.PRS_isSaving = false;
 
       window.PRS_BOOK = window.PRS_BOOK || {};
       window.PRS_BOOK.cover_url = finalUrl;
+
+      attachCoverImgGuards();
+
+      if (window.__PRS_DEBUG_COVER__) {
+        jQuery(figure).css({ outline: "2px solid #22c55e" });
+        prsCoverLog("Frame state:", frame.getAttribute("data-cover-state"), frame.className);
+        prsCoverLog("Img element:", img);
+        prsCoverLog("Computed src on img:", img.getAttribute("src"));
+      }
     }
 
     function handleSearchClick(event) {
@@ -3334,33 +3421,20 @@ window.PRS_isSaving = false;
         });
     }
 
-    function handleSaveClick(event) {
-      if (event) {
-        event.preventDefault();
-      }
-      if (!currentSelection || !ajaxUrl || !nonce) {
-        return;
-      }
-      if (isSaving) {
-        return;
+    async function persistCoverSelection(normalizedUrl) {
+      if (!normalizedUrl) {
+        return null;
       }
 
-      const rawCoverUrl = currentSelection.dataset.coverUrl || "";
-      const coverUrl = normalizeImageUrl(rawCoverUrl) || rawCoverUrl;
-
-      if (!coverUrl) {
-        return;
-      }
-
-      isSaving = true;
-      if (setCoverBtn) {
-        setCoverBtn.disabled = true;
+      if (!ajaxUrl || !nonce) {
+        prsCoverLog("Missing ajaxUrl or nonce. Skipping persistence.");
+        return normalizedUrl;
       }
 
       const payload = {
         action: "politeia_bookshelf_save_cover",
         nonce,
-        cover_url: coverUrl,
+        cover_url: normalizedUrl,
       };
 
       if (bookId) {
@@ -3373,42 +3447,37 @@ window.PRS_isSaving = false;
         payload.user_id = String(userId);
       }
 
-      fetch(ajaxUrl, {
-        method: "POST",
-        credentials: "same-origin",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-        },
-        body: buildRequestBody(payload),
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (!data || data.success !== true) {
-            const message = data && data.data && data.data.message
-              ? String(data.data.message)
-              : "Unable to save cover.";
-            window.alert(message);
-            if (setCoverBtn) {
-              setCoverBtn.disabled = false;
-            }
-            return;
-          }
+      prsCoverLog("Sending ajax_save_cover with:", normalizedUrl);
 
-          const savedUrl = data.data && data.data.cover_url ? String(data.data.cover_url) : coverUrl;
-          const normalizedSavedUrl = normalizeImageUrl(savedUrl) || savedUrl;
-          applyCoverUpdate(normalizedSavedUrl, currentSelection);
-          resetSelection();
-          setOverlayVisibility(false);
-        })
-        .catch(() => {
-          window.alert("Unable to save cover.");
-          if (setCoverBtn) {
-            setCoverBtn.disabled = false;
-          }
-        })
-        .finally(() => {
-          isSaving = false;
+      try {
+        const response = await fetch(ajaxUrl, {
+          method: "POST",
+          credentials: "same-origin",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+          },
+          body: buildRequestBody(payload),
         });
+
+        const data = await response.json();
+        if (!data || data.success !== true) {
+          const message = data && data.data && data.data.message
+            ? String(data.data.message)
+            : "Unable to save cover.";
+          window.alert(message);
+          prsCoverLog("Save failed:", data);
+          return null;
+        }
+
+        const savedUrl = data.data && data.data.cover_url ? String(data.data.cover_url) : normalizedUrl;
+        const normalizedSavedUrl = prsNormalizeCoverUrl(savedUrl) || savedUrl;
+        prsCoverLog("Save success. Stored URL:", normalizedSavedUrl);
+        return normalizedSavedUrl;
+      } catch (error) {
+        prsCoverLog("Save request error:", error);
+        window.alert("Unable to save cover.");
+        return null;
+      }
     }
 
     prepareExistingCoverFrame();
@@ -3428,7 +3497,96 @@ window.PRS_isSaving = false;
     }
 
     if (setCoverBtn) {
-      setCoverBtn.addEventListener("click", handleSaveClick);
+      jQuery(setCoverBtn).off("click.prs").on("click.prs", async function (event) {
+        if (event) {
+          event.preventDefault();
+        }
+
+        if (isSaving) {
+          prsCoverLog("Already saving cover. Ignoring click.");
+          return;
+        }
+
+        let selectedElement = null;
+        if (currentSelection && optionsContainer.contains(currentSelection)) {
+          selectedElement = currentSelection;
+        }
+
+        let $selected = selectedElement ? jQuery(selectedElement) : jQuery(".prs-cover-result.is-selected, .prs-cover-result.selected, .prs-cover-option.is-selected").first();
+        if (!$selected.length) {
+          prsCoverLog("No cover option is currently selected. Aborting.");
+          return;
+        }
+
+        selectedElement = $selected.get(0);
+        currentSelection = selectedElement;
+
+        const rawUrl =
+          $selected.data("image-url") ||
+          $selected.attr("data-image-url") ||
+          $selected.data("thumbnail") ||
+          $selected.data("coverUrl") ||
+          (selectedElement && selectedElement.getAttribute("data-cover-url")) ||
+          "";
+
+        const normalized = prsNormalizeCoverUrl(String(rawUrl || ""));
+
+        prsCoverLog("Selected raw:", rawUrl);
+        prsCoverLog("Normalized:", normalized);
+
+        if (!normalized) {
+          prsCoverLog("No URL found on selected item. Aborting.");
+          return;
+        }
+
+        const $btn = jQuery(this);
+        $btn.prop("disabled", true);
+
+        try {
+          await prsPreloadImage(normalized);
+          prsCoverLog("Preload ok:", normalized);
+
+          applyCoverToDom(normalized, selectedElement);
+
+          if (typeof PRS_BOOK !== "undefined" && PRS_BOOK && typeof PRS_BOOK.ajax_save_cover === "function") {
+            prsCoverLog("Calling PRS_BOOK.ajax_save_cover with:", normalized);
+            try {
+              PRS_BOOK.ajax_save_cover(normalized);
+            } catch (ajaxErr) {
+              prsCoverLog("PRS_BOOK.ajax_save_cover error:", ajaxErr);
+            }
+          }
+
+          if (ajaxUrl && nonce) {
+            isSaving = true;
+            try {
+              const savedUrl = await persistCoverSelection(normalized);
+              if (savedUrl) {
+                if (savedUrl !== normalized) {
+                  applyCoverToDom(savedUrl, selectedElement);
+                }
+                resetSelection();
+                setOverlayVisibility(false);
+              } else {
+                prsCoverLog("Cover save failed; selection remains active.");
+              }
+            } finally {
+              isSaving = false;
+            }
+          } else {
+            prsCoverLog("No AJAX configuration for cover save. Closing overlay.");
+            resetSelection();
+            setOverlayVisibility(false);
+          }
+        } catch (err) {
+          prsCoverLog("ERROR applying cover:", err);
+        } finally {
+          if (!isSaving) {
+            $btn.prop("disabled", !currentSelection);
+          }
+        }
+      });
+
       setCoverBtn.disabled = true;
     }
 
@@ -3484,5 +3642,6 @@ window.PRS_isSaving = false;
     setupSessionRecorderModal();
     setupLibraryFilterDashboard();
     setupSearchCoverOverlay();
+    attachCoverImgGuards();
   });
 })();
