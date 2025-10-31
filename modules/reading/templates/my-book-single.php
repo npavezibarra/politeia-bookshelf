@@ -390,14 +390,22 @@ wp_add_inline_script(
         gap:16px;
         margin-top:20px;
         }
+        .prs-btn{
+        padding:10px 14px;
+        background:#111;
+        color:#fff;
+        border:none;
+        font-size:12px;
+        cursor:pointer;
+        box-shadow:none;
+        outline:none;
+        border-radius:6px;
+        }
         .prs-search-cover-actions .prs-btn{
         flex:1;
         max-width:200px;
         padding:12px 0;
         font-weight:600;
-        border-radius:6px;
-        border:none;
-        cursor:pointer;
         font-size:14px;
         transition:background-color 0.2s ease;
         }

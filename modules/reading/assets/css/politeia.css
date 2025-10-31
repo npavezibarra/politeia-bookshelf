@@ -1258,7 +1258,7 @@ select#prs-type-book {
 	.prs-sr-row--full td{ text-align:center; }
 	.prs-sr-timer{ font-size:24px; font-weight:600; padding:12px 0; }
 
-	.prs-btn{ padding:10px 14px; background:#111; color:#fff; border:none; cursor:pointer; }
+        .prs-btn{ padding:10px 14px; background:#111; color:#fff; border:none; font-size:12px; cursor:pointer; box-shadow:none; outline:none; border-radius:6px; }
 	.prs-btn[disabled]{ opacity:.4; cursor:not-allowed; }
 
 	/* Right-align all action rows */
