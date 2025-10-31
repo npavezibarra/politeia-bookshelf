@@ -401,10 +401,12 @@ wp_add_inline_script(
         outline:none;
         border-radius:6px;
         }
-        #prs-cover-save{
+        #prs-cover-save,
+        #prs-set-cover{
         background-color:var(--bb-primary-button-background-regular);
         }
-        #prs-cover-save:hover{
+        #prs-cover-save:hover,
+        #prs-set-cover:hover{
         background-color:var(--bb-primary-button-background-hover, #1E42DD);
         }
         .prs-search-cover-actions .prs-btn{
@@ -423,11 +425,7 @@ wp_add_inline_script(
         background-color:#222;
         }
         .prs-set-cover-button{
-        background-color:#3B82F6;
         color:#fff;
-        }
-        .prs-set-cover-button:hover{
-        background-color:#2563EB;
         }
 
 	/* Tipos y tablas */
