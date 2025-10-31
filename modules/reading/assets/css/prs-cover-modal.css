@@ -273,7 +273,7 @@
 }
 
 .prs-btn--ghost:hover {
-  background-color: #f3f4f6;
+  background-color: #616161;
 }
 
 .prs-btn:not(.prs-btn--ghost) {
@@ -281,6 +281,16 @@
   color: #fff;
   border-radius: 6px;
   font-size: 12px;
+}
+
+#prs-cover-save,
+#prs-set-cover {
+  background-color: var(--bb-primary-button-background-regular);
+}
+
+#prs-cover-save:hover,
+#prs-set-cover:hover {
+  background-color: var(--bb-primary-button-background-hover, #1E42DD);
 }
 
 .prs-btn:not(.prs-btn--ghost):hover {

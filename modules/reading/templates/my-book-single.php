@@ -384,8 +384,48 @@ wp_add_inline_script(
         border-color:#000;
         background-color:#f0f0f0;
         }
+        .prs-search-cover-actions{
+        display:flex;
+        justify-content:center;
+        gap:16px;
+        margin-top:20px;
+        }
+        .prs-btn{
+        padding:10px 14px;
+        background:#111;
+        color:#fff;
+        border:none;
+        font-size:12px;
+        cursor:pointer;
+        box-shadow:none;
+        outline:none;
+        border-radius:6px;
+        }
+        #prs-cover-save,
+        #prs-set-cover{
+        background-color:var(--bb-primary-button-background-regular);
+        }
+        #prs-cover-save:hover,
+        #prs-set-cover:hover{
+        background-color:var(--bb-primary-button-background-hover, #1E42DD);
+        }
+        .prs-search-cover-actions .prs-btn{
+        flex:1;
+        max-width:200px;
+        padding:12px 0;
+        font-weight:600;
+        font-size:14px;
+        transition:background-color 0.2s ease;
+        }
+        .prs-cancel-cover-button{
+        background-color:#000;
+        color:#fff;
+        }
+        .prs-cancel-cover-button:hover{
+        background-color:#222;
+        }
         .prs-set-cover-button{
-        padding:10px 20px;
+        color:#fff;
         }
 
 	/* Tipos y tablas */
@@ -822,7 +862,10 @@ wp_add_inline_script(
                         <div class="prs-cover-option" data-option="3"><?php esc_html_e( 'Option 3', 'politeia-reading' ); ?></div>
                 </div>
 
-                <button id="prs-set-cover" class="prs-btn prs-set-cover-button" type="button"><?php esc_html_e( 'SET COVER', 'politeia-reading' ); ?></button>
+                <div class="prs-search-cover-actions">
+                        <button id="prs-cancel-cover" class="prs-btn prs-cancel-cover-button" type="button"><?php esc_html_e( 'CANCEL', 'politeia-reading' ); ?></button>
+                        <button id="prs-set-cover" class="prs-btn prs-set-cover-button" type="button"><?php esc_html_e( 'SET COVER', 'politeia-reading' ); ?></button>
+                </div>
         </div>
 </div>
 
