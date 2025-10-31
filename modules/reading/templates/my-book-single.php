@@ -272,7 +272,8 @@ wp_add_inline_script(
         margin-top:10px;
         }
         .prs-cover-frame[data-cover-state="image"] .prs-cover-actions .prs-cover-search-button{
-        display:inline-block;
+        display:inline-flex;
+        justify-content:center;
         }
         .prs-cover-btn:hover,
         .prs-cover-btn:focus-visible{

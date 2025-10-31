@@ -1557,6 +1557,14 @@ display:inline-block;
         cursor:pointer;
         transition:background 0.2s ease-in-out;
         }
+        .prs-cover-actions .prs-cover-search-button{
+        display:none;
+        margin-top:10px;
+        }
+        .prs-cover-frame[data-cover-state="image"] .prs-cover-actions .prs-cover-search-button{
+        display:inline-flex;
+        justify-content:center;
+        }
 
         button#prs-cover-open{
         font-size:12px !important;

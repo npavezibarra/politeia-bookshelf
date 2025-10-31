@@ -123,11 +123,14 @@ class PRS_Cover_Upload_Feature {
                 $show_search = filter_var( $atts['show_search'], FILTER_VALIDATE_BOOLEAN );
 
                 // Botón compacto para insertar sobre la portada
-                $output  = '<div class="prs-cover-actions">';
-                $output .= '<button type="button" id="prs-cover-open" class="prs-btn prs-cover-btn prs-cover-upload-button">Upload Book Cover</button>';
+                $upload_label = esc_html__( 'Upload Book Cover', 'politeia-reading' );
+                $search_label = esc_html__( 'Search Cover', 'politeia-reading' );
+
+                $output  = '<div class="prs-cover-actions" data-search-label="' . esc_attr( $search_label ) . '">';
+                $output .= '<button type="button" id="prs-cover-open" class="prs-btn prs-cover-btn prs-cover-upload-button">' . $upload_label . '</button>';
 
                 if ( $show_search ) {
-                        $output .= '<button type="button" id="prs-cover-search" class="prs-btn prs-cover-btn prs-cover-search-button">Search Cover</button>';
+                        $output .= '<button type="button" id="prs-cover-search" class="prs-btn prs-cover-btn prs-cover-search-button">' . $search_label . '</button>';
                 }
 
                 $output .= '</div>';

@@ -2927,37 +2927,41 @@ window.PRS_isSaving = false;
 
 
   function setupSearchCoverOverlay() {
-    const searchBtn = document.getElementById("prs-cover-search");
     const overlay = document.getElementById("prs-search-cover-overlay");
-    const options = overlay ? overlay.querySelectorAll(".prs-cover-option") : [];
-    const setCoverBtn = document.getElementById("prs-set-cover");
-
-    if (searchBtn && overlay) {
-      searchBtn.addEventListener("click", () => {
-        overlay.classList.remove("is-hidden");
-      });
+    if (!overlay) {
+      return;
     }
 
-    if (overlay) {
-      overlay.addEventListener("click", e => {
-        if (e.target === overlay) {
-          overlay.classList.add("is-hidden");
-        }
-      });
+    function openOverlay() {
+      overlay.classList.remove("is-hidden");
     }
 
-    Array.prototype.forEach.call(options, opt => {
-      opt.addEventListener("click", () => {
-        Array.prototype.forEach.call(options, o => o.classList.remove("selected"));
-        opt.classList.add("selected");
-      });
+    document.addEventListener("click", event => {
+      const trigger = event.target.closest("#prs-cover-search");
+      if (trigger) {
+        event.preventDefault();
+        openOverlay();
+      }
     });
 
-    if (setCoverBtn && overlay) {
-      setCoverBtn.addEventListener("click", () => {
+    overlay.addEventListener("click", event => {
+      if (event.target === overlay) {
         overlay.classList.add("is-hidden");
-      });
-    }
+        return;
+      }
+
+      if (event.target.closest("#prs-set-cover")) {
+        overlay.classList.add("is-hidden");
+        return;
+      }
+
+      const option = event.target.closest(".prs-cover-option");
+      if (option && overlay.contains(option)) {
+        overlay.querySelectorAll(".prs-cover-option").forEach(node => {
+          node.classList.toggle("selected", node === option);
+        });
+      }
+    });
   }
 
   // ---------- Boot ----------

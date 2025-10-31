@@ -699,6 +699,26 @@
     }
   }
 
+  function ensureSearchCoverButton(actions) {
+    if (actions == null) {
+      return null;
+    }
+
+    let searchBtn = actions.querySelector('#prs-cover-search');
+    if (searchBtn == null) {
+      searchBtn = document.createElement('button');
+      searchBtn.type = 'button';
+      searchBtn.id = 'prs-cover-search';
+      searchBtn.className = 'prs-btn prs-cover-btn prs-cover-search-button';
+      const label = actions.getAttribute('data-search-label');
+      const text = label && String(label).trim() ? label : 'Search Cover';
+      searchBtn.textContent = text;
+      actions.appendChild(searchBtn);
+    }
+
+    return searchBtn;
+  }
+
   function replaceCover(src, bustCache, source) {
     if (!src) return;
     const frame = document.getElementById('prs-cover-frame');
@@ -753,6 +773,12 @@
         existingActions.parentNode.removeChild(existingActions);
       }
       overlay.appendChild(transferredActions);
+      ensureSearchCoverButton(transferredActions);
+    } else {
+      const overlayActions = overlay.querySelector('.prs-cover-actions');
+      if (overlayActions) {
+        ensureSearchCoverButton(overlayActions);
+      }
     }
 
     frame.classList.add('has-image');

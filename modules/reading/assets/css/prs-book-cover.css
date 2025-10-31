@@ -92,3 +92,11 @@ button#prs-cover-open {
 .prs-cover-frame[data-cover-state="image"] .prs-cover-placeholder .prs-cover-actions {
     display: none !important;
 }
+.prs-cover-actions .prs-cover-search-button {
+    display: none;
+    margin-top: 10px;
+}
+.prs-cover-frame[data-cover-state="image"] .prs-cover-actions .prs-cover-search-button {
+    display: inline-flex;
+    justify-content: center;
+}
