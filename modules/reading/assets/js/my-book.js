@@ -3007,86 +3007,19 @@ window.PRS_isSaving = false;
     }
 
     function normalizeImageUrl(url) {
-      if (!url) {
-        return "";
-      }
+      if (!url) return null;
 
-      const trimmed = String(url).trim();
-      if (!trimmed) {
-        return "";
-      }
+      let normalized = String(url);
 
-      let normalized = trimmed.replace(/^http:\/\//i, "https://");
-      if (/\/books\/content/i.test(normalized) && /books\.google/i.test(normalized)) {
-        if (/([?&])zoom=\d+/i.test(normalized)) {
-          normalized = normalized.replace(/([?&]zoom=)(\d+)/i, (match, prefix) => `${prefix}3`);
-        } else {
-          normalized += (normalized.includes("?") ? "&" : "?") + "zoom=3";
-        }
+      // Fix escaped slashes from JSON (e.g. "http:\/\/" → "http://")
+      normalized = normalized.replace(/\\\//g, "/");
+
+      // Force HTTPS to avoid mixed content blocking
+      if (normalized.startsWith("http://")) {
+        normalized = normalized.replace("http://", "https://");
       }
 
       return normalized;
-    }
-
-    function selectBestCoverUrl(imageLinks) {
-      if (!imageLinks) {
-        return "";
-      }
-
-      if (typeof imageLinks === "string") {
-        return normalizeImageUrl(imageLinks);
-      }
-
-      if (typeof imageLinks !== "object") {
-        return "";
-      }
-
-      const priority = [
-        "extraLarge",
-        "large",
-        "medium",
-        "small",
-        "thumbnail",
-        "smallThumbnail",
-      ];
-
-      for (let i = 0; i < priority.length; i += 1) {
-        const key = priority[i];
-        if (Object.prototype.hasOwnProperty.call(imageLinks, key) && imageLinks[key]) {
-          const normalized = normalizeImageUrl(imageLinks[key]);
-          if (normalized) {
-            return normalized;
-          }
-        }
-      }
-
-      // Some Google Books responses include a direct `smallThumbnail` URL nested in other keys.
-      const fallbackKeys = Object.keys(imageLinks);
-      for (let i = 0; i < fallbackKeys.length; i += 1) {
-        const candidate = imageLinks[fallbackKeys[i]];
-        const normalized = normalizeImageUrl(candidate);
-        if (normalized) {
-          return normalized;
-        }
-      }
-
-      return "";
-    }
-
-    function resolveImageLinks(entry) {
-      if (!entry || typeof entry !== "object") {
-        return {};
-      }
-
-      if (entry.volumeInfo && entry.volumeInfo.imageLinks) {
-        return entry.volumeInfo.imageLinks;
-      }
-
-      if (entry.imageLinks) {
-        return entry.imageLinks;
-      }
-
-      return {};
     }
 
     function sanitizeCoverImage(img) {
@@ -3193,25 +3126,24 @@ window.PRS_isSaving = false;
       }
 
       let appended = 0;
+      let displayed = 0;
       const limit = 5;
 
-      for (let i = 0; i < items.length && appended < limit; i += 1) {
+      for (let i = 0; i < items.length && displayed < limit; i += 1) {
         const entry = items[i];
         if (!entry || typeof entry !== "object") {
           continue;
         }
 
         const volume = entry.volumeInfo || {};
-        const imageLinks = resolveImageLinks(entry);
-        const imageUrl = selectBestCoverUrl(imageLinks);
-
-        if (!imageUrl) {
-          continue;
-        }
+        const imageLinks = volume.imageLinks || null;
+        const imageUrl = normalizeImageUrl(
+          (imageLinks && imageLinks.thumbnail)
+            || (imageLinks && imageLinks.smallThumbnail),
+        );
 
         const option = document.createElement("div");
         option.className = "prs-cover-option";
-        option.dataset.coverUrl = imageUrl;
         option.setAttribute("role", "button");
         option.setAttribute("tabindex", "0");
 
@@ -3227,23 +3159,34 @@ window.PRS_isSaving = false;
           option.dataset.coverAuthor = author;
         }
 
-        const img = document.createElement("img");
-        img.src = imageUrl;
-        img.alt = "Book cover";
-        img.className = "prs-cover-image";
-        img.loading = "lazy";
-        option.appendChild(img);
+        if (imageUrl) {
+          option.dataset.coverUrl = imageUrl;
+
+          const img = document.createElement("img");
+          img.src = imageUrl;
+          img.alt = title || "";
+          img.className = "prs-cover-image";
+          img.loading = "lazy";
+          option.appendChild(img);
+
+          appended += 1;
+        } else {
+          const placeholder = document.createElement("div");
+          placeholder.className = "prs-cover-option__placeholder";
+          placeholder.textContent = "image not available";
+          option.appendChild(placeholder);
+        }
 
         optionsContainer.appendChild(option);
-        appended += 1;
+        displayed += 1;
       }
 
-      if (appended === 0) {
+      if (displayed === 0) {
         renderMessage("No covers found.", "prs-search-cover-empty");
         return;
       }
 
-      toggleAttribution(true);
+      toggleAttribution(appended > 0);
     }
 
     function applyCoverUpdate(url, option) {
