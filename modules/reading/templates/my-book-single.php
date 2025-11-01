@@ -804,7 +804,6 @@ wp_add_inline_script(
                                                 <th>Start Time</th>
                                                 <th>End Time</th>
                                                 <th><?php esc_html_e( 'Note', 'politeia-reading' ); ?></th>
-                                                <th>Start Page</th>
                                                 <th>End Page</th>
                                                 <th>Total Pages</th>
                                                 <th>Chapter</th>
@@ -881,7 +880,6 @@ wp_add_inline_script(
                                                         <td><?php echo wp_kses_post( $start_display ); ?></td>
                                                         <td><?php echo wp_kses_post( $end_display ); ?></td>
                                                         <td><?php echo wp_kses_post( $note_button ); ?></td>
-                                                        <td><?php echo esc_html( ( null !== $start_page && $start_page >= 0 ) ? $start_page : '—' ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $end_page && $end_page >= 0 ) ? $end_page : '—' ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $total_pages && $total_pages > 0 ) ? $total_pages : '—' ); ?></td>
                                                         <td><?php echo esc_html( $chapter_label ); ?></td>
