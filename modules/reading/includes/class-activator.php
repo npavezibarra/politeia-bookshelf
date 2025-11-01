@@ -165,14 +165,14 @@ class Politeia_Reading_Activator {
         ) {$charset_collate};";
 
                 $sql_session_notes = "CREATE TABLE {$session_notes_table} (
-            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
-            rs_id BIGINT(20) UNSIGNED NOT NULL,
-            book_id BIGINT(20) UNSIGNED NOT NULL,
-            user_id BIGINT(20) UNSIGNED NOT NULL,
-            note TEXT NOT NULL,
-            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY (id),
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            rs_id bigint(20) unsigned NOT NULL,
+            book_id bigint(20) unsigned NOT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+            note text NOT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY rs_id (rs_id),
             KEY book_id (book_id),
             KEY user_id (user_id)
