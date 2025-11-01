@@ -43,12 +43,13 @@ class Politeia_Reading_Activator {
 
 		$charset_collate = $wpdb->get_charset_collate();
 
-		$books_table         = $wpdb->prefix . 'politeia_books';
-		$user_books_table    = $wpdb->prefix . 'politeia_user_books';
-		$sessions_table      = $wpdb->prefix . 'politeia_reading_sessions';
-		$loans_table         = $wpdb->prefix . 'politeia_loans';
-		$authors_table       = $wpdb->prefix . 'politeia_authors';
-		$book_authors_table  = $wpdb->prefix . 'politeia_book_authors';
+                $books_table         = $wpdb->prefix . 'politeia_books';
+                $user_books_table    = $wpdb->prefix . 'politeia_user_books';
+                $sessions_table      = $wpdb->prefix . 'politeia_reading_sessions';
+                $session_notes_table = $wpdb->prefix . 'politeia_read_ses_notes';
+                $loans_table         = $wpdb->prefix . 'politeia_loans';
+                $authors_table       = $wpdb->prefix . 'politeia_authors';
+                $book_authors_table  = $wpdb->prefix . 'politeia_book_authors';
 
 		// 1) Canonical books table (con hash único)
 		$sql_books = "CREATE TABLE {$books_table} (
@@ -102,7 +103,7 @@ class Politeia_Reading_Activator {
         ) {$charset_collate};";
 
 		// 3) Loans
-		$sql_loans = "CREATE TABLE {$loans_table} (
+                $sql_loans = "CREATE TABLE {$loans_table} (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             user_id BIGINT UNSIGNED NOT NULL,
             book_id BIGINT UNSIGNED NOT NULL,
@@ -162,12 +163,32 @@ class Politeia_Reading_Activator {
             KEY idx_author (author_id)
         ) {$charset_collate};";
 
-		dbDelta( $sql_books );
-		dbDelta( $sql_user_books );
-		dbDelta( $sql_sessions );
-		dbDelta( $sql_loans );
-		dbDelta( $sql_authors );
-		dbDelta( $sql_book_authors );
+                $sql_session_notes = "CREATE TABLE {$session_notes_table} (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            rs_id BIGINT UNSIGNED NOT NULL,
+            book_id BIGINT UNSIGNED NOT NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            note TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY rs_id (rs_id),
+            KEY book_id (book_id),
+            KEY user_id (user_id)
+        ) {$charset_collate};";
+
+                $sql = array(
+                        $sql_books,
+                        $sql_user_books,
+                        $sql_sessions,
+                        $sql_session_notes,
+                        $sql_loans,
+                        $sql_authors,
+                        $sql_book_authors,
+                );
+
+                foreach ( $sql as $statement ) {
+                        dbDelta( $statement );
+                }
 	}
 
 	/**
