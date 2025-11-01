@@ -177,6 +177,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const addBtn = document.getElementById("prs-add-note-btn");
     const cancelBtn = document.getElementById("prs-cancel-note-btn");
     const saveBtn = document.getElementById("prs-save-note-btn");
+    const flash = document.getElementById("prs-sr-flash");
     const textarea = notePanel?.querySelector(".editor-area");
     const defaultPlaceholder = textarea?.getAttribute("placeholder") || "";
 
@@ -192,6 +193,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       summary.style.display = "";
       notePanel.style.display = "none";
       addBtn.setAttribute("aria-expanded", "false");
+      if (flash) {
+        delete flash.dataset.noteMode;
+      }
 
       if (options.userAction) {
         dispatch("prs-sr-flash:closeNote", { delay: 2000 });
@@ -203,6 +207,13 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       summary.style.display = "none";
       notePanel.style.display = "block";
       addBtn.setAttribute("aria-expanded", "true");
+      if (flash) {
+        if (typeof options.mode === "string" && options.mode) {
+          flash.dataset.noteMode = options.mode;
+        } else if (!flash.dataset.noteMode) {
+          flash.dataset.noteMode = "create";
+        }
+      }
       dispatch("prs-sr-flash:openNote");
       const shouldFocus = options.focus !== false;
       if (shouldFocus) {
@@ -214,7 +225,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     addBtn.addEventListener("click", event => {
       event.preventDefault();
-      showNote({ focus: true });
+      showNote({ focus: true, mode: "create" });
     });
 
     cancelBtn.addEventListener("click", event => {
@@ -232,7 +243,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           textarea.setAttribute("placeholder", defaultPlaceholder);
         }
       }
-      showNote({ focus: detail.focus !== false });
+      const mode = typeof detail.mode === "string" && detail.mode ? detail.mode : "edit";
+      showNote({ focus: detail.focus !== false, mode });
     });
 
     let isSavingNote = false;
@@ -293,6 +305,16 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
             if (textarea) {
               textarea.value = "";
             }
+            if (flash && flash.dataset && flash.dataset.sessionId) {
+              const currentSessionId = String(flash.dataset.sessionId || "");
+              if (currentSessionId) {
+                qsa('.prs-sr-read-note-btn').forEach(btn => {
+                  if (String(btn.dataset.sessionId || "") === currentSessionId) {
+                    btn.dataset.note = noteContent;
+                  }
+                });
+              }
+            }
             showSummary({ userAction: true });
           } else {
             const errorData = response && response.data ? response.data : null;
@@ -325,96 +347,57 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       return;
     }
 
-    const buttons = qsa(".prs-sr-read-note-btn");
-    if (!buttons.length) {
-      return;
-    }
-
     const assignDataset = detail => {
       if (!flash) {
         return;
       }
-      if (typeof detail.bookId !== "undefined" && detail.bookId !== null) {
+      if (typeof detail.bookId !== "undefined" && detail.bookId !== null && detail.bookId !== "") {
         flash.dataset.bookId = String(detail.bookId);
       }
-      if (typeof detail.userId !== "undefined" && detail.userId !== null) {
+      if (typeof detail.userId !== "undefined" && detail.userId !== null && detail.userId !== "") {
         flash.dataset.userId = String(detail.userId);
       }
       flash.dataset.sessionId = detail.sessionId ? String(detail.sessionId) : "";
+      if (detail.mode) {
+        flash.dataset.noteMode = detail.mode;
+      }
     };
 
-    buttons.forEach(btn => {
-      btn.addEventListener("click", event => {
-        event.preventDefault();
+    document.addEventListener("click", event => {
+      const btn = event.target?.closest?.(".prs-sr-read-note-btn");
+      if (!btn) {
+        return;
+      }
 
-        const sessionId = btn.dataset.sessionId ? String(btn.dataset.sessionId) : "";
-        const bookId = btn.dataset.bookId ? String(btn.dataset.bookId) : (flash.dataset?.bookId || "");
-        const userId = btn.dataset.userId ? String(btn.dataset.userId) : (flash.dataset?.userId || "");
+      event.preventDefault();
 
-        if (!sessionId || !bookId || !userId) {
-          window.alert("Unable to load this session note because identifiers are missing.");
-          return;
-        }
+      const sessionId = btn.dataset.sessionId ? String(btn.dataset.sessionId) : "";
+      const bookId = btn.dataset.bookId ? String(btn.dataset.bookId) : (flash.dataset?.bookId || "");
+      const userId = btn.dataset.userId ? String(btn.dataset.userId) : (flash.dataset?.userId || "");
+      const noteText = typeof btn.dataset.note === "string" ? btn.dataset.note : "";
 
-        const ajaxUrl = resolveAjaxUrl();
-        if (!ajaxUrl) {
-          window.alert("Unable to load the session note right now. Please refresh the page and try again.");
-          return;
-        }
+      if (!sessionId) {
+        window.alert("Unable to load this session note because the session identifier is missing.");
+        return;
+      }
 
-        const nonce = getReadingNonce();
-        if (!nonce) {
-          window.alert("Unable to load the session note because the security token is missing. Please refresh the page and try again.");
-          return;
-        }
+      if (!noteText) {
+        window.alert("No note is available for this session yet.");
+        return;
+      }
 
-        const detail = { sessionId, bookId, userId };
-        const payload = {
-          action: "politeia_get_session_note",
-          rs_id: sessionId,
-          book_id: bookId,
-          nonce,
-        };
+      assignDataset({ sessionId, bookId, userId, mode: "edit" });
 
-        const resetButtonState = () => {
-          btn.disabled = false;
-          btn.classList.remove("is-loading");
-          btn.removeAttribute("aria-busy");
-        };
-
-        btn.disabled = true;
-        btn.classList.add("is-loading");
-        btn.setAttribute("aria-busy", "true");
-
-        jQuery.post(ajaxUrl, payload)
-          .done(response => {
-            if (response && response.success) {
-              const noteText = typeof response.data?.note === "string" ? response.data.note : "";
-              assignDataset(detail);
-              document.dispatchEvent(new CustomEvent("prs-sr-flash:showNoteForSession", {
-                detail: {
-                  sessionId,
-                  bookId,
-                  userId,
-                  note: noteText,
-                  focus: true,
-                },
-              }));
-            } else {
-              const errorData = response && response.data ? response.data : null;
-              const message = typeof errorData === "string"
-                ? errorData
-                : (errorData && typeof errorData.message === "string" ? errorData.message : "Unknown error");
-              window.alert("⚠️ Failed to load note: " + message);
-            }
-          })
-          .fail(() => {
-            window.alert("❌ AJAX request failed — check console.");
-          })
-          .always(() => {
-            resetButtonState();
-          });
-      });
+      document.dispatchEvent(new CustomEvent("prs-sr-flash:showNoteForSession", {
+        detail: {
+          sessionId,
+          bookId,
+          userId,
+          note: noteText,
+          focus: true,
+          mode: "edit",
+        },
+      }));
     });
   }
 

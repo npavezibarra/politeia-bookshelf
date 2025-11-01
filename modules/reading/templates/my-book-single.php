@@ -14,10 +14,11 @@ global $wpdb;
 $user_id = get_current_user_id();
 $slug    = get_query_var( 'prs_book_slug' );
 
-$tbl_b        = $wpdb->prefix . 'politeia_books';
-$tbl_ub       = $wpdb->prefix . 'politeia_user_books';
-$tbl_loans    = $wpdb->prefix . 'politeia_loans';
-$tbl_sessions = $wpdb->prefix . 'politeia_reading_sessions';
+$tbl_b             = $wpdb->prefix . 'politeia_books';
+$tbl_ub            = $wpdb->prefix . 'politeia_user_books';
+$tbl_loans         = $wpdb->prefix . 'politeia_loans';
+$tbl_sessions      = $wpdb->prefix . 'politeia_reading_sessions';
+$tbl_session_notes = $wpdb->prefix . 'politeia_read_ses_notes';
 
 $book = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tbl_b} WHERE slug=%s LIMIT 1", $slug ) );
 if ( ! $book ) {
@@ -84,7 +85,7 @@ $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 
 
 $sessions = $wpdb->get_results(
         $wpdb->prepare(
-                "SELECT * FROM {$tbl_sessions} WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL ORDER BY start_time ASC",
+                "SELECT s.*, n.note FROM {$tbl_sessions} s LEFT JOIN {$tbl_session_notes} n ON s.id = n.rs_id AND n.book_id = s.book_id AND n.user_id = s.user_id WHERE s.user_id = %d AND s.book_id = %d AND s.deleted_at IS NULL ORDER BY s.start_time DESC",
                 $user_id,
                 $book->id
         )
@@ -854,13 +855,15 @@ wp_add_inline_script(
                                                 ?>
                                                 <?php
                                                 $note_button = '—';
-                                                if ( ! empty( $s->id ) && $current_user_id ) {
+                                                $note_value  = isset( $s->note ) ? trim( (string) $s->note ) : '';
+                                                if ( '' !== $note_value && ! empty( $s->id ) && $current_user_id ) {
                                                         $note_label  = esc_html__( 'Read Note', 'politeia-reading' );
                                                         $note_button = sprintf(
-                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d">%4$s</button>',
+                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s">%5$s</button>',
                                                                 (int) $s->id,
                                                                 (int) $s->book_id,
                                                                 (int) $current_user_id,
+                                                                esc_attr( $note_value ),
                                                                 $note_label
                                                         );
                                                 }
