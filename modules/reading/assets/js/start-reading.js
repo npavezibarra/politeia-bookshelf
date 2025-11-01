@@ -27,6 +27,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const $flashTime    = $('#prs-sr-flash-time');
   const $formWrap     = $('#prs-sr-formwrap');
 
+  let flashHideTimer  = null;
+
   // Aviso falta de pages
   const $rowNeedsPages = document.getElementById('prs-sr-row-needs-pages');
 
@@ -100,10 +102,45 @@ document.addEventListener('DOMContentLoaded', () => {
     applyStartTitle();
   }
 
+  const isFlashVisible = () => {
+    if (!$flash) return false;
+    return $flash.style.display !== 'none';
+  };
+
+  function resetFlashPanels() {
+    if (!$flash) return;
+    const summary = $flash.querySelector('#prs-sr-summary');
+    const notePanel = $flash.querySelector('#prs-note-panel');
+    if (summary && notePanel) {
+      summary.style.display = '';
+      notePanel.style.display = 'none';
+    }
+  }
+
+  function cancelFlashAutoHide() {
+    if (flashHideTimer) {
+      window.clearTimeout(flashHideTimer);
+      flashHideTimer = null;
+    }
+  }
+
+  function scheduleFlashAutoHide(ms = 4200) {
+    cancelFlashAutoHide();
+    flashHideTimer = window.setTimeout(() => {
+      flashHideTimer = null;
+      hideFlash();
+    }, ms);
+  }
+
   // Flash helpers (igualar dimensiones y mostrar)
   function hideFlash() {
-    if ($flash) { $flash.style.display = 'none'; }
+    cancelFlashAutoHide();
+    resetFlashPanels();
+    if ($flash) {
+      $flash.style.display = 'none';
+    }
     if ($formWrap) $formWrap.style.display = '';
+    document.dispatchEvent(new CustomEvent('prs-sr-flash:reset'));
   }
   function showFlash(pagesText, timeText, ms = 4200) {
     if ($flash && $formWrap) {
@@ -112,13 +149,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const h = $formWrap.offsetHeight;
         if (h) inner.style.minHeight = `${h}px`;
       }
+      resetFlashPanels();
+      document.dispatchEvent(new CustomEvent('prs-sr-flash:reset'));
       setText($flashPages, pagesText);
       setText($flashTime, timeText);
       $flash.style.display = 'block';
       $formWrap.style.display = 'none';
-      window.setTimeout(hideFlash, ms);
+      scheduleFlashAutoHide(ms);
     }
   }
+
+  document.addEventListener('prs-sr-flash:openNote', () => {
+    cancelFlashAutoHide();
+  });
+
+  document.addEventListener('prs-sr-flash:closeNote', (event) => {
+    if (!isFlashVisible()) return;
+    const delay = Number(event?.detail?.delay || 0) || 2000;
+    scheduleFlashAutoHide(delay);
+  });
 
   // Estados UI
   function setIdle() {

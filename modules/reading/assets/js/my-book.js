@@ -153,6 +153,59 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     }
   });
 
+  function setupFlashNoteToggle() {
+    const summary = document.getElementById("prs-sr-summary");
+    const notePanel = document.getElementById("prs-note-panel");
+    const addBtn = document.getElementById("prs-add-note-btn");
+    const cancelBtn = document.getElementById("prs-cancel-note-btn");
+    const textarea = notePanel?.querySelector(".editor-area");
+
+    if (!summary || !notePanel || !addBtn || !cancelBtn) {
+      return;
+    }
+
+    const dispatch = (name, detail) => {
+      document.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
+    };
+
+    function showSummary(options = {}) {
+      summary.style.display = "";
+      notePanel.style.display = "none";
+      addBtn.setAttribute("aria-expanded", "false");
+
+      if (options.userAction) {
+        dispatch("prs-sr-flash:closeNote", { delay: 2000 });
+        addBtn.focus();
+      }
+    }
+
+    function showNote() {
+      summary.style.display = "none";
+      notePanel.style.display = "block";
+      addBtn.setAttribute("aria-expanded", "true");
+      dispatch("prs-sr-flash:openNote");
+      window.requestAnimationFrame(() => {
+        textarea?.focus();
+      });
+    }
+
+    addBtn.addEventListener("click", event => {
+      event.preventDefault();
+      showNote();
+    });
+
+    cancelBtn.addEventListener("click", event => {
+      event.preventDefault();
+      showSummary({ userAction: true });
+    });
+
+    document.addEventListener("prs-sr-flash:reset", () => {
+      showSummary({ userAction: false });
+    });
+  }
+
+  setupFlashNoteToggle();
+
   // ---------- Helpers ----------
   function qs(sel, root) { return (root || document).querySelector(sel); }
   function qsa(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
