@@ -193,6 +193,25 @@ class Politeia_Reading_Activator {
                 }
 
                 dbDelta( $sql );
+
+                $existing_table = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $session_notes_table ) );
+
+                if ( $existing_table !== $session_notes_table ) {
+                        error_log( '🛠️ Running raw CREATE TABLE for session notes.' );
+                        $wpdb->query( "CREATE TABLE {$session_notes_table} (
+            id bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+            rs_id bigint(20) unsigned NOT NULL,
+            book_id bigint(20) unsigned NOT NULL,
+            user_id bigint(20) unsigned NOT NULL,
+            note text NOT NULL,
+            created_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY rs_id (rs_id),
+            KEY book_id (book_id),
+            KEY user_id (user_id)
+) {$charset_collate};" );
+                }
         }
 
 	/**
