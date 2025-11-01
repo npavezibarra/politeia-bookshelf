@@ -381,10 +381,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         return;
       }
 
-      if (!noteText) {
-        window.alert("No note is available for this session yet.");
-        return;
-      }
+      document.dispatchEvent(new CustomEvent("prs-session-modal:open", {
+        detail: {
+          source: "read-note",
+          focusClose: false,
+        },
+      }));
 
       assignDataset({ sessionId, bookId, userId, mode: "edit" });
 
@@ -2140,17 +2142,27 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
     }
 
-    function open() {
-      modal.classList.add("is-active");
-      trigger.setAttribute("aria-expanded", "true");
+    function open(options = {}) {
+      const shouldFocusClose = options.focusClose !== false;
+
+      if (!modal.classList.contains("is-active")) {
+        modal.classList.add("is-active");
+        document.addEventListener("keydown", handleKeydown);
+      }
+
       modal.setAttribute("aria-hidden", "false");
-      document.addEventListener("keydown", handleKeydown);
-      if (closeBtn) {
+      trigger.setAttribute("aria-expanded", "true");
+
+      if (shouldFocusClose && closeBtn) {
         setTimeout(() => closeBtn.focus(), 0);
       }
     }
 
     function close() {
+      if (!modal.classList.contains("is-active")) {
+        return;
+      }
+
       modal.classList.remove("is-active");
       trigger.setAttribute("aria-expanded", "false");
       modal.setAttribute("aria-hidden", "true");
@@ -2174,6 +2186,15 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       if (event.target === modal) {
         close();
       }
+    });
+
+    document.addEventListener("prs-session-modal:open", event => {
+      const detail = event?.detail || {};
+      open({ focusClose: detail.focusClose !== false });
+    });
+
+    document.addEventListener("prs-session-modal:close", () => {
+      close();
     });
   }
 
