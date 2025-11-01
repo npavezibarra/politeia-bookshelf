@@ -189,6 +189,45 @@ document.addEventListener('DOMContentLoaded', () => {
     scheduleFlashAutoHide(delay);
   });
 
+  document.addEventListener('prs-sr-flash:showNoteForSession', (event) => {
+    if (!$flash) return;
+
+    ensureFlashDatasetDefaults();
+
+    const detail = event?.detail || {};
+    if (typeof detail.bookId !== 'undefined' && detail.bookId !== null) {
+      $flash.dataset.bookId = String(detail.bookId);
+    }
+    if (typeof detail.userId !== 'undefined' && detail.userId !== null) {
+      $flash.dataset.userId = String(detail.userId);
+    }
+    updateFlashSessionId(detail.sessionId || '');
+
+    resetFlashPanels();
+    document.dispatchEvent(new CustomEvent('prs-sr-flash:reset'));
+    cancelFlashAutoHide();
+
+    const inner = $flash.querySelector('.prs-sr-flash-inner');
+    let referenceHeight = 0;
+    if ($formWrap) {
+      referenceHeight = $formWrap.offsetHeight;
+      $formWrap.style.display = 'none';
+    }
+    if (!referenceHeight && inner) {
+      referenceHeight = inner.offsetHeight;
+    }
+    if (inner && referenceHeight) {
+      inner.style.minHeight = `${referenceHeight}px`;
+    }
+
+    setText($flashPages, '—');
+    setText($flashTime, '—');
+
+    $flash.style.display = 'block';
+
+    document.dispatchEvent(new CustomEvent('prs-sr-flash:showNoteEditor', { detail }));
+  });
+
   // Estados UI
   function setIdle() {
     toggle($startPage, true);   toggle($startView, false);

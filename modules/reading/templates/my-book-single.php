@@ -795,12 +795,14 @@ wp_add_inline_script(
         <section id="prs-reading-sessions" class="prs-book-sessions prs-reading-sessions">
                 <h2 class="prs-section-title"><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></h2>
                 <?php if ( $sessions ) : ?>
+                        <?php $current_user_id = get_current_user_id(); ?>
                         <table class="prs-table prs-sessions-table">
                                 <thead>
                                         <tr>
                                                 <th>#</th>
                                                 <th>Start Time</th>
                                                 <th>End Time</th>
+                                                <th><?php esc_html_e( 'Note', 'politeia-reading' ); ?></th>
                                                 <th>Start Page</th>
                                                 <th>End Page</th>
                                                 <th>Total Pages</th>
@@ -810,8 +812,27 @@ wp_add_inline_script(
                                 </thead>
                                 <tbody>
                                         <?php foreach ( $sessions as $i => $s ) :
-                                                $start_display = $s->start_time ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $s->start_time ) : '—';
-                                                $end_display   = $s->end_time ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $s->end_time ) : '—';
+                                                $start_display = '—';
+                                                if ( $s->start_time ) {
+                                                        $start_timestamp = strtotime( $s->start_time );
+                                                        if ( $start_timestamp ) {
+                                                                $start_display  = '<div class="prs-sr-date">';
+                                                                $start_display .= '<div class="prs-sr-time">' . esc_html( date_i18n( 'g:i a', $start_timestamp ) ) . '</div>';
+                                                                $start_display .= '<div class="prs-sr-date-line">' . esc_html( date_i18n( 'F j, Y', $start_timestamp ) ) . '</div>';
+                                                                $start_display .= '</div>';
+                                                        }
+                                                }
+
+                                                $end_display = '—';
+                                                if ( $s->end_time ) {
+                                                        $end_timestamp = strtotime( $s->end_time );
+                                                        if ( $end_timestamp ) {
+                                                                $end_display  = '<div class="prs-sr-date">';
+                                                                $end_display .= '<div class="prs-sr-time">' . esc_html( date_i18n( 'g:i a', $end_timestamp ) ) . '</div>';
+                                                                $end_display .= '<div class="prs-sr-date-line">' . esc_html( date_i18n( 'F j, Y', $end_timestamp ) ) . '</div>';
+                                                                $end_display .= '</div>';
+                                                        }
+                                                }
                                                 $duration_str  = '—';
                                                 if ( $s->start_time && $s->end_time ) {
                                                         $duration = strtotime( $s->end_time ) - strtotime( $s->start_time );
@@ -831,10 +852,24 @@ wp_add_inline_script(
                                                 }
                                                 $chapter_label = $s->chapter_name ? $s->chapter_name : '—';
                                                 ?>
+                                                <?php
+                                                $note_button = '—';
+                                                if ( ! empty( $s->id ) && $current_user_id ) {
+                                                        $note_label  = esc_html__( 'Read Note', 'politeia-reading' );
+                                                        $note_button = sprintf(
+                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d">%4$s</button>',
+                                                                (int) $s->id,
+                                                                (int) $s->book_id,
+                                                                (int) $current_user_id,
+                                                                $note_label
+                                                        );
+                                                }
+                                                ?>
                                                 <tr>
                                                         <td><?php echo esc_html( $i + 1 ); ?></td>
-                                                        <td><?php echo esc_html( $start_display ); ?></td>
-                                                        <td><?php echo esc_html( $end_display ); ?></td>
+                                                        <td><?php echo wp_kses_post( $start_display ); ?></td>
+                                                        <td><?php echo wp_kses_post( $end_display ); ?></td>
+                                                        <td><?php echo wp_kses_post( $note_button ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $start_page && $start_page >= 0 ) ? $start_page : '—' ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $end_page && $end_page >= 0 ) ? $end_page : '—' ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $total_pages && $total_pages > 0 ) ? $total_pages : '—' ); ?></td>

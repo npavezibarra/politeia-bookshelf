@@ -81,6 +81,51 @@
         margin-top: 16px;
 }
 
+.prs-sessions-table .prs-sr-date {
+        display: inline-flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+        line-height: 1.1;
+}
+
+.prs-sessions-table .prs-sr-time {
+        font-size: 13px;
+        font-weight: 600;
+        color: #111;
+}
+
+.prs-sessions-table .prs-sr-date-line {
+        font-size: 8px;
+        color: #555;
+        text-transform: none;
+        letter-spacing: 0.2px;
+}
+
+.prs-sessions-table .prs-sr-read-note-btn {
+        background: none;
+        border: none;
+        padding: 0;
+        font: inherit;
+        font-size: 12px;
+        color: #555;
+        text-decoration: underline;
+        cursor: pointer;
+}
+
+.prs-sessions-table .prs-sr-read-note-btn:hover,
+.prs-sessions-table .prs-sr-read-note-btn:focus {
+        color: #111;
+        text-decoration-color: #111;
+        outline: none;
+}
+
+.prs-sessions-table .prs-sr-read-note-btn[disabled],
+.prs-sessions-table .prs-sr-read-note-btn.is-loading {
+        opacity: 0.6;
+        cursor: progress;
+}
+
 @media (max-width: 600px) {
         #prs-sr-flash .text-editor-panel {
                 padding: 12px;
