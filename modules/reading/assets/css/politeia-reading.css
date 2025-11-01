@@ -102,3 +102,8 @@
                 max-height: 140px;
         }
 }
+
+/* Debug-only visual aid (won’t render unless data attr is set manually) */
+#prs-book-cover-figure[debug-outline="1"] {
+        outline: 2px dashed #f59e0b;
+}
