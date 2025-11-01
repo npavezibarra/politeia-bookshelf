@@ -8,6 +8,29 @@
         margin-top: 16px;
 }
 
+.prs-sr.prs-note-only .prs-sr-head,
+.prs-sr.prs-note-only .prs-sr-last,
+.prs-sr.prs-note-only #prs-sr-summary {
+        display: none !important;
+}
+
+#prs-sr-flash.prs-note-only {
+        background: transparent;
+        border: none;
+        padding: 0;
+        box-shadow: none;
+}
+
+#prs-sr-flash.prs-note-only .prs-sr-flash-inner {
+        min-height: auto;
+        padding: 0;
+        gap: 0;
+        width: 100%;
+        text-align: left;
+        align-items: center;
+        justify-content: center;
+}
+
 #prs-note-panel {
         padding: 40px 20px;
         background: #ffffff;

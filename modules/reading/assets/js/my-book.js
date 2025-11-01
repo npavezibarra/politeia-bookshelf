@@ -179,6 +179,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const saveBtn = document.getElementById("prs-save-note-btn");
     const flash = document.getElementById("prs-sr-flash");
     const textarea = notePanel?.querySelector(".editor-area");
+    const flashInner = flash?.querySelector(".prs-sr-flash-inner");
+    const srContainer = summary?.closest?.(".prs-sr")
+      || notePanel?.closest?.(".prs-sr")
+      || flash?.closest?.(".prs-sr");
     const defaultPlaceholder = textarea?.getAttribute("placeholder") || "";
 
     if (!summary || !notePanel || !addBtn || !cancelBtn || !saveBtn) {
@@ -189,12 +193,49 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       document.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
     };
 
-    function showSummary(options = {}) {
+    const isNoteOnlyMode = mode => mode === "edit" || mode === "read";
+
+    const applyNoteOnlyMode = mode => {
+      const noteOnly = isNoteOnlyMode(mode);
+      if (srContainer) {
+        srContainer.classList.toggle("prs-note-only", noteOnly);
+      }
+      if (flash) {
+        flash.classList.toggle("prs-note-only", noteOnly);
+      }
+      if (flashInner) {
+        flashInner.style.minHeight = "";
+      }
+      return noteOnly;
+    };
+
+    const resetNoteLayout = () => {
       summary.style.display = "";
       notePanel.style.display = "none";
       addBtn.setAttribute("aria-expanded", "false");
+      applyNoteOnlyMode("");
       if (flash) {
         delete flash.dataset.noteMode;
+      }
+    };
+
+    function showSummary(options = {}) {
+      const currentMode = flash?.dataset?.noteMode || "";
+      const wasNoteOnly = isNoteOnlyMode(currentMode);
+
+      summary.style.display = "";
+      notePanel.style.display = "none";
+      addBtn.setAttribute("aria-expanded", "false");
+      applyNoteOnlyMode("");
+      if (flash) {
+        delete flash.dataset.noteMode;
+      }
+
+      if (wasNoteOnly) {
+        if (options.userAction) {
+          document.dispatchEvent(new CustomEvent("prs-session-modal:close"));
+        }
+        return;
       }
 
       if (options.userAction) {
@@ -207,13 +248,16 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       summary.style.display = "none";
       notePanel.style.display = "block";
       addBtn.setAttribute("aria-expanded", "true");
+      let activeMode = "";
       if (flash) {
         if (typeof options.mode === "string" && options.mode) {
           flash.dataset.noteMode = options.mode;
         } else if (!flash.dataset.noteMode) {
           flash.dataset.noteMode = "create";
         }
+        activeMode = flash.dataset.noteMode;
       }
+      applyNoteOnlyMode(activeMode);
       dispatch("prs-sr-flash:openNote");
       const shouldFocus = options.focus !== false;
       if (shouldFocus) {
@@ -336,6 +380,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     document.addEventListener("prs-sr-flash:reset", () => {
       showSummary({ userAction: false });
+    });
+
+    document.addEventListener("prs-session-modal:close", () => {
+      resetNoteLayout();
     });
   }
 
