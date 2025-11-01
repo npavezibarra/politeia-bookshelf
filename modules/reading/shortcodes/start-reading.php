@@ -157,13 +157,47 @@ add_shortcode(
 	<?php endif; ?>
 
 	<!-- Bloque HTML de éxito (centrado, amarillo, h2/h3) -->
-	<div id="prs-sr-flash" class="prs-sr-flash-block" role="status" aria-live="polite">
-		<div class="prs-sr-flash-inner">
-		<h2>¡Muy bien!</h2>
-		<h3>Leíste <span id="prs-sr-flash-pages">—</span> en <span id="prs-sr-flash-time">—</span>.</h3>
-		<div class="prs-sr-flash-sub">Te espero pronto para seguir con este libro.</div>
-		</div>
-	</div>
+        <div
+                id="prs-sr-flash"
+                class="prs-sr-flash-block"
+                role="status"
+                aria-live="polite"
+                data-session-id=""
+                data-book-id="<?php echo esc_attr( $book_id ); ?>"
+                data-user-id="<?php echo esc_attr( $user_id ); ?>"
+        >
+                <div class="prs-sr-flash-inner">
+                <div id="prs-sr-summary">
+                        <h2>¡Muy bien!</h2>
+                        <h3>Leíste <span id="prs-sr-flash-pages">—</span> en <span id="prs-sr-flash-time">—</span>.</h3>
+                        <div class="prs-sr-flash-sub">Te espero pronto para seguir con este libro.</div>
+                        <button type="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn" aria-controls="prs-note-panel" aria-expanded="false">
+                                <?php esc_html_e( 'Add Note', 'politeia-reading' ); ?>
+                        </button>
+                </div>
+
+                <div id="prs-note-panel" class="prs-note-panel" style="display:none;">
+                        <div class="text-editor-panel" role="group" aria-label="<?php esc_attr_e( 'Session note editor', 'politeia-reading' ); ?>">
+                                <div class="toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
+                                <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 1', 'politeia-reading' ); ?>">H1</button>
+                                <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 2', 'politeia-reading' ); ?>">H2</button>
+                                <button type="button" class="tool-button bold" title="<?php esc_attr_e( 'Bold', 'politeia-reading' ); ?>">B</button>
+                                <button type="button" class="tool-button italic" title="<?php esc_attr_e( 'Italic', 'politeia-reading' ); ?>">I</button>
+                                <button type="button" class="tool-button" title="<?php esc_attr_e( 'Bullet list', 'politeia-reading' ); ?>">•</button>
+                                </div>
+                                <textarea class="editor-area" placeholder="<?php esc_attr_e( 'Write your thoughts about this session…', 'politeia-reading' ); ?>" rows="8"></textarea>
+                        </div>
+                        <div class="note-actions">
+                                <button type="button" id="prs-save-note-btn" class="prs-btn">
+                                <?php esc_html_e( 'Save Note', 'politeia-reading' ); ?>
+                                </button>
+                                <button type="button" id="prs-cancel-note-btn" class="prs-btn prs-btn-secondary">
+                                <?php esc_html_e( 'Cancel', 'politeia-reading' ); ?>
+                                </button>
+                        </div>
+                </div>
+                </div>
+        </div>
 
 	<!-- Wrapper del formulario (se oculta mientras se muestra el flash) -->
 	<div id="prs-sr-formwrap">

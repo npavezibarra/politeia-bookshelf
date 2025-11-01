@@ -14,10 +14,11 @@ global $wpdb;
 $user_id = get_current_user_id();
 $slug    = get_query_var( 'prs_book_slug' );
 
-$tbl_b        = $wpdb->prefix . 'politeia_books';
-$tbl_ub       = $wpdb->prefix . 'politeia_user_books';
-$tbl_loans    = $wpdb->prefix . 'politeia_loans';
-$tbl_sessions = $wpdb->prefix . 'politeia_reading_sessions';
+$tbl_b             = $wpdb->prefix . 'politeia_books';
+$tbl_ub            = $wpdb->prefix . 'politeia_user_books';
+$tbl_loans         = $wpdb->prefix . 'politeia_loans';
+$tbl_sessions      = $wpdb->prefix . 'politeia_reading_sessions';
+$tbl_session_notes = $wpdb->prefix . 'politeia_read_ses_notes';
 
 $book = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tbl_b} WHERE slug=%s LIMIT 1", $slug ) );
 if ( ! $book ) {
@@ -84,7 +85,7 @@ $active_start_local = $active_start_gmt ? get_date_from_gmt( $active_start_gmt, 
 
 $sessions = $wpdb->get_results(
         $wpdb->prepare(
-                "SELECT * FROM {$tbl_sessions} WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL ORDER BY start_time ASC",
+                "SELECT s.*, n.note FROM {$tbl_sessions} s LEFT JOIN {$tbl_session_notes} n ON s.id = n.rs_id AND n.book_id = s.book_id AND n.user_id = s.user_id WHERE s.user_id = %d AND s.book_id = %d AND s.deleted_at IS NULL ORDER BY s.start_time DESC",
                 $user_id,
                 $book->id
         )
@@ -795,12 +796,14 @@ wp_add_inline_script(
         <section id="prs-reading-sessions" class="prs-book-sessions prs-reading-sessions">
                 <h2 class="prs-section-title"><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></h2>
                 <?php if ( $sessions ) : ?>
+                        <?php $current_user_id = get_current_user_id(); ?>
                         <table class="prs-table prs-sessions-table">
                                 <thead>
                                         <tr>
                                                 <th>#</th>
                                                 <th>Start Time</th>
                                                 <th>End Time</th>
+                                                <th><?php esc_html_e( 'Note', 'politeia-reading' ); ?></th>
                                                 <th>Start Page</th>
                                                 <th>End Page</th>
                                                 <th>Total Pages</th>
@@ -810,8 +813,27 @@ wp_add_inline_script(
                                 </thead>
                                 <tbody>
                                         <?php foreach ( $sessions as $i => $s ) :
-                                                $start_display = $s->start_time ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $s->start_time ) : '—';
-                                                $end_display   = $s->end_time ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $s->end_time ) : '—';
+                                                $start_display = '—';
+                                                if ( $s->start_time ) {
+                                                        $start_timestamp = strtotime( $s->start_time );
+                                                        if ( $start_timestamp ) {
+                                                                $start_display  = '<div class="prs-sr-date">';
+                                                                $start_display .= '<div class="prs-sr-time">' . esc_html( date_i18n( 'g:i a', $start_timestamp ) ) . '</div>';
+                                                                $start_display .= '<div class="prs-sr-date-line">' . esc_html( date_i18n( 'F j, Y', $start_timestamp ) ) . '</div>';
+                                                                $start_display .= '</div>';
+                                                        }
+                                                }
+
+                                                $end_display = '—';
+                                                if ( $s->end_time ) {
+                                                        $end_timestamp = strtotime( $s->end_time );
+                                                        if ( $end_timestamp ) {
+                                                                $end_display  = '<div class="prs-sr-date">';
+                                                                $end_display .= '<div class="prs-sr-time">' . esc_html( date_i18n( 'g:i a', $end_timestamp ) ) . '</div>';
+                                                                $end_display .= '<div class="prs-sr-date-line">' . esc_html( date_i18n( 'F j, Y', $end_timestamp ) ) . '</div>';
+                                                                $end_display .= '</div>';
+                                                        }
+                                                }
                                                 $duration_str  = '—';
                                                 if ( $s->start_time && $s->end_time ) {
                                                         $duration = strtotime( $s->end_time ) - strtotime( $s->start_time );
@@ -831,10 +853,26 @@ wp_add_inline_script(
                                                 }
                                                 $chapter_label = $s->chapter_name ? $s->chapter_name : '—';
                                                 ?>
+                                                <?php
+                                                $note_button = '—';
+                                                $note_value  = isset( $s->note ) ? trim( (string) $s->note ) : '';
+                                                if ( '' !== $note_value && ! empty( $s->id ) && $current_user_id ) {
+                                                        $note_label  = esc_html__( 'Read Note', 'politeia-reading' );
+                                                        $note_button = sprintf(
+                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s">%5$s</button>',
+                                                                (int) $s->id,
+                                                                (int) $s->book_id,
+                                                                (int) $current_user_id,
+                                                                esc_attr( $note_value ),
+                                                                $note_label
+                                                        );
+                                                }
+                                                ?>
                                                 <tr>
                                                         <td><?php echo esc_html( $i + 1 ); ?></td>
-                                                        <td><?php echo esc_html( $start_display ); ?></td>
-                                                        <td><?php echo esc_html( $end_display ); ?></td>
+                                                        <td><?php echo wp_kses_post( $start_display ); ?></td>
+                                                        <td><?php echo wp_kses_post( $end_display ); ?></td>
+                                                        <td><?php echo wp_kses_post( $note_button ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $start_page && $start_page >= 0 ) ? $start_page : '—' ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $end_page && $end_page >= 0 ) ? $end_page : '—' ); ?></td>
                                                         <td><?php echo esc_html( ( null !== $total_pages && $total_pages > 0 ) ? $total_pages : '—' ); ?></td>

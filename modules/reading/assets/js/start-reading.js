@@ -27,6 +27,28 @@ document.addEventListener('DOMContentLoaded', () => {
   const $flashTime    = $('#prs-sr-flash-time');
   const $formWrap     = $('#prs-sr-formwrap');
 
+  let flashHideTimer  = null;
+
+  const ensureFlashDatasetDefaults = () => {
+    if (!$flash) return;
+    if (typeof PRS_SR?.book_id !== 'undefined') {
+      $flash.dataset.bookId = String(PRS_SR.book_id);
+    }
+    if (typeof PRS_SR?.user_id !== 'undefined') {
+      $flash.dataset.userId = String(PRS_SR.user_id);
+    }
+    if (typeof $flash.dataset.sessionId === 'undefined') {
+      $flash.dataset.sessionId = '';
+    }
+  };
+
+  const updateFlashSessionId = (id) => {
+    if (!$flash) return;
+    $flash.dataset.sessionId = id ? String(id) : '';
+  };
+
+  ensureFlashDatasetDefaults();
+
   // Aviso falta de pages
   const $rowNeedsPages = document.getElementById('prs-sr-row-needs-pages');
 
@@ -100,10 +122,45 @@ document.addEventListener('DOMContentLoaded', () => {
     applyStartTitle();
   }
 
+  const isFlashVisible = () => {
+    if (!$flash) return false;
+    return $flash.style.display !== 'none';
+  };
+
+  function resetFlashPanels() {
+    if (!$flash) return;
+    const summary = $flash.querySelector('#prs-sr-summary');
+    const notePanel = $flash.querySelector('#prs-note-panel');
+    if (summary && notePanel) {
+      summary.style.display = '';
+      notePanel.style.display = 'none';
+    }
+  }
+
+  function cancelFlashAutoHide() {
+    if (flashHideTimer) {
+      window.clearTimeout(flashHideTimer);
+      flashHideTimer = null;
+    }
+  }
+
+  function scheduleFlashAutoHide(ms = 4200) {
+    cancelFlashAutoHide();
+    flashHideTimer = window.setTimeout(() => {
+      flashHideTimer = null;
+      hideFlash();
+    }, ms);
+  }
+
   // Flash helpers (igualar dimensiones y mostrar)
   function hideFlash() {
-    if ($flash) { $flash.style.display = 'none'; }
+    cancelFlashAutoHide();
+    resetFlashPanels();
+    if ($flash) {
+      $flash.style.display = 'none';
+    }
     if ($formWrap) $formWrap.style.display = '';
+    document.dispatchEvent(new CustomEvent('prs-sr-flash:reset'));
   }
   function showFlash(pagesText, timeText, ms = 4200) {
     if ($flash && $formWrap) {
@@ -112,13 +169,64 @@ document.addEventListener('DOMContentLoaded', () => {
         const h = $formWrap.offsetHeight;
         if (h) inner.style.minHeight = `${h}px`;
       }
+      resetFlashPanels();
+      document.dispatchEvent(new CustomEvent('prs-sr-flash:reset'));
       setText($flashPages, pagesText);
       setText($flashTime, timeText);
       $flash.style.display = 'block';
       $formWrap.style.display = 'none';
-      window.setTimeout(hideFlash, ms);
+      scheduleFlashAutoHide(ms);
     }
   }
+
+  document.addEventListener('prs-sr-flash:openNote', () => {
+    cancelFlashAutoHide();
+  });
+
+  document.addEventListener('prs-sr-flash:closeNote', (event) => {
+    if (!isFlashVisible()) return;
+    const delay = Number(event?.detail?.delay || 0) || 2000;
+    scheduleFlashAutoHide(delay);
+  });
+
+  document.addEventListener('prs-sr-flash:showNoteForSession', (event) => {
+    if (!$flash) return;
+
+    ensureFlashDatasetDefaults();
+
+    const detail = event?.detail || {};
+    if (typeof detail.bookId !== 'undefined' && detail.bookId !== null) {
+      $flash.dataset.bookId = String(detail.bookId);
+    }
+    if (typeof detail.userId !== 'undefined' && detail.userId !== null) {
+      $flash.dataset.userId = String(detail.userId);
+    }
+    updateFlashSessionId(detail.sessionId || '');
+
+    resetFlashPanels();
+    document.dispatchEvent(new CustomEvent('prs-sr-flash:reset'));
+    cancelFlashAutoHide();
+
+    const inner = $flash.querySelector('.prs-sr-flash-inner');
+    let referenceHeight = 0;
+    if ($formWrap) {
+      referenceHeight = $formWrap.offsetHeight;
+      $formWrap.style.display = 'none';
+    }
+    if (!referenceHeight && inner) {
+      referenceHeight = inner.offsetHeight;
+    }
+    if (inner && referenceHeight) {
+      inner.style.minHeight = `${referenceHeight}px`;
+    }
+
+    setText($flashPages, '—');
+    setText($flashTime, '—');
+
+    $flash.style.display = 'block';
+
+    document.dispatchEvent(new CustomEvent('prs-sr-flash:showNoteEditor', { detail }));
+  });
 
   // Estados UI
   function setIdle() {
@@ -256,6 +364,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (out?.success) {
+        const savedSessionId = out?.data?.session_id ?? sessionId ?? null;
+        ensureFlashDatasetDefaults();
+        updateFlashSessionId(savedSessionId);
+
         // Limpiar sessionId: la sesión quedó cerrada
         sessionId = null;
 

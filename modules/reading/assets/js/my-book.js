@@ -15,6 +15,24 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
   let currentReturnButton = null;
   let currentBoughtContext = null;
 
+  function resolveAjaxUrl() {
+    if (typeof window.ajaxurl === "string" && window.ajaxurl) {
+      return window.ajaxurl;
+    }
+    if (typeof window.PRS_BOOK?.ajax_url === "string" && window.PRS_BOOK.ajax_url) {
+      return window.PRS_BOOK.ajax_url;
+    }
+    if (typeof window.PRS_SR?.ajax_url === "string" && window.PRS_SR.ajax_url) {
+      return window.PRS_SR.ajax_url;
+    }
+    return "";
+  }
+
+  function getReadingNonce() {
+    const nonce = window.PRS_SR?.nonce;
+    return typeof nonce === "string" && nonce ? nonce : "";
+  }
+
   function triggerReturnAction() {
     if (!currentReturnButton || typeof currentReturnButton.__prsReturnHandler !== "function") {
       currentReturnButton = null;
@@ -152,6 +170,240 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       openReturnOverlay(target.dataset.bookId || "", target);
     }
   });
+
+  function setupFlashNoteToggle() {
+    const summary = document.getElementById("prs-sr-summary");
+    const notePanel = document.getElementById("prs-note-panel");
+    const addBtn = document.getElementById("prs-add-note-btn");
+    const cancelBtn = document.getElementById("prs-cancel-note-btn");
+    const saveBtn = document.getElementById("prs-save-note-btn");
+    const flash = document.getElementById("prs-sr-flash");
+    const textarea = notePanel?.querySelector(".editor-area");
+    const defaultPlaceholder = textarea?.getAttribute("placeholder") || "";
+
+    if (!summary || !notePanel || !addBtn || !cancelBtn || !saveBtn) {
+      return;
+    }
+
+    const dispatch = (name, detail) => {
+      document.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
+    };
+
+    function showSummary(options = {}) {
+      summary.style.display = "";
+      notePanel.style.display = "none";
+      addBtn.setAttribute("aria-expanded", "false");
+      if (flash) {
+        delete flash.dataset.noteMode;
+      }
+
+      if (options.userAction) {
+        dispatch("prs-sr-flash:closeNote", { delay: 2000 });
+        addBtn.focus();
+      }
+    }
+
+    function showNote(options = {}) {
+      summary.style.display = "none";
+      notePanel.style.display = "block";
+      addBtn.setAttribute("aria-expanded", "true");
+      if (flash) {
+        if (typeof options.mode === "string" && options.mode) {
+          flash.dataset.noteMode = options.mode;
+        } else if (!flash.dataset.noteMode) {
+          flash.dataset.noteMode = "create";
+        }
+      }
+      dispatch("prs-sr-flash:openNote");
+      const shouldFocus = options.focus !== false;
+      if (shouldFocus) {
+        window.requestAnimationFrame(() => {
+          textarea?.focus();
+        });
+      }
+    }
+
+    addBtn.addEventListener("click", event => {
+      event.preventDefault();
+      showNote({ focus: true, mode: "create" });
+    });
+
+    cancelBtn.addEventListener("click", event => {
+      event.preventDefault();
+      showSummary({ userAction: true });
+    });
+
+    document.addEventListener("prs-sr-flash:showNoteEditor", event => {
+      const detail = event?.detail || {};
+      if (textarea) {
+        textarea.value = typeof detail.note === "string" ? detail.note : "";
+        if (typeof detail.placeholder === "string") {
+          textarea.setAttribute("placeholder", detail.placeholder);
+        } else if (defaultPlaceholder) {
+          textarea.setAttribute("placeholder", defaultPlaceholder);
+        }
+      }
+      const mode = typeof detail.mode === "string" && detail.mode ? detail.mode : "edit";
+      showNote({ focus: detail.focus !== false, mode });
+    });
+
+    let isSavingNote = false;
+
+    saveBtn.addEventListener("click", event => {
+      event.preventDefault();
+      if (isSavingNote) {
+        return;
+      }
+
+      const noteContent = (textarea?.value || "").trim();
+      if (!noteContent) {
+        window.alert("Please write a note before saving.");
+        textarea?.focus();
+        return;
+      }
+
+      const flash = document.getElementById("prs-sr-flash");
+      const rsId = flash?.dataset?.sessionId || "";
+      const bookId = flash?.dataset?.bookId || "";
+      const userId = flash?.dataset?.userId || "";
+
+      if (!rsId || rsId === "0" || !bookId || !userId) {
+        window.alert("Missing session details. Please try again.");
+        return;
+      }
+
+      const ajaxUrl = resolveAjaxUrl();
+      if (!ajaxUrl) {
+        console.error("[Politeia] Missing ajax URL for saving session note");
+        window.alert("Unable to save the note right now. Please refresh the page and try again.");
+        return;
+      }
+
+      const nonce = getReadingNonce();
+      if (!nonce) {
+        window.alert("Unable to save the note because the session security token is missing. Please refresh the page and try again.");
+        return;
+      }
+
+      const payload = {
+        action: "politeia_save_session_note",
+        rs_id: rsId,
+        book_id: bookId,
+        user_id: userId,
+        note: noteContent,
+        nonce,
+      };
+
+      isSavingNote = true;
+      saveBtn.disabled = true;
+      saveBtn.setAttribute("aria-busy", "true");
+
+      jQuery.post(ajaxUrl, payload)
+        .done(response => {
+          if (response && response.success) {
+            window.alert("✅ Note saved successfully!");
+            if (textarea) {
+              textarea.value = "";
+            }
+            if (flash && flash.dataset && flash.dataset.sessionId) {
+              const currentSessionId = String(flash.dataset.sessionId || "");
+              if (currentSessionId) {
+                qsa('.prs-sr-read-note-btn').forEach(btn => {
+                  if (String(btn.dataset.sessionId || "") === currentSessionId) {
+                    btn.dataset.note = noteContent;
+                  }
+                });
+              }
+            }
+            showSummary({ userAction: true });
+          } else {
+            const errorData = response && response.data ? response.data : null;
+            const message = typeof errorData === "string"
+              ? errorData
+              : (errorData && typeof errorData.message === "string" ? errorData.message : "Unknown error");
+            window.alert("⚠️ Failed to save note: " + message);
+          }
+        })
+        .fail(() => {
+          window.alert("❌ AJAX request failed — check console.");
+        })
+        .always(() => {
+          isSavingNote = false;
+          saveBtn.disabled = false;
+          saveBtn.removeAttribute("aria-busy");
+        });
+    });
+
+    document.addEventListener("prs-sr-flash:reset", () => {
+      showSummary({ userAction: false });
+    });
+  }
+
+  setupFlashNoteToggle();
+
+  function setupReadNoteButtons() {
+    const flash = document.getElementById("prs-sr-flash");
+    if (!flash) {
+      return;
+    }
+
+    const assignDataset = detail => {
+      if (!flash) {
+        return;
+      }
+      if (typeof detail.bookId !== "undefined" && detail.bookId !== null && detail.bookId !== "") {
+        flash.dataset.bookId = String(detail.bookId);
+      }
+      if (typeof detail.userId !== "undefined" && detail.userId !== null && detail.userId !== "") {
+        flash.dataset.userId = String(detail.userId);
+      }
+      flash.dataset.sessionId = detail.sessionId ? String(detail.sessionId) : "";
+      if (detail.mode) {
+        flash.dataset.noteMode = detail.mode;
+      }
+    };
+
+    document.addEventListener("click", event => {
+      const btn = event.target?.closest?.(".prs-sr-read-note-btn");
+      if (!btn) {
+        return;
+      }
+
+      event.preventDefault();
+
+      const sessionId = btn.dataset.sessionId ? String(btn.dataset.sessionId) : "";
+      const bookId = btn.dataset.bookId ? String(btn.dataset.bookId) : (flash.dataset?.bookId || "");
+      const userId = btn.dataset.userId ? String(btn.dataset.userId) : (flash.dataset?.userId || "");
+      const noteText = typeof btn.dataset.note === "string" ? btn.dataset.note : "";
+
+      if (!sessionId) {
+        window.alert("Unable to load this session note because the session identifier is missing.");
+        return;
+      }
+
+      document.dispatchEvent(new CustomEvent("prs-session-modal:open", {
+        detail: {
+          source: "read-note",
+          focusClose: false,
+        },
+      }));
+
+      assignDataset({ sessionId, bookId, userId, mode: "edit" });
+
+      document.dispatchEvent(new CustomEvent("prs-sr-flash:showNoteForSession", {
+        detail: {
+          sessionId,
+          bookId,
+          userId,
+          note: noteText,
+          focus: true,
+          mode: "edit",
+        },
+      }));
+    });
+  }
+
+  setupReadNoteButtons();
 
   // ---------- Helpers ----------
   function qs(sel, root) { return (root || document).querySelector(sel); }
@@ -1890,17 +2142,27 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
     }
 
-    function open() {
-      modal.classList.add("is-active");
-      trigger.setAttribute("aria-expanded", "true");
+    function open(options = {}) {
+      const shouldFocusClose = options.focusClose !== false;
+
+      if (!modal.classList.contains("is-active")) {
+        modal.classList.add("is-active");
+        document.addEventListener("keydown", handleKeydown);
+      }
+
       modal.setAttribute("aria-hidden", "false");
-      document.addEventListener("keydown", handleKeydown);
-      if (closeBtn) {
+      trigger.setAttribute("aria-expanded", "true");
+
+      if (shouldFocusClose && closeBtn) {
         setTimeout(() => closeBtn.focus(), 0);
       }
     }
 
     function close() {
+      if (!modal.classList.contains("is-active")) {
+        return;
+      }
+
       modal.classList.remove("is-active");
       trigger.setAttribute("aria-expanded", "false");
       modal.setAttribute("aria-hidden", "true");
@@ -1924,6 +2186,15 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       if (event.target === modal) {
         close();
       }
+    });
+
+    document.addEventListener("prs-session-modal:open", event => {
+      const detail = event?.detail || {};
+      open({ focusClose: detail.focusClose !== false });
+    });
+
+    document.addEventListener("prs-session-modal:close", () => {
+      close();
     });
   }
 

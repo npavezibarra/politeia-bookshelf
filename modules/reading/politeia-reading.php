@@ -43,6 +43,7 @@ require_once POLITEIA_READING_PATH . 'includes/class-rest.php';
 require_once POLITEIA_READING_PATH . 'includes/class-books.php';
 require_once POLITEIA_READING_PATH . 'includes/class-user-books.php';
 require_once POLITEIA_READING_PATH . 'includes/class-reading-sessions.php';
+require_once POLITEIA_READING_PATH . 'includes/class-ajax-handler.php';
 require_once POLITEIA_READING_PATH . 'includes/class-politeia-loan-manager.php';
 require_once POLITEIA_READING_PATH . 'includes/class-prs-ajax-user-books.php';
 require_once POLITEIA_READING_PATH . 'includes/helpers.php';
@@ -89,6 +90,13 @@ add_action(
                 );
 
                 wp_register_style(
+                        'politeia-my-book',
+                        POLITEIA_READING_URL . 'assets/css/my-book.css',
+                        array( 'politeia-reading' ),
+                        POLITEIA_READING_VERSION
+                );
+
+                wp_register_style(
                         'prs-cover-modal',
                         POLITEIA_READING_URL . 'assets/css/prs-cover-modal.css',
                         array(),
@@ -129,9 +137,10 @@ add_action(
                         true
                 );
 
-		// Carga condicional en la vista de un libro individual (manteniendo tu lógica)
+                // Carga condicional en la vista de un libro individual (manteniendo tu lógica)
                 if ( get_query_var( 'prs_book_slug' ) ) {
                         wp_enqueue_style( 'politeia-reading' );
+                        wp_enqueue_style( 'politeia-my-book' );
                         wp_enqueue_style( 'prs-cover-modal' );
                         wp_enqueue_script( 'politeia-my-book' );
                         wp_enqueue_script( 'prs-cover-modal' );
