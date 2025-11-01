@@ -164,13 +164,14 @@ class Politeia_Reading_Activator {
         ) {$charset_collate};";
 
                 $sql_session_notes = "CREATE TABLE {$session_notes_table} (
-            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
-            rs_id BIGINT UNSIGNED NOT NULL,
-            book_id BIGINT UNSIGNED NOT NULL,
-            user_id BIGINT UNSIGNED NOT NULL,
+            id BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            rs_id BIGINT(20) UNSIGNED NOT NULL,
+            book_id BIGINT(20) UNSIGNED NOT NULL,
+            user_id BIGINT(20) UNSIGNED NOT NULL,
             note TEXT NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
             KEY rs_id (rs_id),
             KEY book_id (book_id),
             KEY user_id (user_id)
@@ -186,10 +187,8 @@ class Politeia_Reading_Activator {
                         $sql_book_authors,
                 );
 
-                foreach ( $sql as $statement ) {
-                        dbDelta( $statement );
-                }
-	}
+                dbDelta( $sql );
+        }
 
 	/**
 	 * Migraciones idempotentes para instalaciones existentes.
