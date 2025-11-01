@@ -171,7 +171,7 @@ class Politeia_Reading_Activator {
             note TEXT NOT NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            PRIMARY KEY  (id),
+            PRIMARY KEY (id),
             KEY rs_id (rs_id),
             KEY book_id (book_id),
             KEY user_id (user_id)
