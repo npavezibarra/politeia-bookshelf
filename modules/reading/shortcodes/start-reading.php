@@ -177,17 +177,15 @@ add_shortcode(
                 </div>
 
                 <div id="prs-note-panel" class="prs-note-panel" style="display:none;">
-                        <div class="note-overlay">
-                                <div class="note-editor-panel" role="group" aria-label="<?php esc_attr_e( 'Session note editor', 'politeia-reading' ); ?>">
-                                        <div class="note-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
-                                                <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 1', 'politeia-reading' ); ?>">H1</button>
-                                                <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 2', 'politeia-reading' ); ?>">H2</button>
-                                                <button type="button" class="tool-button bold" title="<?php esc_attr_e( 'Bold', 'politeia-reading' ); ?>">B</button>
-                                                <button type="button" class="tool-button italic" title="<?php esc_attr_e( 'Italic', 'politeia-reading' ); ?>">I</button>
-                                                <button type="button" class="tool-button" title="<?php esc_attr_e( 'Bullet list', 'politeia-reading' ); ?>">•</button>
-                                        </div>
-                                        <textarea class="note-textarea editor-area" placeholder="<?php esc_attr_e( 'Write your thoughts about this session…', 'politeia-reading' ); ?>" rows="8"></textarea>
+                        <div class="note-editor-panel" role="group" aria-label="<?php esc_attr_e( 'Session note editor', 'politeia-reading' ); ?>">
+                                <div class="note-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
+                                        <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 1', 'politeia-reading' ); ?>">H1</button>
+                                        <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 2', 'politeia-reading' ); ?>">H2</button>
+                                        <button type="button" class="tool-button bold" title="<?php esc_attr_e( 'Bold', 'politeia-reading' ); ?>">B</button>
+                                        <button type="button" class="tool-button italic" title="<?php esc_attr_e( 'Italic', 'politeia-reading' ); ?>">I</button>
+                                        <button type="button" class="tool-button" title="<?php esc_attr_e( 'Bullet list', 'politeia-reading' ); ?>">•</button>
                                 </div>
+                                <textarea class="note-textarea editor-area" placeholder="<?php esc_attr_e( 'Write your thoughts about this session…', 'politeia-reading' ); ?>" rows="8"></textarea>
                         </div>
                         <div class="note-actions">
                                 <button type="button" id="prs-save-note-btn" class="prs-btn">

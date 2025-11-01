@@ -8,89 +8,97 @@
         margin-top: 16px;
 }
 
-#prs-sr-flash .note-overlay {
-        background-color: #f8fafc;
+#prs-note-panel {
+        padding: 40px 20px;
+        background: #ffffff;
         display: flex;
-        justify-content: center;
+        flex-direction: column;
         align-items: center;
-        padding: 40px 16px;
 }
 
-#prs-sr-flash .note-editor-panel {
-        background-color: #ffffff;
-        box-shadow: none;
-        border-radius: 0;
+#prs-note-panel .note-editor-panel {
         width: 100%;
         max-width: 700px;
-        padding: 40px 0;
+        padding: 0;
+        background: #ffffff;
+        box-shadow: none;
+        border-radius: 0;
         display: flex;
         flex-direction: column;
 }
 
-#prs-sr-flash .note-toolbar {
+#prs-note-panel .note-toolbar {
         display: flex;
-        justify-content: flex-start;
-        gap: 6px;
-        padding: 0 24px 12px;
-        font-size: 13px;
-        font-weight: 600;
-        border: none;
-        color: #475569;
-}
-
-#prs-sr-flash .tool-button {
+        gap: 8px;
+        padding: 8px 12px;
+        font-size: 14px;
         background: transparent;
         border: none;
-        border-radius: 4px;
-        color: inherit;
-        cursor: pointer;
-        font: inherit;
+        justify-content: flex-start;
+}
+
+#prs-note-panel .tool-button {
+        background: none;
+        border: none;
+        color: #222222;
+        font-weight: 600;
         padding: 6px 10px;
-        transition: background-color 0.2s ease, color 0.2s ease;
+        cursor: pointer;
+        font-size: 13px;
+        border-radius: 6px;
+        font-family: inherit;
 }
 
-#prs-sr-flash .tool-button:hover,
-#prs-sr-flash .tool-button:focus {
-        background-color: #e2e8f0;
-        color: #1f2937;
-        outline: none;
-}
-
-#prs-sr-flash .tool-button.bold {
+#prs-note-panel .tool-button.bold {
         font-weight: 700;
 }
 
-#prs-sr-flash .tool-button.italic {
+#prs-note-panel .tool-button.italic {
         font-style: italic;
 }
 
-#prs-sr-flash .note-textarea {
-        display: block;
+#prs-note-panel .tool-button:hover,
+#prs-note-panel .tool-button:focus {
+        background-color: #f2f2f2;
+        outline: none;
+}
+
+#prs-note-panel .note-textarea {
         width: 500px;
         max-width: 100%;
-        margin: 0 auto;
-        min-height: 400px;
+        margin: 20px auto;
         border: none;
         outline: none;
-        resize: vertical;
+        resize: none;
+        padding: 20px 0;
         font-family: 'Inter', sans-serif;
         font-size: 16px;
-        line-height: 1.7;
-        padding: 20px 0;
-        color: #333333;
-        background-color: #ffffff;
+        line-height: 1.8;
+        background: #ffffff;
+        color: #222222;
+        min-height: 200px;
+        box-sizing: border-box;
 }
 
-#prs-sr-flash .note-textarea::placeholder {
-        color: #94a3b8;
-}
-
-#prs-sr-flash .note-actions {
+#prs-note-panel .note-actions {
+        margin-top: 20px;
         display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
+        gap: 10px;
         justify-content: center;
-        margin-top: 24px;
+        flex-wrap: wrap;
+}
+
+#prs-note-panel .note-actions .prs-btn {
+        background: #111111;
+        color: #ffffff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+}
+
+#prs-note-panel .note-actions .prs-btn-secondary {
+        background: #f3f3f3;
+        color: #111111;
 }
 
 .prs-sessions-table .prs-sr-date {
@@ -139,17 +147,24 @@
 }
 
 @media (max-width: 768px) {
-        #prs-sr-flash .note-overlay {
-                padding: 24px 12px;
+        #prs-note-panel {
+                padding: 32px 16px;
         }
 
-        #prs-sr-flash .note-editor-panel {
-                padding: 32px 0;
+        #prs-note-panel .note-toolbar {
+                font-size: 12px;
+                gap: 6px;
         }
 
-        #prs-sr-flash .note-textarea {
+        #prs-note-panel .tool-button {
+                font-size: 12px;
+                padding: 5px 8px;
+        }
+
+        #prs-note-panel .note-textarea {
                 width: 100%;
-                min-height: 280px;
-                padding: 20px 0;
+                font-size: 15px;
+                line-height: 1.6;
+                padding: 16px 0;
         }
 }
