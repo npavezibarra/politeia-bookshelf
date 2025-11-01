@@ -1,0 +1,80 @@
+2025-11-01
+We need to keep working on the Search Cover tool because it still is not behaving correctly. It struggles when a book has multiple authors, as we can see with "La antigua Grecia." That book is available in Google Books (https://www.google.com/books/edition/La_antigua_Grecia/atdB_Pq7DWkC?hl=en&gbpv=1&dq=Antigua+Grecia+Sarah+Pomeroy,+stanley+burnstein,+walter+donlan,&printsec=frontcover), yet our Search Cover workflow has not been able to surface the correct cover. I suspect the failure comes from handling the list of authors.
+
+We already verified that the Google Books API returns the expected payload when we query https://www.googleapis.com/books/v1/volumes?q=La+Antigua+Grecia+Sarah+Pomeroy&maxResults=1&key=AIzaSyBvLMhI7_-IQxqvVcg1IYW627ywhvb5hks
+
+The response includes the right metadata and should expose the thumbnail that we want to display:
+
+{
+    "kind": "books#volumes",
+    "totalItems": 1000000,
+    "items": [
+        {
+            "kind": "books#volume",
+            "id": "3omCtwAACAAJ",
+            "etag": "dI06eGVNT/w",
+            "selfLink": "https://www.googleapis.com/books/v1/volumes/3omCtwAACAAJ",
+            "volumeInfo": {
+                "title": "La antigua Grecia",
+                "subtitle": "Historia política, social y cultural",
+                "authors": [
+                    "Sarah B. Pomeroy"
+                ],
+                "publishedDate": "2002-01",
+                "description": "Escrita por los cuatro especialistas más destacados del mundo clásico, este libro nos introduce a la historia y a la civilización de la Antigua Grecia en toda su complejidad y variedad, desde sus inicios hasta su «renacimiento» en el período helenístico, pasando por el apogeo de la época de Pericles. Ilustrado con más de 80 fotografías y 19 mapas, este libro ofrece al público general y al universitario desde la grandeza intelectual de las élites hasta sus olvidados campesinos, soldados, esclavos y mujeres.",
+                "industryIdentifiers": [
+                    {
+                        "type": "ISBN_10",
+                        "identifier": "8498921708"
+                    },
+                    {
+                        "type": "ISBN_13",
+                        "identifier": "9788498921700"
+                    }
+                ],
+                "readingModes": {
+                    "text": false,
+                    "image": false
+                ],
+                "pageCount": 560,
+                "printType": "BOOK",
+                "categories": [
+                    "History"
+                ],
+                "maturityRating": "NOT_MATURE",
+                "allowAnonLogging": false,
+                "contentVersion": "preview-1.0.0",
+                "language": "es",
+                "previewLink": "http://books.google.cl/books?id=3omCtwAACAAJ&dq=La+Antigua+Grecia+Sarah+Pomeroy&hl=&cd=1&source=gbs_api",
+                "infoLink": "http://books.google.cl/books?id=3omCtwAACAAJ&dq=La+Antigua+Grecia+Sarah+Pomeroy&hl=&source=gbs_api",
+                "canonicalVolumeLink": "https://books.google.com/books/about/La_antigua_Grecia.html?hl=&id=3omCtwAACAAJ"
+            },
+            "saleInfo": {
+                "country": "CL",
+                "saleability": "NOT_FOR_SALE",
+                "isEbook": false
+            },
+            "accessInfo": {
+                "country": "CL",
+                "viewability": "NO_PAGES",
+                "embeddable": false,
+                "publicDomain": false,
+                "textToSpeechPermission": "ALLOWED",
+                "epub": {
+                    "isAvailable": false
+                },
+                "pdf": {
+                    "isAvailable": false
+                },
+                "webReaderLink": "http://play.google.com/books/reader?id=3omCtwAACAAJ&hl=&source=gbs_api",
+                "accessViewStatus": "NONE",
+                "quoteSharingAllowed": false
+            },
+            "searchInfo": {
+                "textSnippet": "Escrita por los cuatro especialistas más destacados del mundo clásico, este libro nos introduce a la historia y a la civilización de la Antigua Grecia en toda su complejidad y variedad, desde sus inicios hasta su «renacimiento» en el ..."
+            }
+        }
+    ]
+}
+
+Even with that data available, our interface still fails to show the correct thumbnail. We need to circle back to the author-handling logic in the Search Cover implementation and correct this gap.
