@@ -740,177 +740,127 @@ class Politeia_Reading_User_Books {
                         self::json_error( 'missing_api_key', 400 );
                 }
 
-                $base_url    = 'https://www.googleapis.com/books/v1/volumes';
-                $max_results = 3;
 
                 $title_clean  = trim( $title );
                 $author_clean = trim( $author );
 
-                // Sanitize and prepare query
                 $post_title  = sanitize_text_field( isset( $_POST['title'] ) ? wp_unslash( $_POST['title'] ) : '' );
                 $post_author = sanitize_text_field( isset( $_POST['author'] ) ? wp_unslash( $_POST['author'] ) : '' );
 
-                $query = trim( $post_title . ' ' . $post_author );
-                if ( '' === $query ) {
-                        $query = trim( $title_clean . ' ' . $author_clean );
+                if ( '' === $post_title ) {
+                        $post_title = $title_clean;
                 }
-                $query = str_replace( ' ', '+', $query );
-
-                // Build request URL (max 3 results for options)
-                $url = 'https://www.googleapis.com/books/v1/volumes?q=' . $query .
-                        '&maxResults=3&printType=books&projection=lite&key=' . $api_key;
-
-                // Debug log for inspection
-                error_log( '🔍 [GoogleBooks] Request URL (simplified): ' . $url );
-
-                $response = wp_remote_get( $url, array( 'timeout' => 10 ) );
-
-                if ( is_wp_error( $response ) ) {
-                        error_log( '❌ [GoogleBooks] Request failed: ' . $response->get_error_message() );
-                        self::json_success(
-                                array(
-                                        'html' => '<p>Google Books request failed.</p>',
-                                )
-                        );
-                        return;
+                if ( '' === $post_author ) {
+                        $post_author = $author_clean;
                 }
 
-                $code = (int) wp_remote_retrieve_response_code( $response );
-                $body = wp_remote_retrieve_body( $response );
-                $data = json_decode( $body, true );
+                // --- STEP 1: Sanitize and normalize input ---
+                $title_input  = sanitize_text_field( $post_title );
+                $author_input = sanitize_text_field( $post_author );
 
-                if ( ! empty( $data['items'][0] ) ) {
-                        $first = isset( $data['items'][0]['volumeInfo']['title'] ) ? $data['items'][0]['volumeInfo']['title'] : '(no title)';
-                        error_log( '✅ [GoogleBooks] First result: ' . $first );
-                } else {
-                        error_log( '⚠️ [GoogleBooks] No items returned for query.' );
+                $authors = array_filter( array_map( 'trim', explode( ',', $author_input ) ) );
+
+                // --- STEP 2: Build up to 3 distinct query URLs ---
+                $queries = array();
+
+                if ( '' !== $title_input ) {
+                        $queries[] = 'https://www.googleapis.com/books/v1/volumes?q=' . rawurlencode( $title_input ) .
+                                '&maxResults=1&printType=books&projection=lite&key=' . $api_key;
                 }
 
-                if ( $code >= 400 ) {
-                        self::json_error( 'api_error', $code );
+                if ( ! empty( $authors ) ) {
+                        $first_author = $authors[0];
+                        $queries[]    = 'https://www.googleapis.com/books/v1/volumes?q=' .
+                                rawurlencode( trim( $title_input . ' ' . $first_author ) ) .
+                                '&maxResults=1&printType=books&projection=lite&key=' . $api_key;
                 }
 
-                if ( null === $data || ! is_array( $data ) ) {
-                        self::json_error( 'api_error', 500 );
+                if ( count( $authors ) > 1 ) {
+                        $queries[] = 'https://www.googleapis.com/books/v1/volumes?q=' .
+                                rawurlencode( trim( $title_input . ' ' . implode( ' ', $authors ) ) ) .
+                                '&maxResults=1&printType=books&projection=lite&key=' . $api_key;
                 }
 
-                if ( empty( $data['items'] ) ) {
-                        $fallback_query = 'intitle:"' . rawurlencode( $title_clean ) . '"';
-                        $fallback_url   = sprintf(
-                                '%s?q=%s&maxResults=%d&printType=books&projection=lite&key=%s',
-                                $base_url,
-                                $fallback_query,
-                                $max_results,
-                                $api_key
-                        );
+                $options_html = '';
+                $used_images  = array();
 
-                        error_log( '🔍 [GoogleBooks] Requesting URL: ' . $fallback_url );
+                foreach ( $queries as $url ) {
+                        error_log( '🔍 [GoogleBooks] Request URL: ' . $url );
 
-                        $fallback_response = wp_remote_get( $fallback_url, array( 'timeout' => 10 ) );
+                        $response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 
-                        if ( is_wp_error( $fallback_response ) ) {
-                                error_log( '❌ [GoogleBooks] Request failed: ' . $fallback_response->get_error_message() );
-                                self::json_success(
-                                        array(
-                                                'html' => '<p>Google Books request failed.</p>',
-                                        )
-                                );
-                                return;
-                        }
-
-                        $fallback_code = (int) wp_remote_retrieve_response_code( $fallback_response );
-                        $fallback_body = wp_remote_retrieve_body( $fallback_response );
-                        $data          = json_decode( $fallback_body, true );
-
-                        if ( ! empty( $data['items'][0] ) ) {
-                                $first = isset( $data['items'][0]['volumeInfo']['title'] ) ? $data['items'][0]['volumeInfo']['title'] : '(no title)';
-                                error_log( '✅ [GoogleBooks] First result: ' . $first );
-                        } else {
-                                error_log( '⚠️ [GoogleBooks] No items returned for query.' );
-                        }
-
-                        if ( $fallback_code >= 400 ) {
-                                self::json_error( 'api_error', $fallback_code );
-                        }
-
-                        if ( null === $data || ! is_array( $data ) ) {
-                                self::json_error( 'api_error', 500 );
-                        }
-                }
-
-                $items = ( isset( $data['items'] ) && is_array( $data['items'] ) ) ? $data['items'] : array();
-
-                if ( defined( 'WP_DEBUG' ) && WP_DEBUG && ! empty( $items ) ) {
-                        $titles = array();
-                        foreach ( $items as $raw_item ) {
-                                if ( isset( $raw_item['volumeInfo']['title'] ) ) {
-                                        $titles[] = $raw_item['volumeInfo']['title'];
-                                }
-                        }
-                        if ( ! empty( $titles ) ) {
-                                error_log( 'Google Books titles: ' . implode( ', ', $titles ) );
-                        }
-                }
-
-                if ( empty( $items ) ) {
-                        self::json_success(
-                                array(
-                                        'html' => '<p>No covers found in Google Books for this title/author. Check spelling or try another title.</p>',
-                                )
-                        );
-                }
-
-                $results     = array();
-                $max_results = 3;
-
-                foreach ( $items as $item ) {
-                        if ( count( $results ) >= $max_results ) {
-                                break;
-                        }
-
-                        $info   = isset( $item['volumeInfo'] ) && is_array( $item['volumeInfo'] ) ? $item['volumeInfo'] : array();
-                        $title  = sanitize_text_field( isset( $info['title'] ) ? $info['title'] : '' );
-                        $author = sanitize_text_field(
-                                ( isset( $info['authors'] ) && is_array( $info['authors'] ) && isset( $info['authors'][0] ) )
-                                        ? $info['authors'][0]
-                                        : ''
-                        );
-
-                        $image_links = isset( $info['imageLinks'] ) && is_array( $info['imageLinks'] ) ? $info['imageLinks'] : array();
-                        $image       = '';
-                        if ( isset( $image_links['thumbnail'] ) && $image_links['thumbnail'] ) {
-                                $image = $image_links['thumbnail'];
-                        } elseif ( isset( $image_links['smallThumbnail'] ) && $image_links['smallThumbnail'] ) {
-                                $image = $image_links['smallThumbnail'];
-                        }
-
-                        if ( $image ) {
-                                $image = str_replace( 'http://', 'https://', $image );
-                                $image = preg_replace( '/zoom=\d+/', 'zoom=3', $image );
-                        }
-
-                        if ( ! $image ) {
+                        if ( is_wp_error( $response ) ) {
+                                error_log( '❌ [GoogleBooks] Request failed: ' . $response->get_error_message() );
                                 continue;
                         }
 
-                        $normalized_image = esc_url( $image );
+                        $body = wp_remote_retrieve_body( $response );
+                        $data = json_decode( $body, true );
 
-                        $results[] = sprintf(
-                                '<div class="prs-cover-option" role="button" tabindex="0" data-cover-title="%1$s" data-cover-author="%2$s" data-cover-url="%3$s" data-image-url="%3$s">'
-                                . '<img src="%3$s" alt="%4$s" class="prs-cover-image" loading="lazy" />'
-                                . '</div>',
-                                esc_attr( $title ),
-                                esc_attr( $author ),
-                                $normalized_image,
-                                esc_attr( $title )
-                        );
+                        if ( empty( $data['items'] ) ) {
+                                error_log( '⚠️ [GoogleBooks] No results for query: ' . $url );
+                                continue;
+                        }
+
+                        $item = $data['items'][0];
+                        $info = ( isset( $item['volumeInfo'] ) && is_array( $item['volumeInfo'] ) ) ? $item['volumeInfo'] : array();
+
+                        if ( isset( $info['title'] ) ) {
+                                error_log( '✅ [GoogleBooks] First result: ' . $info['title'] );
+                        }
+
+                        $image_links = ( isset( $info['imageLinks'] ) && is_array( $info['imageLinks'] ) ) ? $info['imageLinks'] : array();
+                        $image_url   = '';
+
+                        if ( ! empty( $image_links['thumbnail'] ) ) {
+                                $image_url = $image_links['thumbnail'];
+                        } elseif ( ! empty( $image_links['smallThumbnail'] ) ) {
+                                $image_url = $image_links['smallThumbnail'];
+                        }
+
+                        if ( ! $image_url ) {
+                                continue;
+                        }
+
+                        $image_url = str_replace( 'http://', 'https://', $image_url );
+                        $image_url = preg_replace( '/zoom=\d+/', 'zoom=3', $image_url );
+
+                        $normalized = esc_url( $image_url );
+
+                        if ( '' === $normalized ) {
+                                continue;
+                        }
+
+                        if ( in_array( $normalized, $used_images, true ) ) {
+                                error_log( '⚠️ [GoogleBooks] Duplicate skipped: ' . $normalized );
+                                continue;
+                        }
+
+                        $used_images[] = $normalized;
+
+                        $title_opt  = esc_html( isset( $info['title'] ) ? $info['title'] : '' );
+                        $author_opt = esc_html( implode( ', ', isset( $info['authors'] ) && is_array( $info['authors'] ) ? $info['authors'] : array() ) );
+
+                        $options_html .= '<div class="prs-cover-option" role="button" tabindex="0"'
+                                . ' data-cover-title="' . $title_opt . '"'
+                                . ' data-cover-author="' . $author_opt . '"'
+                                . ' data-cover-url="' . $normalized . '"'
+                                . ' data-image-url="' . $normalized . '">'
+                                . '<img src="' . $normalized . '" alt="' . $title_opt . '" class="prs-cover-image" loading="lazy" />'
+                                . '</div>';
+
+                        if ( count( $used_images ) >= 3 ) {
+                                break;
+                        }
                 }
 
-                $html = ! empty( $results ) ? implode( "\n", $results ) : '<p>No covers found in Google Books for this title/author. Check spelling or try another title.</p>';
+                if ( empty( $options_html ) ) {
+                        $options_html = '<p>No covers found in Google Books for this title/author. Check spelling or try another title.</p>';
+                }
 
                 self::json_success(
                         array(
-                                'html' => $html,
+                                'html' => $options_html,
                         )
                 );
         }
