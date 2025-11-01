@@ -1522,6 +1522,16 @@ display:inline-block;
         width:auto;
 }
 
+@media (max-width: 949px) {
+        #prs-book-info > #prs-book-info__main {
+                flex:1 1 auto;
+                order:2;
+                margin-left:16px;
+                min-width:0;
+                width:50%;
+        }
+}
+
 /* 3) Sidebar — full-width row underneath */
 #prs-book-info > #prs-book-info__sidebar {
         flex:0 0 100%;
