@@ -29,6 +29,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let flashHideTimer  = null;
 
+  const ensureFlashDatasetDefaults = () => {
+    if (!$flash) return;
+    if (typeof PRS_SR?.book_id !== 'undefined') {
+      $flash.dataset.bookId = String(PRS_SR.book_id);
+    }
+    if (typeof PRS_SR?.user_id !== 'undefined') {
+      $flash.dataset.userId = String(PRS_SR.user_id);
+    }
+    if (typeof $flash.dataset.sessionId === 'undefined') {
+      $flash.dataset.sessionId = '';
+    }
+  };
+
+  const updateFlashSessionId = (id) => {
+    if (!$flash) return;
+    $flash.dataset.sessionId = id ? String(id) : '';
+  };
+
+  ensureFlashDatasetDefaults();
+
   // Aviso falta de pages
   const $rowNeedsPages = document.getElementById('prs-sr-row-needs-pages');
 
@@ -305,6 +325,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       if (out?.success) {
+        const savedSessionId = out?.data?.session_id ?? sessionId ?? null;
+        ensureFlashDatasetDefaults();
+        updateFlashSessionId(savedSessionId);
+
         // Limpiar sessionId: la sesión quedó cerrada
         sessionId = null;
 

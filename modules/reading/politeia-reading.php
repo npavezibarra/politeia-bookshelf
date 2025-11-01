@@ -43,6 +43,7 @@ require_once POLITEIA_READING_PATH . 'includes/class-rest.php';
 require_once POLITEIA_READING_PATH . 'includes/class-books.php';
 require_once POLITEIA_READING_PATH . 'includes/class-user-books.php';
 require_once POLITEIA_READING_PATH . 'includes/class-reading-sessions.php';
+require_once POLITEIA_READING_PATH . 'includes/class-ajax-handler.php';
 require_once POLITEIA_READING_PATH . 'includes/class-politeia-loan-manager.php';
 require_once POLITEIA_READING_PATH . 'includes/class-prs-ajax-user-books.php';
 require_once POLITEIA_READING_PATH . 'includes/helpers.php';

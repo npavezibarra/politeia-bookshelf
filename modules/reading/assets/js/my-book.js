@@ -158,9 +158,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const notePanel = document.getElementById("prs-note-panel");
     const addBtn = document.getElementById("prs-add-note-btn");
     const cancelBtn = document.getElementById("prs-cancel-note-btn");
+    const saveBtn = document.getElementById("prs-save-note-btn");
     const textarea = notePanel?.querySelector(".editor-area");
 
-    if (!summary || !notePanel || !addBtn || !cancelBtn) {
+    if (!summary || !notePanel || !addBtn || !cancelBtn || !saveBtn) {
       return;
     }
 
@@ -197,6 +198,96 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     cancelBtn.addEventListener("click", event => {
       event.preventDefault();
       showSummary({ userAction: true });
+    });
+
+    let isSavingNote = false;
+
+    const resolveAjaxUrl = () => {
+      if (typeof window.ajaxurl === "string" && window.ajaxurl) {
+        return window.ajaxurl;
+      }
+      if (typeof window.PRS_BOOK?.ajax_url === "string" && window.PRS_BOOK.ajax_url) {
+        return window.PRS_BOOK.ajax_url;
+      }
+      if (typeof window.PRS_SR?.ajax_url === "string" && window.PRS_SR.ajax_url) {
+        return window.PRS_SR.ajax_url;
+      }
+      return "";
+    };
+
+    saveBtn.addEventListener("click", event => {
+      event.preventDefault();
+      if (isSavingNote) {
+        return;
+      }
+
+      const noteContent = (textarea?.value || "").trim();
+      if (!noteContent) {
+        window.alert("Please write a note before saving.");
+        textarea?.focus();
+        return;
+      }
+
+      const flash = document.getElementById("prs-sr-flash");
+      const rsId = flash?.dataset?.sessionId || "";
+      const bookId = flash?.dataset?.bookId || "";
+      const userId = flash?.dataset?.userId || "";
+
+      if (!rsId || rsId === "0" || !bookId || !userId) {
+        window.alert("Missing session details. Please try again.");
+        return;
+      }
+
+      const ajaxUrl = resolveAjaxUrl();
+      if (!ajaxUrl) {
+        console.error("[Politeia] Missing ajax URL for saving session note");
+        window.alert("Unable to save the note right now. Please refresh the page and try again.");
+        return;
+      }
+
+      const nonce = (window.PRS_SR && window.PRS_SR.nonce) || "";
+      if (!nonce) {
+        window.alert("Unable to save the note because the session security token is missing. Please refresh the page and try again.");
+        return;
+      }
+
+      const payload = {
+        action: "politeia_save_session_note",
+        rs_id: rsId,
+        book_id: bookId,
+        user_id: userId,
+        note: noteContent,
+        nonce,
+      };
+
+      isSavingNote = true;
+      saveBtn.disabled = true;
+      saveBtn.setAttribute("aria-busy", "true");
+
+      jQuery.post(ajaxUrl, payload)
+        .done(response => {
+          if (response && response.success) {
+            window.alert("✅ Note saved successfully!");
+            if (textarea) {
+              textarea.value = "";
+            }
+            showSummary({ userAction: true });
+          } else {
+            const errorData = response && response.data ? response.data : null;
+            const message = typeof errorData === "string"
+              ? errorData
+              : (errorData && typeof errorData.message === "string" ? errorData.message : "Unknown error");
+            window.alert("⚠️ Failed to save note: " + message);
+          }
+        })
+        .fail(() => {
+          window.alert("❌ AJAX request failed — check console.");
+        })
+        .always(() => {
+          isSavingNote = false;
+          saveBtn.disabled = false;
+          saveBtn.removeAttribute("aria-busy");
+        });
     });
 
     document.addEventListener("prs-sr-flash:reset", () => {

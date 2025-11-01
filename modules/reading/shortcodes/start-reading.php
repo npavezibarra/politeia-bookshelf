@@ -157,7 +157,15 @@ add_shortcode(
 	<?php endif; ?>
 
 	<!-- Bloque HTML de éxito (centrado, amarillo, h2/h3) -->
-        <div id="prs-sr-flash" class="prs-sr-flash-block" role="status" aria-live="polite">
+        <div
+                id="prs-sr-flash"
+                class="prs-sr-flash-block"
+                role="status"
+                aria-live="polite"
+                data-session-id=""
+                data-book-id="<?php echo esc_attr( $book_id ); ?>"
+                data-user-id="<?php echo esc_attr( $user_id ); ?>"
+        >
                 <div class="prs-sr-flash-inner">
                 <div id="prs-sr-summary">
                         <h2>¡Muy bien!</h2>
