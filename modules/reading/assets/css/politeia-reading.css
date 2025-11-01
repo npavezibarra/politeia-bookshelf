@@ -22,6 +22,16 @@
         min-width: 0;
 }
 
+@media (max-width: 949px) {
+        #prs-book-info.prs-book-info > #prs-book-info__main {
+                flex: 1 1 auto;
+                order: 2;
+                margin-left: 16px;
+                min-width: 0;
+                width: 50%;
+        }
+}
+
 #prs-book-info.prs-book-info > #prs-book-info__sidebar {
         flex: 0 0 100%;
         width: 100%;
