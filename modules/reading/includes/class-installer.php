@@ -18,6 +18,7 @@ class Installer {
                 $books_table          = $wpdb->prefix . 'politeia_books';
                 $user_books_table     = $wpdb->prefix . 'politeia_user_books';
                 $sessions_table       = $wpdb->prefix . 'politeia_reading_sessions';
+                $session_notes_table  = $wpdb->prefix . 'politeia_read_ses_notes';
                 $loans_table          = $wpdb->prefix . 'politeia_loans';
                 $authors_table        = $wpdb->prefix . 'politeia_authors';
                 $book_authors_table   = $wpdb->prefix . 'politeia_book_authors';
@@ -94,6 +95,23 @@ class Installer {
             KEY idx_book (book_id)
         ) %s;',
                                 $sessions_table,
+                                $charset_collate
+                        ),
+                        $session_notes_table => sprintf(
+                                'CREATE TABLE %s (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            rs_id BIGINT UNSIGNED NOT NULL,
+            book_id BIGINT UNSIGNED NOT NULL,
+            user_id BIGINT UNSIGNED NOT NULL,
+            note TEXT NOT NULL,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            KEY rs_id (rs_id),
+            KEY book_id (book_id),
+            KEY user_id (user_id)
+        ) %s;',
+                                $session_notes_table,
                                 $charset_collate
                         ),
                         $loans_table        => sprintf(

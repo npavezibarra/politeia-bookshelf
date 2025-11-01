@@ -28,10 +28,11 @@ Regardless of the version check outcome, the upgrader also loads migration drop-
 
 1. Loads WordPress upgrade helpers with `require_once ABSPATH . 'wp-admin/includes/upgrade.php';`.
 2. Retrieves the site-specific charset and collation using `$wpdb->get_charset_collate()`.
-3. Builds six `CREATE TABLE` statements for:
+3. Builds seven `CREATE TABLE` statements for:
    - `{$wpdb->prefix}politeia_books`
    - `{$wpdb->prefix}politeia_user_books`
    - `{$wpdb->prefix}politeia_reading_sessions`
+   - `{$wpdb->prefix}politeia_read_ses_notes`
    - `{$wpdb->prefix}politeia_loans`
    - `{$wpdb->prefix}politeia_authors`
    - `{$wpdb->prefix}politeia_book_authors`
