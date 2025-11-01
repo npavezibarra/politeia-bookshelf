@@ -187,6 +187,10 @@ class Politeia_Reading_Activator {
                         $sql_book_authors,
                 );
 
+                foreach ( $sql as $statement ) {
+                        error_log( '🧪 Executing SQL: ' . $statement );
+                }
+
                 dbDelta( $sql );
         }
 
