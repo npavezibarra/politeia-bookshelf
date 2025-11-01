@@ -6,6 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Politeia_Reading_Activator {
 
 	public static function activate() {
+		error_log( '🚀 Activator: running Politeia_Reading_Activator::activate()' );
 		self::create_or_update_tables();
 		self::run_migrations();
 
