@@ -30,8 +30,17 @@ add_shortcode(
 		global $wpdb;
 		$user_id = get_current_user_id();
 
-		$tbl_rs = $wpdb->prefix . 'politeia_reading_sessions';
-		$tbl_ub = $wpdb->prefix . 'politeia_user_books';
+                $tbl_rs     = $wpdb->prefix . 'politeia_reading_sessions';
+                $tbl_ub     = $wpdb->prefix . 'politeia_user_books';
+                $tbl_books  = $wpdb->prefix . 'politeia_books';
+
+                $book_title = $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT title FROM {$tbl_books} WHERE id = %d LIMIT 1",
+                                $book_id
+                        )
+                );
+                $book_title = $book_title ? (string) $book_title : '';
 
 		// Última página de la última sesión (si existe)
 		$last_end_page = $wpdb->get_var(
@@ -178,6 +187,9 @@ add_shortcode(
 
                 <div id="prs-note-panel" class="prs-note-panel" style="display:none;">
                         <div class="note-editor-panel" role="group" aria-label="<?php esc_attr_e( 'Session note editor', 'politeia-reading' ); ?>">
+                                <div class="note-context" data-default-text="<?php echo esc_attr( $book_title ); ?>" data-book-title="<?php echo esc_attr( $book_title ); ?>">
+                                        <?php echo esc_html( $book_title ); ?>
+                                </div>
                                 <div class="note-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
                                         <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 1', 'politeia-reading' ); ?>">H1</button>
                                         <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 2', 'politeia-reading' ); ?>">H2</button>

@@ -460,7 +460,7 @@ wp_add_inline_script(
         .prs-session-recorder-trigger:focus{ outline:2px solid #fff; outline-offset:2px; }
         .prs-session-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; padding:24px; }
         .prs-session-modal.is-active{ display:flex; }
-        .prs-session-modal__content{ position:relative; max-width:440px; width:100%; max-height:90vh; overflow-y:auto; background:#ffffff; padding:24px; border:1px solid #dddddd; border-radius:12px; }
+        .prs-session-modal__content{ position:relative; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; background:#ffffff; padding:24px; border:1px solid #dddddd; border-radius:12px; }
         .prs-session-modal__close{ position:absolute; top:12px; right:12px; border:none; background:none; color:#000000; cursor:pointer; font-size:20px; line-height:1; padding:4px; outline:none; box-shadow:none; }
         .prs-session-modal__close:hover,
         .prs-session-modal__close:focus,
@@ -858,13 +858,21 @@ wp_add_inline_script(
                                                 $note_value  = isset( $s->note ) ? trim( (string) $s->note ) : '';
                                                 if ( '' !== $note_value && ! empty( $s->id ) && $current_user_id ) {
                                                         $note_label  = esc_html__( 'Read Note', 'politeia-reading' );
+                                                        $start_attr  = ( null !== $start_page && $start_page >= 0 ) ? (string) $start_page : '';
+                                                        $end_attr    = ( null !== $end_page && $end_page >= 0 ) ? (string) $end_page : '';
+                                                        $chapter_attr = isset( $s->chapter_name ) ? trim( (string) $s->chapter_name ) : '';
+                                                        $book_title_attr = isset( $book->title ) ? trim( (string) $book->title ) : '';
                                                         $note_button = sprintf(
-                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s">%5$s</button>',
+                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s" data-start-page="%6$s" data-end-page="%7$s" data-chapter="%8$s" data-book-title="%9$s">%5$s</button>',
                                                                 (int) $s->id,
                                                                 (int) $s->book_id,
                                                                 (int) $current_user_id,
                                                                 esc_attr( $note_value ),
-                                                                $note_label
+                                                                $note_label,
+                                                                esc_attr( $start_attr ),
+                                                                esc_attr( $end_attr ),
+                                                                esc_attr( $chapter_attr ),
+                                                                esc_attr( $book_title_attr )
                                                         );
                                                 }
                                                 ?>
