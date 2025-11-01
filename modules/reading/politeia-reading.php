@@ -73,10 +73,20 @@ add_action( 'plugins_loaded', array( 'Politeia_Reading_Activator', 'maybe_upgrad
 // Nota: el módulo post-reading ya registra su propio maybe_upgrade en su init.php.
 // No lo repetimos aquí para evitar dobles llamadas.
 
+// ===== Temporary forced schema replay for diagnostics =====
+add_action(
+        'admin_init',
+        function () {
+                if ( current_user_can( 'manage_options' ) ) {
+                        \Politeia_Reading_Activator::maybe_upgrade();
+                }
+        }
+);
+
 // ===== Flush rewrites (una sola vez post-activación) =====
 add_action(
-	'admin_init',
-	function () {
+        'admin_init',
+        function () {
 		if ( get_option( 'politeia_reading_flush_rewrite' ) ) {
 			// Si tu plugin registra reglas (endpoints/slugs), aquí ya están cargadas
 			flush_rewrite_rules( false );
