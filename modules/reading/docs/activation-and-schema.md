@@ -6,25 +6,25 @@ This document describes how the Politeia Reading plugin provisions and maintains
 
 ### Activation entry point
 
-WordPress invokes the plugin activation hook, which calls `Politeia_Reading_Activator::activate()` from [`modules/reading/includes/class-activator.php`](../includes/class-activator.php).
+WordPress invokes the plugin activation hook, which calls `Politeia\Reading\Activator::activate()` from [`modules/reading/includes/class-activator.php`](../includes/class-activator.php).
 
 The `activate()` method coordinates three main tasks:
 
-1. Creating or updating all required database tables by calling `create_or_update_tables()`.
-2. Running post-creation migrations that normalize data and backfill columns by calling `run_migrations()`.
-3. Recording the database version (`politeia_reading_db_version`) and a rewrite flush flag in the WordPress options table.
-
-If the optional `Politeia_Post_Reading_Schema` class is available, the activator also delegates to its `migrate()` method during activation so both modules share the same lifecycle.
+1. Creating or updating all required database tables by delegating to `Politeia\Reading\Installer::install()`.
+2. Triggering the optional `Politeia_Post_Reading_Schema::migrate()` routine if that module is present.
+3. Recording the database version (`politeia_reading_db_version`) and flushing rewrite rules immediately so custom routes are available.
 
 ### Version management for upgrades
 
-The activator exposes a `maybe_upgrade()` method that should be hooked into `plugins_loaded`. It compares the stored version in `politeia_reading_db_version` with the current plugin constant (e.g., `POLITEIA_READING_VERSION`). When a mismatch is detected, it replays the schema creation and migration routines and then updates the stored version so existing installations converge on the latest schema.
+Schema upgrades are orchestrated by `Politeia\Reading\Upgrader::maybe_upgrade()`, which is hooked into `plugins_loaded`. It compares the stored version in `politeia_reading_db_version` with the `POLITEIA_READING_DB_VERSION` constant. When a mismatch is detected, it replays the installer and updates the stored option so existing installations converge on the latest schema.
+
+Regardless of the version check outcome, the upgrader also loads migration drop-ins from `includes/migrations` so incremental adjustments can run safely exactly once per site.
 
 ## Table Creation Logic
 
 ### Preparing for `dbDelta()`
 
-`create_or_update_tables()` performs the following steps:
+`Installer::get_schema_sql()` returns every `CREATE TABLE` statement required by the plugin. `Installer::install()` performs the following steps:
 
 1. Loads WordPress upgrade helpers with `require_once ABSPATH . 'wp-admin/includes/upgrade.php';`.
 2. Retrieves the site-specific charset and collation using `$wpdb->get_charset_collate()`.
@@ -46,7 +46,7 @@ Every SQL definition is passed to `dbDelta()`. WordPress compares the declared s
 
 ### Incremental migrations
 
-After table creation, `run_migrations()` performs incremental, idempotent adjustments for legacy installs. Key steps include:
+After table creation, drop-in migration files in `includes/migrations` perform incremental, idempotent adjustments for legacy installs. The default `migration-legacy-schema.php` keeps historical behavior by:
 
 - Ensuring legacy columns (e.g., `rating`) exist via dedicated helper methods.
 - Normalizing enum values such as `owning_status`.
@@ -54,7 +54,7 @@ After table creation, `run_migrations()` performs incremental, idempotent adjust
 - Maintaining hash and uniqueness constraints for canonical books.
 - Reasserting the unique `(user_id, book_id)` relationship on user libraries.
 
-These operations rely on helper methods such as `maybe_add_column()`, `maybe_add_index()`, and `maybe_add_unique()` that check for existing schema elements before applying changes, keeping migrations safe to re-run.
+The helpers (`maybe_add_column()`, `maybe_add_index()`, etc.) embedded in each migration keep operations safe to re-run, while the loader ensures each file executes only once per environment.
 
 ### Data normalization and constraint enforcement
 
@@ -62,19 +62,19 @@ Specialized migrations compute deterministic `title_author_hash` values, dedupli
 
 ## Guidance for Future Schema Changes
 
-1. **Update the core `CREATE TABLE` statements.** Add or adjust columns directly in `create_or_update_tables()` so fresh installations immediately receive the new structure.
-2. **Bump and persist the database version.** Increment the plugin's DB version constant (for example, `POLITEIA_READING_VERSION`) and rely on `activate()`/`maybe_upgrade()` to update the stored option. This ensures migrations run on both new and existing sites.
-3. **Add conditional migration helpers.** For schema adjustments that must retrofit existing environments (changing column types, backfilling values, adding indexes), extend `run_migrations()` with the provided helper methods to keep operations idempotent.
+1. **Update the core `CREATE TABLE` statements.** Add or adjust columns directly in `Installer::get_schema_sql()` so fresh installations immediately receive the new structure.
+2. **Bump and persist the database version.** Increment the plugin's DB version constant (for example, `POLITEIA_READING_DB_VERSION`) and rely on `Activator::activate()`/`Upgrader::maybe_upgrade()` to update the stored option. This ensures migrations run on both new and existing sites.
+3. **Add conditional migration helpers.** For schema adjustments that must retrofit existing environments (changing column types, backfilling values, adding indexes), drop a new PHP file into `includes/migrations/`. The loader will execute it once per site, allowing you to scope helper utilities to that migration.
 4. **Maintain idempotence and safety.** Prefer `dbDelta()` and the conditional helpers over direct `ALTER TABLE` statements to avoid unintended data loss or duplicate schema elements.
 
-By centralizing schema definitions in `create_or_update_tables()`, gating changes through version comparisons, and relying on idempotent migration helpers, the Politeia Reading plugin maintains a robust, self-healing schema lifecycle that can accommodate future enhancements such as richer cover storage, structured user notes, or extended author relationships.
+By centralizing schema definitions in `Installer::get_schema_sql()`, gating changes through the upgrader, and relying on idempotent migration helpers within drop-in files, the Politeia Reading plugin maintains a robust, self-healing schema lifecycle that can accommodate future enhancements such as richer cover storage, structured user notes, or extended author relationships.
 
 ## Schema Version Reference
 
 - **Constant:** `POLITEIA_READING_DB_VERSION`
 - **Option name:** `politeia_reading_db_version`
-- **Hook order:** `register_activation_hook()` → `activate()` → `maybe_upgrade()` (on `plugins_loaded`)
-- **Schema source:** `create_or_update_tables()` in `class-activator.php`
+- **Hook order:** `register_activation_hook()` → `Activator::activate()` → `Upgrader::maybe_upgrade()` (on `plugins_loaded`)
+- **Schema source:** `Installer::get_schema_sql()` in `class-installer.php`
 
 - **v1.2** — Replaced `cover_attachment_id_user` (`BIGINT`) with the text-based `cover_reference` column on `wp_politeia_user_books` to support Google Books URLs and uploaded cover references.
 

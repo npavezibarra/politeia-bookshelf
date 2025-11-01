@@ -17,7 +17,7 @@ if ( ! defined( 'POLITEIA_READING_VERSION' ) ) {
         define( 'POLITEIA_READING_VERSION', '0.2.3' );
 }
 if ( ! defined( 'POLITEIA_READING_DB_VERSION' ) ) {
-        define( 'POLITEIA_READING_DB_VERSION', '1.3' );
+        define( 'POLITEIA_READING_DB_VERSION', '1.4' );
 }
 if ( ! defined( 'POLITEIA_READING_PATH' ) ) {
 	define( 'POLITEIA_READING_PATH', plugin_dir_path( __FILE__ ) );
@@ -35,6 +35,9 @@ add_action(
 );
 
 // ===== Includes núcleo =====
+require_once POLITEIA_READING_PATH . 'includes/class-installer.php';
+require_once POLITEIA_READING_PATH . 'includes/migrations/class-migrations.php';
+require_once POLITEIA_READING_PATH . 'includes/class-upgrader.php';
 require_once POLITEIA_READING_PATH . 'includes/class-activator.php';
 require_once POLITEIA_READING_PATH . 'includes/class-rest.php';
 require_once POLITEIA_READING_PATH . 'includes/class-books.php';
@@ -51,39 +54,26 @@ require_once POLITEIA_READING_PATH . 'includes/class-routes.php';
 require_once POLITEIA_READING_PATH . 'modules/post-reading/init.php';
 
 // ===== Activation Hooks =====
-register_activation_hook( __FILE__, array( 'Politeia_Reading_Activator', 'activate' ) );
+register_activation_hook( __FILE__, array( '\\Politeia\\Reading\\Activator', 'activate' ) );
 
 // Asegura la migración del módulo post-reading al activar el plugin
 register_activation_hook(
-	__FILE__,
-	function () {
-		if ( class_exists( 'Politeia_Post_Reading_Schema' ) ) {
-			Politeia_Post_Reading_Schema::migrate();
-		}
-		// Opcional: si tu plugin registra rewrites en class-routes, marca para flush una vez
-		if ( ! get_option( 'politeia_reading_flush_rewrite' ) ) {
-			update_option( 'politeia_reading_flush_rewrite', 1 );
-		}
-	}
+        __FILE__,
+        function () {
+                if ( class_exists( 'Politeia_Post_Reading_Schema' ) ) {
+                        Politeia_Post_Reading_Schema::migrate();
+                }
+        }
 );
 
 // ===== Upgrade / Migrations on load =====
 // Ejecuta migraciones idempotentes cuando cambies POLITEIA_READING_VERSION (core)
-add_action( 'plugins_loaded', array( 'Politeia_Reading_Activator', 'maybe_upgrade' ) );
+add_action( 'plugins_loaded', array( '\\Politeia\\Reading\\Upgrader', 'maybe_upgrade' ) );
 // Nota: el módulo post-reading ya registra su propio maybe_upgrade en su init.php.
 // No lo repetimos aquí para evitar dobles llamadas.
 
 // ===== Flush rewrites (una sola vez post-activación) =====
-add_action(
-	'admin_init',
-	function () {
-		if ( get_option( 'politeia_reading_flush_rewrite' ) ) {
-			// Si tu plugin registra reglas (endpoints/slugs), aquí ya están cargadas
-			flush_rewrite_rules( false );
-			delete_option( 'politeia_reading_flush_rewrite' );
-		}
-	}
-);
+// Las reglas de reescritura se vacían directamente en el Activator.
 
 // ===== Asset Registration / Enqueue (core existente) =====
 add_action(

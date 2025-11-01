@@ -17,12 +17,7 @@ class Politeia_Reading_Routes {
 		// /my-books/my-book-{slug}  (single)
 		add_rewrite_rule( '^my-books/my-book-([^/]+)/?$', 'index.php?prs_book_slug=$matches[1]', 'top' );
 
-		// flush marcado por el activador
-		if ( get_option( 'politeia_reading_flush_rewrite' ) ) {
-			flush_rewrite_rules( false );
-			delete_option( 'politeia_reading_flush_rewrite' );
-		}
-	}
+        }
 
 	public static function query_vars( $vars ) {
 		$vars[] = 'prs_my_books_archive';
