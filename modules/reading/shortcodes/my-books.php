@@ -471,7 +471,7 @@ add_shortcode(
                                                 $owning = array(
                                                         'in_shelf'  => __( 'In Shelf', 'politeia-reading' ),
                                                         'borrowed'  => __( 'Borrowed', 'politeia-reading' ),
-                                                        'borrowing' => __( 'Borrowing', 'politeia-reading' ),
+                                                        'borrowing' => __( 'Lent Out', 'politeia-reading' ),
                                                         'bought'    => __( 'Bought', 'politeia-reading' ),
                                                         'sold'      => __( 'Sold', 'politeia-reading' ),
                                                         'lost'      => __( 'Lost', 'politeia-reading' ),
@@ -577,7 +577,7 @@ add_shortcode(
                                                 <option value="in_shelf"><?php esc_html_e( 'In Shelf', 'politeia-reading' ); ?></option>
                                                 <option value="lost"><?php esc_html_e( 'Lost', 'politeia-reading' ); ?></option>
                                                 <option value="borrowed"><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
-                                                <option value="borrowing"><?php esc_html_e( 'Borrowing', 'politeia-reading' ); ?></option>
+                                                <option value="borrowing"><?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?></option>
                                                 <option value="sold"><?php esc_html_e( 'Sold', 'politeia-reading' ); ?></option>
                                         </select>
                                 </div>
