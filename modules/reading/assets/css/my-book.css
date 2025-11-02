@@ -189,14 +189,31 @@
         border-radius: 12px;
 }
 
-#prs-note-panel .note-context {
-        font-size: 14px;
-        line-height: 1.5;
-        color: #333333;
+#prs-note-panel .prs-note-meta {
         text-align: center;
         margin: 0 auto 12px;
+        font-family: 'Inter', sans-serif;
         max-width: 100%;
         word-break: break-word;
+}
+
+#prs-note-panel .prs-note-meta .note-session-id {
+        font-size: 8px;
+        text-transform: uppercase;
+        color: #888888;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+}
+
+#prs-note-panel .prs-note-meta .note-book-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 2px;
+}
+
+#prs-note-panel .prs-note-meta .note-page-range {
+        font-size: 14px;
+        color: #333333;
 }
 
 @media (max-width: 768px) {

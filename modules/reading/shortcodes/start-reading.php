@@ -187,8 +187,17 @@ add_shortcode(
 
                 <div id="prs-note-panel" class="prs-note-panel" style="display:none;">
                         <div class="note-editor-panel" role="group" aria-label="<?php esc_attr_e( 'Session note editor', 'politeia-reading' ); ?>">
-                                <div class="note-context" data-default-text="<?php echo esc_attr( $book_title ); ?>" data-book-title="<?php echo esc_attr( $book_title ); ?>">
-                                        <?php echo esc_html( $book_title ); ?>
+                                <div
+                                        class="prs-note-meta"
+                                        data-default-title="<?php echo esc_attr( $book_title ); ?>"
+                                        data-book-title="<?php echo esc_attr( $book_title ); ?>"
+                                        data-label-prefix="<?php echo esc_attr__( 'SESSION', 'politeia-reading' ); ?>"
+                                        data-default-session-label="<?php echo esc_attr__( 'SESSION —', 'politeia-reading' ); ?>"
+                                        data-default-page-range="<?php echo esc_attr__( '— · —', 'politeia-reading' ); ?>"
+                                >
+                                        <div class="note-session-id"><?php esc_html_e( 'SESSION —', 'politeia-reading' ); ?></div>
+                                        <div class="note-book-title"><?php echo esc_html( $book_title ); ?></div>
+                                        <div class="note-page-range"><?php esc_html_e( '— · —', 'politeia-reading' ); ?></div>
                                 </div>
                                 <div class="note-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
                                         <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 1', 'politeia-reading' ); ?>">H1</button>

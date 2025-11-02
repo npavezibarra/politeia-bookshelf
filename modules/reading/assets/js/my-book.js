@@ -179,7 +179,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const saveBtn = document.getElementById("prs-save-note-btn");
     const flash = document.getElementById("prs-sr-flash");
     const textarea = notePanel?.querySelector(".editor-area");
-    const noteContext = notePanel?.querySelector(".note-context");
+    const noteMeta = notePanel?.querySelector(".prs-note-meta");
+    const sessionLabelEl = noteMeta?.querySelector(".note-session-id");
+    const bookTitleEl = noteMeta?.querySelector(".note-book-title");
+    const pageRangeEl = noteMeta?.querySelector(".note-page-range");
     const flashInner = flash?.querySelector(".prs-sr-flash-inner");
     const srContainer = summary?.closest?.(".prs-sr")
       || notePanel?.closest?.(".prs-sr")
@@ -193,71 +196,89 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       return typeof value === "string" ? value.trim() : String(value).trim();
     };
     const globalBookTitle = normalizeString(window.PRS_BOOK?.title);
-    let defaultContextTitle = noteContext ? normalizeString(noteContext.dataset?.bookTitle) : "";
-    let defaultContextText = noteContext ? normalizeString(noteContext.dataset?.defaultText) : "";
+    let defaultBookTitle = noteMeta ? normalizeString(noteMeta.dataset?.defaultTitle) : "";
+    let storedBookTitle = noteMeta ? normalizeString(noteMeta.dataset?.bookTitle) : "";
+    let labelPrefix = noteMeta ? normalizeString(noteMeta.dataset?.labelPrefix) : "";
+    let defaultSessionLabel = noteMeta ? normalizeString(noteMeta.dataset?.defaultSessionLabel) : "";
+    let defaultPageRange = noteMeta ? normalizeString(noteMeta.dataset?.defaultPageRange) : "";
 
-    if (noteContext) {
-      if (!defaultContextTitle && globalBookTitle) {
-        defaultContextTitle = globalBookTitle;
-        noteContext.dataset.bookTitle = globalBookTitle;
+    if (!defaultBookTitle && bookTitleEl) {
+      defaultBookTitle = normalizeString(bookTitleEl.textContent || "");
+    }
+    if (!storedBookTitle) {
+      storedBookTitle = defaultBookTitle || normalizeString(globalBookTitle);
+    }
+    if (!labelPrefix) {
+      labelPrefix = "SESSION";
+    }
+    if (!defaultSessionLabel) {
+      defaultSessionLabel = labelPrefix ? `${labelPrefix} —` : "SESSION —";
+    }
+    if (!defaultPageRange) {
+      defaultPageRange = "— · —";
+    }
+
+    if (noteMeta) {
+      if (defaultBookTitle) {
+        noteMeta.dataset.defaultTitle = defaultBookTitle;
       }
-      if (!defaultContextText) {
-        defaultContextText = defaultContextTitle || globalBookTitle;
-        if (defaultContextText) {
-          noteContext.dataset.defaultText = defaultContextText;
-        }
+      if (storedBookTitle) {
+        noteMeta.dataset.bookTitle = storedBookTitle;
       }
-      const existingText = normalizeString(noteContext.textContent || "");
-      if (!existingText && defaultContextText) {
-        noteContext.textContent = defaultContextText;
-      }
+      noteMeta.dataset.labelPrefix = labelPrefix;
+      noteMeta.dataset.defaultSessionLabel = defaultSessionLabel;
+      noteMeta.dataset.defaultPageRange = defaultPageRange;
     }
 
     const updateNoteContext = detail => {
-      if (!noteContext) {
+      if (!noteMeta) {
         return;
       }
 
       const detailTitle = normalizeString(detail?.bookTitle);
       if (detailTitle) {
-        defaultContextTitle = detailTitle;
-        noteContext.dataset.bookTitle = detailTitle;
+        storedBookTitle = detailTitle;
+        noteMeta.dataset.bookTitle = detailTitle;
       }
 
-      const fallbackTitle = defaultContextTitle
-        || normalizeString(noteContext.dataset?.bookTitle)
+      const fallbackTitle = storedBookTitle
+        || defaultBookTitle
+        || normalizeString(noteMeta?.dataset?.bookTitle)
         || globalBookTitle
-        || defaultContextText
         || "";
-      const title = detailTitle || fallbackTitle;
+      const bookTitle = detailTitle || fallbackTitle;
 
-      if (!defaultContextText && title) {
-        defaultContextText = title;
-        noteContext.dataset.defaultText = title;
+      if (!storedBookTitle && bookTitle) {
+        storedBookTitle = bookTitle;
+        noteMeta.dataset.bookTitle = bookTitle;
+      }
+      if (!defaultBookTitle && bookTitle) {
+        defaultBookTitle = bookTitle;
+        noteMeta.dataset.defaultTitle = bookTitle;
+      }
+
+      if (bookTitleEl) {
+        setText(bookTitleEl, bookTitle || defaultBookTitle || "");
       }
 
       const startTextRaw = normalizeValue(detail?.startPage);
       const endTextRaw = normalizeValue(detail?.endPage);
-      const chapter = normalizeString(detail?.chapter);
       const startText = startTextRaw !== "" ? startTextRaw : "—";
       const endText = endTextRaw !== "" ? endTextRaw : "—";
+      const hasRange = startTextRaw !== "" || endTextRaw !== "";
+      const rangeText = hasRange ? `${startText} · ${endText}` : defaultPageRange;
 
-      const segments = [];
-      if (title) {
-        segments.push(title);
-      }
-      segments.push(`${startText} · ${endText}`);
-      if (chapter) {
-        segments.push(chapter);
+      if (pageRangeEl) {
+        setText(pageRangeEl, rangeText || defaultPageRange);
       }
 
-      let contextText = segments.join(" | ");
-      if (!contextText) {
-        const fallback = defaultContextText || title || "";
-        contextText = fallback;
-      }
+      const sessionIdRaw = normalizeValue(detail?.sessionId);
+      const prefix = labelPrefix || "SESSION";
+      const sessionText = sessionIdRaw ? `${prefix} ${sessionIdRaw}` : defaultSessionLabel;
 
-      noteContext.textContent = contextText;
+      if (sessionLabelEl) {
+        setText(sessionLabelEl, sessionText || defaultSessionLabel);
+      }
     };
 
     if (!summary || !notePanel || !addBtn || !cancelBtn || !saveBtn) {
