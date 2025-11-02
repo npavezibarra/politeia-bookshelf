@@ -499,6 +499,11 @@ add_action( 'plugins_loaded', 'prs_maybe_create_loans_table' );
  *
  *     @type string $heading Default heading text.
  * }
+ *
+ * Note: The browser validates the email format via the HTML `type="email"` attribute.
+ * For deeper verification (such as ensuring the domain can receive mail), consider
+ * adding a lightweight server-side MX or domain existence check instead of attempting
+ * full mailbox validation.
  */
 function prs_render_owning_overlay( $args = array() ) {
         static $rendered = false;
@@ -522,8 +527,8 @@ function prs_render_owning_overlay( $args = array() ) {
                 <div class="prs-overlay-content">
                         <h2 id="owning-overlay-title"><?php echo esc_html( $heading ); ?></h2>
 
-                        <input type="text" id="owning-overlay-name" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>">
-                        <input type="email" id="owning-overlay-email" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>">
+                        <input type="text" id="owning-overlay-name" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Name', 'politeia-reading' ); ?>" required>
+                        <input type="email" id="owning-overlay-email" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Email', 'politeia-reading' ); ?>" required>
                         <input type="number" id="owning-overlay-amount" class="prs-contact-input" placeholder="<?php echo esc_attr__( 'Amount (e.g. 12000)', 'politeia-reading' ); ?>" step="0.01" style="display:none;">
 
                         <div class="prs-overlay-actions">
