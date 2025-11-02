@@ -51,7 +51,7 @@ class Politeia_Loan_Manager {
         private static function format_state_label( $state ) {
                 $labels = array(
                         'in_shelf'  => __( 'In Shelf', 'politeia-reading' ),
-                        'borrowing' => __( 'Borrowing', 'politeia-reading' ),
+                        'borrowing' => __( 'Lent Out', 'politeia-reading' ),
                         'borrowed'  => __( 'Borrowed', 'politeia-reading' ),
                         'sold'      => __( 'Sold', 'politeia-reading' ),
                         'bought'    => __( 'Bought', 'politeia-reading' ),
