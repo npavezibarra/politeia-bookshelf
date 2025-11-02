@@ -188,16 +188,16 @@ add_shortcode(
                 <div id="prs-note-panel" class="prs-note-panel" style="display:none;">
                         <div class="note-editor-panel" role="group" aria-label="<?php esc_attr_e( 'Session note editor', 'politeia-reading' ); ?>">
                                 <div
-                                        class="prs-note-meta"
+                                        class="prs-note-header"
                                         data-default-title="<?php echo esc_attr( $book_title ); ?>"
                                         data-book-title="<?php echo esc_attr( $book_title ); ?>"
                                         data-label-prefix="<?php echo esc_attr__( 'SESSION', 'politeia-reading' ); ?>"
                                         data-default-session-label="<?php echo esc_attr__( 'SESSION —', 'politeia-reading' ); ?>"
                                         data-default-page-range="<?php echo esc_attr__( '— · —', 'politeia-reading' ); ?>"
                                 >
-                                        <div class="note-session-id"><?php esc_html_e( 'SESSION —', 'politeia-reading' ); ?></div>
-                                        <div class="note-book-title"><?php echo esc_html( $book_title ); ?></div>
-                                        <div class="note-page-range"><?php esc_html_e( '— · —', 'politeia-reading' ); ?></div>
+                                        <div class="prs-session-id"><?php esc_html_e( 'SESSION —', 'politeia-reading' ); ?></div>
+                                        <div class="prs-book-title"><strong><?php echo esc_html( $book_title ); ?></strong></div>
+                                        <div class="prs-pages"><?php esc_html_e( '— · —', 'politeia-reading' ); ?></div>
                                 </div>
                                 <div class="note-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
                                         <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 1', 'politeia-reading' ); ?>">H1</button>
@@ -217,6 +217,9 @@ add_shortcode(
                                         data-placeholder="<?php echo $note_placeholder; ?>"
                                         placeholder="<?php echo $note_placeholder; ?>"
                                 ></div>
+                                <div class="note-limit-warning" role="status" aria-live="polite" style="display:none; font-size:12px; color:#b91c1c; text-align:center;">
+                                        <?php esc_html_e( 'You have reached the 1000 character limit.', 'politeia-reading' ); ?>
+                                </div>
                         </div>
                         <div class="note-actions">
                                 <button type="button" id="prs-save-note-btn" class="prs-btn">

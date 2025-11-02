@@ -198,10 +198,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const saveBtn = document.getElementById("prs-save-note-btn");
     const flash = document.getElementById("prs-sr-flash");
     const editor = notePanel?.querySelector("#prs-note-editor");
-    const noteMeta = notePanel?.querySelector(".prs-note-meta");
-    const sessionLabelEl = noteMeta?.querySelector(".note-session-id");
-    const bookTitleEl = noteMeta?.querySelector(".note-book-title");
-    const pageRangeEl = noteMeta?.querySelector(".note-page-range");
+    const noteHeader = notePanel?.querySelector(".prs-note-header");
+    const sessionLabelEl = noteHeader?.querySelector(".prs-session-id");
+    const bookTitleEl = noteHeader?.querySelector(".prs-book-title strong")
+      || noteHeader?.querySelector(".prs-book-title");
+    const pageRangeEl = noteHeader?.querySelector(".prs-pages");
     const flashInner = flash?.querySelector(".prs-sr-flash-inner");
     const srContainer = summary?.closest?.(".prs-sr")
       || notePanel?.closest?.(".prs-sr")
@@ -209,7 +210,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const defaultPlaceholder = editor
       ? (editor.getAttribute("data-placeholder") || editor.getAttribute("placeholder") || "")
       : "";
+    const limitWarning = notePanel?.querySelector(".note-limit-warning");
+    const MAX_NOTE_CHARACTERS = 1000;
     let savedRange = null;
+    let lastValidEditorHtml = editor ? editor.innerHTML : "";
+    let lastValidSelection = null;
 
     const applyEditorPlaceholder = placeholderText => {
       if (!editor) {
@@ -227,14 +232,23 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
     };
 
-    const getEditorText = () => {
+    const getEditorPlainText = () => {
       if (!editor) {
         return "";
       }
-      return editor.textContent
-        .replace(/\u00A0/g, " ")
+      return editor.textContent.replace(/\u00A0/g, " ");
+    };
+
+    const getEditorText = () =>
+      getEditorPlainText()
         .replace(/\s+/g, " ")
         .trim();
+
+    const getEditorCharacterCount = () => {
+      if (!editor) {
+        return 0;
+      }
+      return getEditorPlainText().length;
     };
 
     const isEditorEmpty = () => getEditorText() === "";
@@ -254,6 +268,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
       editor.innerHTML = "";
       savedRange = null;
+      lastValidEditorHtml = "";
+      lastValidSelection = null;
+      if (limitWarning) {
+        limitWarning.style.display = "none";
+      }
       ensureEditorPlaceholder();
     };
 
@@ -323,6 +342,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       restoreEditorSelection();
       document.execCommand(command, false, typeof value === "undefined" ? null : value);
       saveEditorSelection();
+      lastValidEditorHtml = editor.innerHTML;
+      lastValidSelection = savedRange ? savedRange.cloneRange() : null;
+      if (limitWarning) {
+        const count = getEditorCharacterCount();
+        limitWarning.style.display = count >= MAX_NOTE_CHARACTERS ? "block" : "none";
+      }
     };
 
     const bindToolbarCommand = (selector, command, value) => {
@@ -339,6 +364,17 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       });
     };
 
+    const updateLimitWarning = count => {
+      if (!limitWarning) {
+        return;
+      }
+      if (count >= MAX_NOTE_CHARACTERS) {
+        limitWarning.style.display = "block";
+      } else {
+        limitWarning.style.display = "none";
+      }
+    };
+
     if (editor) {
       applyEditorPlaceholder(defaultPlaceholder);
       ensureEditorPlaceholder();
@@ -347,6 +383,21 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       });
       editor.addEventListener("input", () => {
         ensureEditorPlaceholder();
+        const count = getEditorCharacterCount();
+        if (count > MAX_NOTE_CHARACTERS) {
+          editor.innerHTML = lastValidEditorHtml;
+          if (lastValidSelection) {
+            savedRange = lastValidSelection.cloneRange();
+            restoreEditorSelection();
+          } else {
+            focusEditorAtEnd();
+          }
+          updateLimitWarning(MAX_NOTE_CHARACTERS);
+          return;
+        }
+        updateLimitWarning(count);
+        lastValidEditorHtml = editor.innerHTML;
+        lastValidSelection = savedRange ? savedRange.cloneRange() : null;
         saveEditorSelection();
       });
       editor.addEventListener("focus", () => {
@@ -356,6 +407,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       editor.addEventListener("blur", () => {
         ensureEditorPlaceholder();
       });
+      updateLimitWarning(getEditorCharacterCount());
+      lastValidEditorHtml = editor.innerHTML;
+      lastValidSelection = savedRange ? savedRange.cloneRange() : null;
       bindToolbarCommand('.tool-button.bold', 'bold');
       bindToolbarCommand('.tool-button.italic', 'italic');
       bindToolbarCommand('.tool-button[title="Heading 1"]', 'formatBlock', 'h1');
@@ -371,11 +425,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       return typeof value === "string" ? value.trim() : String(value).trim();
     };
     const globalBookTitle = normalizeString(window.PRS_BOOK?.title);
-    let defaultBookTitle = noteMeta ? normalizeString(noteMeta.dataset?.defaultTitle) : "";
-    let storedBookTitle = noteMeta ? normalizeString(noteMeta.dataset?.bookTitle) : "";
-    let labelPrefix = noteMeta ? normalizeString(noteMeta.dataset?.labelPrefix) : "";
-    let defaultSessionLabel = noteMeta ? normalizeString(noteMeta.dataset?.defaultSessionLabel) : "";
-    let defaultPageRange = noteMeta ? normalizeString(noteMeta.dataset?.defaultPageRange) : "";
+    let defaultBookTitle = noteHeader ? normalizeString(noteHeader.dataset?.defaultTitle) : "";
+    let storedBookTitle = noteHeader ? normalizeString(noteHeader.dataset?.bookTitle) : "";
+    let labelPrefix = noteHeader ? normalizeString(noteHeader.dataset?.labelPrefix) : "";
+    let defaultSessionLabel = noteHeader ? normalizeString(noteHeader.dataset?.defaultSessionLabel) : "";
+    let defaultPageRange = noteHeader ? normalizeString(noteHeader.dataset?.defaultPageRange) : "";
 
     if (!defaultBookTitle && bookTitleEl) {
       defaultBookTitle = normalizeString(bookTitleEl.textContent || "");
@@ -393,43 +447,43 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       defaultPageRange = "— · —";
     }
 
-    if (noteMeta) {
+    if (noteHeader) {
       if (defaultBookTitle) {
-        noteMeta.dataset.defaultTitle = defaultBookTitle;
+        noteHeader.dataset.defaultTitle = defaultBookTitle;
       }
       if (storedBookTitle) {
-        noteMeta.dataset.bookTitle = storedBookTitle;
+        noteHeader.dataset.bookTitle = storedBookTitle;
       }
-      noteMeta.dataset.labelPrefix = labelPrefix;
-      noteMeta.dataset.defaultSessionLabel = defaultSessionLabel;
-      noteMeta.dataset.defaultPageRange = defaultPageRange;
+      noteHeader.dataset.labelPrefix = labelPrefix;
+      noteHeader.dataset.defaultSessionLabel = defaultSessionLabel;
+      noteHeader.dataset.defaultPageRange = defaultPageRange;
     }
 
     const updateNoteContext = detail => {
-      if (!noteMeta) {
+      if (!noteHeader) {
         return;
       }
 
       const detailTitle = normalizeString(detail?.bookTitle);
       if (detailTitle) {
         storedBookTitle = detailTitle;
-        noteMeta.dataset.bookTitle = detailTitle;
+        noteHeader.dataset.bookTitle = detailTitle;
       }
 
       const fallbackTitle = storedBookTitle
         || defaultBookTitle
-        || normalizeString(noteMeta?.dataset?.bookTitle)
+        || normalizeString(noteHeader?.dataset?.bookTitle)
         || globalBookTitle
         || "";
       const bookTitle = detailTitle || fallbackTitle;
 
       if (!storedBookTitle && bookTitle) {
         storedBookTitle = bookTitle;
-        noteMeta.dataset.bookTitle = bookTitle;
+        noteHeader.dataset.bookTitle = bookTitle;
       }
       if (!defaultBookTitle && bookTitle) {
         defaultBookTitle = bookTitle;
-        noteMeta.dataset.defaultTitle = bookTitle;
+        noteHeader.dataset.defaultTitle = bookTitle;
       }
 
       if (bookTitleEl) {
@@ -571,6 +625,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         applyEditorPlaceholder(placeholderText);
         ensureEditorPlaceholder();
         savedRange = null;
+        if (noteHtml) {
+          updateLimitWarning(getEditorCharacterCount());
+          lastValidEditorHtml = editor.innerHTML;
+          lastValidSelection = null;
+        }
       }
       const mode = typeof detail.mode === "string" && detail.mode ? detail.mode : "edit";
       showNote({ focus: detail.focus !== false, mode, contextDetail: detail });
