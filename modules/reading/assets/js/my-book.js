@@ -179,7 +179,107 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const saveBtn = document.getElementById("prs-save-note-btn");
     const flash = document.getElementById("prs-sr-flash");
     const textarea = notePanel?.querySelector(".editor-area");
+    const noteMeta = notePanel?.querySelector(".prs-note-meta");
+    const sessionLabelEl = noteMeta?.querySelector(".note-session-id");
+    const bookTitleEl = noteMeta?.querySelector(".note-book-title");
+    const pageRangeEl = noteMeta?.querySelector(".note-page-range");
+    const flashInner = flash?.querySelector(".prs-sr-flash-inner");
+    const srContainer = summary?.closest?.(".prs-sr")
+      || notePanel?.closest?.(".prs-sr")
+      || flash?.closest?.(".prs-sr");
     const defaultPlaceholder = textarea?.getAttribute("placeholder") || "";
+    const normalizeString = value => (typeof value === "string" ? value.trim() : "");
+    const normalizeValue = value => {
+      if (value === null || value === undefined) {
+        return "";
+      }
+      return typeof value === "string" ? value.trim() : String(value).trim();
+    };
+    const globalBookTitle = normalizeString(window.PRS_BOOK?.title);
+    let defaultBookTitle = noteMeta ? normalizeString(noteMeta.dataset?.defaultTitle) : "";
+    let storedBookTitle = noteMeta ? normalizeString(noteMeta.dataset?.bookTitle) : "";
+    let labelPrefix = noteMeta ? normalizeString(noteMeta.dataset?.labelPrefix) : "";
+    let defaultSessionLabel = noteMeta ? normalizeString(noteMeta.dataset?.defaultSessionLabel) : "";
+    let defaultPageRange = noteMeta ? normalizeString(noteMeta.dataset?.defaultPageRange) : "";
+
+    if (!defaultBookTitle && bookTitleEl) {
+      defaultBookTitle = normalizeString(bookTitleEl.textContent || "");
+    }
+    if (!storedBookTitle) {
+      storedBookTitle = defaultBookTitle || normalizeString(globalBookTitle);
+    }
+    if (!labelPrefix) {
+      labelPrefix = "SESSION";
+    }
+    if (!defaultSessionLabel) {
+      defaultSessionLabel = labelPrefix ? `${labelPrefix} —` : "SESSION —";
+    }
+    if (!defaultPageRange) {
+      defaultPageRange = "— · —";
+    }
+
+    if (noteMeta) {
+      if (defaultBookTitle) {
+        noteMeta.dataset.defaultTitle = defaultBookTitle;
+      }
+      if (storedBookTitle) {
+        noteMeta.dataset.bookTitle = storedBookTitle;
+      }
+      noteMeta.dataset.labelPrefix = labelPrefix;
+      noteMeta.dataset.defaultSessionLabel = defaultSessionLabel;
+      noteMeta.dataset.defaultPageRange = defaultPageRange;
+    }
+
+    const updateNoteContext = detail => {
+      if (!noteMeta) {
+        return;
+      }
+
+      const detailTitle = normalizeString(detail?.bookTitle);
+      if (detailTitle) {
+        storedBookTitle = detailTitle;
+        noteMeta.dataset.bookTitle = detailTitle;
+      }
+
+      const fallbackTitle = storedBookTitle
+        || defaultBookTitle
+        || normalizeString(noteMeta?.dataset?.bookTitle)
+        || globalBookTitle
+        || "";
+      const bookTitle = detailTitle || fallbackTitle;
+
+      if (!storedBookTitle && bookTitle) {
+        storedBookTitle = bookTitle;
+        noteMeta.dataset.bookTitle = bookTitle;
+      }
+      if (!defaultBookTitle && bookTitle) {
+        defaultBookTitle = bookTitle;
+        noteMeta.dataset.defaultTitle = bookTitle;
+      }
+
+      if (bookTitleEl) {
+        setText(bookTitleEl, bookTitle || defaultBookTitle || "");
+      }
+
+      const startTextRaw = normalizeValue(detail?.startPage);
+      const endTextRaw = normalizeValue(detail?.endPage);
+      const startText = startTextRaw !== "" ? startTextRaw : "—";
+      const endText = endTextRaw !== "" ? endTextRaw : "—";
+      const hasRange = startTextRaw !== "" || endTextRaw !== "";
+      const rangeText = hasRange ? `${startText} · ${endText}` : defaultPageRange;
+
+      if (pageRangeEl) {
+        setText(pageRangeEl, rangeText || defaultPageRange);
+      }
+
+      const sessionIdRaw = normalizeValue(detail?.sessionId);
+      const prefix = labelPrefix || "SESSION";
+      const sessionText = sessionIdRaw ? `${prefix} ${sessionIdRaw}` : defaultSessionLabel;
+
+      if (sessionLabelEl) {
+        setText(sessionLabelEl, sessionText || defaultSessionLabel);
+      }
+    };
 
     if (!summary || !notePanel || !addBtn || !cancelBtn || !saveBtn) {
       return;
@@ -189,12 +289,52 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       document.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
     };
 
-    function showSummary(options = {}) {
+    const isNoteOnlyMode = mode => mode === "edit" || mode === "read";
+
+    const applyNoteOnlyMode = mode => {
+      const noteOnly = isNoteOnlyMode(mode);
+      if (srContainer) {
+        srContainer.classList.toggle("prs-note-only", noteOnly);
+      }
+      if (flash) {
+        flash.classList.toggle("prs-note-only", noteOnly);
+      }
+      if (flashInner) {
+        flashInner.style.minHeight = "";
+      }
+      return noteOnly;
+    };
+
+    const resetNoteLayout = () => {
       summary.style.display = "";
       notePanel.style.display = "none";
       addBtn.setAttribute("aria-expanded", "false");
+      applyNoteOnlyMode("");
       if (flash) {
         delete flash.dataset.noteMode;
+      }
+      updateNoteContext();
+    };
+
+    function showSummary(options = {}) {
+      const currentMode = flash?.dataset?.noteMode || "";
+      const wasNoteOnly = isNoteOnlyMode(currentMode);
+
+      summary.style.display = "";
+      notePanel.style.display = "none";
+      addBtn.setAttribute("aria-expanded", "false");
+      applyNoteOnlyMode("");
+      if (flash) {
+        delete flash.dataset.noteMode;
+      }
+
+      updateNoteContext();
+
+      if (wasNoteOnly) {
+        if (options.userAction) {
+          document.dispatchEvent(new CustomEvent("prs-session-modal:close"));
+        }
+        return;
       }
 
       if (options.userAction) {
@@ -204,16 +344,20 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     }
 
     function showNote(options = {}) {
+      updateNoteContext(options.contextDetail);
       summary.style.display = "none";
       notePanel.style.display = "block";
       addBtn.setAttribute("aria-expanded", "true");
+      let activeMode = "";
       if (flash) {
         if (typeof options.mode === "string" && options.mode) {
           flash.dataset.noteMode = options.mode;
         } else if (!flash.dataset.noteMode) {
           flash.dataset.noteMode = "create";
         }
+        activeMode = flash.dataset.noteMode;
       }
+      applyNoteOnlyMode(activeMode);
       dispatch("prs-sr-flash:openNote");
       const shouldFocus = options.focus !== false;
       if (shouldFocus) {
@@ -244,7 +388,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         }
       }
       const mode = typeof detail.mode === "string" && detail.mode ? detail.mode : "edit";
-      showNote({ focus: detail.focus !== false, mode });
+      showNote({ focus: detail.focus !== false, mode, contextDetail: detail });
     });
 
     let isSavingNote = false;
@@ -337,6 +481,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     document.addEventListener("prs-sr-flash:reset", () => {
       showSummary({ userAction: false });
     });
+
+    document.addEventListener("prs-session-modal:close", () => {
+      resetNoteLayout();
+    });
   }
 
   setupFlashNoteToggle();
@@ -358,6 +506,24 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         flash.dataset.userId = String(detail.userId);
       }
       flash.dataset.sessionId = detail.sessionId ? String(detail.sessionId) : "";
+      if (typeof detail.bookTitle === "string") {
+        flash.dataset.bookTitle = detail.bookTitle;
+      }
+      if (Object.prototype.hasOwnProperty.call(detail, "startPage")) {
+        const startValue = detail.startPage === null || detail.startPage === undefined
+          ? ""
+          : String(detail.startPage);
+        flash.dataset.startPage = startValue;
+      }
+      if (Object.prototype.hasOwnProperty.call(detail, "endPage")) {
+        const endValue = detail.endPage === null || detail.endPage === undefined
+          ? ""
+          : String(detail.endPage);
+        flash.dataset.endPage = endValue;
+      }
+      if (typeof detail.chapter === "string") {
+        flash.dataset.chapter = detail.chapter;
+      }
       if (detail.mode) {
         flash.dataset.noteMode = detail.mode;
       }
@@ -371,10 +537,17 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
       event.preventDefault();
 
+      const getDataValue = value => (typeof value === "string" ? value.trim() : "");
       const sessionId = btn.dataset.sessionId ? String(btn.dataset.sessionId) : "";
       const bookId = btn.dataset.bookId ? String(btn.dataset.bookId) : (flash.dataset?.bookId || "");
       const userId = btn.dataset.userId ? String(btn.dataset.userId) : (flash.dataset?.userId || "");
       const noteText = typeof btn.dataset.note === "string" ? btn.dataset.note : "";
+      const startPage = getDataValue(btn.dataset.startPage);
+      const endPage = getDataValue(btn.dataset.endPage);
+      const chapter = getDataValue(btn.dataset.chapter);
+      const fallbackBookTitle = typeof window.PRS_BOOK?.title === "string" ? window.PRS_BOOK.title.trim() : "";
+      const buttonBookTitle = getDataValue(btn.dataset.bookTitle);
+      const bookTitle = buttonBookTitle || fallbackBookTitle;
 
       if (!sessionId) {
         window.alert("Unable to load this session note because the session identifier is missing.");
@@ -388,7 +561,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         },
       }));
 
-      assignDataset({ sessionId, bookId, userId, mode: "edit" });
+      assignDataset({ sessionId, bookId, userId, mode: "edit", startPage, endPage, chapter, bookTitle });
 
       document.dispatchEvent(new CustomEvent("prs-sr-flash:showNoteForSession", {
         detail: {
@@ -398,6 +571,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           note: noteText,
           focus: true,
           mode: "edit",
+          startPage,
+          endPage,
+          chapter,
+          bookTitle,
         },
       }));
     });

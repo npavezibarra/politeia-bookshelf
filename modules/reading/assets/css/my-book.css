@@ -8,77 +8,128 @@
         margin-top: 16px;
 }
 
-#prs-sr-flash .text-editor-panel {
-        background-color: #fff8e1;
-        border-radius: 12px;
-        padding: 16px;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+.prs-sr.prs-note-only .prs-sr-head,
+.prs-sr.prs-note-only .prs-sr-last,
+.prs-sr.prs-note-only #prs-sr-summary {
+        display: none !important;
+}
+
+#prs-sr-flash.prs-note-only {
+        background: transparent;
+        border: none;
+        padding: 0;
+        box-shadow: none;
+}
+
+#prs-sr-flash.prs-note-only .prs-sr-flash-inner {
+        min-height: auto;
+        padding: 0;
+        gap: 0;
+        width: 100%;
+        text-align: left;
+        align-items: center;
+        justify-content: center;
+}
+
+#prs-note-panel {
+        padding: 40px 20px 0;
+        background: #ffffff;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        align-items: center;
 }
 
-#prs-sr-flash .toolbar {
+#prs-note-panel .note-editor-panel {
+        width: 100%;
+        max-width: 700px;
+        padding: 0;
+        background: #ffffff;
+        box-shadow: none;
+        border-radius: 0;
         display: flex;
-        flex-wrap: wrap;
+        flex-direction: column;
+}
+
+#prs-note-panel .note-toolbar {
+        display: flex;
         gap: 8px;
-}
-
-#prs-sr-flash .tool-button {
-        background-color: #fef3c7;
-        border: 1px solid #facc15;
-        border-radius: 6px;
-        color: #92400e;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 600;
-        line-height: 1;
         padding: 8px 12px;
-        transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+        font-size: 14px;
+        background: transparent;
+        border: none;
+        justify-content: center;
+        max-width: 200px;
+        border-radius: 3px;
+        margin: 0 auto;
 }
 
-#prs-sr-flash .tool-button:hover,
-#prs-sr-flash .tool-button:focus {
-        background-color: #fde68a;
-        border-color: #f59e0b;
-        color: #78350f;
-        outline: none;
+#prs-note-panel .tool-button {
+        background: none;
+        border: none;
+        color: #222222;
+        font-weight: 600;
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 13px;
+        border-radius: 6px;
+        font-family: inherit;
 }
 
-#prs-sr-flash .tool-button.bold {
+#prs-note-panel .tool-button.bold {
         font-weight: 700;
 }
 
-#prs-sr-flash .tool-button.italic {
+#prs-note-panel .tool-button.italic {
         font-style: italic;
 }
 
-#prs-sr-flash .editor-area {
-        border: 1px solid #facc15;
-        border-radius: 10px;
-        font-size: 15px;
-        line-height: 1.6;
-        min-height: 160px;
-        padding: 14px 16px;
-        resize: vertical;
-        width: 100%;
-        background-color: #fff;
-        color: #1f2937;
-        box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.05);
+#prs-note-panel .tool-button:hover,
+#prs-note-panel .tool-button:focus {
+        background-color: #f2f2f2;
+        outline: none;
 }
 
-#prs-sr-flash .editor-area:focus {
-        border-color: #f59e0b;
-        outline: 2px solid #f59e0b33;
-        outline-offset: 2px;
+#prs-note-panel .note-textarea {
+        width: 500px;
+        max-width: 100%;
+        margin: 20px auto;
+        border: none;
+        outline: none;
+        resize: none;
+        padding: 20px 0;
+        font-family: 'Inter', sans-serif;
+        font-size: 16px;
+        line-height: 1.8;
+        background: #ffffff;
+        color: #222222;
+        min-height: 200px;
+        box-sizing: border-box;
 }
 
-#prs-sr-flash .note-actions {
+.note-actions {
+        max-width: 200px;
+        margin: 20px auto 0;
+}
+
+#prs-note-panel .note-actions {
         display: flex;
+        gap: 10px;
+        justify-content: center;
         flex-wrap: wrap;
-        gap: 12px;
-        justify-content: flex-end;
-        margin-top: 16px;
+        width: 100%;
+}
+
+#prs-note-panel .note-actions .prs-btn {
+        background: #111111;
+        color: #ffffff;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+}
+
+#prs-note-panel .note-actions .prs-btn-secondary {
+        background: #f3f3f3;
+        color: #111111;
 }
 
 .prs-sessions-table .prs-sr-date {
@@ -126,16 +177,64 @@
         cursor: progress;
 }
 
-@media (max-width: 600px) {
-        #prs-sr-flash .text-editor-panel {
-                padding: 12px;
+.prs-session-modal__content {
+        position: relative;
+        max-width: 600px;
+        width: 100%;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: #ffffff;
+        padding: 24px;
+        border: 1px solid #dddddd;
+        border-radius: 12px;
+}
+
+#prs-note-panel .prs-note-meta {
+        text-align: center;
+        margin: 0 auto 12px;
+        font-family: 'Inter', sans-serif;
+        max-width: 100%;
+        word-break: break-word;
+}
+
+#prs-note-panel .prs-note-meta .note-session-id {
+        font-size: 8px;
+        text-transform: uppercase;
+        color: #888888;
+        letter-spacing: 0.5px;
+        margin-bottom: 4px;
+}
+
+#prs-note-panel .prs-note-meta .note-book-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 2px;
+}
+
+#prs-note-panel .prs-note-meta .note-page-range {
+        font-size: 14px;
+        color: #333333;
+}
+
+@media (max-width: 768px) {
+        #prs-note-panel {
+                padding: 32px 16px;
         }
 
-        #prs-sr-flash .editor-area {
-                min-height: 140px;
+        #prs-note-panel .note-toolbar {
+                font-size: 12px;
+                gap: 6px;
         }
 
-        #prs-sr-flash .note-actions {
-                justify-content: center;
+        #prs-note-panel .tool-button {
+                font-size: 12px;
+                padding: 5px 8px;
+        }
+
+        #prs-note-panel .note-textarea {
+                width: 100%;
+                font-size: 15px;
+                line-height: 1.6;
+                padding: 16px 0;
         }
 }

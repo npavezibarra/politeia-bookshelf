@@ -57,9 +57,7 @@ h2#prs-book-title-placeholder {
 }
 
 h3#prs-book-author-placeholder {
-    font-size: 12px !important;
-    font-weight: 500;
-    opacity: 0.85;
+    color: black;
 }
 
 /* Buttons shown only in default mode */
@@ -69,6 +67,12 @@ h3#prs-book-author-placeholder {
     justify-content: center;
     gap: 6px;
     margin-top: 10px;
+}
+
+@media (max-width: 950px) {
+    .prs-cover-actions {
+        display: none !important;
+    }
 }
 
 .prs-cover-frame[data-cover-state="empty"] .prs-cover-btn,
