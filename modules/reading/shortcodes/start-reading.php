@@ -206,7 +206,17 @@ add_shortcode(
                                         <button type="button" class="tool-button italic" title="<?php esc_attr_e( 'Italic', 'politeia-reading' ); ?>">I</button>
                                         <button type="button" class="tool-button" title="<?php esc_attr_e( 'Bullet list', 'politeia-reading' ); ?>">•</button>
                                 </div>
-                                <textarea class="note-textarea editor-area" placeholder="<?php esc_attr_e( 'Write your thoughts about this session…', 'politeia-reading' ); ?>" rows="8"></textarea>
+                                <?php $note_placeholder = esc_attr__( 'Write your thoughts about this session…', 'politeia-reading' ); ?>
+                                <div
+                                        id="prs-note-editor"
+                                        class="note-textarea editor-area"
+                                        contenteditable="true"
+                                        role="textbox"
+                                        aria-multiline="true"
+                                        spellcheck="true"
+                                        data-placeholder="<?php echo $note_placeholder; ?>"
+                                        placeholder="<?php echo $note_placeholder; ?>"
+                                ></div>
                         </div>
                         <div class="note-actions">
                                 <button type="button" id="prs-save-note-btn" class="prs-btn">

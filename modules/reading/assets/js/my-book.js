@@ -33,6 +33,25 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     return typeof nonce === "string" && nonce ? nonce : "";
   }
 
+  const NOTE_DATA_HELPER = document.createElement("textarea");
+
+  function encodeNoteDataAttr(value) {
+    let noteValue = value;
+    if (typeof noteValue !== "string") {
+      noteValue = noteValue === null || noteValue === undefined ? "" : String(noteValue);
+    }
+    NOTE_DATA_HELPER.textContent = noteValue;
+    return NOTE_DATA_HELPER.innerHTML;
+  }
+
+  function decodeNoteDataAttr(value) {
+    if (typeof value !== "string" || value === "") {
+      return "";
+    }
+    NOTE_DATA_HELPER.innerHTML = value;
+    return NOTE_DATA_HELPER.value;
+  }
+
   function triggerReturnAction() {
     if (!currentReturnButton || typeof currentReturnButton.__prsReturnHandler !== "function") {
       currentReturnButton = null;
@@ -178,7 +197,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const cancelBtn = document.getElementById("prs-cancel-note-btn");
     const saveBtn = document.getElementById("prs-save-note-btn");
     const flash = document.getElementById("prs-sr-flash");
-    const textarea = notePanel?.querySelector(".editor-area");
+    const editor = notePanel?.querySelector("#prs-note-editor");
     const noteMeta = notePanel?.querySelector(".prs-note-meta");
     const sessionLabelEl = noteMeta?.querySelector(".note-session-id");
     const bookTitleEl = noteMeta?.querySelector(".note-book-title");
@@ -187,7 +206,163 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const srContainer = summary?.closest?.(".prs-sr")
       || notePanel?.closest?.(".prs-sr")
       || flash?.closest?.(".prs-sr");
-    const defaultPlaceholder = textarea?.getAttribute("placeholder") || "";
+    const defaultPlaceholder = editor
+      ? (editor.getAttribute("data-placeholder") || editor.getAttribute("placeholder") || "")
+      : "";
+    let savedRange = null;
+
+    const applyEditorPlaceholder = placeholderText => {
+      if (!editor) {
+        return;
+      }
+      const text = typeof placeholderText === "string" ? placeholderText : "";
+      if (text) {
+        editor.setAttribute("data-placeholder", text);
+        editor.setAttribute("placeholder", text);
+        editor.setAttribute("aria-label", text);
+      } else {
+        editor.removeAttribute("data-placeholder");
+        editor.removeAttribute("placeholder");
+        editor.removeAttribute("aria-label");
+      }
+    };
+
+    const getEditorText = () => {
+      if (!editor) {
+        return "";
+      }
+      return editor.textContent
+        .replace(/\u00A0/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    };
+
+    const isEditorEmpty = () => getEditorText() === "";
+
+    const ensureEditorPlaceholder = () => {
+      if (!editor) {
+        return;
+      }
+      if (isEditorEmpty()) {
+        editor.innerHTML = "";
+      }
+    };
+
+    const clearEditor = () => {
+      if (!editor) {
+        return;
+      }
+      editor.innerHTML = "";
+      savedRange = null;
+      ensureEditorPlaceholder();
+    };
+
+    const saveEditorSelection = () => {
+      if (!editor) {
+        savedRange = null;
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection || selection.rangeCount === 0) {
+        savedRange = null;
+        return;
+      }
+      const range = selection.getRangeAt(0);
+      const container = range.commonAncestorContainer;
+      if (container && !editor.contains(container) && editor !== container) {
+        savedRange = null;
+        return;
+      }
+      savedRange = range.cloneRange();
+    };
+
+    const restoreEditorSelection = () => {
+      if (!editor) {
+        return;
+      }
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      selection.removeAllRanges();
+      if (savedRange) {
+        const range = savedRange.cloneRange();
+        selection.addRange(range);
+        savedRange = range.cloneRange();
+      } else {
+        const range = document.createRange();
+        range.selectNodeContents(editor);
+        range.collapse(false);
+        selection.addRange(range);
+        savedRange = range.cloneRange();
+      }
+    };
+
+    const focusEditorAtEnd = () => {
+      if (!editor) {
+        return;
+      }
+      editor.focus({ preventScroll: true });
+      const selection = window.getSelection();
+      if (!selection) {
+        return;
+      }
+      const range = document.createRange();
+      range.selectNodeContents(editor);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      savedRange = range.cloneRange();
+    };
+
+    const execEditorCommand = (command, value) => {
+      if (!editor) {
+        return;
+      }
+      editor.focus({ preventScroll: true });
+      restoreEditorSelection();
+      document.execCommand(command, false, typeof value === "undefined" ? null : value);
+      saveEditorSelection();
+    };
+
+    const bindToolbarCommand = (selector, command, value) => {
+      const button = notePanel?.querySelector(selector);
+      if (!button) {
+        return;
+      }
+      button.addEventListener("mousedown", event => {
+        event.preventDefault();
+      });
+      button.addEventListener("click", event => {
+        event.preventDefault();
+        execEditorCommand(command, value);
+      });
+    };
+
+    if (editor) {
+      applyEditorPlaceholder(defaultPlaceholder);
+      ensureEditorPlaceholder();
+      ["keyup", "mouseup", "touchend"].forEach(evt => {
+        editor.addEventListener(evt, saveEditorSelection);
+      });
+      editor.addEventListener("input", () => {
+        ensureEditorPlaceholder();
+        saveEditorSelection();
+      });
+      editor.addEventListener("focus", () => {
+        ensureEditorPlaceholder();
+        saveEditorSelection();
+      });
+      editor.addEventListener("blur", () => {
+        ensureEditorPlaceholder();
+      });
+      bindToolbarCommand('.tool-button.bold', 'bold');
+      bindToolbarCommand('.tool-button.italic', 'italic');
+      bindToolbarCommand('.tool-button[title="Heading 1"]', 'formatBlock', 'h1');
+      bindToolbarCommand('.tool-button[title="Heading 2"]', 'formatBlock', 'h2');
+      bindToolbarCommand('.tool-button[title="Bullet list"]', 'insertUnorderedList');
+    }
+
     const normalizeString = value => (typeof value === "string" ? value.trim() : "");
     const normalizeValue = value => {
       if (value === null || value === undefined) {
@@ -310,6 +485,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       notePanel.style.display = "none";
       addBtn.setAttribute("aria-expanded", "false");
       applyNoteOnlyMode("");
+      if (editor) {
+        clearEditor();
+        applyEditorPlaceholder(defaultPlaceholder);
+      }
       if (flash) {
         delete flash.dataset.noteMode;
       }
@@ -362,7 +541,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       const shouldFocus = options.focus !== false;
       if (shouldFocus) {
         window.requestAnimationFrame(() => {
-          textarea?.focus();
+          focusEditorAtEnd();
         });
       }
     }
@@ -379,13 +558,19 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     document.addEventListener("prs-sr-flash:showNoteEditor", event => {
       const detail = event?.detail || {};
-      if (textarea) {
-        textarea.value = typeof detail.note === "string" ? detail.note : "";
-        if (typeof detail.placeholder === "string") {
-          textarea.setAttribute("placeholder", detail.placeholder);
-        } else if (defaultPlaceholder) {
-          textarea.setAttribute("placeholder", defaultPlaceholder);
+      if (editor) {
+        const noteHtml = typeof detail.note === "string" ? detail.note : "";
+        if (noteHtml) {
+          editor.innerHTML = noteHtml;
+        } else {
+          clearEditor();
         }
+        const placeholderText = typeof detail.placeholder === "string" && detail.placeholder
+          ? detail.placeholder
+          : defaultPlaceholder;
+        applyEditorPlaceholder(placeholderText);
+        ensureEditorPlaceholder();
+        savedRange = null;
       }
       const mode = typeof detail.mode === "string" && detail.mode ? detail.mode : "edit";
       showNote({ focus: detail.focus !== false, mode, contextDetail: detail });
@@ -399,12 +584,19 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         return;
       }
 
-      const noteContent = (textarea?.value || "").trim();
-      if (!noteContent) {
+      if (!editor) {
         window.alert("Please write a note before saving.");
-        textarea?.focus();
         return;
       }
+
+      ensureEditorPlaceholder();
+      if (isEditorEmpty()) {
+        window.alert("Please write a note before saving.");
+        focusEditorAtEnd();
+        return;
+      }
+
+      const noteContent = editor.innerHTML.trim();
 
       const flash = document.getElementById("prs-sr-flash");
       const rsId = flash?.dataset?.sessionId || "";
@@ -446,15 +638,14 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         .done(response => {
           if (response && response.success) {
             window.alert("✅ Note saved successfully!");
-            if (textarea) {
-              textarea.value = "";
-            }
+            clearEditor();
+            applyEditorPlaceholder(defaultPlaceholder);
             if (flash && flash.dataset && flash.dataset.sessionId) {
               const currentSessionId = String(flash.dataset.sessionId || "");
               if (currentSessionId) {
                 qsa('.prs-sr-read-note-btn').forEach(btn => {
                   if (String(btn.dataset.sessionId || "") === currentSessionId) {
-                    btn.dataset.note = noteContent;
+                    btn.dataset.note = encodeNoteDataAttr(noteContent);
                   }
                 });
               }
@@ -541,7 +732,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       const sessionId = btn.dataset.sessionId ? String(btn.dataset.sessionId) : "";
       const bookId = btn.dataset.bookId ? String(btn.dataset.bookId) : (flash.dataset?.bookId || "");
       const userId = btn.dataset.userId ? String(btn.dataset.userId) : (flash.dataset?.userId || "");
-      const noteText = typeof btn.dataset.note === "string" ? btn.dataset.note : "";
+      const noteRaw = typeof btn.dataset.note === "string" ? btn.dataset.note : "";
+      const noteHtml = decodeNoteDataAttr(noteRaw);
       const startPage = getDataValue(btn.dataset.startPage);
       const endPage = getDataValue(btn.dataset.endPage);
       const chapter = getDataValue(btn.dataset.chapter);
@@ -568,7 +760,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           sessionId,
           bookId,
           userId,
-          note: noteText,
+          note: noteHtml,
           focus: true,
           mode: "edit",
           startPage,

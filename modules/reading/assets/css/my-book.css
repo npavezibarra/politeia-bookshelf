@@ -96,7 +96,7 @@
         border: none;
         outline: none;
         resize: none;
-        padding: 20px 0;
+        padding: 20px 16px;
         font-family: 'Inter', sans-serif;
         font-size: 16px;
         line-height: 1.8;
@@ -104,6 +104,30 @@
         color: #222222;
         min-height: 200px;
         box-sizing: border-box;
+        white-space: pre-wrap;
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"] {
+        border: 1px solid #e5e7eb;
+        border-radius: 12px;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"]:focus {
+        border-color: #d97706;
+        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"]:empty::before {
+        content: attr(data-placeholder);
+        color: #9ca3af;
+        pointer-events: none;
+        display: block;
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"] ul {
+        padding-left: 1.25rem;
+        margin: 0 0 1rem 0;
 }
 
 .note-actions {
