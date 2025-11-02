@@ -188,6 +188,13 @@ add_shortcode(
                         <th scope="colgroup" colspan="2">
                                 <div class="prs-library__header">
                                         <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
+                                        <input
+                                                type="text"
+                                                id="my-library-search"
+                                                class="prs-library__search"
+                                                placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
+                                                onkeyup="filterLibrary()"
+                                        />
                                        <div class="prs-library__header-actions">
                                                <button
                                                        type="button"
@@ -312,6 +319,7 @@ add_shortcode(
                                 $reading_disabled_title  = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
                                 ?>
                                 <tr
+                                class="prs-library-row"
                                 data-user-book-id="<?php echo (int) $r->user_book_id; ?>"
                                 data-owning-status="<?php echo esc_attr( $row_owning_attr ); ?>"
                                 data-reading-status="<?php echo esc_attr( $reading_status ); ?>"
@@ -389,11 +397,11 @@ add_shortcode(
                                 </div>
                                 <div class="prs-library__details">
                                         <a class="prs-library__title" href="<?php echo esc_url( $url ); ?>">
-                                        <?php echo esc_html( $r->title ); ?>
+                                                <span class="prs-book-title__text"><?php echo esc_html( $r->title ); ?></span>
                                         </a>
                                         <div class="prs-library__meta">
                                                 <?php if ( ! empty( $r->author ) ) : ?>
-                                                <span class="prs-library__meta-item prs-library__author"><?php echo esc_html( $r->author ); ?></span>
+                                                <span class="prs-library__meta-item prs-library__author"><span class="prs-book-author"><?php echo esc_html( $r->author ); ?></span></span>
                                                 <?php endif; ?>
                                                 <span class="prs-library__meta-item prs-library__year"><?php echo esc_html( $year_text ); ?></span>
                                                 <span class="prs-library__meta-item prs-library__pages" data-pages="<?php echo esc_attr( $pages_value ); ?>">
@@ -615,6 +623,41 @@ add_shortcode(
                         </form>
                 </div>
         </div>
+        <script>
+        function filterLibrary() {
+                var input = document.getElementById('my-library-search');
+                if (!input) {
+                        return;
+                }
+
+                var filter = input.value.toLowerCase();
+                var rows = document.querySelectorAll('#prs-library tbody .prs-library-row');
+
+                rows.forEach(function(row) {
+                        var titleText = '';
+                        var titleEl = row.querySelector('.prs-book-title__text');
+                        if (titleEl && titleEl.textContent) {
+                                titleText = titleEl.textContent.toLowerCase();
+                        }
+
+                        var authorText = '';
+                        var authorEl = row.querySelector('.prs-book-author');
+                        if (authorEl && authorEl.textContent) {
+                                authorText = authorEl.textContent.toLowerCase();
+                        }
+
+                        if (!filter || titleText.includes(filter) || authorText.includes(filter)) {
+                                row.style.display = '';
+                        } else {
+                                row.style.display = 'none';
+                        }
+                });
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+                filterLibrary();
+        });
+        </script>
                 <?php
                 return ob_get_clean();
         }
