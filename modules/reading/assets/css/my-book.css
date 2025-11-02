@@ -31,12 +31,17 @@
         justify-content: center;
 }
 
-#prs-note-panel {
-        padding: 40px 20px 0;
+div#prs-note-panel {
+        padding: 0 !important;
+        padding-top: 0;
         background: #ffffff;
         display: flex;
         flex-direction: column;
         align-items: center;
+}
+
+.prs-note-meta {
+        margin-bottom: 0 !important;
 }
 
 #prs-note-panel .note-editor-panel {
@@ -87,6 +92,10 @@
 #prs-note-panel .tool-button:focus {
         background-color: #f2f2f2;
         outline: none;
+}
+
+div#prs-note-editor {
+        margin-top: 2px !important;
 }
 
 #prs-note-panel .note-textarea {
