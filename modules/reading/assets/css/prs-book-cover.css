@@ -69,6 +69,12 @@ h3#prs-book-author-placeholder {
     margin-top: 10px;
 }
 
+@media (max-width: 950px) {
+    .prs-cover-actions {
+        display: none !important;
+    }
+}
+
 .prs-cover-frame[data-cover-state="empty"] .prs-cover-btn,
 .prs-cover-frame:not([data-cover-state]) .prs-cover-btn {
     font-size: 13px;

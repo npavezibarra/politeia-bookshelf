@@ -263,6 +263,11 @@ wp_add_inline_script(
         transform:translateY(10px);
         transition:opacity 0.25s ease, transform 0.25s ease;
         }
+        @media (max-width: 950px){
+        .prs-cover-actions{
+        display:none !important;
+        }
+        }
         .prs-cover-placeholder:hover .prs-cover-actions,
         .prs-cover-placeholder:focus-within .prs-cover-actions{
         opacity:1;
