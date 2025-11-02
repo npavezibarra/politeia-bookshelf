@@ -165,13 +165,8 @@ div#prs-note-panel {
         line-height: 1.3;
 }
 
-
-.prs-session-id {
-        font-size: 10px !important;
-        letter-spacing: 2px;
-}
-
 .prs-note-header .prs-session-id {
+        font-size: 8px;
         color: #999999;
         text-transform: uppercase;
 }

@@ -196,6 +196,7 @@ add_shortcode(
                                         data-default-page-range="<?php echo esc_attr__( '— · —', 'politeia-reading' ); ?>"
                                 >
                                         <div class="prs-session-id"><?php esc_html_e( 'SESSION —', 'politeia-reading' ); ?></div>
+                                        <div class="prs-book-title"><strong><?php echo esc_html( $book_title ); ?></strong></div>
                                         <div class="prs-pages"><?php esc_html_e( '— · —', 'politeia-reading' ); ?></div>
                                 </div>
                                 <div class="note-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
