@@ -31,8 +31,9 @@
         justify-content: center;
 }
 
-#prs-note-panel {
-        padding: 40px 20px 0;
+div#prs-note-panel {
+        padding: 0 !important;
+        padding-top: 0;
         background: #ffffff;
         display: flex;
         flex-direction: column;
@@ -92,23 +93,49 @@
 #prs-note-panel .note-textarea {
         width: 500px;
         max-width: 100%;
-        margin: 20px auto;
+        margin: 20px auto 0;
         border: none;
         outline: none;
         resize: none;
-        padding: 20px 0;
+        padding: 16px;
         font-family: 'Inter', sans-serif;
         font-size: 16px;
         line-height: 1.8;
         background: #ffffff;
         color: #222222;
         min-height: 200px;
+        max-height: 400px;
         box-sizing: border-box;
+        white-space: pre-wrap;
+        border: 1px solid #e8791f;
+        border-radius: 8px;
+        overflow-y: auto;
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"] {
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"]:focus {
+        border-color: #d97706;
+        box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.15);
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"]:empty::before {
+        content: attr(data-placeholder);
+        color: #9ca3af;
+        pointer-events: none;
+        display: block;
+}
+
+#prs-note-panel .note-textarea[contenteditable="true"] ul {
+        padding-left: 1.25rem;
+        margin: 0 0 1rem 0;
 }
 
 .note-actions {
         max-width: 200px;
-        margin: 20px auto 0;
+        margin: 24px auto 0;
 }
 
 #prs-note-panel .note-actions {
@@ -130,6 +157,38 @@
 #prs-note-panel .note-actions .prs-btn-secondary {
         background: #f3f3f3;
         color: #111111;
+}
+
+.prs-note-header {
+        text-align: center;
+        margin-bottom: 12px;
+        line-height: 1.3;
+}
+
+
+.prs-session-id {
+        font-size: 10px !important;
+        letter-spacing: 2px;
+}
+
+.prs-note-header .prs-session-id {
+        color: #999999;
+        text-transform: uppercase;
+}
+
+.prs-note-header .prs-book-title {
+        font-weight: 700;
+}
+
+.prs-note-header .prs-pages {
+        font-size: 13px;
+}
+
+#prs-note-panel .note-limit-warning {
+        font-size: 12px;
+        color: #b91c1c;
+        text-align: center;
+        margin-top: 8px;
 }
 
 .prs-sessions-table .prs-sr-date {
@@ -187,33 +246,6 @@
         padding: 24px;
         border: 1px solid #dddddd;
         border-radius: 12px;
-}
-
-#prs-note-panel .prs-note-meta {
-        text-align: center;
-        margin: 0 auto 12px;
-        font-family: 'Inter', sans-serif;
-        max-width: 100%;
-        word-break: break-word;
-}
-
-#prs-note-panel .prs-note-meta .note-session-id {
-        font-size: 8px;
-        text-transform: uppercase;
-        color: #888888;
-        letter-spacing: 0.5px;
-        margin-bottom: 4px;
-}
-
-#prs-note-panel .prs-note-meta .note-book-title {
-        font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 2px;
-}
-
-#prs-note-panel .prs-note-meta .note-page-range {
-        font-size: 14px;
-        color: #333333;
 }
 
 @media (max-width: 768px) {

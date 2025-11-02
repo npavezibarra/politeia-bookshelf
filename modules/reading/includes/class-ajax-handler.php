@@ -28,9 +28,11 @@ class Politeia_Reading_Ajax_Handler {
                 $user_id = get_current_user_id();
                 $rs_id   = isset( $_POST['rs_id'] ) ? absint( $_POST['rs_id'] ) : 0;
                 $book_id = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
-                $note    = isset( $_POST['note'] ) ? sanitize_textarea_field( wp_unslash( $_POST['note'] ) ) : '';
+                $raw_note = isset( $_POST['note'] ) ? wp_unslash( $_POST['note'] ) : '';
+                $note     = wp_kses_post( $raw_note );
+                $note_txt = trim( preg_replace( '/\xc2\xa0|\x{00A0}/u', ' ', wp_strip_all_tags( $note ) ) );
 
-                if ( ! $rs_id || ! $book_id || ! $user_id || '' === $note ) {
+                if ( ! $rs_id || ! $book_id || ! $user_id || '' === $note_txt ) {
                         wp_send_json_error( 'Missing required fields.', 400 );
                 }
 
