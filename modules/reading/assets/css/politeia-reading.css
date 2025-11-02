@@ -86,6 +86,15 @@
         margin-top: 8px;
 }
 
+.prs-contact-input {
+        display: block;
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+}
+
 #prs-reading-density-canvas {
         display: block;
         width: 100%;
