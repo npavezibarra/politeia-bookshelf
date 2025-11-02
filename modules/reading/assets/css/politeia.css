@@ -1227,7 +1227,7 @@ select#prs-type-book {
         }
 
         h3#prs-book-author-placeholder {
-                font-size: 8px !important;
+                color: black;
         }
 }
 
@@ -1579,7 +1579,7 @@ display:inline-block;
         }
 
         h3#prs-book-author-placeholder{
-        font-size:12px;
+        color:black;
         }
         .prs-book-cover{ margin:0; display:block; }
         .prs-book-cover__caption{ margin:0; padding:8px 10px; text-align:center; font-size:12px; background:#fff; color:#0a58ca; border-top:1px solid rgba(0,0,0,.08); }

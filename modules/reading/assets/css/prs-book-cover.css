@@ -57,9 +57,7 @@ h2#prs-book-title-placeholder {
 }
 
 h3#prs-book-author-placeholder {
-    font-size: 12px !important;
-    font-weight: 500;
-    opacity: 0.85;
+    color: black;
 }
 
 /* Buttons shown only in default mode */
