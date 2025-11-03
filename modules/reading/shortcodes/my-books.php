@@ -181,20 +181,17 @@ add_shortcode(
 		}
 
 		ob_start(); ?>
-        <div class="prs-library">
-               <table id="prs-library" class="prs-table">
-               <thead>
-                        <tr>
-                        <th scope="colgroup" colspan="2">
-                                <div class="prs-library__header">
-                                        <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
-                                        <input
-                                                type="text"
-                                                id="my-library-search"
-                                                class="prs-library__search"
-                                                placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
-                                                onkeyup="filterLibrary()"
-                                        />
+               <div class="prs-library">
+                       <div class="prs-library__header-fixed">
+                               <div class="prs-library__header">
+                                       <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
+                                       <input
+                                               type="text"
+                                               id="my-library-search"
+                                               class="prs-library__search"
+                                               placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
+                                               onkeyup="filterLibrary()"
+                                       />
                                        <div class="prs-library__header-actions">
                                                <button
                                                        type="button"
@@ -211,11 +208,11 @@ add_shortcode(
                                                        </div>
                                                <?php endif; ?>
                                        </div>
-                                </div>
-                        </th>
-                        </tr>
-               </thead>
-                <tbody>
+                               </div>
+                       </div>
+                       <div class="prs-library__content">
+                               <table id="prs-library" class="prs-table">
+                                       <tbody>
                         <?php foreach ( (array) $books as $r ) :
                                 $slug     = $r->slug ?: sanitize_title( $r->title . '-' . $r->author . ( $r->year ? '-' . $r->year : '' ) );
                                 $url      = home_url( '/my-books/my-book-' . $slug );
@@ -543,20 +540,21 @@ add_shortcode(
                 </tbody>
                 </table>
 
-                <?php if ( ! empty( $paginate ) ) : ?>
-                <nav class="prs-pagination" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
-                        <ul class="page-numbers" style="display:flex;gap:6px;list-style:none;padding-left:0;">
-                        <?php foreach ( $paginate as $link ) : ?>
-                                <li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></li>
-                        <?php endforeach; ?>
-                        </ul>
-                </nav>
-                <?php endif; ?>
+               <?php if ( ! empty( $paginate ) ) : ?>
+               <nav class="prs-pagination" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
+                       <ul class="page-numbers" style="display:flex;gap:6px;list-style:none;padding-left:0;">
+                       <?php foreach ( $paginate as $link ) : ?>
+                               <li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></li>
+                       <?php endforeach; ?>
+                       </ul>
+               </nav>
+               <?php endif; ?>
+                       </div>
 
-                <?php prs_render_owning_overlay(); ?>
+               <?php prs_render_owning_overlay(); ?>
 
-                <?php wp_nonce_field( 'prs_update_user_book', 'prs_update_user_book_nonce' ); ?>
-        </div>
+               <?php wp_nonce_field( 'prs_update_user_book', 'prs_update_user_book_nonce' ); ?>
+               </div>
         <div id="prs-filter-overlay" class="prs-filter-overlay" hidden></div>
         <div
                 id="prs-filter-dashboard"
