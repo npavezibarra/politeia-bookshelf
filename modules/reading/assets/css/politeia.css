@@ -59,20 +59,19 @@
 
 /* === My Library Full-Width Header === */
 .prs-library__header {
-        position: relative;
-        width: 100vw;
+        position: fixed;
+        top: var(--masthead-height, 72px);
         left: 50%;
-        right: 50%;
         margin-left: -50vw;
-        margin-right: -50vw;
+        width: 100vw;
         background: #000;
-        z-index: 99;
+        z-index: 1000;
         box-sizing: border-box;
 }
 
 .prs-library__header-inner {
         max-width: 1200px;
-        margin: 0 auto 20px;
+        margin: 0 auto;
         padding: 14px 24px;
         display: flex;
         align-items: center;
@@ -82,10 +81,21 @@
         box-sizing: border-box;
 }
 
+.prs-library__content {
+        padding-top: 80px;
+}
+
+.prs-library {
+        padding-top: 80px;
+}
+
 .prs-library__header-fixed {
-        top: calc(var(--masthead-height, 72px));
-        position: sticky;
-        z-index: 100;
+        position: fixed;
+        top: var(--masthead-height, 72px);
+        z-index: 1000;
+        left: 50%;
+        margin-left: -50vw;
+        width: 100vw;
 }
 
 .prs-library .prs-library__search {
