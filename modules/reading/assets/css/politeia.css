@@ -1,5 +1,59 @@
-.prs-table { width:100%; border-collapse: collapse; }
-.prs-table th, .prs-table td { padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
+/* === Fixed Library Header === */
+.prs-library {
+        display: flex;
+        flex-direction: column;
+}
+
+.prs-library__header-fixed {
+        position: sticky;
+        top: calc(var(--masthead-height, 72px));
+        z-index: 100;
+        background: #000;
+        color: #fff;
+        width: 100%;
+        padding: 12px 20px;
+        box-sizing: border-box;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.site-header {
+        --masthead-height: 72px;
+}
+
+.prs-library__content {
+        max-height: calc(100vh - var(--masthead-height, 72px) - 60px);
+        overflow-y: auto;
+        padding: 0 20px 20px;
+        box-sizing: border-box;
+        min-height: 0;
+}
+
+.prs-table {
+        width: 100%;
+        border-collapse: collapse;
+}
+
+.prs-table th,
+.prs-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid #eee;
+        text-align: left;
+}
+
+@media (max-width: 768px) {
+        .prs-library__header-fixed {
+                top: calc(var(--masthead-height, 110px));
+        }
+
+        .prs-library__content {
+                max-height: calc(100vh - var(--masthead-height, 110px) - 60px);
+        }
+
+        .prs-library__search {
+                margin-left: 0;
+                flex: 1 1 100%;
+        }
+}
 
 .prs-book-sessions { margin-top:32px; }
 
@@ -65,26 +119,30 @@
         flex-wrap: wrap;
 }
 
-#prs-library .prs-library__search {
+.prs-library__search {
         margin-left: 16px;
         padding: 6px 10px;
         border: 1px solid #ccc;
         border-radius: 4px;
         min-width: 220px;
         font-size: 14px;
+        background-color: #fff;
+        color: #111;
+        flex: 1 1 220px;
 }
 
-#prs-library .prs-library__header-title {
+.prs-library__header-title {
         font-size: 22px;
         line-height: 1.3;
         color: white;
 }
 
-#prs-library .prs-library__header-actions {
+.prs-library__header-actions {
         display: flex;
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
+        margin-left: auto;
 }
 
 #prs-library tbody tr {
@@ -1070,15 +1128,6 @@ select.is-disabled {
 }
 
 @media (max-width: 640px) {
-        #prs-library thead {
-                display: table-header-group;
-                width: 100%;
-        }
-
-        #prs-library thead th {
-                width: 100%;
-        }
-
         #prs-library tbody tr {
                 flex-direction: column;
                 gap: 16px;
