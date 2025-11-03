@@ -57,15 +57,20 @@
         border-bottom: none;
 }
 
-#prs-library .prs-library__header {
+.prs-library .prs-library__header {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
         flex-wrap: wrap;
+        margin-bottom: 20px;
+        padding: 14px 18px;
+        background: #000;
+        width: 100%;
+        box-sizing: border-box;
 }
 
-#prs-library .prs-library__search {
+.prs-library .prs-library__search {
         margin-left: 16px;
         padding: 6px 10px;
         border: 1px solid #ccc;
@@ -74,13 +79,13 @@
         font-size: 14px;
 }
 
-#prs-library .prs-library__header-title {
+.prs-library .prs-library__header-title {
         font-size: 22px;
         line-height: 1.3;
         color: white;
 }
 
-#prs-library .prs-library__header-actions {
+.prs-library .prs-library__header-actions {
         display: flex;
         align-items: center;
         gap: 12px;
@@ -2060,14 +2065,14 @@ p#derived-location {
         flex-shrink: 0;
 }
 
-#prs-library .prs-library__header-actions .button,
-#prs-library .prs-library__header-actions .prs-btn {
+.prs-library .prs-library__header-actions .button,
+.prs-library .prs-library__header-actions .prs-btn {
     background: white;
     padding: 10px 15px;
     color: black;
 }
 
-#prs-library .prs-library__header-actions .prs-library__filter-btn::before {
+.prs-library .prs-library__header-actions .prs-library__filter-btn::before {
     content: "";
     display: inline-block;
     width: 1em;
