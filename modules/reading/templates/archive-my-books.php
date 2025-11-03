@@ -5,7 +5,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 get_header();
 
 echo '<div class="wrap">';
-echo '<h1>My Books</h1>';
 
 if ( is_user_logged_in() ) {
 	// Reutiliza exactamente lo que ves en el shortcode [politeia_my_books]
