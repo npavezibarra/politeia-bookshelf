@@ -57,31 +57,29 @@
         border-bottom: none;
 }
 
-.prs-library .prs-library__header {
+/* === My Library Full-Width Header === */
+.prs-library__header {
+        position: relative;
+        width: 100vw;
+        left: 50%;
+        right: 50%;
+        margin-left: -50vw;
+        margin-right: -50vw;
+        background: #000;
+        z-index: 99;
+        box-sizing: border-box;
+}
+
+.prs-library__header-inner {
+        max-width: 1200px;
+        margin: 0 auto 20px;
+        padding: 14px 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 16px;
         flex-wrap: wrap;
-        margin-bottom: 20px;
-        padding: 14px 18px;
-        background: #000;
-        width: 100%;
         box-sizing: border-box;
-}
-
-/* === Make My Library Header Full Width === */
-.prs-library__header {
-        position: relative;
-        left: 50%;
-        right: 50%;
-        width: 100vw;
-        margin-left: -50vw;
-        margin-right: -50vw;
-        padding: 14px 24px;
-        background: #000;
-        box-sizing: border-box;
-        z-index: 99;
 }
 
 .prs-library__header-fixed {
