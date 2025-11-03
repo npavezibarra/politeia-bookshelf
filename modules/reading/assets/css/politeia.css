@@ -1,3 +1,24 @@
+/* === Fixed Header for My Library === */
+.prs-library {
+        position: relative;
+        max-height: 80vh;
+        overflow-y: auto;
+        margin-top: 0;
+}
+
+.prs-library thead {
+        position: sticky;
+        top: 70px;
+        z-index: 10;
+        background: #000;
+        color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.prs-library thead th {
+        padding: 0;
+}
+
 .prs-table { width:100%; border-collapse: collapse; }
 .prs-table th, .prs-table td { padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
 
@@ -45,16 +66,20 @@
 }
 
 #prs-library thead tr {
-        background: #f5f5f5;
+        background: transparent;
 }
 
 #prs-library thead th {
         flex: 1;
-        padding: 14px 18px;
-        color: #333;
+        padding: 0;
+        color: inherit;
         font-weight: 600;
         text-align: left;
         border-bottom: none;
+}
+
+#prs-library .prs-library__header {
+        padding: 14px 18px;
 }
 
 #prs-library .prs-library__header {
