@@ -2658,6 +2658,21 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     let lastFocused = null;
 
+    function normalizeOwningOption(value) {
+      const lower = typeof value === "string" ? value.toLocaleLowerCase() : "";
+      if (!lower) return "";
+      if (lower === "borrowing") return "lent_out";
+      return lower;
+    }
+
+    function toOwningComparisonValue(value) {
+      const lower = typeof value === "string" ? value.toLocaleLowerCase() : "";
+      if (lower === "lent_out" || lower === "borrowing") {
+        return "borrowing";
+      }
+      return lower;
+    }
+
     function clampProgress(val, fallback) {
       return Math.min(100, Math.max(0, num(val, fallback)));
     }
@@ -2665,7 +2680,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     function normalizeState(raw) {
       const normalized = Object.assign({}, defaultState);
       if (raw && typeof raw === "object") {
-        if (typeof raw.owning === "string") normalized.owning = raw.owning;
+        if (typeof raw.owning === "string") normalized.owning = normalizeOwningOption(raw.owning);
         if (typeof raw.reading === "string") normalized.reading = raw.reading;
         if (typeof raw.order === "string") normalized.order = raw.order;
         normalized.min = clampProgress(raw.min, defaultState.min);
@@ -2678,6 +2693,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         normalized.max = swap;
       }
 
+      normalized.owning = normalizeOwningOption(normalized.owning);
+
       return normalized;
     }
 
@@ -2689,14 +2706,15 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
     }
 
-    function setSelectValue(select, value) {
+    function setSelectValue(select, value, normalizer) {
       if (!select) return;
+      const normalizedValue = typeof normalizer === "function" ? normalizer(value) : value;
       const values = Array.prototype.map.call(select.options, option => option.value);
-      select.value = values.indexOf(value) !== -1 ? value : "";
+      select.value = values.indexOf(normalizedValue) !== -1 ? normalizedValue : "";
     }
 
     function applyInputs(state) {
-      setSelectValue(owningSelect, state.owning);
+      setSelectValue(owningSelect, state.owning, normalizeOwningOption);
       setSelectValue(readingSelect, state.reading);
       setSelectValue(orderSelect, state.order);
       if (progressMinInput) {
@@ -2711,7 +2729,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     function getStateFromInputs() {
       return {
-        owning: owningSelect ? owningSelect.value : "",
+        owning: owningSelect ? normalizeOwningOption(owningSelect.value) : "",
         reading: readingSelect ? readingSelect.value : "",
         min: progressMinInput ? num(progressMinInput.value, defaultState.min) : defaultState.min,
         max: progressMaxInput ? num(progressMaxInput.value, defaultState.max) : defaultState.max,
@@ -2769,11 +2787,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
 
       const sortedRows = reorderRows(rows, normalized.order);
-      const owningValue = (normalized.owning || "").toLocaleLowerCase();
+      const owningValue = toOwningComparisonValue(normalized.owning);
       const readingValue = (normalized.reading || "").toLocaleLowerCase();
 
       sortedRows.forEach(row => {
-        const owning = (row.getAttribute("data-owning-status") || "").toLocaleLowerCase();
+        const owning = toOwningComparisonValue(row.getAttribute("data-owning-status"));
         const reading = (row.getAttribute("data-reading-status") || "").toLocaleLowerCase();
         const progress = clampProgress(row.getAttribute("data-progress"), 0);
         const owningMatches = !owningValue || owning === owningValue;

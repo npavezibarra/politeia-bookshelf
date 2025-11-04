@@ -136,6 +136,40 @@
         flex-wrap: wrap;
 }
 
+.prs-library__filter-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        background: #000;
+        color: #fff;
+        border: 1px solid #fff;
+        padding: 6px 14px;
+        border-radius: 6px;
+        line-height: 1;
+        transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.prs-library__filter-btn::before {
+        content: "";
+        width: 16px;
+        height: 16px;
+        background: currentColor;
+        -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M3 4h18v2l-7 8v6l-4 2v-8L3 6V4z'/></svg>") no-repeat center / contain;
+                mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='%23000' d='M3 4h18v2l-7 8v6l-4 2v-8L3 6V4z'/></svg>") no-repeat center / contain;
+}
+
+.prs-library__filter-btn:hover,
+.prs-library__filter-btn:focus {
+        background: #111;
+        color: #fff;
+        border-color: #fff;
+}
+
+.prs-library__filter-btn:focus-visible {
+        outline: 2px solid var(--bb-primary-color, #385DFF);
+        outline-offset: 2px;
+}
+
 #prs-library tbody tr {
         align-items: stretch;
         border-bottom: 1px solid #eee;
@@ -391,6 +425,77 @@
 
 .prs-filter-dashboard__close {
         margin-left: auto;
+}
+
+.prs-filter-modal .button,
+.prs-filter-modal button {
+        background: #121212;
+        border: 1px solid #121212;
+        color: #fff;
+        border-radius: 6px;
+        padding: 8px 18px;
+        font-weight: 500;
+        transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.prs-filter-modal .button:hover,
+.prs-filter-modal button:hover {
+        background: #2b2b2b;
+        border-color: #2b2b2b;
+}
+
+.prs-filter-modal .button:focus,
+.prs-filter-modal button:focus {
+        outline: 2px solid var(--bb-primary-color, #385DFF);
+        outline-offset: 1px;
+}
+
+.prs-filter-modal input[type="range"] {
+        width: 100%;
+        -webkit-appearance: none;
+        height: 4px;
+        border-radius: 2px;
+        background: #d6d9dd;
+}
+
+.prs-filter-modal input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #121212;
+        cursor: pointer;
+        transition: background 0.2s ease;
+}
+
+.prs-filter-modal input[type="range"]::-webkit-slider-thumb:hover {
+        background: #2b2b2b;
+}
+
+.prs-filter-modal input[type="range"]::-moz-range-thumb {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: none;
+        background: #121212;
+        cursor: pointer;
+        transition: background 0.2s ease;
+}
+
+.prs-filter-modal input[type="range"]::-moz-range-thumb:hover {
+        background: #2b2b2b;
+}
+
+.prs-filter-modal input[type="range"]::-webkit-slider-runnable-track {
+        height: 4px;
+        border-radius: 2px;
+        background: #d6d9dd;
+}
+
+.prs-filter-modal input[type="range"]::-moz-range-track {
+        height: 4px;
+        border-radius: 2px;
+        background: #d6d9dd;
 }
 
 body.prs-filter-open {
@@ -2109,26 +2214,9 @@ p#derived-location {
         flex-shrink: 0;
 }
 
-.prs-library .prs-library__header-actions .button,
+.prs-library .prs-library__header-actions .button:not(.prs-library__filter-btn),
 .prs-library .prs-library__header-actions .prs-btn {
     background: white;
     padding: 10px 15px;
     color: black;
-}
-
-button.prs-library__filter-btn.button.button-secondary {
-    background: black;
-    color: white;
-    border: none;
-}
-
-.prs-library .prs-library__header-actions .prs-library__filter-btn::before {
-    content: "";
-    display: inline-block;
-    width: 1em;
-    height: 1em;
-    margin-right: 6px;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='currentColor' d='M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-size: contain;
 }
