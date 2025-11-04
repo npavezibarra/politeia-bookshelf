@@ -60,7 +60,7 @@
 /* === My Library Full-Width Header === */
 .prs-library__header {
         position: fixed;
-        top: var(--masthead-height, 72px);
+        top: var(--masthead-height, 108px);
         left: 50%;
         margin-left: -50vw;
         width: 100vw;
