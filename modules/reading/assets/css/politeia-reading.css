@@ -175,3 +175,73 @@
 .prs-pagination--top li {
         margin: 0 4px;
 }
+
+/* Flip card container */
+.prs-flip-container {
+        perspective: 1000px;
+        position: relative;
+}
+
+.prs-flipper {
+        position: relative;
+        transform-style: preserve-3d;
+        transition: transform 0.8s ease-in-out;
+}
+
+.prs-flip-container.flipped .prs-flipper {
+        transform: rotateY(180deg);
+}
+
+/* Front & Back */
+.prs-front,
+.prs-back {
+        backface-visibility: hidden;
+        background: #fff;
+        border: 1px solid #eee;
+        border-radius: 12px;
+        padding: 1.5rem;
+        min-height: 260px;
+        box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+}
+
+.prs-back {
+        transform: rotateY(180deg);
+}
+
+.prs-flip-button {
+        background: transparent;
+        border: none;
+        cursor: pointer;
+}
+
+/* Calendar grid */
+.prs-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+        font-size: 0.75rem;
+        text-align: center;
+}
+
+.prs-calendar-grid div {
+        padding: 4px;
+        border-radius: 4px;
+        background: #f3f4f6;
+        border: 1px solid #e5e7eb;
+}
+
+/* Plan button */
+.prs-plan-btn {
+        background: #4f46e5;
+        color: #fff;
+        font-weight: 600;
+        border-radius: 8px;
+        padding: 0.5rem 1rem;
+        display: inline-flex;
+        align-items: center;
+        transition: background 0.2s;
+}
+
+.prs-plan-btn:hover {
+        background: #4338ca;
+}
