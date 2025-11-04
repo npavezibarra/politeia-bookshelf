@@ -730,9 +730,14 @@ wp_add_inline_script(
                 </div>
                 </section>
 
-                <!-- Status Row -->
-                <section id="prs-book-info__sidebar" class="prs-book-info__sidebar" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
-                <div id="prs-status-row" class="prs-status-row">
+<!-- Status Row -->
+                <section id="prs-book-info__sidebar" class="prs-book-info__sidebar prs-flip-container" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
+                        <div class="prs-flipper">
+                                <div class="prs-front relative" aria-hidden="false">
+                                        <button type="button" id="prs-flip-btn-front" class="prs-flip-button" aria-label="<?php esc_attr_e( 'Show calendar view', 'politeia-reading' ); ?>">
+                                                <span class="dashicons dashicons-calendar-alt" aria-hidden="true"></span>
+                                        </button>
+                                        <div id="prs-status-row" class="prs-status-row">
                         <?php
                                 // "In Shelf" es derivado solo cuando owning_status es NULL/''.
                                 $is_in_shelf = empty( $ub->owning_status );
@@ -794,7 +799,60 @@ wp_add_inline_script(
                                 </p>
 
                         </div>
-                </div>
+                                        </div>
+                                </div>
+                                <div class="prs-back relative" aria-hidden="true">
+                                        <button type="button" id="prs-flip-btn-back" class="prs-flip-button" aria-label="<?php esc_attr_e( 'Show reading and owning status', 'politeia-reading' ); ?>">
+                                                <span class="dashicons dashicons-update" aria-hidden="true"></span>
+                                        </button>
+                                        <h3 class="prs-section-title"><?php esc_html_e( 'Reading Calendar', 'politeia-reading' ); ?></h3>
+                                        <p class="prs-help"><?php esc_html_e( 'Plan your reading schedule for the month.', 'politeia-reading' ); ?></p>
+                                        <?php
+                                        $timezone_string         = function_exists( 'wp_timezone_string' ) ? wp_timezone_string() : 'UTC';
+                                        if ( empty( $timezone_string ) ) {
+                                                $timezone_string = 'UTC';
+                                        }
+                                        $calendar_timezone       = function_exists( 'wp_timezone' ) ? wp_timezone() : new DateTimeZone( $timezone_string );
+                                        if ( ! $calendar_timezone instanceof DateTimeZone ) {
+                                                $calendar_timezone = new DateTimeZone( 'UTC' );
+                                        }
+                                        $calendar_context        = new DateTimeImmutable( 'now', $calendar_timezone );
+                                        $calendar_first_day      = $calendar_context->modify( 'first day of this month' );
+                                        $calendar_timestamp      = $calendar_first_day->getTimestamp();
+                                        $calendar_month_label    = wp_date( 'F', $calendar_timestamp );
+                                        $calendar_year_label     = wp_date( 'Y', $calendar_timestamp );
+                                        $calendar_month_number   = (int) wp_date( 'n', $calendar_timestamp );
+                                        $calendar_year_number    = (int) $calendar_year_label;
+                                        $calendar_days_in_month  = (int) wp_date( 't', $calendar_timestamp );
+                                        $calendar_first_weekday  = (int) wp_date( 'w', $calendar_timestamp );
+                                        $calendar_day_names      = array(
+                                                esc_html__( 'Sun', 'politeia-reading' ),
+                                                esc_html__( 'Mon', 'politeia-reading' ),
+                                                esc_html__( 'Tue', 'politeia-reading' ),
+                                                esc_html__( 'Wed', 'politeia-reading' ),
+                                                esc_html__( 'Thu', 'politeia-reading' ),
+                                                esc_html__( 'Fri', 'politeia-reading' ),
+                                                esc_html__( 'Sat', 'politeia-reading' ),
+                                        );
+                                        ?>
+                                        <div class="prs-calendar-grid" role="grid" aria-label="<?php echo esc_attr( sprintf( __( '%1$s %2$s calendar', 'politeia-reading' ), $calendar_month_label, $calendar_year_label ) ); ?>">
+                                                <?php foreach ( $calendar_day_names as $day_name ) : ?>
+                                                        <div class="prs-calendar-day prs-calendar-day--label" role="columnheader"><?php echo esc_html( $day_name ); ?></div>
+                                                <?php endforeach; ?>
+                                                <?php for ( $i = 0; $i < $calendar_first_weekday; $i++ ) : ?>
+                                                        <div class="prs-calendar-day prs-calendar-day--empty" aria-hidden="true"></div>
+                                                <?php endfor; ?>
+                                                <?php for ( $day = 1; $day <= $calendar_days_in_month; $day++ ) : ?>
+                                                        <?php
+                                                        $day_timestamp = $calendar_first_day->setDate( $calendar_year_number, $calendar_month_number, $day )->getTimestamp();
+                                                        $cell_label    = wp_date( 'F j, Y', $day_timestamp );
+                                                        ?>
+                                                        <div class="prs-calendar-day" role="gridcell" aria-label="<?php echo esc_attr( $cell_label ); ?>"><?php echo (int) $day; ?></div>
+                                                <?php endfor; ?>
+                                        </div>
+                                        <button type="button" class="prs-plan-btn"><?php esc_html_e( 'Plan a reading session', 'politeia-reading' ); ?></button>
+                                </div>
+                        </div>
                 </section>
         </div>
 

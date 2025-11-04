@@ -175,3 +175,119 @@
 .prs-pagination--top li {
         margin: 0 4px;
 }
+
+/* === Flip Card Animation for Book Info Sidebar === */
+
+.prs-flip-container {
+        perspective: 1000px; /* Creates 3D depth */
+        position: relative;
+}
+
+.prs-flipper {
+        transition: transform 0.8s ease-in-out; /* Smooth rotation */
+        transform-style: preserve-3d; /* Enables 3D positioning of children */
+        position: relative;
+}
+
+/* When flipped, rotate the flipper */
+.prs-flip-container.flipped .prs-flipper {
+        transform: rotateY(180deg);
+}
+
+/* Front and back faces */
+.prs-front,
+.prs-back {
+        backface-visibility: hidden; /* Hides the back face when turned */
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        border-radius: 12px;
+        background-color: #fff;
+        border: 1px solid #eee;
+        box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+        padding: 1.5rem;
+}
+
+/* Back face (rotated) */
+.prs-back {
+        transform: rotateY(180deg);
+}
+
+/* Calendar grid style */
+.prs-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 8px;
+        margin-top: 1rem;
+        text-align: center;
+}
+
+.prs-calendar-grid div {
+        background: #f3f4f6;
+        border-radius: 4px;
+        padding: 4px;
+        font-size: 0.8rem;
+        border: 1px solid #e5e7eb;
+}
+
+.prs-calendar-grid .prs-calendar-day--label,
+.prs-calendar-grid .prs-calendar-day--empty {
+        background: transparent;
+        border: none;
+}
+
+.prs-calendar-grid .prs-calendar-day--label {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 0.05em;
+}
+
+/* Plan button */
+.prs-plan-btn {
+        background: #4f46e5;
+        color: white;
+        border-radius: 6px;
+        padding: 0.5rem 1rem;
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        transition: background 0.2s;
+}
+
+.prs-plan-btn:hover {
+        background: #4338ca;
+}
+
+.prs-back .prs-plan-btn {
+        margin-top: 1.5rem;
+}
+
+.prs-flip-button {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: transparent;
+        border: none;
+        color: #4f46e5;
+        cursor: pointer;
+        padding: 4px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 9999px;
+        transition: color 0.2s ease, background-color 0.2s ease;
+}
+
+.prs-flip-button:focus {
+        outline: 2px solid #4338ca;
+        outline-offset: 2px;
+}
+
+.prs-flip-button:hover {
+        color: #4338ca;
+        background-color: rgba(79, 70, 229, 0.1);
+}
+
