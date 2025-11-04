@@ -67,6 +67,7 @@
         background: #000;
         z-index: 1000;
         box-sizing: border-box;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
 .prs-library__header-inner {
@@ -2113,6 +2114,12 @@ p#derived-location {
     background: white;
     padding: 10px 15px;
     color: black;
+}
+
+button.prs-library__filter-btn.button.button-secondary {
+    background: black;
+    color: white;
+    border: none;
 }
 
 .prs-library .prs-library__header-actions .prs-library__filter-btn::before {
