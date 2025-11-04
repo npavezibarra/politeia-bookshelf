@@ -194,7 +194,7 @@ add_shortcode(
                                                placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
                                                onkeyup="filterLibrary()"
                                        />
-                                       <span id="prs-book-count" class="prs-book-count"><?php esc_html_e( '0 books', 'politeia-reading' ); ?></span>
+                                       <span id="prs-book-count" class="prs-book-count">15 books</span>
                                </div>
 
                                <div class="prs-library__header-actions">
@@ -624,57 +624,65 @@ add_shortcode(
                 </div>
         </div>
         <script>
-        function updateBookCount() {
-                var rows = document.querySelectorAll('#prs-library tbody .prs-library-row');
-                var visibleRows = Array.prototype.filter.call(rows, function(row) {
-                        return row.style.display !== 'none';
-                });
-                var count = visibleRows.length;
-                var counter = document.getElementById('prs-book-count');
+        (function() {
+                function updateBookCount() {
+                        var table = document.querySelector('#prs-library tbody');
+                        if (!table) {
+                                return;
+                        }
 
-                if (counter) {
-                        var label = count === 1 ? '<?php echo esc_js( __( 'book', 'politeia-reading' ) ); ?>' : '<?php echo esc_js( __( 'books', 'politeia-reading' ) ); ?>';
-                        counter.textContent = count + ' ' + label;
+                        var visibleRows = table.querySelectorAll('tr:not([style*="display: none"])');
+                        var count = visibleRows.length;
+                        var counter = document.getElementById('prs-book-count');
+
+                        if (counter) {
+                                counter.textContent = count + ' ' + (count === 1 ? 'book' : 'books');
+                        }
                 }
-        }
 
-        function filterLibrary() {
-                var input = document.getElementById('my-library-search');
-                var rows = document.querySelectorAll('#prs-library tbody .prs-library-row');
+                function filterLibrary() {
+                        var input = document.getElementById('my-library-search');
+                        var filter = input && input.value ? input.value.toLowerCase() : '';
+                        var rows = document.querySelectorAll('#prs-library tbody tr');
 
-                if (!input) {
+                        rows.forEach(function(row) {
+                                var text = row.textContent ? row.textContent.toLowerCase() : '';
+                                row.style.display = !filter || text.indexOf(filter) !== -1 ? '' : 'none';
+                        });
+
                         updateBookCount();
-                        return;
                 }
 
-                var filter = input.value.toLowerCase();
+                window.updateBookCount = updateBookCount;
+                window.filterLibrary = filterLibrary;
 
-                rows.forEach(function(row) {
-                        var titleText = '';
-                        var titleEl = row.querySelector('.prs-book-title__text');
-                        if (titleEl && titleEl.textContent) {
-                                titleText = titleEl.textContent.toLowerCase();
-                        }
+                var tableBody = document.querySelector('#prs-library tbody');
+                if (tableBody && 'MutationObserver' in window) {
+                        var observer = new MutationObserver(updateBookCount);
+                        observer.observe(tableBody, { childList: true, subtree: true });
+                }
 
-                        var authorText = '';
-                        var authorEl = row.querySelector('.prs-book-author');
-                        if (authorEl && authorEl.textContent) {
-                                authorText = authorEl.textContent.toLowerCase();
-                        }
+                function onReady() {
+                        updateBookCount();
 
-                        if (!filter || titleText.includes(filter) || authorText.includes(filter)) {
-                                row.style.display = '';
-                        } else {
-                                row.style.display = 'none';
-                        }
-                });
+                        var applyButtons = document.querySelectorAll('.prs-filter-apply, #prs-filter-apply');
+                        var resetButtons = document.querySelectorAll('.prs-filter-reset, #prs-filter-reset');
 
-                updateBookCount();
-        }
+                        applyButtons.forEach(function(button) {
+                                button.addEventListener('click', updateBookCount);
+                        });
 
-        document.addEventListener('DOMContentLoaded', function() {
-                filterLibrary();
-        });
+                        resetButtons.forEach(function(button) {
+                                button.addEventListener('click', updateBookCount);
+                        });
+                }
+
+                if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', onReady);
+                } else {
+                        onReady();
+                }
+        })();
         </script>
                 <?php
                 return ob_get_clean();
