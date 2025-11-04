@@ -1771,6 +1771,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const labelBorrowing = wrap.getAttribute("data-label-borrowing") || "Borrowing to:";
     const labelBorrowed = wrap.getAttribute("data-label-borrowed") || "Borrowed from:";
     const labelSold = wrap.getAttribute("data-label-sold") || "Sold to:";
+    const labelSoldAmount = wrap.getAttribute("data-label-sold-amount") || "For:";
     const labelLost = wrap.getAttribute("data-label-lost") || "Last borrowed to:";
     const labelSoldOn = wrap.getAttribute("data-label-sold-on") || "Sold on:";
     const labelLostDate = wrap.getAttribute("data-label-lost-date") || "Lost:";
@@ -1904,6 +1905,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
 
       const soldLabel = escapeHtml(labelSold);
+      const soldAmountLabel = escapeHtml(labelSoldAmount);
       const safeName = escapeHtml((contactName || "").trim());
       const safeDisplayName = safeName || escapeHtml(labelUnknown);
       const formattedAmount = formatOwningAmount(saleAmountRaw);
@@ -1911,11 +1913,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       let html = `<strong>${soldLabel}</strong>`;
       if (safeDisplayName) {
         html += `<br>${safeDisplayName}`;
-        if (safeAmount) {
-          html += ` for $${safeAmount}`;
-        }
-      } else if (safeAmount) {
-        html += `<br>$${safeAmount}`;
+      }
+      if (safeAmount) {
+        html += `<br><strong>${soldAmountLabel}</strong><br>$${safeAmount}`;
       }
       if (safeDate) {
         html += `<br><small>${safeDate}</small>`;
@@ -2937,6 +2937,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const labelBorrowing = owningLabels.borrowing || "Borrowing to:";
     const labelBorrowed = owningLabels.borrowed || "Borrowed from:";
     const labelSold = owningLabels.sold || "Sold to:";
+    const labelSoldAmount = owningLabels.sold_amount || "For:";
     const labelLost = owningLabels.lost || "Last borrowed to:";
     const labelSoldOn = owningLabels.sold_on || "Sold on:";
     const labelLostDate = owningLabels.lost_date || "Lost:";
@@ -3061,14 +3062,13 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
       if (normalizedStatus === "sold") {
         const soldLabel = escapeHtml(labelSold);
+        const soldAmountLabel = escapeHtml(labelSoldAmount);
         let html = `<strong>${soldLabel}</strong>`;
         if (safeDisplayName) {
           html += `<br>${safeDisplayName}`;
-          if (safeAmount) {
-            html += ` for $${safeAmount}`;
-          }
-        } else if (safeAmount) {
-          html += `<br>$${safeAmount}`;
+        }
+        if (safeAmount) {
+          html += `<br><strong>${soldAmountLabel}</strong><br>$${safeAmount}`;
         }
         if (safeDate) {
           html += `<br><small>${safeDate}</small>`;
@@ -3083,9 +3083,6 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         let html = label ? `<strong>${label}</strong>` : "";
         if (displayName) {
           html += (html ? "<br>" : "") + displayName;
-        }
-        if (safeAmount && normalizedStatus === "sold") {
-          html += `<br>$${safeAmount}`;
         }
         if (safeDate) {
           html += `<br><small>${safeDate}</small>`;

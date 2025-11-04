@@ -60,11 +60,12 @@ class Politeia_Reading_User_Books {
                                 self::json_error( __( 'Owning status is available only for printed copies.', 'politeia-reading' ), 400 );
                         }
 
-                        $raw        = wp_unslash( $_POST['owning_status'] );
-                        $sanitized  = is_string( $raw ) ? sanitize_key( $raw ) : '';
-                        $now        = current_time( 'mysql', true );
-                        $current    = Politeia_Loan_Manager::normalize_state( $row->owning_status );
-                        $requested  = '';
+                        $raw            = wp_unslash( $_POST['owning_status'] );
+                        $sanitized      = is_string( $raw ) ? sanitize_key( $raw ) : '';
+                        $now            = current_time( 'mysql', true );
+                        $current        = Politeia_Loan_Manager::normalize_state( $row->owning_status );
+                        $requested      = '';
+                        $existing_amount = ( isset( $row->amount ) && '' !== $row->amount && null !== $row->amount ) ? number_format( (float) $row->amount, 2, '.', '' ) : null;
 
                         if ( $raw === '' || null === $raw || 'in_shelf' === $sanitized ) {
                                 $requested = '';
@@ -85,6 +86,7 @@ class Politeia_Reading_User_Books {
                                 $update['owning_status']      = null;
                                 $update['counterparty_name']  = null;
                                 $update['counterparty_email'] = null;
+                                $update['amount']             = null;
                                 self::close_open_loan( (int) $row->user_id, (int) $row->book_id, $now );
                                 if ( $state_changed ) {
                                         Politeia_Loan_Manager::record_transition(
@@ -95,6 +97,7 @@ class Politeia_Reading_User_Books {
                                                 array(
                                                         'counterparty_name'  => null,
                                                         'counterparty_email' => null,
+                                                        'amount'             => null,
                                                 )
                                         );
                                 }
@@ -119,6 +122,8 @@ class Politeia_Reading_User_Books {
                                         $update['counterparty_email'] = null;
                                 }
 
+                                $update['amount'] = ( 'sold' === $next_state ) ? $existing_amount : null;
+
                                 if ( $state_changed ) {
                                         Politeia_Loan_Manager::record_transition(
                                                 (int) $row->user_id,
@@ -128,6 +133,7 @@ class Politeia_Reading_User_Books {
                                                 array(
                                                         'counterparty_name'  => $update['counterparty_name'] ?? $row->counterparty_name,
                                                         'counterparty_email' => $update['counterparty_email'] ?? $row->counterparty_email,
+                                                        'amount'             => ( 'sold' === $requested ) ? $existing_amount : null,
                                                 )
                                         );
                                 }
@@ -277,6 +283,7 @@ class Politeia_Reading_User_Books {
                         $sanitized_state = is_string( $raw ) ? sanitize_key( $raw ) : '';
                         $current_state   = Politeia_Loan_Manager::normalize_state( $row->owning_status );
                         $requested_state = '';
+                        $existing_amount = ( isset( $row->amount ) && '' !== $row->amount && null !== $row->amount ) ? number_format( (float) $row->amount, 2, '.', '' ) : null;
 
                         if ( '' === $raw || null === $raw || 'in_shelf' === $sanitized_state ) {
                                 $requested_state = '';
@@ -300,6 +307,7 @@ class Politeia_Reading_User_Books {
                                 $update['owning_status']      = null;
                                 $update['counterparty_name']  = null;
                                 $update['counterparty_email'] = null;
+                                $update['amount']             = null;
                                 self::close_open_loan( (int) $row->user_id, (int) $row->book_id, $effective_at );
 
                                 if ( $state_changed ) {
@@ -311,6 +319,7 @@ class Politeia_Reading_User_Books {
                                                 array(
                                                         'counterparty_name'  => null,
                                                         'counterparty_email' => null,
+                                                        'amount'             => null,
                                                 )
                                         );
                                 }
@@ -337,6 +346,8 @@ class Politeia_Reading_User_Books {
                                         $update['counterparty_email'] = null;
                                 }
 
+                                $update['amount'] = ( 'sold' === $next_state ) ? $existing_amount : null;
+
                                 if ( $state_changed ) {
                                         Politeia_Loan_Manager::record_transition(
                                                 (int) $row->user_id,
@@ -346,6 +357,7 @@ class Politeia_Reading_User_Books {
                                                 array(
                                                         'counterparty_name'  => $update['counterparty_name'] ?? ( $cp_name ?: null ),
                                                         'counterparty_email' => $update['counterparty_email'] ?? ( ( $cp_email && is_email( $cp_email ) ) ? $cp_email : null ),
+                                                        'amount'             => ( 'sold' === $requested_state ) ? $existing_amount : null,
                                                 )
                                         );
                                 }
@@ -459,6 +471,10 @@ class Politeia_Reading_User_Books {
                         }
                 }
 
+                $existing_amount = ( isset( $row->amount ) && '' !== $row->amount && null !== $row->amount ) ? number_format( (float) $row->amount, 2, '.', '' ) : null;
+                $normalized_amount_value = null !== $amount_value ? number_format( (float) $amount_value, 2, '.', '' ) : null;
+                $amount_to_store = null;
+
                 $requires_contact = in_array( $next_state, array( 'borrowed', 'borrowing', 'sold' ), true );
 
                 if ( $requires_contact && ( '' === $name_trimmed || '' === $email_trimmed ) ) {
@@ -475,6 +491,8 @@ class Politeia_Reading_User_Books {
                         $update['owning_status']      = null;
                         $update['counterparty_name']  = null;
                         $update['counterparty_email'] = null;
+                        $update['amount']             = null;
+                        $amount_to_store              = null;
                         self::close_open_loan( (int) $row->user_id, (int) $row->book_id, $now );
                 } else {
                         $update['owning_status']      = $requested_status;
@@ -501,6 +519,14 @@ class Politeia_Reading_User_Books {
                                 $update['counterparty_name']  = null;
                                 $update['counterparty_email'] = null;
                         }
+
+                        if ( 'sold' === $next_state ) {
+                                $amount_to_store    = null !== $normalized_amount_value ? $normalized_amount_value : $existing_amount;
+                                $update['amount']   = $amount_to_store;
+                        } else {
+                                $amount_to_store    = null;
+                                $update['amount']   = null;
+                        }
                 }
 
                 self::update_user_book( (int) $row->id, $update );
@@ -511,13 +537,13 @@ class Politeia_Reading_User_Books {
                                 (int) $row->book_id,
                                 $current_state,
                                 $next_state,
-                                array(
-                                        'counterparty_name'  => $update['counterparty_name'] ?? $safe_name,
-                                        'counterparty_email' => $update['counterparty_email'] ?? $safe_email,
-                                        'transaction_type'   => $transaction_type,
-                                        'amount'             => ( 'sold' === $next_state ) ? $amount_value : null,
-                                )
-                        );
+                                        array(
+                                                'counterparty_name'  => $update['counterparty_name'] ?? $safe_name,
+                                                'counterparty_email' => $update['counterparty_email'] ?? $safe_email,
+                                                'transaction_type'   => $transaction_type,
+                                                'amount'             => ( 'sold' === $next_state ) ? $amount_to_store : null,
+                                        )
+                                );
                 }
 
                 self::json_success(
@@ -526,6 +552,7 @@ class Politeia_Reading_User_Books {
                                 'owning_status'      => Politeia_Loan_Manager::DEFAULT_STATE === $next_state ? '' : $requested_status,
                                 'counterparty_name'  => $name_trimmed,
                                 'counterparty_email' => $email_trimmed,
+                                'amount'             => ( 'sold' === $requested_status ) ? $amount_to_store : null,
                         )
                 );
         }
@@ -592,6 +619,7 @@ class Politeia_Reading_User_Books {
                                 'owning_status'      => null,
                                 'counterparty_name'  => null,
                                 'counterparty_email' => null,
+                                'amount'             => null,
                         )
                 );
 

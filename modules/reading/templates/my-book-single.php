@@ -43,33 +43,70 @@ if ( ! $ub ) {
 /** Contacto ya guardado (definir antes de localize) */
 $has_contact = ( ! empty( $ub->counterparty_name ) ) || ( ! empty( $ub->counterparty_email ) );
 $contact_name  = $ub->counterparty_name ? (string) $ub->counterparty_name : '';
-$contact_email = $ub->counterparty_email ? (string) $ub->counterparty_email : '';
+$contact_email        = $ub->counterparty_email ? (string) $ub->counterparty_email : '';
+$counterparty_amount  = isset( $ub->amount ) ? $ub->amount : null;
+$sale_amount_attr     = '';
+$sale_amount_display  = '';
+if ( null !== $counterparty_amount && '' !== $counterparty_amount ) {
+        $sale_amount_attr    = number_format( (float) $counterparty_amount, 2, '.', '' );
+        $sale_amount_display = '$' . number_format( (float) $counterparty_amount, 0, ',', '.' );
+}
 
 $label_borrowing = __( 'Borrowing to:', 'politeia-reading' );
 $label_borrowed  = __( 'Borrowed from:', 'politeia-reading' );
 $label_sold      = __( 'Sold to:', 'politeia-reading' );
+$label_sold_amount = __( 'For:', 'politeia-reading' );
 $label_lost      = __( 'Last borrowed to:', 'politeia-reading' );
 $label_sold_on   = __( 'Sold on:', 'politeia-reading' );
 $label_lost_date = __( 'Lost:', 'politeia-reading' );
 $label_unknown   = __( 'Unknown', 'politeia-reading' );
 
-$owning_message = '';
-if ( $contact_name ) {
-        switch ( (string) $ub->owning_status ) {
-                case 'borrowing':
-                        $owning_message = sprintf( '%s %s', $label_borrowing, $contact_name );
-                        break;
-                case 'borrowed':
-                        $owning_message = sprintf( '%s %s', $label_borrowed, $contact_name );
-                        break;
-                case 'sold':
-                        $owning_message = sprintf( '%s %s', $label_sold, $contact_name );
-                        break;
-                case 'lost':
-                        $owning_message = sprintf( '%s %s', $label_lost, $contact_name );
-                        break;
+$owning_info_lines = array();
+$owning_status     = isset( $ub->owning_status ) ? (string) $ub->owning_status : '';
+
+if ( in_array( $owning_status, array( 'borrowed', 'borrowing', 'sold' ), true ) ) {
+        $label_map = array(
+                'borrowed'  => $label_borrowed,
+                'borrowing' => $label_borrowing,
+                'sold'      => $label_sold,
+        );
+
+        if ( isset( $label_map[ $owning_status ] ) ) {
+                $owning_info_lines[] = '<strong>' . esc_html( $label_map[ $owning_status ] ) . '</strong>';
+        }
+
+        $display_name = $contact_name ? $contact_name : $label_unknown;
+        $owning_info_lines[] = esc_html( $display_name );
+
+        if ( 'sold' === $owning_status && $sale_amount_display ) {
+                $owning_info_lines[] = '<strong>' . esc_html( $label_sold_amount ) . '</strong>';
+                $owning_info_lines[] = esc_html( $sale_amount_display );
+        }
+} elseif ( 'lost' === $owning_status ) {
+        $owning_info_lines[] = sprintf(
+                '<strong>%s</strong>: %s',
+                esc_html( $label_location ),
+                esc_html( $label_not_in_shelf )
+        );
+
+        if ( $contact_name ) {
+                $owning_info_lines[] = sprintf(
+                        '<strong>%s</strong> %s',
+                        esc_html( $label_lost ),
+                        esc_html( $contact_name )
+                );
         }
 }
+
+$owning_message = $owning_info_lines ? implode( '<br>', $owning_info_lines ) : '';
+$owning_message_display = $owning_message ? wp_kses(
+        $owning_message,
+        array(
+                'strong' => array(),
+                'br'     => array(),
+                'small'  => array(),
+        )
+) : '';
 
 /** Préstamo activo (fecha local) */
 $active_start_gmt   = $wpdb->get_var(
@@ -175,6 +212,7 @@ wp_localize_script(
                 'user_id'       => (int) $user_id,
                 'language'      => isset( $book->language ) ? (string) $book->language : '',
                 'cover_source'  => $cover_source,
+                'sale_amount'   => $sale_amount_attr,
         )
 );
 wp_add_inline_script(
@@ -764,9 +802,9 @@ wp_add_inline_script(
                         </div>
 
                         <!-- Owning Status (editable) + Contact (condicional) -->
-                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-sold-on="<?php echo esc_attr( $label_sold_on ); ?>" data-label-lost-date="<?php echo esc_attr( $label_lost_date ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>" data-active-start="<?php echo esc_attr( $active_start_local ); ?>">
+                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-sold-amount="<?php echo esc_attr( $label_sold_amount ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-sold-on="<?php echo esc_attr( $label_sold_on ); ?>" data-label-lost-date="<?php echo esc_attr( $label_lost_date ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>" data-active-start="<?php echo esc_attr( $active_start_local ); ?>" data-sale-amount="<?php echo esc_attr( $sale_amount_attr ); ?>">
                                 <label class="label" for="owning-status-select"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-                                <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
+                                <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>" data-sale-amount="<?php echo esc_attr( $sale_amount_attr ); ?>">
                                         <option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
                                         <option value="borrowed"  <?php selected( $ub->owning_status, 'borrowed' ); ?>><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
                                         <option value="borrowing" <?php selected( $ub->owning_status, 'borrowing' ); ?>><?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?></option>
@@ -788,7 +826,7 @@ wp_add_inline_script(
                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                 </button>
 
-                                <span id="owning-status-status" class="prs-help owning-status-info" data-book-id="<?php echo (int) $book->id; ?>"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
+                                <span id="owning-status-status" class="prs-help owning-status-info" data-book-id="<?php echo (int) $book->id; ?>" data-sale-amount="<?php echo esc_attr( $sale_amount_attr ); ?>"><?php echo $owning_message_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
                                 <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
                                         <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
                                 </p>

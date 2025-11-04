@@ -17,6 +17,7 @@ add_shortcode(
                         'borrowing'    => __( 'Borrowing to:', 'politeia-reading' ),
                         'borrowed'     => __( 'Borrowed from:', 'politeia-reading' ),
                         'sold'         => __( 'Sold to:', 'politeia-reading' ),
+                        'sold_amount'  => __( 'For:', 'politeia-reading' ),
                         'lost'         => __( 'Last borrowed to:', 'politeia-reading' ),
                         'sold_on'      => __( 'Sold on:', 'politeia-reading' ),
                         'lost_date'    => __( 'Lost:', 'politeia-reading' ),
@@ -56,6 +57,7 @@ add_shortcode(
                 $label_borrowing    = $owning_labels['borrowing'];
                 $label_borrowed     = $owning_labels['borrowed'];
                 $label_sold         = $owning_labels['sold'];
+                $label_sold_amount  = $owning_labels['sold_amount'];
                 $label_lost         = $owning_labels['lost'];
                 $label_location     = $owning_labels['location'];
                 $label_in_shelf     = $owning_labels['in_shelf'];
@@ -126,6 +128,7 @@ add_shortcode(
               ub.pages,
               ub.counterparty_name,
               ub.counterparty_email,
+              ub.amount,
               ub.cover_reference,
               (
                       SELECT start_date
@@ -236,6 +239,14 @@ add_shortcode(
 
                                 $loan_contact_name  = isset( $r->counterparty_name ) ? trim( (string) $r->counterparty_name ) : '';
                                 $loan_contact_email = isset( $r->counterparty_email ) ? trim( (string) $r->counterparty_email ) : '';
+                                $sale_amount_raw    = isset( $r->amount ) ? $r->amount : null;
+                                $sale_amount_attr   = '';
+                                $sale_amount_display = '';
+
+                                if ( null !== $sale_amount_raw && '' !== $sale_amount_raw ) {
+                                        $sale_amount_attr    = number_format( (float) $sale_amount_raw, 2, '.', '' );
+                                        $sale_amount_display = '$' . number_format( (float) $sale_amount_raw, 0, ',', '.' );
+                                }
                                 $is_digital         = ( isset( $r->type_book ) && 'd' === $r->type_book );
                                 $active_start_local = '';
 
@@ -273,6 +284,11 @@ add_shortcode(
                                         }
 
                                         $owning_info_lines[] = esc_html( $display_name );
+
+                                        if ( 'sold' === $owning_status && $sale_amount_display ) {
+                                                $owning_info_lines[] = '<strong>' . esc_html( $label_sold_amount ) . '</strong>';
+                                                $owning_info_lines[] = esc_html( $sale_amount_display );
+                                        }
 
                                         if ( $active_start_local ) {
                                                 $owning_info_lines[] = '<small>' . esc_html( $active_start_local ) . '</small>';
@@ -460,6 +476,7 @@ add_shortcode(
                                                         data-contact-name="<?php echo esc_attr( $loan_contact_name ); ?>"
                                                         data-contact-email="<?php echo esc_attr( $loan_contact_email ); ?>"
                                                         data-active-start="<?php echo esc_attr( $active_start_local ); ?>"
+                                                        data-sale-amount="<?php echo esc_attr( $sale_amount_attr ); ?>"
                                                         <?php echo $is_digital ? 'disabled="disabled" aria-disabled="true"' : ''; ?>
                                                 >
                                                 <option value=""><?php echo esc_html__( '— Select —', 'politeia-reading' ); ?></option>
@@ -500,7 +517,7 @@ add_shortcode(
                                                 >
                                                         <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
                                                 </button>
-                                                <span class="owning-status-info" data-book-id="<?php echo (int) $r->book_id; ?>"><?php echo $owning_info_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
+                                                <span class="owning-status-info" data-book-id="<?php echo (int) $r->book_id; ?>" data-sale-amount="<?php echo esc_attr( $sale_amount_attr ); ?>"><?php echo $owning_info_display; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></span>
                                                 <?php if ( $is_digital ) : ?>
                                                 <div class="prs-owning-status-note"><?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?></div>
                                                 <?php endif; ?>
