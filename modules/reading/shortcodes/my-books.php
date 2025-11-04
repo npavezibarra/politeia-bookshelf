@@ -109,19 +109,19 @@ add_shortcode(
 
 		// Helper de enlaces de paginación
 		$base_url = remove_query_arg( 'prs_page' );
-		$paginate = paginate_links(
-			array(
-				'base'      => add_query_arg( 'prs_page', '%#%', $base_url ),
-				'format'    => '',
-				'current'   => $paged,
-				'total'     => $max_pages,
-				'mid_size'  => 2,
-				'end_size'  => 1,
-				'prev_text' => '« ' . __( 'Previous', 'politeia-reading' ),
-				'next_text' => __( 'Next', 'politeia-reading' ) . ' »',
-				'type'      => 'array',
-			)
-		);
+               $paginate = paginate_links(
+                       array(
+                               'base'      => add_query_arg( 'prs_page', '%#%', $base_url ),
+                               'format'    => '',
+                               'current'   => $paged,
+                               'total'     => $max_pages,
+                               'mid_size'  => 2,
+                               'end_size'  => 1,
+                               'prev_text' => '«',
+                               'next_text' => '»',
+                               'type'      => 'plain',
+                       )
+               );
 
 		$add_book_shortcode = '';
 		if ( shortcode_exists( 'politeia_add_book' ) ) {
@@ -163,15 +163,11 @@ add_shortcode(
                                </div>
                        </div>
                </div>
-		<?php if ( ! empty( $paginate ) ) : ?>
-		<nav class="prs-pagination prs-pagination--top" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
-			<ul class="page-numbers">
-			<?php foreach ( $paginate as $link ) : ?>
-				<li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></li>
-			<?php endforeach; ?>
-			</ul>
-		</nav>
-		<?php endif; ?>
+               <?php if ( ! empty( $paginate ) ) : ?>
+               <div class="prs-pagination prs-pagination--top" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
+                       <?php echo $paginate; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+               </div>
+               <?php endif; ?>
 
 		<table id="prs-library" class="prs-table">
                 <tbody>
