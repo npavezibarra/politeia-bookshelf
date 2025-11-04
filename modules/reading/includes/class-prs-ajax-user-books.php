@@ -6,6 +6,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 class PRS_Ajax_User_Books {
         public static function init() {
                 add_action( 'wp_ajax_politeia_remove_user_book', array( __CLASS__, 'handle_remove_user_book' ) );
+                add_action( 'wp_ajax_prs_get_all_books', array( __CLASS__, 'handle_get_all_books' ) );
+                add_action( 'wp_ajax_nopriv_prs_get_all_books', array( __CLASS__, 'handle_get_all_books' ) );
+                add_action( 'wp_ajax_prs_get_books_page', array( __CLASS__, 'handle_get_books_page' ) );
+                add_action( 'wp_ajax_nopriv_prs_get_books_page', array( __CLASS__, 'handle_get_books_page' ) );
         }
 
         public static function handle_remove_user_book() {
@@ -85,6 +89,49 @@ class PRS_Ajax_User_Books {
                                 'deleted_at' => $now,
                         )
                 );
+        }
+
+        public static function handle_get_all_books() {
+                self::render_books_response();
+        }
+
+        public static function handle_get_books_page() {
+                $per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
+                if ( $per_page < 1 ) {
+                        $per_page = 15;
+                }
+
+                $page   = isset( $_GET['page'] ) ? max( 1, absint( $_GET['page'] ) ) : 1;
+                $offset = ( $page - 1 ) * $per_page;
+
+                self::render_books_response(
+                        array(
+                                'per_page' => $per_page,
+                                'offset'   => $offset,
+                        )
+                );
+        }
+
+        private static function render_books_response( $args = array() ) {
+                if ( ! is_user_logged_in() ) {
+                        wp_die( esc_html__( 'You must be logged in to view your library.', 'politeia-reading' ), '', 403 );
+                }
+
+                $user_id = get_current_user_id();
+                $books   = prs_get_user_books_for_library( $user_id, $args );
+                $labels  = prs_get_owning_labels();
+
+                foreach ( (array) $books as $book ) {
+                        echo prs_render_book_row( // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+                                $book,
+                                array(
+                                        'user_id'       => $user_id,
+                                        'owning_labels' => $labels,
+                                )
+                        );
+                }
+
+                wp_die();
         }
 }
 
