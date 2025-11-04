@@ -185,29 +185,34 @@ add_shortcode(
                <div class="prs-library__header">
                        <div class="prs-library__header-inner">
                                <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
-                               <input
-                                       type="text"
-                                       id="my-library-search"
-                                       class="prs-library__search"
-                                       placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
-                                       onkeyup="filterLibrary()"
-                               />
-                              <div class="prs-library__header-actions">
-                                      <button
-                                              type="button"
-                                              class="prs-library__filter-btn button button-secondary"
-                                              aria-haspopup="dialog"
-                                              aria-controls="prs-filter-dashboard"
-                                              aria-expanded="false"
-                                      >
-                                              <?php esc_html_e( 'Filter', 'politeia-reading' ); ?>
-                                      </button>
-                                      <?php if ( $add_book_shortcode ) : ?>
-                                              <div class="prs-library__header-add-book">
-                                                      <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                              </div>
-                                      <?php endif; ?>
-                              </div>
+
+                               <div class="prs-library__header-center">
+                                       <input
+                                               type="text"
+                                               id="my-library-search"
+                                               class="prs-library__search"
+                                               placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
+                                               onkeyup="filterLibrary()"
+                                       />
+                                       <span id="prs-book-count" class="prs-book-count"><?php esc_html_e( '0 books', 'politeia-reading' ); ?></span>
+                               </div>
+
+                               <div class="prs-library__header-actions">
+                                       <button
+                                               type="button"
+                                               class="prs-library__filter-btn button button-secondary"
+                                               aria-haspopup="dialog"
+                                               aria-controls="prs-filter-dashboard"
+                                               aria-expanded="false"
+                                       >
+                                               <?php esc_html_e( 'Filter', 'politeia-reading' ); ?>
+                                       </button>
+                                       <?php if ( $add_book_shortcode ) : ?>
+                                               <div class="prs-library__header-add-book">
+                                                       <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                               </div>
+                                       <?php endif; ?>
+                               </div>
                        </div>
                </div>
                <table id="prs-library" class="prs-table">
@@ -619,14 +624,30 @@ add_shortcode(
                 </div>
         </div>
         <script>
+        function updateBookCount() {
+                var rows = document.querySelectorAll('#prs-library tbody .prs-library-row');
+                var visibleRows = Array.prototype.filter.call(rows, function(row) {
+                        return row.style.display !== 'none';
+                });
+                var count = visibleRows.length;
+                var counter = document.getElementById('prs-book-count');
+
+                if (counter) {
+                        var label = count === 1 ? '<?php echo esc_js( __( 'book', 'politeia-reading' ) ); ?>' : '<?php echo esc_js( __( 'books', 'politeia-reading' ) ); ?>';
+                        counter.textContent = count + ' ' + label;
+                }
+        }
+
         function filterLibrary() {
                 var input = document.getElementById('my-library-search');
+                var rows = document.querySelectorAll('#prs-library tbody .prs-library-row');
+
                 if (!input) {
+                        updateBookCount();
                         return;
                 }
 
                 var filter = input.value.toLowerCase();
-                var rows = document.querySelectorAll('#prs-library tbody .prs-library-row');
 
                 rows.forEach(function(row) {
                         var titleText = '';
@@ -647,6 +668,8 @@ add_shortcode(
                                 row.style.display = 'none';
                         }
                 });
+
+                updateBookCount();
         }
 
         document.addEventListener('DOMContentLoaded', function() {

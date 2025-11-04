@@ -71,15 +71,29 @@
 }
 
 .prs-library__header-inner {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 14px 24px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
+        gap: 24px;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 14px 24px;
         box-sizing: border-box;
+}
+
+.prs-library__header-center {
+        display: flex;
+        align-items: center;
+        gap: 24px;
+        flex: 1;
+        justify-content: flex-start;
+}
+
+.prs-book-count {
+        color: #fff;
+        font-size: 16px;
+        opacity: 0.9;
+        white-space: nowrap;
 }
 
 .prs-library__content {
@@ -100,7 +114,7 @@
 }
 
 .prs-library .prs-library__search {
-        margin-left: 16px;
+        margin-left: 0;
         background: transparent;
         border: none;
         border-bottom: 2px solid #fff;
