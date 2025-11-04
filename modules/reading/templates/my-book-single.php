@@ -731,71 +731,125 @@ wp_add_inline_script(
                 </section>
 
                 <!-- Status Row -->
-                <section id="prs-book-info__sidebar" class="prs-book-info__sidebar" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
-                <div id="prs-status-row" class="prs-status-row">
-                        <?php
-                                // "In Shelf" es derivado solo cuando owning_status es NULL/''.
-                                $is_in_shelf = empty( $ub->owning_status );
-                        ?>
-                        <?php
-                                $reading_disabled        = in_array( $ub->owning_status, array( 'borrowing', 'borrowed' ), true );
-                                $reading_disabled_text    = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
-                                $reading_disabled_title   = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
-                                $reading_disabled_attr    = $reading_disabled ? ' disabled="disabled"' : '';
-                                $reading_disabled_class   = $reading_disabled ? ' is-disabled' : '';
-                        ?>
-                        <div class="prs-field prs-status-field" id="fld-reading-status">
-                                <label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
-                                <select
-                                        id="reading-status-select"
-                                        class="reading-status-select<?php echo esc_attr( $reading_disabled_class ); ?>"
-                                        data-disabled-text="<?php echo esc_attr( $reading_disabled_text ); ?>"
-                                        aria-disabled="<?php echo $reading_disabled ? 'true' : 'false'; ?>"<?php echo $reading_disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $reading_disabled_title; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                >
-                                        <option value="not_started" <?php selected( $ub->reading_status, 'not_started' ); ?>><?php esc_html_e( 'Not Started', 'politeia-reading' ); ?></option>
-                                        <option value="started"     <?php selected( $ub->reading_status, 'started' ); ?>><?php esc_html_e( 'Started', 'politeia-reading' ); ?></option>
-                                        <option value="finished"    <?php selected( $ub->reading_status, 'finished' ); ?>><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
-                                </select>
-                                <span id="reading-status-status" class="prs-help"></span>
-                                <p class="prs-location" id="derived-location">
-                                        <strong><?php esc_html_e( 'Location', 'politeia-reading' ); ?>:</strong>
-                                        <span id="derived-location-text"><?php echo $is_in_shelf ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
-                                </p>
-                        </div>
+                <div id="prs-book-info__sidebar" class="prs-flip-container">
+                        <div class="prs-flipper">
 
-                        <!-- Owning Status (editable) + Contact (condicional) -->
-                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-sold-on="<?php echo esc_attr( $label_sold_on ); ?>" data-label-lost-date="<?php echo esc_attr( $label_lost_date ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>" data-active-start="<?php echo esc_attr( $active_start_local ); ?>">
-                                <label class="label" for="owning-status-select"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-                                <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
-                                        <option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
-                                        <option value="borrowed"  <?php selected( $ub->owning_status, 'borrowed' ); ?>><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
-                                        <option value="borrowing" <?php selected( $ub->owning_status, 'borrowing' ); ?>><?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?></option>
-                                        <option value="bought"    <?php selected( $ub->owning_status, 'bought' ); ?>><?php esc_html_e( 'Bought', 'politeia-reading' ); ?></option>
-                                        <option value="sold"      <?php selected( $ub->owning_status, 'sold' ); ?>><?php esc_html_e( 'Sold', 'politeia-reading' ); ?></option>
-                                        <option value="lost"      <?php selected( $ub->owning_status, 'lost' ); ?>><?php esc_html_e( 'Lost', 'politeia-reading' ); ?></option>
-                                </select>
+                                <div class="prs-front relative">
+                                        <section class="prs-book-info__sidebar" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
+                                                <div id="prs-status-row" class="prs-status-row">
+                                                        <?php
+                                                        // "In Shelf" es derivado solo cuando owning_status es NULL/''.
+                                                        $is_in_shelf = empty( $ub->owning_status );
+                                                        ?>
+                                                        <?php
+                                                        $reading_disabled        = in_array( $ub->owning_status, array( 'borrowing', 'borrowed' ), true );
+                                                        $reading_disabled_text    = __( 'Disabled while this book is being borrowed.', 'politeia-reading' );
+                                                        $reading_disabled_title   = $reading_disabled ? ' title="' . esc_attr( $reading_disabled_text ) . '"' : '';
+                                                        $reading_disabled_attr    = $reading_disabled ? ' disabled="disabled"' : '';
+                                                        $reading_disabled_class   = $reading_disabled ? ' is-disabled' : '';
+                                                        ?>
+                                                        <div class="prs-field prs-status-field" id="fld-reading-status">
+                                                                <label class="label" for="reading-status-select"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
+                                                                <select
+                                                                        id="reading-status-select"
+                                                                        class="reading-status-select<?php echo esc_attr( $reading_disabled_class ); ?>"
+                                                                        data-disabled-text="<?php echo esc_attr( $reading_disabled_text ); ?>"
+                                                                        aria-disabled="<?php echo $reading_disabled ? 'true' : 'false'; ?>"<?php echo $reading_disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $reading_disabled_title; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                                                >
+                                                                        <option value="not_started" <?php selected( $ub->reading_status, 'not_started' ); ?>><?php esc_html_e( 'Not Started', 'politeia-reading' ); ?></option>
+                                                                        <option value="started"     <?php selected( $ub->reading_status, 'started' ); ?>><?php esc_html_e( 'Started', 'politeia-reading' ); ?></option>
+                                                                        <option value="finished"    <?php selected( $ub->reading_status, 'finished' ); ?>><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
+                                                                </select>
+                                                                <span id="reading-status-status" class="prs-help"></span>
+                                                                <p class="prs-location" id="derived-location">
+                                                                        <strong><?php esc_html_e( 'Location', 'politeia-reading' ); ?>:</strong>
+                                                                        <span id="derived-location-text"><?php echo $is_in_shelf ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
+                                                                </p>
+                                                        </div>
 
-                                <?php $show_return_btn = in_array( $ub->owning_status, array( 'borrowed', 'borrowing' ), true ); ?>
-                                <button
-                                        type="button"
-                                        id="owning-return-shelf"
-                                        class="prs-btn owning-return-shelf"
-                                        data-book-id="<?php echo (int) $book->id; ?>"
-                                        data-user-book-id="<?php echo (int) $ub->id; ?>"
-                                        style="<?php echo $show_return_btn ? '' : 'display:none;'; ?>"
-                                        <?php disabled( $is_digital ); ?>
-                                >
-                                        <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
-                                </button>
+                                                        <!-- Owning Status (editable) + Contact (condicional) -->
+                                                        <div class="prs-field prs-status-field" id="fld-owning-status" data-contact-name="<?php echo esc_attr( $contact_name ); ?>" data-contact-email="<?php echo esc_attr( $contact_email ); ?>" data-label-borrowing="<?php echo esc_attr( $label_borrowing ); ?>" data-label-borrowed="<?php echo esc_attr( $label_borrowed ); ?>" data-label-sold="<?php echo esc_attr( $label_sold ); ?>" data-label-lost="<?php echo esc_attr( $label_lost ); ?>" data-label-sold-on="<?php echo esc_attr( $label_sold_on ); ?>" data-label-lost-date="<?php echo esc_attr( $label_lost_date ); ?>" data-label-unknown="<?php echo esc_attr( $label_unknown ); ?>" data-active-start="<?php echo esc_attr( $active_start_local ); ?>">
+                                                                <label class="label" for="owning-status-select"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
+                                                                <select id="owning-status-select" <?php disabled( $is_digital ); ?> aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
+                                                                        <option value="" <?php selected( empty( $ub->owning_status ) ); ?>><?php esc_html_e( '— Select —', 'politeia-reading' ); ?></option>
+                                                                        <option value="borrowed"  <?php selected( $ub->owning_status, 'borrowed' ); ?>><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
+                                                                        <option value="borrowing" <?php selected( $ub->owning_status, 'borrowing' ); ?>><?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?></option>
+                                                                        <option value="bought"    <?php selected( $ub->owning_status, 'bought' ); ?>><?php esc_html_e( 'Bought', 'politeia-reading' ); ?></option>
+                                                                        <option value="sold"      <?php selected( $ub->owning_status, 'sold' ); ?>><?php esc_html_e( 'Sold', 'politeia-reading' ); ?></option>
+                                                                        <option value="lost"      <?php selected( $ub->owning_status, 'lost' ); ?>><?php esc_html_e( 'Lost', 'politeia-reading' ); ?></option>
+                                                                </select>
 
-                                <span id="owning-status-status" class="prs-help owning-status-info" data-book-id="<?php echo (int) $book->id; ?>"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
-                                <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
-                                        <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
-                                </p>
+                                                                <?php $show_return_btn = in_array( $ub->owning_status, array( 'borrowed', 'borrowing' ), true ); ?>
+                                                                <button
+                                                                        type="button"
+                                                                        id="owning-return-shelf"
+                                                                        class="prs-btn owning-return-shelf"
+                                                                        data-book-id="<?php echo (int) $book->id; ?>"
+                                                                        data-user-book-id="<?php echo (int) $ub->id; ?>"
+                                                                        style="<?php echo $show_return_btn ? '' : 'display:none;'; ?>"
+                                                                        <?php disabled( $is_digital ); ?>
+                                                                >
+                                                                        <?php esc_html_e( 'Mark as returned', 'politeia-reading' ); ?>
+                                                                </button>
 
+                                                                <span id="owning-status-status" class="prs-help owning-status-info" data-book-id="<?php echo (int) $book->id; ?>"><?php echo $owning_message ? esc_html( $owning_message ) : ''; ?></span>
+                                                                <p id="owning-status-note" class="prs-help prs-owning-status-note" style="<?php echo $is_digital ? '' : 'display:none;'; ?>">
+                                                                        <?php esc_html_e( 'Owning status is available only for printed copies.', 'politeia-reading' ); ?>
+                                                                </p>
+
+                                                        </div>
+                                                </div>
+                                        </section>
+
+                                        <button id="prs-flip-btn-front"
+                                                class="prs-flip-button absolute top-3 right-3 p-2 text-gray-400 hover:text-indigo-600 transition rounded-full hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                aria-label="Flip card to calendar view">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M21 12a9 9 0 0 0-9-9c-1.4 0-2.8.3-4 .9A6 6 0 0 0 4 8.5M3 12a9 9 0 0 0 9 9c1.4 0 2.8-.3 4-.9A6 6 0 0 0 20 15.5" />
+                                                        <path d="m3 5 1.5 1.5m16.5 12L19.5 17.5M12 2v2m-7.8 11.8 1.5-1.5m15.6-7.6-1.5 1.5" />
+                                                </svg>
+                                        </button>
+                                </div>
+
+                                <div class="prs-back relative">
+                                        <button id="prs-flip-btn-back"
+                                                class="prs-flip-button absolute top-3 right-3 p-2 text-gray-400 hover:text-indigo-600 transition rounded-full hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                                aria-label="Flip back to status view">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                        <path d="M21 12a9 9 0 0 0-9-9c-1.4 0-2.8.3-4 .9A6 6 0 0 0 4 8.5M3 12a9 9 0 0 0 9 9c1.4 0 2.8-.3 4-.9A6 6 0 0 0 20 15.5" />
+                                                        <path d="m3 5 1.5 1.5m16.5 12L19.5 17.5M12 2v2m-7.8 11.8 1.5-1.5m15.6-7.6-1.5 1.5" />
+                                                </svg>
+                                        </button>
+
+                                        <h2 class="text-lg font-bold mb-2">Sesiones Mensuales (<?= date( 'Y' ); ?>)</h2>
+                                        <div class="flex items-center gap-2 mb-4">
+                                                <label for="prs-month-select" class="text-sm font-semibold">Mes:</label>
+                                                <select id="prs-month-select" class="rounded-md border-gray-300 text-sm focus:ring-indigo-500 focus:border-indigo-500">
+                                                        <option>Enero</option><option>Febrero</option><option>Marzo</option>
+                                                        <option>Abril</option><option>Mayo</option><option>Junio</option>
+                                                        <option>Julio</option><option>Agosto</option><option>Septiembre</option>
+                                                        <option>Octubre</option><option selected>Noviembre</option><option>Diciembre</option>
+                                                </select>
+                                        </div>
+
+                                        <div class="prs-calendar-grid">
+                                                <div>Lu</div><div>Ma</div><div>Mi</div><div>Ju</div><div>Vi</div><div>Sá</div><div>Do</div>
+                                                <?php for ( $i = 0; $i < 35; $i++ ) : ?>
+                                                        <div class="prs-day-box"></div>
+                                                <?php endfor; ?>
+                                        </div>
+
+                                        <div class="mt-4">
+                                                <button class="prs-plan-btn">
+                                                        Plan de Lectura
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" class="ml-2">
+                                                                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" /><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+                                                        </svg>
+                                                </button>
+                                        </div>
+                                </div>
                         </div>
                 </div>
-                </section>
         </div>
 
         <section id="prs-reading-sessions" class="prs-book-sessions prs-reading-sessions">
