@@ -105,10 +105,11 @@
         border-bottom: 2px solid #fff;
         color: #fff;
         padding: 6px 0;
-        font-size: 16px;
+        font-size: 20px;
         width: 280px;
         outline: none;
         caret-color: #fff;
+        border-radius: 0px;
 }
 
 .prs-library .prs-library__search::placeholder {
