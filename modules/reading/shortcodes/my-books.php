@@ -163,7 +163,17 @@ add_shortcode(
                                </div>
                        </div>
                </div>
-               <table id="prs-library" class="prs-table">
+		<?php if ( ! empty( $paginate ) ) : ?>
+		<nav class="prs-pagination prs-pagination--top" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
+			<ul class="page-numbers">
+			<?php foreach ( $paginate as $link ) : ?>
+				<li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></li>
+			<?php endforeach; ?>
+			</ul>
+		</nav>
+		<?php endif; ?>
+
+		<table id="prs-library" class="prs-table">
                 <tbody>
                         <?php
                         foreach ( (array) $books as $r ) {
@@ -178,16 +188,6 @@ add_shortcode(
                         ?>
                 </tbody>
                 </table>
-
-                <?php if ( ! empty( $paginate ) ) : ?>
-                <nav class="prs-pagination" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
-                        <ul class="page-numbers" style="display:flex;gap:6px;list-style:none;padding-left:0;">
-                        <?php foreach ( $paginate as $link ) : ?>
-                                <li><?php echo $link; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?></li>
-                        <?php endforeach; ?>
-                        </ul>
-                </nav>
-                <?php endif; ?>
 
                 <?php prs_render_owning_overlay(); ?>
 
