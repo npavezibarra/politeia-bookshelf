@@ -4424,58 +4424,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const backBtn = document.getElementById("prs-flip-btn-back");
 
     if (sidebar && frontBtn && backBtn) {
-      const flipper = sidebar.querySelector(".prs-flipper");
-      const frontFace = sidebar.querySelector(".prs-front");
-      const backFace = sidebar.querySelector(".prs-back");
-
-      const adjustFlipHeight = () => {
-        if (!flipper) {
-          return;
-        }
-        const frontHeight = frontFace ? frontFace.scrollHeight : 0;
-        const backHeight = backFace ? backFace.scrollHeight : 0;
-        const maxHeight = Math.max(frontHeight, backHeight);
-        if (maxHeight) {
-          flipper.style.height = `${maxHeight}px`;
-          sidebar.style.minHeight = `${maxHeight}px`;
-        }
-      };
-
-      const scheduleAdjust = () => {
-        if (typeof window.requestAnimationFrame === "function") {
-          window.requestAnimationFrame(adjustFlipHeight);
-        } else {
-          adjustFlipHeight();
-        }
-      };
-
       const toggleFlip = () => {
-        const isFlipped = sidebar.classList.toggle("flipped");
-        if (frontFace && backFace) {
-          frontFace.setAttribute("aria-hidden", isFlipped ? "true" : "false");
-          backFace.setAttribute("aria-hidden", isFlipped ? "false" : "true");
-        }
-        scheduleAdjust();
+        sidebar.classList.toggle("flipped");
       };
 
       frontBtn.addEventListener("click", toggleFlip);
       backBtn.addEventListener("click", toggleFlip);
-
-      adjustFlipHeight();
-      window.addEventListener("load", adjustFlipHeight);
-      window.addEventListener("resize", adjustFlipHeight);
-
-      if (typeof ResizeObserver === "function") {
-        const resizeObserver = new ResizeObserver(() => {
-          scheduleAdjust();
-        });
-        if (frontFace) {
-          resizeObserver.observe(frontFace);
-        }
-        if (backFace) {
-          resizeObserver.observe(backFace);
-        }
-      }
     }
   });
 })();
