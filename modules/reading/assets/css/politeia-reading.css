@@ -132,42 +132,46 @@
         display: flex;
         justify-content: center;
         align-items: center;
-        margin: 12px auto 16px;
-        padding: 4px 12px;
-        border: 1px solid #dcdcdc;
-        border-radius: 4px;
-        background: #fff;
+        margin: 20px auto;
+        padding: 8px 16px;
+        border-radius: 6px;
+        background: #f7f7f7;
         width: fit-content;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-}
-
-.prs-pagination--top .page-numbers {
-        display: flex;
-        gap: 6px;
-        list-style: none;
-        padding-left: 0;
-        margin: 0;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 /* Links inside pagination */
 .prs-pagination--top a,
 .prs-pagination--top span {
-        margin: 0 4px;
+        display: inline-block;
+        margin: 0 6px;
         padding: 4px 8px;
-        color: #121212;
         text-decoration: none;
-        font-size: 14px;
+        color: #121212;
         font-weight: 500;
+        font-size: 15px;
+        transition: all 0.2s ease;
 }
 
 .prs-pagination--top a:hover {
         color: var(--bb-primary-color, #385DFF);
-        text-decoration: underline;
 }
 
 .prs-pagination--top .current {
         background: var(--bb-primary-color, #385DFF);
         color: #fff;
-        border-radius: 3px;
-        padding: 4px 8px;
+        border-radius: 4px;
+        padding: 4px 10px;
+}
+
+/* Fallback styles if WordPress outputs a list */
+.prs-pagination--top ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: flex;
+}
+
+.prs-pagination--top li {
+        margin: 0 4px;
 }
