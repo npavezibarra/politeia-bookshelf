@@ -556,7 +556,7 @@ add_shortcode(
         <div id="prs-filter-overlay" class="prs-filter-overlay" hidden></div>
         <div
                 id="prs-filter-dashboard"
-                class="prs-filter-dashboard"
+                class="prs-filter-dashboard prs-filter-modal"
                 role="dialog"
                 aria-modal="true"
                 aria-hidden="true"
@@ -568,12 +568,11 @@ add_shortcode(
                         <form id="prs-filter-form" class="prs-filter-dashboard__form">
                                 <div class="prs-filter-dashboard__group">
                                         <label for="prs-filter-owning-status" class="prs-filter-dashboard__label"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-                                        <select id="prs-filter-owning-status" class="prs-filter-dashboard__select">
+                                        <select id="prs-filter-owning-status" name="owning_status" class="prs-filter-dashboard__select">
                                                 <option value=""><?php esc_html_e( 'All owning statuses', 'politeia-reading' ); ?></option>
                                                 <option value="in_shelf"><?php esc_html_e( 'In Shelf', 'politeia-reading' ); ?></option>
                                                 <option value="lost"><?php esc_html_e( 'Lost', 'politeia-reading' ); ?></option>
-                                                <option value="borrowed"><?php esc_html_e( 'Borrowed', 'politeia-reading' ); ?></option>
-                                                <option value="borrowing"><?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?></option>
+                                                <option value="lent_out"><?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?></option>
                                                 <option value="sold"><?php esc_html_e( 'Sold', 'politeia-reading' ); ?></option>
                                         </select>
                                 </div>
