@@ -185,29 +185,34 @@ add_shortcode(
                <div class="prs-library__header">
                        <div class="prs-library__header-inner">
                                <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
-                               <input
-                                       type="text"
-                                       id="my-library-search"
-                                       class="prs-library__search"
-                                       placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
-                                       onkeyup="filterLibrary()"
-                               />
-                              <div class="prs-library__header-actions">
-                                      <button
-                                              type="button"
-                                              class="prs-library__filter-btn button button-secondary"
-                                              aria-haspopup="dialog"
-                                              aria-controls="prs-filter-dashboard"
-                                              aria-expanded="false"
-                                      >
-                                              <?php esc_html_e( 'Filter', 'politeia-reading' ); ?>
-                                      </button>
-                                      <?php if ( $add_book_shortcode ) : ?>
-                                              <div class="prs-library__header-add-book">
-                                                      <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                              </div>
-                                      <?php endif; ?>
-                              </div>
+
+                               <div class="prs-library__header-center">
+                                       <input
+                                               type="text"
+                                               id="my-library-search"
+                                               class="prs-library__search"
+                                               placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
+                                               onkeyup="filterLibrary()"
+                                       />
+                                       <span id="prs-book-count" class="prs-book-count">15 books</span>
+                               </div>
+
+                               <div class="prs-library__header-actions">
+                                       <button
+                                               type="button"
+                                               class="prs-library__filter-btn button button-secondary"
+                                               aria-haspopup="dialog"
+                                               aria-controls="prs-filter-dashboard"
+                                               aria-expanded="false"
+                                       >
+                                               <?php esc_html_e( 'Filter', 'politeia-reading' ); ?>
+                                       </button>
+                                       <?php if ( $add_book_shortcode ) : ?>
+                                               <div class="prs-library__header-add-book">
+                                                       <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+                                               </div>
+                                       <?php endif; ?>
+                               </div>
                        </div>
                </div>
                <table id="prs-library" class="prs-table">
@@ -619,39 +624,65 @@ add_shortcode(
                 </div>
         </div>
         <script>
-        function filterLibrary() {
-                var input = document.getElementById('my-library-search');
-                if (!input) {
-                        return;
+        (function() {
+                function updateBookCount() {
+                        var table = document.querySelector('#prs-library tbody');
+                        if (!table) {
+                                return;
+                        }
+
+                        var visibleRows = table.querySelectorAll('tr:not([style*="display: none"])');
+                        var count = visibleRows.length;
+                        var counter = document.getElementById('prs-book-count');
+
+                        if (counter) {
+                                counter.textContent = count + ' ' + (count === 1 ? 'book' : 'books');
+                        }
                 }
 
-                var filter = input.value.toLowerCase();
-                var rows = document.querySelectorAll('#prs-library tbody .prs-library-row');
+                function filterLibrary() {
+                        var input = document.getElementById('my-library-search');
+                        var filter = input && input.value ? input.value.toLowerCase() : '';
+                        var rows = document.querySelectorAll('#prs-library tbody tr');
 
-                rows.forEach(function(row) {
-                        var titleText = '';
-                        var titleEl = row.querySelector('.prs-book-title__text');
-                        if (titleEl && titleEl.textContent) {
-                                titleText = titleEl.textContent.toLowerCase();
-                        }
+                        rows.forEach(function(row) {
+                                var text = row.textContent ? row.textContent.toLowerCase() : '';
+                                row.style.display = !filter || text.indexOf(filter) !== -1 ? '' : 'none';
+                        });
 
-                        var authorText = '';
-                        var authorEl = row.querySelector('.prs-book-author');
-                        if (authorEl && authorEl.textContent) {
-                                authorText = authorEl.textContent.toLowerCase();
-                        }
+                        updateBookCount();
+                }
 
-                        if (!filter || titleText.includes(filter) || authorText.includes(filter)) {
-                                row.style.display = '';
-                        } else {
-                                row.style.display = 'none';
-                        }
-                });
-        }
+                window.updateBookCount = updateBookCount;
+                window.filterLibrary = filterLibrary;
 
-        document.addEventListener('DOMContentLoaded', function() {
-                filterLibrary();
-        });
+                var tableBody = document.querySelector('#prs-library tbody');
+                if (tableBody && 'MutationObserver' in window) {
+                        var observer = new MutationObserver(updateBookCount);
+                        observer.observe(tableBody, { childList: true, subtree: true });
+                }
+
+                function onReady() {
+                        updateBookCount();
+
+                        var applyButtons = document.querySelectorAll('.prs-filter-apply, #prs-filter-apply');
+                        var resetButtons = document.querySelectorAll('.prs-filter-reset, #prs-filter-reset');
+
+                        applyButtons.forEach(function(button) {
+                                button.addEventListener('click', updateBookCount);
+                        });
+
+                        resetButtons.forEach(function(button) {
+                                button.addEventListener('click', updateBookCount);
+                        });
+                }
+
+                if (document.readyState === 'loading') {
+                        document.addEventListener('DOMContentLoaded', onReady);
+                } else {
+                        onReady();
+                }
+        })();
         </script>
                 <?php
                 return ob_get_clean();
