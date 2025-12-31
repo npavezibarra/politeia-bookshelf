@@ -39,13 +39,16 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
 
         $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
 
-        // Prefer lookup by unique hash to avoid duplicate key errors when slug differs.
-        $existing_id = $wpdb->get_var(
-                $wpdb->prepare(
-                        "SELECT id FROM {$table} WHERE title_author_hash = %s LIMIT 1",
-                        $hash
-                )
-        );
+        // Prefer slug lookup; hash is a safety net, not the primary identity.
+        $existing_id = null;
+        if ( $slug ) {
+                $existing_id = $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
+                                $slug
+                        )
+                );
+        }
         $authors_payload = $all_authors;
         if ( $authors_payload instanceof \Traversable ) {
                 $authors_payload = iterator_to_array( $authors_payload, false );
@@ -66,37 +69,36 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 return $book_id;
         }
 
-        // Fallback to slug match for legacy rows that might not yet have hashes populated.
-        if ( $slug ) {
-                $existing_id = $wpdb->get_var(
-                        $wpdb->prepare(
-                                "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
-                                $slug
-                        )
-                );
-                if ( $existing_id ) {
-                        $book_id = (int) $existing_id;
-                        if ( 'confirmed' === $source ) {
-                                prs_sync_book_author_links( $book_id, $authors_payload, $source );
-                        }
-                        return $book_id;
+        // Hash remains a safety net for near-duplicates.
+        $existing_id = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$table} WHERE title_author_hash = %s LIMIT 1",
+                        $hash
+                )
+        );
+        if ( $existing_id ) {
+                $book_id = (int) $existing_id;
+                if ( 'confirmed' === $source ) {
+                        prs_sync_book_author_links( $book_id, $authors_payload, $source );
                 }
+                return $book_id;
         }
 
         if ( 'confirmed' !== $source ) {
                 return new WP_Error( 'prs_canonical_write_blocked', 'Canonical writes require confirmation.' );
         }
 
+        // Legacy columns (author/normalized_author) are intentionally left blank on new writes.
         $inserted = $wpdb->insert(
                 $table,
                 array(
                         'title'               => $title,
-                        'author'              => $author,
+                        'author'              => '',
                         'year'                => $year ? (int) $year : null,
                         'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
                         'slug'                => $slug,
                         'normalized_title'    => $normalized_title,
-                        'normalized_author'   => $normalized_author,
+                        'normalized_author'   => null,
                         'title_author_hash'   => $hash,
                         'created_at'          => current_time( 'mysql' ),
                         'updated_at'          => current_time( 'mysql' ),
@@ -321,26 +323,28 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
         $all_authors   = isset( $raw_payload['authors'] ) ? $raw_payload['authors'] : null;
 
         $books_table = $wpdb->prefix . 'politeia_books';
-        $hash = function_exists( 'politeia__title_author_hash' )
-                ? politeia__title_author_hash( $title, $author )
-                : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
+        $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
+        $existing_id = 0;
+        if ( $slug ) {
+                $existing_id = (int) $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
+                                $slug
+                        )
+                );
+        }
 
-        $existing_id = (int) $wpdb->get_var(
-                $wpdb->prepare(
-                        "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
-                        $hash
-                )
-        );
         if ( ! $existing_id ) {
-                $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
-                if ( $slug ) {
-                        $existing_id = (int) $wpdb->get_var(
-                                $wpdb->prepare(
-                                        "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
-                                        $slug
-                                )
-                        );
-                }
+                $hash = function_exists( 'politeia__title_author_hash' )
+                        ? politeia__title_author_hash( $title, $author )
+                        : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
+
+                $existing_id = (int) $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
+                                $hash
+                        )
+                );
         }
 
         $book_id = 0;

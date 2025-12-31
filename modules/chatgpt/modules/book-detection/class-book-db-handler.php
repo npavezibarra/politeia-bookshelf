@@ -162,15 +162,6 @@ class Politeia_Book_DB_Handler {
     public function find_best_match_internal( $title, $author ) {
         global $wpdb;
 
-        // 1) Hash
-        if ( $this->has_hash_col ) {
-            $hash = $this->title_author_hash( $title, $author );
-            $row  = $this->find_by_hash( $hash );
-            if ( $row ) {
-                return [ 'match' => $row, 'method' => 'hash' ];
-            }
-        }
-
         // Prepare normalized inputs once
         $nt = $this->normalize( $title );
         $na = $this->normalize( $author );
@@ -209,6 +200,15 @@ class Politeia_Book_DB_Handler {
         $picked = $this->pick_best_similarity( $candidates, $nt, $na, 'title', 'author' );
         if ( $picked ) {
             return [ 'match' => $picked, 'method' => 'raw_like' ];
+        }
+
+        // 4) Hash safety net (exact match)
+        if ( $this->has_hash_col ) {
+            $hash = $this->title_author_hash( $title, $author );
+            $row  = $this->find_by_hash( $hash );
+            if ( $row ) {
+                return [ 'match' => $row, 'method' => 'hash' ];
+            }
         }
 
         return [ 'match' => null, 'method' => 'none' ];
@@ -300,9 +300,10 @@ class Politeia_Book_DB_Handler {
             );
         }
 
+        // Legacy columns (author/normalized_author) are intentionally left blank on new writes.
         $data = [
             'title'  => sanitize_text_field( $title ),
-            'author' => sanitize_text_field( $author ),
+            'author' => '',
         ];
         $fmt  = [ '%s', '%s' ];
 
@@ -311,7 +312,7 @@ class Politeia_Book_DB_Handler {
             $fmt[] = '%s';
         }
         if ( $this->has_norm_author ) {
-            $data['normalized_author'] = $this->normalize( $author );
+            $data['normalized_author'] = null;
             $fmt[] = '%s';
         }
         if ( $this->has_hash_col ) {

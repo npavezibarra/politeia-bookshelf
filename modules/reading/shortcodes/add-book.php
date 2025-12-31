@@ -501,27 +501,27 @@ function prs_add_book_submit_handler() {
         // Normalizar y revisar si el libro canónico ya existe antes de crear candidato.
         $book_id = 0;
         $books_table = $wpdb->prefix . 'politeia_books';
-        $hash = function_exists( 'politeia__title_author_hash' )
-                ? politeia__title_author_hash( $title, $primary_author )
-                : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
-
-        $book_id = (int) $wpdb->get_var(
-                $wpdb->prepare(
-                        "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
-                        $hash
-                )
-        );
+        $slug = sanitize_title( $title . '-' . $primary_author . ( $year ? '-' . $year : '' ) );
+        if ( $slug ) {
+                $book_id = (int) $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
+                                $slug
+                        )
+                );
+        }
 
         if ( ! $book_id ) {
-                $slug = sanitize_title( $title . '-' . $primary_author . ( $year ? '-' . $year : '' ) );
-                if ( $slug ) {
-                        $book_id = (int) $wpdb->get_var(
-                                $wpdb->prepare(
-                                        "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
-                                        $slug
-                                )
-                        );
-                }
+                $hash = function_exists( 'politeia__title_author_hash' )
+                        ? politeia__title_author_hash( $title, $primary_author )
+                        : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
+
+                $book_id = (int) $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
+                                $hash
+                        )
+                );
         }
 
         if ( $book_id ) {
@@ -591,9 +591,15 @@ function prs_add_book_submit_handler() {
         }
 
                 if ( null !== $pages ) {
-                        $book_id = (int) $wpdb->get_var(
-                                $wpdb->prepare( "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1", $hash )
-                        );
+                if ( ! isset( $hash ) ) {
+                        $hash = function_exists( 'politeia__title_author_hash' )
+                                ? politeia__title_author_hash( $title, $primary_author )
+                                : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
+                }
+
+                $book_id = (int) $wpdb->get_var(
+                        $wpdb->prepare( "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1", $hash )
+                );
 
                         if ( $book_id ) {
                                 $user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );
