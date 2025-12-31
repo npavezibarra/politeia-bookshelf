@@ -1,7 +1,7 @@
 <?php
 /**
  * Class: Politeia_Book_DB_Handler
- * Purpose: Database utilities for book matching, deduplication (hash), insertion, user linking — with slug support.
+ * Purpose: Database utilities for book matching, insertion, user linking — with slug support.
  * Language: English (all user-facing strings are translatable via the 'politeia-chatgpt' text domain).
  *
  * Assumptions (created by the “Politeia Reading” plugin):
@@ -9,7 +9,6 @@
  *   - {$wpdb->prefix}politeia_user_books     (user-to-book links; primary key: id)
  *
  * Optional columns in politeia_books that this class will use if present:
- *   - title_author_hash (VARCHAR)  // unique dedup key from normalized title+author (LEGACY SAFETY NET -- do not depend on this long-term)
  *   - normalized_title  (VARCHAR)
  *   - normalized_author (VARCHAR)
  *   - slug              (VARCHAR)  // pretty URL id; unique in table
@@ -26,9 +25,6 @@ class Politeia_Book_DB_Handler {
 
     /** @var string */
     protected $tbl_user_books;
-
-    /** @var bool */
-    protected $has_hash_col = false;
 
     /** @var bool */
     protected $has_norm_title = false;
@@ -65,7 +61,6 @@ class Politeia_Book_DB_Handler {
     protected function introspect_schema() {
         // Quietly detect what exists; callers can verify readiness with is_ready().
         if ( $this->table_exists( $this->tbl_books ) ) {
-        $this->has_hash_col    = $this->column_exists( $this->tbl_books, 'title_author_hash' ); // LEGACY SAFETY NET -- do not depend on this long-term
             $this->has_norm_title  = $this->column_exists( $this->tbl_books, 'normalized_title' );
             $this->has_norm_author = $this->column_exists( $this->tbl_books, 'normalized_author' );
             $this->has_slug_col    = $this->column_exists( $this->tbl_books, 'slug' );
@@ -99,7 +94,7 @@ class Politeia_Book_DB_Handler {
     }
 
     /**
-     * Normalize free text for hashing / relaxed matching.
+     * Normalize free text for relaxed matching.
      * - strip tags, trim, remove accents
      * - lowercase
      * - keep only letters, numbers, spaces, and a few separators
@@ -120,46 +115,14 @@ class Politeia_Book_DB_Handler {
     }
 
     /**
-     * Deterministic dedup hash for (title + author).
-     * @param string $title
-     * @param string $author
-     * @return string sha256 hex
-     */
-    public function title_author_hash( $title, $author ) { // LEGACY SAFETY NET -- do not depend on this long-term
-        // LEGACY SAFETY NET -- do not depend on this long-term
-        $norm = $this->normalize( $title ) . '|' . $this->normalize( $author );
-        return hash( 'sha256', $norm );
-    }
-
-    /**
-     * Find by exact hash (if the column exists).
-     * @param string $hash
-     * @return array|null
-     */
-    public function find_by_hash( $hash ) {
-        if ( ! $this->has_hash_col ) return null;
-        global $wpdb;
-        // LEGACY SAFETY NET -- do not depend on this long-term
-        $row = $wpdb->get_row(
-            $wpdb->prepare(
-                "SELECT * FROM {$this->tbl_books} WHERE title_author_hash = %s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
-                $hash
-            ),
-            ARRAY_A
-        );
-        return $row ?: null;
-    }
-
-    /**
      * Internal best-match search strategy:
-     *  1) Exact hash (if column exists)
-     *  2) Normalized LIKE (if normalized_* columns exist)
-     *  3) Raw LIKE fallback
+     *  1) Normalized LIKE (if normalized_* columns exist)
+     *  2) Raw LIKE fallback
      * Picks a candidate by simple similarity scoring (similar_text).
      *
      * @param string $title
      * @param string $author
-     * @return array{match: array|null, method: string} method ∈ {hash, normalized_like, raw_like, none}
+     * @return array{match: array|null, method: string} method ∈ {normalized_like, raw_like, none}
      */
     public function find_best_match_internal( $title, $author ) {
         global $wpdb;
@@ -202,15 +165,6 @@ class Politeia_Book_DB_Handler {
         $picked = $this->pick_best_similarity( $candidates, $nt, $na, 'title', 'author' );
         if ( $picked ) {
             return [ 'match' => $picked, 'method' => 'raw_like' ];
-        }
-
-        // 4) Hash safety net (exact match)
-        if ( $this->has_hash_col ) { // LEGACY SAFETY NET -- do not depend on this long-term
-            $hash = $this->title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
-            $row  = $this->find_by_hash( $hash );
-            if ( $row ) {
-                return [ 'match' => $row, 'method' => 'hash' ];
-            }
         }
 
         return [ 'match' => null, 'method' => 'none' ];
@@ -317,11 +271,6 @@ class Politeia_Book_DB_Handler {
             $data['normalized_author'] = null;
             $fmt[] = '%s';
         }
-        if ( $this->has_hash_col ) {
-            $data['title_author_hash'] = $this->title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
-            $fmt[] = '%s';
-        }
-
         // --- NEW: slug generation if column exists ---
         if ( $this->has_slug_col ) {
             // Allow caller-specified slug; otherwise build from title/author/year
@@ -358,7 +307,7 @@ class Politeia_Book_DB_Handler {
      * @return array{
      *   book_id:int,
      *   created:bool,
-     *   method:string,   // hash|normalized_like|raw_like|inserted|error|insert_failed
+     *   method:string,   // normalized_like|raw_like|inserted|error|insert_failed
      *   row:array|null,
      *   error:\WP_Error|null
      * }
@@ -466,7 +415,7 @@ class Politeia_Book_DB_Handler {
      *   ok: bool,
      *   book_id: int,
      *   created: bool,         // whether the catalog row was inserted now
-     *   method: string,        // how it was resolved (hash|normalized_like|raw_like|inserted|error)
+     *   method: string,        // how it was resolved (normalized_like|raw_like|inserted|error)
      *   linked: bool,
      *   link_created: bool,    // whether the link row was inserted now
      *   error: \WP_Error|null

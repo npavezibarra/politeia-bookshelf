@@ -21,12 +21,17 @@ December 31st, 2025, 15:27 UTC
 
 December 31st, 2025, 15:38 UTC
 1. Deprecated canonical author columns for new writes (legacy fields left blank).
-2. Shifted canonical lookups to prefer slug and use title_author_hash (LEGACY SAFETY NET -- do not depend on this long-term) as a safety net only.
+2. Shifted canonical lookups to prefer slug and use title_author_hash as a safety net only.
 
 December 31st, 2025, 20:43 UTC
 1. Phase 6 diagnostics executed via temporary admin-only hook.
 2. Canonical integrity and collision checks completed; hash removal gate evaluated.
 3. Hash is currently required. (Update with exact counts in this entry.)
+
+December 31st, 2025, 21:31 UTC
+1. Phase 7.1: Removed title_author_hash from canonical books schema definitions (new installs/upgrades won’t create/expect it).
+2. Phase 7.2: Added versioned migration (DB version bump) to drop title_author_hash column/index safely and idempotently.
+3. Phase 7.3: Removed remaining code paths relying on title_author_hash and deleted temporary Phase 6 admin hook.
 
 ------
 

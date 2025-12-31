@@ -27,20 +27,8 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
         $normalized_title  = $normalized_title !== '' ? $normalized_title : null;
         $normalized_author = $normalized_author !== '' ? $normalized_author : null;
 
-        // Legacy hash exists only as a safety net until Phase 7 removal conditions are met.
-        if ( function_exists( 'politeia__title_author_hash' ) ) { // LEGACY SAFETY NET -- do not depend on this long-term
-                $hash = politeia__title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
-        } else {
-                $hash = hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
-        }
-
-        if ( empty( $hash ) ) {
-                $hash = hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
-        }
-
         $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
 
-        // Prefer slug lookup; hash is a safety net, not the primary identity.
         $existing_id = null;
         if ( $slug ) {
                 $existing_id = $wpdb->get_var(
@@ -70,21 +58,6 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 return $book_id;
         }
 
-        // Hash remains a safety net for near-duplicates.
-        $existing_id = $wpdb->get_var( // LEGACY SAFETY NET -- do not depend on this long-term
-                $wpdb->prepare(
-                        "SELECT id FROM {$table} WHERE title_author_hash = %s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
-                        $hash
-                )
-        );
-        if ( $existing_id ) {
-                $book_id = (int) $existing_id;
-                if ( 'confirmed' === $source ) {
-                        prs_sync_book_author_links( $book_id, $authors_payload, $source );
-                }
-                return $book_id;
-        }
-
         if ( 'confirmed' !== $source ) {
                 return new WP_Error( 'prs_canonical_write_blocked', 'Canonical writes require confirmation.' );
         }
@@ -100,7 +73,6 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                         'slug'                => $slug,
                         'normalized_title'    => $normalized_title,
                         'normalized_author'   => null,
-                        'title_author_hash'   => $hash, // LEGACY SAFETY NET -- do not depend on this long-term
                         'created_at'          => current_time( 'mysql' ),
                         'updated_at'          => current_time( 'mysql' ),
                 )
@@ -335,19 +307,6 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
                 );
         }
 
-        if ( ! $existing_id ) {
-                $hash = function_exists( 'politeia__title_author_hash' ) // LEGACY SAFETY NET -- do not depend on this long-term
-                        ? politeia__title_author_hash( $title, $author ) // LEGACY SAFETY NET -- do not depend on this long-term
-                        : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
-
-                $existing_id = (int) $wpdb->get_var( // LEGACY SAFETY NET -- do not depend on this long-term
-                        $wpdb->prepare(
-                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
-                                $hash
-                        )
-                );
-        }
-
         $book_id = 0;
         if ( $existing_id ) {
                 $book_id = (int) $existing_id;
@@ -404,9 +363,8 @@ function prs_diagnose_canonical_integrity( $limit = 0 ) {
         }
 
         // Single pass with pivot presence computed via LEFT JOIN.
-        // LEGACY SAFETY NET -- do not depend on this long-term
         $sql = "
-                SELECT b.id, b.title, b.author, b.normalized_author, b.title_author_hash, /* LEGACY SAFETY NET -- do not depend on this long-term */
+                SELECT b.id, b.title, b.author, b.normalized_author,
                        COUNT(ba.id) AS pivot_count
                 FROM {$books_table} b
                 LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
@@ -425,15 +383,12 @@ function prs_diagnose_canonical_integrity( $limit = 0 ) {
                 'fully_canonical'      => 0,
                 'missing_legacy_author'=> 0,
                 'missing_norm_author'  => 0,
-                'missing_hash'         => 0,
         );
 
         foreach ( (array) $rows as $row ) {
                 $has_pivot = ! empty( $row['pivot_count'] );
                 $legacy_author_populated = isset( $row['author'] ) && '' !== trim( (string) $row['author'] );
                 $normalized_author_populated = isset( $row['normalized_author'] ) && '' !== trim( (string) $row['normalized_author'] );
-                $hash_populated = isset( $row['title_author_hash'] ) && '' !== trim( (string) $row['title_author_hash'] ); // LEGACY SAFETY NET -- do not depend on this long-term
-
                 if ( ! $has_pivot ) {
                         $counts['missing_pivot']++;
                 }
@@ -449,17 +404,12 @@ function prs_diagnose_canonical_integrity( $limit = 0 ) {
                 if ( ! $normalized_author_populated ) {
                         $counts['missing_norm_author']++;
                 }
-                if ( ! $hash_populated ) {
-                        $counts['missing_hash']++;
-                }
-
                 $report_rows[] = array(
                         'book_id'                   => (int) $row['id'],
                         'title'                     => (string) $row['title'],
                         'has_author_pivot'          => $has_pivot ? 'yes' : 'no',
                         'legacy_author_populated'   => $legacy_author_populated ? 'yes' : 'no',
                         'normalized_author_present' => $normalized_author_populated ? 'yes' : 'no',
-                        'title_author_hash_present' => $hash_populated ? 'yes' : 'no', // LEGACY SAFETY NET -- do not depend on this long-term
                 );
         }
 
@@ -665,7 +615,7 @@ function prs_backfill_author_pivots_from_legacy( $limit = 0 ) {
 }
 
 /**
- * Diagnostic: detect canonical identity collisions without title_author_hash (read-only). // LEGACY SAFETY NET -- do not depend on this long-term
+ * Diagnostic: detect canonical identity collisions without title_author_hash (read-only).
  *
  * @return array{total_books:int,unique_identities:int,collisions:int,collision_details:array<int,array>}
  */
@@ -720,29 +670,6 @@ function prs_diagnose_canonical_identity_collisions() {
                 'collisions'        => count( $collision_details ),
                 'collision_details' => $collision_details,
         );
-}
-
-/**
- * Gatekeeper: decide if title_author_hash can be removed (read-only).
- *
- * The hash remains only as a legacy safety net pending Phase 7 removal.
- * It can be deleted once: all books have author pivots, identity collisions are zero,
- * and every code usage is explicitly marked as legacy fallback.
- *
- * @return bool
- */
-function prs_can_remove_title_author_hash(): bool {
-        $integrity = prs_diagnose_canonical_integrity();
-        if ( ( $integrity['counts']['missing_pivot'] ?? 0 ) > 0 ) {
-                return false;
-        }
-
-        $collisions = prs_diagnose_canonical_identity_collisions();
-        if ( ( $collisions['collisions'] ?? 0 ) > 0 ) {
-                return false;
-        }
-
-        return true;
 }
 
 function prs_ensure_user_book( $user_id, $book_id ) {

@@ -511,20 +511,6 @@ function prs_add_book_submit_handler() {
                 );
         }
 
-        if ( ! $book_id ) {
-                $hash = function_exists( 'politeia__title_author_hash' ) // LEGACY SAFETY NET -- do not depend on this long-term
-                        ? politeia__title_author_hash( $title, $primary_author ) // LEGACY SAFETY NET -- do not depend on this long-term
-                        : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
-
-                // LEGACY SAFETY NET -- do not depend on this long-term
-                $book_id = (int) $wpdb->get_var(
-                        $wpdb->prepare(
-                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
-                                $hash
-                        )
-                );
-        }
-
         if ( $book_id ) {
                 $user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );
                 if ( $user_book_id && null !== $pages ) {
@@ -592,16 +578,12 @@ function prs_add_book_submit_handler() {
         }
 
                 if ( null !== $pages ) {
-                if ( ! isset( $hash ) ) {
-                        $hash = function_exists( 'politeia__title_author_hash' ) // LEGACY SAFETY NET -- do not depend on this long-term
-                                ? politeia__title_author_hash( $title, $primary_author ) // LEGACY SAFETY NET -- do not depend on this long-term
-                                : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
-                }
-
-                // LEGACY SAFETY NET -- do not depend on this long-term
-                $book_id = (int) $wpdb->get_var(
-                        $wpdb->prepare( "SELECT id FROM {$books_table} WHERE title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1", $hash )
-                );
+                        $page_slug = $slug ?: sanitize_title( $title . '-' . $primary_author . ( $year ? '-' . $year : '' ) );
+                        if ( $page_slug ) {
+                                $book_id = (int) $wpdb->get_var(
+                                        $wpdb->prepare( "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1", $page_slug )
+                                );
+                        }
 
                         if ( $book_id ) {
                                 $user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );

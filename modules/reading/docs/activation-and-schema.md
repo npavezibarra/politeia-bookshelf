@@ -37,7 +37,7 @@ Regardless of the version check outcome, the upgrader also loads migration drop-
    - `{$wpdb->prefix}politeia_authors`
    - `{$wpdb->prefix}politeia_book_authors`
 
-Each table definition includes primary keys, foreign-key-friendly indexes, unique constraints (such as `title_author_hash` (LEGACY SAFETY NET -- do not depend on this long-term) and `uniq_user_book`), and timestamp metadata (`created_at`, `updated_at`). Cover-related columns—`cover_attachment_id`, `cover_url`, and `cover_source`—are also part of the canonical and user-specific tables.
+Each table definition includes primary keys, foreign-key-friendly indexes, unique constraints (such as `uniq_user_book`), and timestamp metadata (`created_at`, `updated_at`). Cover-related columns—`cover_attachment_id`, `cover_url`, and `cover_source`—are also part of the canonical and user-specific tables.
 
 ### Idempotent schema creation
 
@@ -59,7 +59,7 @@ The helpers (`maybe_add_column()`, `maybe_add_index()`, etc.) embedded in each m
 
 ### Data normalization and constraint enforcement
 
-Specialized migrations compute deterministic `title_author_hash` values (LEGACY SAFETY NET -- do not depend on this long-term), deduplicate canonical book records, and realign user-book relations with the canonical catalog. They also enforce unique keys to prevent duplicate relationships while retaining existing user data.
+Specialized migrations normalize canonical book records and realign user-book relations with the canonical catalog. They also enforce unique keys to prevent duplicate relationships while retaining existing user data.
 
 ## Guidance for Future Schema Changes
 

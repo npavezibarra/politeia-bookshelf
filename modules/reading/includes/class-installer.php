@@ -35,14 +35,12 @@ class Installer {
             slug VARCHAR(255) NULL,
             normalized_title VARCHAR(255) NULL,
             normalized_author VARCHAR(255) NULL,
-            title_author_hash CHAR(64) NOT NULL, /* LEGACY SAFETY NET -- do not depend on this long-term */
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY idx_title (title),
             KEY idx_author (author),
-            UNIQUE KEY uniq_slug (slug),
-            UNIQUE KEY uniq_title_author_hash (title_author_hash) /* LEGACY SAFETY NET -- do not depend on this long-term */
+            UNIQUE KEY uniq_slug (slug)
         ) %s;',
                                 $books_table,
                                 $charset_collate
