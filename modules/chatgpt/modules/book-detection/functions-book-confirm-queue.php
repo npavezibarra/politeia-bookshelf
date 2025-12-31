@@ -251,6 +251,10 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 			),
 		);
 
+		if ( isset( $b['year'] ) && $b['year'] !== null && $b['year'] !== '' ) {
+			$raw_candidate['original_input']['year'] = (int) $b['year'];
+		}
+
 		if ( isset( $b['raw_payload'] ) ) {
 			$raw_candidate['external']['raw_payload'] = $b['raw_payload'];
 		}

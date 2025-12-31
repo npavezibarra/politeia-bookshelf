@@ -14,6 +14,11 @@ December 31st, 2025, 15:03 UTC
 2. Normalized candidate ingestion and stored original input + external metadata + raw payloads in queue rows.
 3. Refactored single-add flow to use candidate creation + immediate confirmation, and added a pre-check to link existing canonical books before queuing.
 
+December 31st, 2025, 15:27 UTC
+1. Centralized canonical promotion via prs_promote_candidate_to_canonical and routed confirm flow through it.
+2. Added canonical re-checks in promotion and ensured author/pivot sync happens only at promotion time.
+3. Made promotion idempotent by reusing existing book/user-book records when present.
+
 ------
 
 TO DO:

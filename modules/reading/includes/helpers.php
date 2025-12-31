@@ -253,6 +253,134 @@ function prs_create_book_candidate( $input, $args = array() ) {
         );
 }
 
+/**
+ * Promote a confirmed candidate row to canonical data and attach to a user.
+ *
+ * @param int      $candidate_id Confirm queue row ID.
+ * @param int      $user_id      User to attach book to.
+ * @param int|null $year_override Optional year to apply if present.
+ *
+ * @return array|\WP_Error { book_id, user_book_id, created }
+ */
+function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_override = null ) {
+        global $wpdb;
+
+        $candidate_id = (int) $candidate_id;
+        $user_id      = (int) $user_id;
+
+        if ( $candidate_id <= 0 || $user_id <= 0 ) {
+                return new WP_Error( 'prs_invalid_candidate', 'Invalid candidate or user.' );
+        }
+
+        $tbl_confirm = $wpdb->prefix . 'politeia_book_confirm';
+        $row         = $wpdb->get_row(
+                $wpdb->prepare(
+                        "SELECT * FROM {$tbl_confirm} WHERE id=%d AND user_id=%d LIMIT 1",
+                        $candidate_id,
+                        $user_id
+                ),
+                ARRAY_A
+        );
+
+        if ( ! $row ) {
+            return new WP_Error( 'prs_candidate_missing', 'Candidate not found.' );
+        }
+
+        $title  = isset( $row['title'] ) ? trim( (string) $row['title'] ) : '';
+        $author = isset( $row['author'] ) ? trim( (string) $row['author'] ) : '';
+
+        if ( '' === $title || '' === $author ) {
+                return new WP_Error( 'prs_candidate_invalid', 'Candidate is missing title or author.' );
+        }
+
+        $raw_response = array();
+        if ( ! empty( $row['raw_response'] ) ) {
+                $decoded = json_decode( (string) $row['raw_response'], true );
+                if ( is_array( $decoded ) ) {
+                        $raw_response = $decoded;
+                }
+        }
+
+        $raw_payload   = isset( $raw_response['raw_payload'] ) && is_array( $raw_response['raw_payload'] )
+                ? $raw_response['raw_payload']
+                : array();
+        $original      = isset( $raw_response['original_input'] ) && is_array( $raw_response['original_input'] )
+                ? $raw_response['original_input']
+                : array();
+
+        $year = null;
+        if ( null !== $year_override ) {
+                $year = (int) $year_override;
+        } elseif ( isset( $original['year'] ) && $original['year'] !== '' ) {
+                $year = (int) $original['year'];
+        } elseif ( isset( $raw_payload['year'] ) && $raw_payload['year'] !== '' ) {
+                $year = (int) $raw_payload['year'];
+        }
+
+        $attachment_id = isset( $raw_payload['cover_attachment_id'] ) ? (int) $raw_payload['cover_attachment_id'] : null;
+        $all_authors   = isset( $raw_payload['authors'] ) ? $raw_payload['authors'] : null;
+
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $hash = function_exists( 'politeia__title_author_hash' )
+                ? politeia__title_author_hash( $title, $author )
+                : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
+
+        $existing_id = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
+                        $hash
+                )
+        );
+        if ( ! $existing_id ) {
+                $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
+                if ( $slug ) {
+                        $existing_id = (int) $wpdb->get_var(
+                                $wpdb->prepare(
+                                        "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
+                                        $slug
+                                )
+                        );
+                }
+        }
+
+        $book_id = 0;
+        if ( $existing_id ) {
+                $book_id = (int) $existing_id;
+                prs_sync_book_author_links( $book_id, $all_authors, 'confirmed' );
+        } else {
+                $book_id = prs_find_or_create_book( $title, $author, $year, $attachment_id, $all_authors, 'confirmed' );
+                if ( is_wp_error( $book_id ) ) {
+                        return $book_id;
+                }
+                $book_id = (int) $book_id;
+        }
+
+        if ( $book_id <= 0 ) {
+                return new WP_Error( 'prs_promote_failed', 'Failed to resolve canonical book.' );
+        }
+
+        if ( $year ) {
+                $wpdb->query(
+                        $wpdb->prepare(
+                                "UPDATE {$books_table} SET year=%d WHERE id=%d AND (year IS NULL OR year=0)",
+                                $year,
+                                $book_id
+                        )
+                );
+        }
+
+        $user_book_id = prs_ensure_user_book( $user_id, $book_id );
+        if ( ! $user_book_id ) {
+                return new WP_Error( 'prs_user_book_failed', 'Could not attach book to user.' );
+        }
+
+        return array(
+                'book_id'      => $book_id,
+                'user_book_id' => (int) $user_book_id,
+                'created'      => ( $existing_id > 0 ) ? false : true,
+        );
+}
+
 function prs_ensure_user_book( $user_id, $book_id ) {
 	global $wpdb;
 	$table = $wpdb->prefix . 'politeia_user_books';

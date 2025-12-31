@@ -41,13 +41,16 @@ class Politeia_Buttons_Confirm_Controller {
 	/** Ensure dependencies are loaded. */
 	protected static function ensure_deps() {
 		// Cargamos DB handler si no está.
-		if ( ! class_exists('Politeia_Book_DB_Handler') ) {
-			if ( function_exists('politeia_chatgpt_safe_require') ) {
-				politeia_chatgpt_safe_require('modules/book-detection/class-book-db-handler.php');
+		if ( ! function_exists( 'prs_promote_candidate_to_canonical' ) ) {
+			$plugin_root = dirname( __FILE__, 5 );
+			$helpers = $plugin_root . '/modules/reading/includes/helpers.php';
+			if ( file_exists( $helpers ) ) {
+				require_once $helpers;
 			}
 		}
-		if ( ! class_exists('Politeia_Book_DB_Handler') ) {
-			throw new \Exception('Politeia_Book_DB_Handler not available.');
+
+		if ( ! function_exists( 'prs_promote_candidate_to_canonical' ) ) {
+			throw new \Exception( 'Promotion helper not available.' );
 		}
 	}
 
@@ -87,7 +90,6 @@ class Politeia_Buttons_Confirm_Controller {
 		global $wpdb;
 
 		self::ensure_deps();
-		$handler = new \Politeia_Book_DB_Handler();
 
 		$user_id        = get_current_user_id();
 		$confirmed_ids  = [];
@@ -95,51 +97,25 @@ class Politeia_Buttons_Confirm_Controller {
 		$errors         = [];
 
 		foreach ( $items as $idx => $it ) {
-			$title  = $it['title'];
-			$author = $it['author'];
 			$year   = $it['year'];
 			$id_cnf = (int) $it['id'];
 
-			// 1) Asegurar/obtener libro en catálogo
-			$extra = [];
-			if ( $year !== null ) $extra['year'] = $year;
-
-			$res = $handler->ensure_book( $title, $author, $extra, 'confirmed' );
-			if ( isset($res['error']) && is_wp_error($res['error']) ) {
-				$errors[] = [ 'item' => $idx, 'message' => $res['error']->get_error_message() ];
-				continue;
-			}
-			$book_id = (int) $res['book_id'];
-			if ( $book_id <= 0 ) {
-				$errors[] = [ 'item' => $idx, 'message' => 'Could not resolve book.' ];
+			// 1) Promover candidato a canónico (con re-check interno)
+			if ( $id_cnf <= 0 ) {
+				$errors[] = [ 'item' => $idx, 'message' => 'Missing candidate ID.' ];
 				continue;
 			}
 
-			// 1.a) Si el libro ya existía y nos llegó "year", intente setearlo si está vacío
-			if ( $year !== null && ! $res['created'] ) {
-				$tbl_books = $handler->get_books_table();
-				// Sólo establecer si no tiene año
-				$wpdb->query(
-					$wpdb->prepare(
-						"UPDATE {$tbl_books} SET year=%d WHERE id=%d AND (year IS NULL OR year=0)",
-						$year, $book_id
-					)
-				);
-			}
-
-			// 2) Enlazar al usuario
-			$link = $handler->ensure_user_book( $user_id, $book_id );
-			if ( ! $link['linked'] ) {
-				$errors[] = [ 'item' => $idx, 'message' => 'Could not link user to book.' ];
+			$promotion = prs_promote_candidate_to_canonical( $id_cnf, $user_id, $year );
+			if ( is_wp_error( $promotion ) ) {
+				$errors[] = [ 'item' => $idx, 'message' => $promotion->get_error_message() ];
 				continue;
 			}
 
 			$confirmed_cnt++;
 
 			// 3) Marcar para eliminación de la cola (si vino con id válido)
-			if ( $id_cnf > 0 ) {
-				$confirmed_ids[] = $id_cnf;
-			}
+			$confirmed_ids[] = $id_cnf;
 		}
 
 		// 4) Eliminar confirmados de la cola
