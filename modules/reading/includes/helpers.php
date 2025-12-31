@@ -10,6 +10,265 @@ function prs_current_user_id_or_die() {
 	return get_current_user_id();
 }
 
+function prs_books_slugs_table_name() {
+        global $wpdb;
+        return $wpdb->prefix . 'politeia_book_slugs';
+}
+
+function prs_books_slugs_table_exists() {
+        static $exists = null;
+        if ( null !== $exists ) {
+                return $exists;
+        }
+
+        global $wpdb;
+        $table = prs_books_slugs_table_name();
+        $exists = (bool) $wpdb->get_var(
+                $wpdb->prepare(
+                        'SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s LIMIT 1',
+                        $table
+                )
+        );
+        return $exists;
+}
+
+function prs_get_book_id_by_slug( $slug ) {
+        global $wpdb;
+
+        $slug = is_string( $slug ) ? trim( $slug ) : '';
+        if ( '' === $slug ) {
+                return 0;
+        }
+
+        if ( prs_books_slugs_table_exists() ) {
+                $table = prs_books_slugs_table_name();
+                $book_id = $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT book_id FROM {$table} WHERE slug = %s LIMIT 1",
+                                $slug
+                        )
+                );
+                if ( $book_id ) {
+                        return (int) $book_id;
+                }
+        }
+
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $book_id = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$books_table} WHERE slug = %s LIMIT 1",
+                        $slug
+                )
+        );
+        return $book_id ? (int) $book_id : 0;
+}
+
+function prs_get_book_id_by_primary_slug( $slug ) {
+        global $wpdb;
+
+        $slug = is_string( $slug ) ? trim( $slug ) : '';
+        if ( '' === $slug ) {
+                return 0;
+        }
+
+        if ( prs_books_slugs_table_exists() ) {
+                $table = prs_books_slugs_table_name();
+                $book_id = $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT book_id FROM {$table} WHERE slug = %s AND is_primary = 1 LIMIT 1",
+                                $slug
+                        )
+                );
+                return $book_id ? (int) $book_id : 0;
+        }
+
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $book_id = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$books_table} WHERE slug = %s LIMIT 1",
+                        $slug
+                )
+        );
+        return $book_id ? (int) $book_id : 0;
+}
+
+function prs_get_primary_slug_for_book( $book_id ) {
+        global $wpdb;
+
+        $book_id = (int) $book_id;
+        if ( $book_id <= 0 ) {
+                return '';
+        }
+
+        if ( prs_books_slugs_table_exists() ) {
+                $table = prs_books_slugs_table_name();
+                $slug = $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT slug FROM {$table} WHERE book_id = %d AND is_primary = 1 LIMIT 1",
+                                $book_id
+                        )
+                );
+                if ( is_string( $slug ) && '' !== trim( $slug ) ) {
+                        return $slug;
+                }
+        }
+
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $slug = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT slug FROM {$books_table} WHERE id = %d LIMIT 1",
+                        $book_id
+                )
+        );
+        return is_string( $slug ) ? $slug : '';
+}
+
+function prs_book_slug_exists( $slug, $exclude_book_id = 0 ) {
+        global $wpdb;
+
+        $slug = is_string( $slug ) ? trim( $slug ) : '';
+        if ( '' === $slug ) {
+                return false;
+        }
+
+        $exclude_book_id = (int) $exclude_book_id;
+
+        if ( prs_books_slugs_table_exists() ) {
+                $table = prs_books_slugs_table_name();
+                $query = "SELECT book_id FROM {$table} WHERE slug = %s";
+                $params = array( $slug );
+                if ( $exclude_book_id > 0 ) {
+                        $query .= ' AND book_id <> %d';
+                        $params[] = $exclude_book_id;
+                }
+                $query .= ' LIMIT 1';
+                $book_id = $wpdb->get_var( $wpdb->prepare( $query, $params ) );
+                if ( $book_id ) {
+                        return true;
+                }
+        }
+
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $query = "SELECT id FROM {$books_table} WHERE slug = %s";
+        $params = array( $slug );
+        if ( $exclude_book_id > 0 ) {
+                $query .= ' AND id <> %d';
+                $params[] = $exclude_book_id;
+        }
+        $query .= ' LIMIT 1';
+        $book_id = $wpdb->get_var( $wpdb->prepare( $query, $params ) );
+        return ! empty( $book_id );
+}
+
+function prs_generate_book_slug( $title, $year = null, $exclude_book_id = 0 ) {
+        $base = sanitize_title( (string) $title );
+        if ( '' === $base ) {
+                $fallback_id = (int) $exclude_book_id;
+                return $fallback_id > 0 ? 'book-' . $fallback_id : '';
+        }
+
+        if ( ! prs_book_slug_exists( $base, $exclude_book_id ) ) {
+                return $base;
+        }
+
+        if ( $year ) {
+                $with_year = $base . '-' . (int) $year;
+                if ( ! prs_book_slug_exists( $with_year, $exclude_book_id ) ) {
+                        return $with_year;
+                }
+        }
+
+        return '';
+}
+
+function prs_set_primary_book_slug( $book_id, $slug ) {
+        global $wpdb;
+
+        $book_id = (int) $book_id;
+        $slug = is_string( $slug ) ? trim( $slug ) : '';
+        if ( $book_id <= 0 || '' === $slug || ! prs_books_slugs_table_exists() ) {
+                return;
+        }
+
+        $table = prs_books_slugs_table_name();
+
+        $wpdb->update(
+                $table,
+                array( 'is_primary' => 0 ),
+                array( 'book_id' => $book_id ),
+                array( '%d' ),
+                array( '%d' )
+        );
+
+        $existing_id = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
+                        $slug
+                )
+        );
+
+        if ( $existing_id ) {
+                $wpdb->update(
+                        $table,
+                        array(
+                                'book_id'    => $book_id,
+                                'is_primary' => 1,
+                                'updated_at' => current_time( 'mysql' ),
+                        ),
+                        array( 'id' => (int) $existing_id ),
+                        array( '%d', '%d', '%s' ),
+                        array( '%d' )
+                );
+                return;
+        }
+
+        $wpdb->insert(
+                $table,
+                array(
+                        'book_id'    => $book_id,
+                        'slug'       => $slug,
+                        'is_primary' => 1,
+                        'created_at' => current_time( 'mysql' ),
+                        'updated_at' => current_time( 'mysql' ),
+                ),
+                array( '%d', '%s', '%d', '%s', '%s' )
+        );
+}
+
+function prs_add_book_slug_alias( $book_id, $slug ) {
+        global $wpdb;
+
+        $book_id = (int) $book_id;
+        $slug = is_string( $slug ) ? trim( $slug ) : '';
+        if ( $book_id <= 0 || '' === $slug || ! prs_books_slugs_table_exists() ) {
+                return;
+        }
+
+        $table = prs_books_slugs_table_name();
+        $existing_id = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
+                        $slug
+                )
+        );
+
+        if ( $existing_id ) {
+                return;
+        }
+
+        $wpdb->insert(
+                $table,
+                array(
+                        'book_id'    => $book_id,
+                        'slug'       => $slug,
+                        'is_primary' => 0,
+                        'created_at' => current_time( 'mysql' ),
+                        'updated_at' => current_time( 'mysql' ),
+                ),
+                array( '%d', '%s', '%d', '%s', '%s' )
+        );
+}
+
 function prs_find_or_create_book( $title, $author, $year = null, $attachment_id = null, $all_authors = null, $source = 'candidate' ) {
         global $wpdb;
         $table = $wpdb->prefix . 'politeia_books';
@@ -24,16 +283,11 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
         $normalized_title  = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $title ) : $title;
         $normalized_title  = $normalized_title !== '' ? $normalized_title : null;
 
-        $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
+        $slug = prs_generate_book_slug( $title, $year );
 
         $existing_id = null;
         if ( $slug ) {
-                $existing_id = $wpdb->get_var(
-                        $wpdb->prepare(
-                                "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
-                                $slug
-                        )
-                );
+                $existing_id = prs_get_book_id_by_slug( $slug );
         }
         $authors_payload = $all_authors;
         if ( $authors_payload instanceof \Traversable ) {
@@ -49,6 +303,12 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
 
         if ( $existing_id ) {
                 $book_id = (int) $existing_id;
+                if ( $slug && prs_books_slugs_table_exists() ) {
+                        $primary_slug = prs_get_primary_slug_for_book( $book_id );
+                        if ( '' === $primary_slug ) {
+                                prs_set_primary_book_slug( $book_id, $slug );
+                        }
+                }
                 if ( 'confirmed' === $source ) {
                         prs_sync_book_author_links( $book_id, $authors_payload, $source );
                 }
@@ -59,17 +319,21 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 return new WP_Error( 'prs_canonical_write_blocked', 'Canonical writes require confirmation.' );
         }
 
+        $insert_data = array(
+                'title'               => $title,
+                'year'                => $year ? (int) $year : null,
+                'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
+                'normalized_title'    => $normalized_title,
+                'created_at'          => current_time( 'mysql' ),
+                'updated_at'          => current_time( 'mysql' ),
+        );
+        if ( $slug ) {
+                $insert_data['slug'] = $slug;
+        }
+
         $inserted = $wpdb->insert(
                 $table,
-                array(
-                        'title'               => $title,
-                        'year'                => $year ? (int) $year : null,
-                        'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
-                        'slug'                => $slug,
-                        'normalized_title'    => $normalized_title,
-                        'created_at'          => current_time( 'mysql' ),
-                        'updated_at'          => current_time( 'mysql' ),
-                )
+                $insert_data
         );
 
         if ( false === $inserted ) {
@@ -78,6 +342,9 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
 
         $book_id = (int) $wpdb->insert_id;
         prs_sync_book_author_links( $book_id, $authors_payload, $source );
+        if ( $slug ) {
+                prs_set_primary_book_slug( $book_id, $slug );
+        }
 
         return $book_id;
 }
@@ -290,15 +557,10 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
         $all_authors   = isset( $raw_payload['authors'] ) ? $raw_payload['authors'] : null;
 
         $books_table = $wpdb->prefix . 'politeia_books';
-        $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
+        $slug = prs_generate_book_slug( $title, $year );
         $existing_id = 0;
         if ( $slug ) {
-                $existing_id = (int) $wpdb->get_var(
-                        $wpdb->prepare(
-                                "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
-                                $slug
-                        )
-                );
+                $existing_id = (int) prs_get_book_id_by_slug( $slug );
         }
 
         $book_id = 0;
@@ -991,7 +1253,7 @@ function prs_render_book_row( $book, $context = array() ) {
         $label_unknown      = $labels['unknown'];
 
         $authors_value = isset( $book->authors ) ? (string) $book->authors : '';
-        $slug = $book->slug ? $book->slug : sanitize_title( $book->title . ( $authors_value ? '-' . $authors_value : '' ) . ( $book->year ? '-' . $book->year : '' ) );
+        $slug = $book->slug ? $book->slug : prs_generate_book_slug( $book->title, $book->year ?? null );
         $url  = home_url( '/my-books/my-book-' . $slug );
 
         $year            = $book->year ? (int) $book->year : null;

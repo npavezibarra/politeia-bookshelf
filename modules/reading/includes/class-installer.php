@@ -16,6 +16,7 @@ class Installer {
 
                 $charset_collate      = $wpdb->get_charset_collate();
                 $books_table          = $wpdb->prefix . 'politeia_books';
+                $book_slugs_table     = $wpdb->prefix . 'politeia_book_slugs';
                 $user_books_table     = $wpdb->prefix . 'politeia_user_books';
                 $sessions_table       = $wpdb->prefix . 'politeia_reading_sessions';
                 $session_notes_table  = $wpdb->prefix . 'politeia_read_ses_notes';
@@ -40,6 +41,22 @@ class Installer {
             UNIQUE KEY uniq_slug (slug)
         ) %s;',
                                 $books_table,
+                                $charset_collate
+                        ),
+                        $book_slugs_table   => sprintf(
+                                'CREATE TABLE %s (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+            book_id BIGINT UNSIGNED NOT NULL,
+            slug VARCHAR(255) NOT NULL,
+            is_primary TINYINT(1) NOT NULL DEFAULT 0,
+            created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY uniq_slug (slug),
+            KEY idx_book (book_id),
+            KEY idx_primary (book_id, is_primary)
+        ) %s;',
+                                $book_slugs_table,
                                 $charset_collate
                         ),
                         $user_books_table   => sprintf(

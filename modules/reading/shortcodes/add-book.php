@@ -500,15 +500,9 @@ function prs_add_book_submit_handler() {
 
         // Normalizar y revisar si el libro canónico ya existe antes de crear candidato.
         $book_id = 0;
-        $books_table = $wpdb->prefix . 'politeia_books';
-        $slug = sanitize_title( $title . '-' . $primary_author . ( $year ? '-' . $year : '' ) );
+        $slug = prs_generate_book_slug( $title, $year );
         if ( $slug ) {
-                $book_id = (int) $wpdb->get_var(
-                        $wpdb->prepare(
-                                "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
-                                $slug
-                        )
-                );
+                $book_id = (int) prs_get_book_id_by_slug( $slug );
         }
 
         if ( $book_id ) {
@@ -578,11 +572,9 @@ function prs_add_book_submit_handler() {
         }
 
                 if ( null !== $pages ) {
-                        $page_slug = $slug ?: sanitize_title( $title . '-' . $primary_author . ( $year ? '-' . $year : '' ) );
+                        $page_slug = $slug ?: prs_generate_book_slug( $title, $year );
                         if ( $page_slug ) {
-                                $book_id = (int) $wpdb->get_var(
-                                        $wpdb->prepare( "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1", $page_slug )
-                                );
+                                $book_id = (int) prs_get_book_id_by_slug( $page_slug );
                         }
 
                         if ( $book_id ) {

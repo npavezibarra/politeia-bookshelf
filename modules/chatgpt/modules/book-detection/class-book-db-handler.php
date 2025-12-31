@@ -213,29 +213,133 @@ class Politeia_Book_DB_Handler {
     /* ============================= Slug helpers ============================= */
 
     /**
-     * Build a base slug like "insurreccion-fernando-villegas-2020".
+     * Build a base slug derived only from the title.
      */
-    protected function build_slug( $title, $author, $year = null ) {
-        $parts = array_filter( [ (string) $title, (string) $author, $year ? (string) $year : null ] );
-        $raw   = trim( implode( ' ', $parts ) );
+    protected function build_slug( $title ) {
+        $raw = trim( (string) $title );
         return sanitize_title( remove_accents( $raw ) );
     }
 
     /**
-     * Ensure uniqueness of slug within the books table.
+     * Resolve a slug candidate using title (+year on collision).
      */
-    protected function unique_slug( $slug ) {
-        global $wpdb;
-        $base = $slug;
-        $i = 2;
-        while ( (int) $wpdb->get_var(
-            $wpdb->prepare( "SELECT COUNT(*) FROM {$this->tbl_books} WHERE slug=%s", $slug )
-        ) > 0 ) {
-            $slug = $base . '-' . $i;
-            $i++;
-            if ( $i > 200 ) break; // safety
+    protected function resolve_slug( $title, $year = null, $given = '' ) {
+        $base = $given !== '' ? $given : $this->build_slug( $title );
+        if ( '' === $base ) {
+            return '';
         }
-        return $slug;
+
+        if ( ! $this->slug_exists( $base ) ) {
+            return $base;
+        }
+
+        if ( $year ) {
+            $candidate = $base . '-' . (int) $year;
+            if ( ! $this->slug_exists( $candidate ) ) {
+                return $candidate;
+            }
+        }
+
+        return '';
+    }
+
+    protected function slugs_table_name() {
+        global $wpdb;
+        return $wpdb->prefix . 'politeia_book_slugs';
+    }
+
+    protected function slugs_table_exists() {
+        global $wpdb;
+        $table = $this->slugs_table_name();
+        return (bool) $wpdb->get_var(
+            $wpdb->prepare(
+                'SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s LIMIT 1',
+                $table
+            )
+        );
+    }
+
+    protected function slug_exists( $slug, $exclude_book_id = 0 ) {
+        global $wpdb;
+        $slug = is_string( $slug ) ? trim( $slug ) : '';
+        if ( '' === $slug ) {
+            return false;
+        }
+
+        $exclude_book_id = (int) $exclude_book_id;
+
+        if ( $this->slugs_table_exists() ) {
+            $table = $this->slugs_table_name();
+            $query = "SELECT book_id FROM {$table} WHERE slug = %s";
+            $params = [ $slug ];
+            if ( $exclude_book_id > 0 ) {
+                $query .= ' AND book_id <> %d';
+                $params[] = $exclude_book_id;
+            }
+            $query .= ' LIMIT 1';
+            return (bool) $wpdb->get_var( $wpdb->prepare( $query, $params ) );
+        }
+
+        $query = "SELECT id FROM {$this->tbl_books} WHERE slug = %s";
+        $params = [ $slug ];
+        if ( $exclude_book_id > 0 ) {
+            $query .= ' AND id <> %d';
+            $params[] = $exclude_book_id;
+        }
+        $query .= ' LIMIT 1';
+        return (bool) $wpdb->get_var( $wpdb->prepare( $query, $params ) );
+    }
+
+    protected function set_primary_slug( $book_id, $slug ) {
+        global $wpdb;
+        $book_id = (int) $book_id;
+        $slug = is_string( $slug ) ? trim( $slug ) : '';
+        if ( $book_id <= 0 || '' === $slug || ! $this->slugs_table_exists() ) {
+            return;
+        }
+
+        $table = $this->slugs_table_name();
+        $wpdb->update(
+            $table,
+            [ 'is_primary' => 0 ],
+            [ 'book_id' => $book_id ],
+            [ '%d' ],
+            [ '%d' ]
+        );
+
+        $existing_id = $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT id FROM {$table} WHERE slug = %s LIMIT 1",
+                $slug
+            )
+        );
+
+        if ( $existing_id ) {
+            $wpdb->update(
+                $table,
+                [
+                    'book_id'    => $book_id,
+                    'is_primary' => 1,
+                    'updated_at' => current_time( 'mysql' ),
+                ],
+                [ 'id' => (int) $existing_id ],
+                [ '%d', '%d', '%s' ],
+                [ '%d' ]
+            );
+            return;
+        }
+
+        $wpdb->insert(
+            $table,
+            [
+                'book_id'    => $book_id,
+                'slug'       => $slug,
+                'is_primary' => 1,
+                'created_at' => current_time( 'mysql' ),
+                'updated_at' => current_time( 'mysql' ),
+            ],
+            [ '%d', '%s', '%d', '%s', '%s' ]
+        );
     }
 
     /* ============================= Inserts / Ensures ============================= */
@@ -267,13 +371,15 @@ class Politeia_Book_DB_Handler {
             $data['normalized_title'] = $this->normalize( $title );
             $fmt[] = '%s';
         }
-        // --- NEW: slug generation if column exists ---
+        // --- Slug generation if column exists ---
+        $resolved_slug = '';
         if ( $this->has_slug_col ) {
-            // Allow caller-specified slug; otherwise build from title/author/year
             $given = isset( $extra['slug'] ) ? sanitize_title( remove_accents( (string) $extra['slug'] ) ) : '';
-            $seed  = $given !== '' ? $given : $this->build_slug( $title, $author, $extra['year'] ?? null );
-            $data['slug'] = $this->unique_slug( $seed );
-            $fmt[] = '%s';
+            $resolved_slug = $this->resolve_slug( $title, $extra['year'] ?? null, $given );
+            if ( '' !== $resolved_slug ) {
+                $data['slug'] = $resolved_slug;
+                $fmt[] = '%s';
+            }
         }
 
         // Merge extras (only scalar, without overwriting already set keys)
@@ -291,7 +397,11 @@ class Politeia_Book_DB_Handler {
                 __( 'Failed to insert the book into the catalog.', $this->text_domain )
             );
         }
-        return (int) $wpdb->insert_id;
+        $insert_id = (int) $wpdb->insert_id;
+        if ( $resolved_slug ) {
+            $this->set_primary_slug( $insert_id, $resolved_slug );
+        }
+        return $insert_id;
     }
 
     /**
@@ -325,15 +435,18 @@ class Politeia_Book_DB_Handler {
             // If the book exists but has no slug, fill it (when slug column exists)
             if ( $this->has_slug_col && ( empty( $match['match']['slug'] ) || $match['match']['slug'] === null ) ) {
                 global $wpdb;
-                $slug = $this->unique_slug( $this->build_slug( $title, $author, $extra['year'] ?? null ) );
-                $wpdb->update(
-                    $this->tbl_books,
-                    [ 'slug' => $slug ],
-                    [ 'id'   => (int) $match['match']['id'] ],
-                    [ '%s' ],
-                    [ '%d' ]
-                );
-                $match['match']['slug'] = $slug;
+                $slug = $this->resolve_slug( $title, $extra['year'] ?? null );
+                if ( '' !== $slug ) {
+                    $wpdb->update(
+                        $this->tbl_books,
+                        [ 'slug' => $slug ],
+                        [ 'id'   => (int) $match['match']['id'] ],
+                        [ '%s' ],
+                        [ '%d' ]
+                    );
+                    $match['match']['slug'] = $slug;
+                    $this->set_primary_slug( (int) $match['match']['id'], $slug );
+                }
             }
 
             return [

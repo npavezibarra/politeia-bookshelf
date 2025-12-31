@@ -66,6 +66,7 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 	$tbl_confirm = $wpdb->prefix . 'politeia_book_confirm';
 	$tbl_authors = $wpdb->prefix . 'politeia_authors';
 	$tbl_pivot   = $wpdb->prefix . 'politeia_book_authors';
+	$tbl_slugs   = $wpdb->prefix . 'politeia_book_slugs';
 
 	$queued    = 0;
 	$skipped   = 0;
@@ -78,8 +79,17 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 
 	if ( class_exists('Politeia_Book_Confirm_Schema') ) {
 		// Trae la biblioteca del usuario
+		$slugs_table_exists = (bool) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s LIMIT 1',
+				$tbl_slugs
+			)
+		);
+		$slug_select = $slugs_table_exists ? 'COALESCE(s.slug, b.slug) AS slug' : 'b.slug AS slug';
+		$slug_join   = $slugs_table_exists ? "LEFT JOIN {$tbl_slugs} s ON s.book_id = b.id AND s.is_primary = 1" : '';
+
 		$sql = $wpdb->prepare("
-			SELECT b.id, b.title, b.year, b.slug,
+			SELECT b.id, b.title, b.year, {$slug_select},
 			       (
 			       		SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
 			       		FROM {$tbl_pivot} ba
@@ -88,6 +98,7 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 			       ) AS authors
 			  FROM {$tbl_books} b
 			  JOIN {$tbl_users} ub ON ub.book_id=b.id AND ub.user_id=%d
+			  {$slug_join}
 		", $user_id);
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$rows = $wpdb->get_results($sql, ARRAY_A);
@@ -140,26 +151,33 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		// 1) ¿YA está en librería? (match por slug exacto, fallback por título+autor)
 		// -----------------------------------------------
 		$owned_year = null;
-		$candidate_slug = sanitize_title( $title . '-' . $author . ( isset( $b['year'] ) && $b['year'] ? '-' . (int) $b['year'] : '' ) );
+		$base_slug = sanitize_title( $title );
+		$candidate_slug = $base_slug;
+		$candidate_slug_year = ( $base_slug && isset( $b['year'] ) && $b['year'] ) ? $base_slug . '-' . (int) $b['year'] : '';
 
 		if ( $candidate_slug && isset($user_lib_slug[$candidate_slug]) ) {
 			$owned_year = $user_lib_slug[$candidate_slug]['year'];
+		} elseif ( $candidate_slug_year && isset($user_lib_slug[$candidate_slug_year]) ) {
+			$owned_year = $user_lib_slug[$candidate_slug_year]['year'];
 		} elseif ( isset($user_lib_key[$key]) ) {
 			$owned_year = $user_lib_key[$key]['year'];
-		} elseif ( $candidate_slug ) {
+		} elseif ( $candidate_slug || $candidate_slug_year ) {
+			$slug_checks = array_filter( array( $candidate_slug, $candidate_slug_year ) );
+			$placeholders = implode( ', ', array_fill( 0, count( $slug_checks ), '%s' ) );
 			$owned = $wpdb->get_row(
 				$wpdb->prepare(
 					"SELECT b.id, b.year
 					   FROM {$tbl_books} b
 					   JOIN {$tbl_users} ub ON ub.book_id=b.id AND ub.user_id=%d
-					  WHERE b.slug=%s
+					  WHERE b.slug IN ({$placeholders})
 					  LIMIT 1",
-					$user_id,
-					$candidate_slug
+					array_merge( array( $user_id ), $slug_checks )
 				),
 				ARRAY_A
 			);
-			if ($owned) $owned_year = $owned['year'] !== null && $owned['year'] !== '' ? (int)$owned['year'] : null;
+			if ($owned) {
+				$owned_year = $owned['year'] !== null && $owned['year'] !== '' ? (int)$owned['year'] : null;
+			}
 		}
 
 		if ( $owned_year !== null ) {

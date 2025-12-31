@@ -22,26 +22,39 @@ $tbl_session_notes = $wpdb->prefix . 'politeia_read_ses_notes';
 $tbl_authors       = $wpdb->prefix . 'politeia_authors';
 $tbl_book_authors  = $wpdb->prefix . 'politeia_book_authors';
 
-$book = $wpdb->get_row(
-        $wpdb->prepare(
-                "SELECT b.*,
-                        (
-                                SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
-                                FROM {$tbl_book_authors} ba
-                                LEFT JOIN {$tbl_authors} a ON a.id = ba.author_id
-                                WHERE ba.book_id = b.id
-                        ) AS authors
-                 FROM {$tbl_b} b
-                 WHERE b.slug=%s
-                 LIMIT 1",
-                $slug
-        )
-);
+$book_id = prs_get_book_id_by_primary_slug( $slug );
+if ( ! $book_id ) {
+        $book_id = prs_get_book_id_by_slug( $slug );
+}
+$book = null;
+if ( $book_id ) {
+        $book = $wpdb->get_row(
+                $wpdb->prepare(
+                        "SELECT b.*,
+                                (
+                                        SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+                                        FROM {$tbl_book_authors} ba
+                                        LEFT JOIN {$tbl_authors} a ON a.id = ba.author_id
+                                        WHERE ba.book_id = b.id
+                                ) AS authors
+                         FROM {$tbl_b} b
+                         WHERE b.id=%d
+                         LIMIT 1",
+                        $book_id
+                )
+        );
+}
 if ( ! $book ) {
 	status_header( 404 );
 	echo '<div class="wrap"><h1>Not found</h1></div>';
 	get_footer();
 	exit; }
+
+$primary_slug = prs_get_primary_slug_for_book( (int) $book->id );
+if ( $primary_slug && ( $slug !== $primary_slug ) ) {
+        wp_safe_redirect( home_url( '/my-books/my-book-' . $primary_slug . '/' ), 301 );
+        exit;
+}
 
 $ub = $wpdb->get_row(
         $wpdb->prepare(

@@ -184,8 +184,18 @@ class Politeia_Book_Confirm_Schema {
         // User library with normalized key (+year)
         $authors_tbl = $wpdb->prefix . 'politeia_authors';
         $pivot_tbl   = $wpdb->prefix . 'politeia_book_authors';
+        $slugs_tbl   = $wpdb->prefix . 'politeia_book_slugs';
+        $slugs_table_exists = (bool) $wpdb->get_var(
+            $wpdb->prepare(
+                'SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s LIMIT 1',
+                $slugs_tbl
+            )
+        );
+        $slug_select = $slugs_table_exists ? 'COALESCE(s.slug, b.slug) AS slug' : 'b.slug AS slug';
+        $slug_join   = $slugs_table_exists ? "LEFT JOIN {$slugs_tbl} s ON s.book_id = b.id AND s.is_primary = 1" : '';
+
         $sql = $wpdb->prepare("
-            SELECT b.id, b.slug, b.title, b.year,
+            SELECT b.id, {$slug_select}, b.title, b.year,
                    (
                        SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
                        FROM {$pivot_tbl} ba
@@ -195,6 +205,7 @@ class Politeia_Book_Confirm_Schema {
             FROM {$books_tbl} b
             INNER JOIN {$ub_tbl} ub
                 ON ub.book_id = b.id AND ub.user_id = %d
+            {$slug_join}
         ", (int)$user_id);
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         $user_books = $wpdb->get_results($sql, ARRAY_A);
