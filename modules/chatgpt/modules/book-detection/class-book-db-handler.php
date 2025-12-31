@@ -290,8 +290,15 @@ class Politeia_Book_DB_Handler {
      * @param array  $extra  Optional scalar extras (e.g., 'isbn', 'year', 'slug', etc.)
      * @return int|\WP_Error New book ID or WP_Error
      */
-    public function insert_book( $title, $author, $extra = [] ) {
+    public function insert_book( $title, $author, $extra = [], $source = 'candidate' ) {
         global $wpdb;
+
+        if ( 'confirmed' !== $source ) {
+            return new \WP_Error(
+                'politeia_canonical_write_blocked',
+                __( 'Canonical writes require confirmation.', $this->text_domain )
+            );
+        }
 
         $data = [
             'title'  => sanitize_text_field( $title ),
@@ -353,7 +360,7 @@ class Politeia_Book_DB_Handler {
      *   error:\WP_Error|null
      * }
      */
-    public function ensure_book( $title, $author, $extra = [] ) {
+    public function ensure_book( $title, $author, $extra = [], $source = 'candidate' ) {
         $ready = $this->is_ready();
         if ( is_wp_error( $ready ) ) {
             return [
@@ -390,12 +397,12 @@ class Politeia_Book_DB_Handler {
             ];
         }
 
-        $insert_id = $this->insert_book( $title, $author, $extra );
+        $insert_id = $this->insert_book( $title, $author, $extra, $source );
         if ( is_wp_error( $insert_id ) ) {
             return [
                 'book_id' => 0,
                 'created' => false,
-                'method'  => 'insert_failed',
+                'method'  => ( 'politeia_canonical_write_blocked' === $insert_id->get_error_code() ) ? 'write_blocked' : 'insert_failed',
                 'row'     => null,
                 'error'   => $insert_id,
             ];
@@ -462,8 +469,8 @@ class Politeia_Book_DB_Handler {
      *   error: \WP_Error|null
      * }
      */
-    public function ensure_book_and_link_user( $user_id, $title, $author, $extra = [] ) {
-        $result = $this->ensure_book( $title, $author, $extra );
+    public function ensure_book_and_link_user( $user_id, $title, $author, $extra = [], $source = 'candidate' ) {
+        $result = $this->ensure_book( $title, $author, $extra, $source );
         if ( isset( $result['error'] ) && is_wp_error( $result['error'] ) ) {
             return [
                 'ok'           => false,

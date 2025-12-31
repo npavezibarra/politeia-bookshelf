@@ -104,7 +104,7 @@ class Politeia_Buttons_Confirm_Controller {
 			$extra = [];
 			if ( $year !== null ) $extra['year'] = $year;
 
-			$res = $handler->ensure_book( $title, $author, $extra );
+			$res = $handler->ensure_book( $title, $author, $extra, 'confirmed' );
 			if ( isset($res['error']) && is_wp_error($res['error']) ) {
 				$errors[] = [ 'item' => $idx, 'message' => $res['error']->get_error_message() ];
 				continue;

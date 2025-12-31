@@ -10,7 +10,7 @@ function prs_current_user_id_or_die() {
 	return get_current_user_id();
 }
 
-function prs_find_or_create_book( $title, $author, $year = null, $attachment_id = null, $all_authors = null ) {
+function prs_find_or_create_book( $title, $author, $year = null, $attachment_id = null, $all_authors = null, $source = 'candidate' ) {
         global $wpdb;
         $table = $wpdb->prefix . 'politeia_books';
 
@@ -60,7 +60,9 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
 
         if ( $existing_id ) {
                 $book_id = (int) $existing_id;
-                prs_sync_book_author_links( $book_id, $authors_payload );
+                if ( 'confirmed' === $source ) {
+                        prs_sync_book_author_links( $book_id, $authors_payload, $source );
+                }
                 return $book_id;
         }
 
@@ -74,9 +76,15 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 );
                 if ( $existing_id ) {
                         $book_id = (int) $existing_id;
-                        prs_sync_book_author_links( $book_id, $authors_payload );
+                        if ( 'confirmed' === $source ) {
+                                prs_sync_book_author_links( $book_id, $authors_payload, $source );
+                        }
                         return $book_id;
                 }
+        }
+
+        if ( 'confirmed' !== $source ) {
+                return new WP_Error( 'prs_canonical_write_blocked', 'Canonical writes require confirmation.' );
         }
 
         $inserted = $wpdb->insert(
@@ -100,9 +108,149 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
         }
 
         $book_id = (int) $wpdb->insert_id;
-        prs_sync_book_author_links( $book_id, $authors_payload );
+        prs_sync_book_author_links( $book_id, $authors_payload, $source );
 
         return $book_id;
+}
+
+/**
+ * Create book candidates from raw input and optional external lookups.
+ *
+ * @param array|string $input Raw input: array with title/author/etc or a title string.
+ * @param array        $args  Optional args: user_id, input_type, source_note, enqueue, author, raw_response, limit_per_provider.
+ *
+ * @return array { candidates, queued, skipped, pending, in_shelf, external_best }
+ */
+function prs_create_book_candidate( $input, $args = array() ) {
+        $defaults = array(
+                'user_id'            => 0,
+                'input_type'         => 'text',
+                'source_note'        => 'candidate',
+                'enqueue'            => true,
+                'author'             => '',
+                'raw_response'       => null,
+                'limit_per_provider' => 5,
+        );
+        $args = wp_parse_args( $args, $defaults );
+
+        $user_id = (int) $args['user_id'];
+        if ( $user_id <= 0 ) {
+                $user_id = get_current_user_id();
+        }
+
+        $title = '';
+        $author = '';
+        $year = null;
+        $image = null;
+        $raw_candidates = array();
+
+        if ( is_array( $input ) ) {
+                if ( isset( $input['candidates'] ) && is_array( $input['candidates'] ) ) {
+                        $raw_candidates = $input['candidates'];
+                }
+                $title  = isset( $input['title'] ) ? (string) $input['title'] : '';
+                $author = isset( $input['author'] ) ? (string) $input['author'] : '';
+                $year   = isset( $input['year'] ) ? (int) $input['year'] : null;
+                $image  = isset( $input['image'] ) ? (string) $input['image'] : null;
+        } elseif ( is_string( $input ) ) {
+                $title  = $input;
+                $author = isset( $args['author'] ) ? (string) $args['author'] : '';
+        }
+
+        $candidates = array();
+
+        foreach ( $raw_candidates as $cand ) {
+                if ( ! is_array( $cand ) ) {
+                        continue;
+                }
+                $candidates[] = array(
+                        'title'  => isset( $cand['title'] ) ? (string) $cand['title'] : '',
+                        'author' => isset( $cand['author'] ) ? (string) $cand['author'] : '',
+                        'year'   => isset( $cand['year'] ) ? (int) $cand['year'] : null,
+                        'image'  => isset( $cand['image'] ) ? (string) $cand['image'] : null,
+                        'source' => isset( $cand['source'] ) ? (string) $cand['source'] : 'input',
+                );
+        }
+
+        if ( '' !== trim( $title ) && '' !== trim( $author ) ) {
+                $candidates[] = array(
+                        'title'  => $title,
+                        'author' => $author,
+                        'year'   => $year,
+                        'image'  => $image,
+                        'source' => 'input',
+                );
+        }
+
+        $external_best = null;
+        if ( '' !== trim( $title ) && '' !== trim( $author ) ) {
+                if ( ! class_exists( 'Politeia_Book_External_API' ) && function_exists( 'politeia_chatgpt_safe_require' ) ) {
+                        politeia_chatgpt_safe_require( 'modules/book-detection/class-book-external-api.php' );
+                }
+
+                if ( class_exists( 'Politeia_Book_External_API' ) ) {
+                        $api = new Politeia_Book_External_API();
+                        $external_best = $api->search_best_match(
+                                $title,
+                                $author,
+                                array( 'limit_per_provider' => (int) $args['limit_per_provider'] )
+                        );
+                        if ( is_array( $external_best ) && ! empty( $external_best['title'] ) && ! empty( $external_best['author'] ) ) {
+                                $candidates[] = array(
+                                        'title'  => (string) $external_best['title'],
+                                        'author' => (string) $external_best['author'],
+                                        'year'   => isset( $external_best['year'] ) ? (int) $external_best['year'] : null,
+                                        'image'  => null,
+                                        'source' => isset( $external_best['source'] ) ? (string) $external_best['source'] : 'external',
+                                );
+                        }
+                }
+        }
+
+        $deduped = array();
+        $seen = array();
+        foreach ( $candidates as $cand ) {
+                $t = isset( $cand['title'] ) ? trim( (string) $cand['title'] ) : '';
+                $a = isset( $cand['author'] ) ? trim( (string) $cand['author'] ) : '';
+                if ( '' === $t || '' === $a ) {
+                        continue;
+                }
+                $key_t = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $t ) : strtolower( $t );
+                $key_a = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $a ) : strtolower( $a );
+                $key = $key_t . '|' . $key_a;
+                if ( isset( $seen[ $key ] ) ) {
+                        continue;
+                }
+                $seen[ $key ] = true;
+                $deduped[] = $cand;
+        }
+
+        $queue_result = array(
+                'queued'   => 0,
+                'skipped'  => 0,
+                'pending'  => array(),
+                'in_shelf' => array(),
+        );
+
+        if ( $args['enqueue'] && function_exists( 'politeia_chatgpt_queue_confirm_items' ) ) {
+                $queue_result = politeia_chatgpt_queue_confirm_items(
+                        $deduped,
+                        array(
+                                'user_id'      => $user_id,
+                                'input_type'   => (string) $args['input_type'],
+                                'source_note'  => (string) $args['source_note'],
+                                'raw_response' => $args['raw_response'],
+                        )
+                );
+        }
+
+        return array_merge(
+                array(
+                        'candidates'    => $deduped,
+                        'external_best' => $external_best,
+                ),
+                $queue_result
+        );
 }
 
 function prs_ensure_user_book( $user_id, $book_id ) {
@@ -180,11 +328,15 @@ function prs_handle_cover_upload( $field_name = 'prs_cover' ) {
  *
  * @return int[] Ordered list of author IDs linked to the book.
  */
-function prs_sync_book_author_links( $book_id, $authors ) {
+function prs_sync_book_author_links( $book_id, $authors, $source = 'candidate' ) {
         global $wpdb;
 
         $book_id = (int) $book_id;
         if ( $book_id <= 0 ) {
+                return array();
+        }
+
+        if ( 'confirmed' !== $source ) {
                 return array();
         }
 
