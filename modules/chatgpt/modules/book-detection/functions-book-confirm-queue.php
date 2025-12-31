@@ -106,8 +106,8 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		$author = isset($b['author']) ? trim((string) $b['author']) : '';
 		if ( $title === '' || $author === '' ) { $skipped++; continue; }
 
-		$norm_title  = politeia__normalize_text( $title );
-		$norm_author = politeia__normalize_text( $author );
+		$norm_title  = politeia__normalize_candidate_text( $title );
+		$norm_author = politeia__normalize_candidate_text( $author );
 		$hash        = politeia__title_author_hash( $title, $author );
 		$hash_lc     = strtolower($hash);
 
@@ -233,7 +233,38 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		if ( isset($b['matched_book_id'])){ $data['matched_book_id']      = (int) $b['matched_book_id'];                      $fmt[]='%d'; }
 		if ( isset($b['cover_url']) )    { $data['external_cover_url']    = esc_url_raw((string)$b['cover_url']);            $fmt[]='%s'; }
 		if ( isset($b['cover_source']) ) { $data['external_cover_source'] = sanitize_text_field((string)$b['cover_source']); $fmt[]='%s'; }
-		if ( $raw_payload !== null )     { $data['raw_response']          = $raw_payload;                                     $fmt[]='%s'; }
+
+		$raw_candidate = array(
+			'original_input' => array(
+				'title'  => $title,
+				'author' => $author,
+			),
+			'normalized'     => array(
+				'title'  => $norm_title,
+				'author' => $norm_author,
+			),
+			'external'       => array(
+				'source' => isset( $b['source'] ) ? (string) $b['source'] : null,
+				'isbn'   => isset( $b['isbn'] ) ? (string) $b['isbn'] : null,
+				'id'     => isset( $b['external_id'] ) ? (string) $b['external_id'] : ( isset( $b['id'] ) ? (string) $b['id'] : null ),
+				'score'  => isset( $b['score'] ) ? (float) $b['score'] : null,
+			),
+		);
+
+		if ( isset( $b['raw_payload'] ) ) {
+			$raw_candidate['external']['raw_payload'] = $b['raw_payload'];
+		}
+
+		if ( isset( $b['raw_response'] ) ) {
+			$raw_candidate['external']['raw_response'] = $b['raw_response'];
+		}
+
+		if ( $raw_payload !== null ) {
+			$raw_candidate['raw_payload'] = $raw_payload;
+		}
+
+		$data['raw_response'] = wp_json_encode( $raw_candidate );
+		$fmt[] = '%s';
 
 		$ok = $wpdb->insert( $tbl_confirm, $data, $fmt );
 		if ( ! $ok ) { $skipped++; continue; }
@@ -277,6 +308,33 @@ if ( ! function_exists('politeia__normalize_text') ) {
 		$s = preg_replace( '/\s+/u', ' ', $s );
 		$s = trim( $s );
 		return $s;
+	}
+}
+
+if ( ! function_exists('politeia__normalize_candidate_text') ) {
+	function politeia__normalize_candidate_text( $s ) {
+		if ( class_exists('Politeia_Book_Confirm_Schema') ) {
+			// Mirror schema normalization for temporary candidate fields.
+			$normalized = Politeia_Book_Confirm_Schema::normalize_pair_key( $s, '' );
+			return trim( (string) $normalized );
+		}
+
+		$s = (string) $s;
+		$s = wp_strip_all_tags( $s );
+		$s = html_entity_decode( $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+		$s = remove_accents( $s );
+		$s = strtolower( $s );
+
+		$stop = array( ' el ', ' la ', ' los ', ' las ', ' un ', ' una ', ' unos ', ' unas ', ' de ', ' del ', ' y ', ' e ', ' a ', ' en ', ' the ', ' of ', ' and ', ' to ', ' for ' );
+		$s = ' ' . preg_replace( '/\s+/', ' ', $s ) . ' ';
+		foreach ( $stop as $st ) {
+			$s = str_replace( $st, ' ', $s );
+		}
+
+		$s = preg_replace( '/[^a-z0-9\s]/', ' ', $s );
+		$tokens = array_filter( explode( ' ', trim( preg_replace( '/\s+/', ' ', $s ) ) ) );
+		sort( $tokens, SORT_STRING );
+		return implode( ' ', $tokens );
 	}
 }
 

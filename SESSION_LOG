@@ -9,6 +9,11 @@ December 31st, 2025, 14:09 UTC
 2. Identified canonical write entry points for books/authors/pivot tables (single-add and confirm flows).
 3. Added a canonical write guard: single-add uses source='candidate' (no inserts), confirm flow uses source='confirmed' (allowed).
 
+December 31st, 2025, 15:03 UTC
+1. Added prs_create_book_candidate to create suggestion-only candidates and optionally enqueue them.
+2. Normalized candidate ingestion and stored original input + external metadata + raw payloads in queue rows.
+3. Refactored single-add flow to use candidate creation + immediate confirmation, and added a pre-check to link existing canonical books before queuing.
+
 ------
 
 TO DO:

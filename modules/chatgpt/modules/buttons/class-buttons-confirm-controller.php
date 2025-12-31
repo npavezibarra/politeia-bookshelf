@@ -166,6 +166,11 @@ class Politeia_Buttons_Confirm_Controller {
 		];
 	}
 
+	/** Public helper for server-side confirmation flows. */
+	public static function confirm_items_direct( array $items ) {
+		return self::confirm_items( $items );
+	}
+
 	/* ---------------- AJAX: confirmar (1..n) ---------------- */
 	public static function ajax_confirm() {
 		try {

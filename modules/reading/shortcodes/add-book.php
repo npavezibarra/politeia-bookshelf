@@ -498,26 +498,117 @@ function prs_add_book_submit_handler() {
         // Upload opcional de portada
         $attachment_id = prs_handle_cover_upload( 'prs_cover' );
 
-        // Crear o encontrar libro canónico
-        $book_id = prs_find_or_create_book( $title, $primary_author, $year, $attachment_id, $authors, 'candidate' );
-	if ( is_wp_error( $book_id ) || ! $book_id ) {
-		wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
-		exit;
-	}
+        // Normalizar y revisar si el libro canónico ya existe antes de crear candidato.
+        $book_id = 0;
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $hash = function_exists( 'politeia__title_author_hash' )
+                ? politeia__title_author_hash( $title, $primary_author )
+                : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
 
-	// Vincular a la biblioteca del usuario (idempotente)
-	$user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );
+        $book_id = (int) $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
+                        $hash
+                )
+        );
 
-	if ( $user_book_id && null !== $pages ) {
-		global $wpdb;
-		$wpdb->update(
-			$wpdb->prefix . 'politeia_user_books',
-			array( 'pages' => $pages ),
-			array( 'id' => (int) $user_book_id ),
-			array( '%d' ),
-			array( '%d' )
-		);
-	}
+        if ( ! $book_id ) {
+                $slug = sanitize_title( $title . '-' . $primary_author . ( $year ? '-' . $year : '' ) );
+                if ( $slug ) {
+                        $book_id = (int) $wpdb->get_var(
+                                $wpdb->prepare(
+                                        "SELECT id FROM {$books_table} WHERE slug=%s LIMIT 1",
+                                        $slug
+                                )
+                        );
+                }
+        }
+
+        if ( $book_id ) {
+                $user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );
+                if ( $user_book_id && null !== $pages ) {
+                        $wpdb->update(
+                                $wpdb->prefix . 'politeia_user_books',
+                                array( 'pages' => $pages ),
+                                array( 'id' => (int) $user_book_id ),
+                                array( '%d' ),
+                                array( '%d' )
+                        );
+                }
+        } else {
+        // Crear candidato y confirmar de inmediato (flujo por etapas).
+        $candidate_input = array(
+                'title'  => $title,
+                'author' => $primary_author,
+                'year'   => $year,
+                'image'  => $attachment_id ? (int) $attachment_id : null,
+        );
+        $candidate_args = array(
+                'user_id'      => $user_id,
+                'input_type'   => 'single_add',
+                'source_note'  => 'single-add',
+                'enqueue'      => true,
+                'raw_response' => array(
+                        'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
+                        'pages'               => $pages,
+                        'authors'             => $authors,
+                ),
+        );
+
+        $candidate_result = prs_create_book_candidate( $candidate_input, $candidate_args );
+
+        $confirm_items = array();
+        if ( ! empty( $candidate_result['pending'] ) ) {
+                $pending_item = $candidate_result['pending'][0];
+                $confirm_items[] = array(
+                        'id'     => isset( $pending_item['id'] ) ? (int) $pending_item['id'] : 0,
+                        'title'  => $pending_item['title'] ?? $title,
+                        'author' => $pending_item['author'] ?? $primary_author,
+                        'year'   => $year,
+                );
+        } elseif ( ! empty( $candidate_result['in_shelf'] ) ) {
+                $confirm_items = array();
+        } else {
+                wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
+                exit;
+        }
+
+        if ( ! empty( $confirm_items ) ) {
+                if ( function_exists( 'politeia_chatgpt_safe_require' ) ) {
+                        politeia_chatgpt_safe_require( 'modules/buttons/class-buttons-confirm-controller.php' );
+                }
+
+                if ( class_exists( 'Politeia_Buttons_Confirm_Controller' ) && method_exists( 'Politeia_Buttons_Confirm_Controller', 'confirm_items_direct' ) ) {
+                        $confirm_result = Politeia_Buttons_Confirm_Controller::confirm_items_direct( $confirm_items );
+                        if ( empty( $confirm_result['confirmed'] ) ) {
+                                wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
+                                exit;
+                        }
+                } else {
+                        wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
+                        exit;
+                }
+        }
+
+                if ( null !== $pages ) {
+                        $book_id = (int) $wpdb->get_var(
+                                $wpdb->prepare( "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1", $hash )
+                        );
+
+                        if ( $book_id ) {
+                                $user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );
+                                if ( $user_book_id ) {
+                                        $wpdb->update(
+                                                $wpdb->prefix . 'politeia_user_books',
+                                                array( 'pages' => $pages ),
+                                                array( 'id' => (int) $user_book_id ),
+                                                array( '%d' ),
+                                                array( '%d' )
+                                        );
+                                }
+                        }
+                }
+        }
 
         // Redirect back with success flag
         $redirect_url    = wp_get_referer() ?: home_url();
