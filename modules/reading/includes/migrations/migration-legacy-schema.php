@@ -44,33 +44,36 @@ class LegacySchema {
 
                 self::maybe_add_column( $books, 'normalized_title', 'VARCHAR(255) NULL' );
                 self::maybe_add_column( $books, 'normalized_author', 'VARCHAR(255) NULL' );
-                self::maybe_add_column( $books, 'title_author_hash', 'CHAR(64) NULL' );
+                // LEGACY SAFETY NET -- do not depend on this long-term
+                self::maybe_add_column( $books, 'title_author_hash', 'CHAR(64) NULL' ); // LEGACY SAFETY NET -- do not depend on this long-term
 
+                // LEGACY SAFETY NET -- do not depend on this long-term
                 $wpdb->query(
                         "
             UPDATE {$books}
-            SET title_author_hash = LOWER(SHA2(CONCAT_WS('|', normalized_title, normalized_author), 256))
-            WHERE (title_author_hash IS NULL OR title_author_hash = '')
+            SET title_author_hash = LOWER(SHA2(CONCAT_WS('|', normalized_title, normalized_author), 256)) /* LEGACY SAFETY NET -- do not depend on this long-term */
+            WHERE (title_author_hash IS NULL OR title_author_hash = '') /* LEGACY SAFETY NET -- do not depend on this long-term */
               AND normalized_title  IS NOT NULL AND normalized_title  <> ''
               AND normalized_author IS NOT NULL AND normalized_author <> ''
         "
                 );
 
+                // LEGACY SAFETY NET -- do not depend on this long-term
                 $wpdb->query(
                         "
             UPDATE {$books}
-            SET title_author_hash = LOWER(SHA2(CONCAT_WS('|', LOWER(TRIM(title)), LOWER(TRIM(author))), 256))
-            WHERE (title_author_hash IS NULL OR title_author_hash = '')
+            SET title_author_hash = LOWER(SHA2(CONCAT_WS('|', LOWER(TRIM(title)), LOWER(TRIM(author))), 256)) /* LEGACY SAFETY NET -- do not depend on this long-term */
+            WHERE (title_author_hash IS NULL OR title_author_hash = '') /* LEGACY SAFETY NET -- do not depend on this long-term */
         "
                 );
 
                 self::dedupe_books_and_fix_links( $books, $wpdb->prefix . 'politeia_user_books' );
 
-                if ( self::column_exists( $books, 'title_author_hash' ) ) {
-                        $wpdb->query( "ALTER TABLE {$books} MODIFY title_author_hash CHAR(64) NOT NULL" );
+                if ( self::column_exists( $books, 'title_author_hash' ) ) { // LEGACY SAFETY NET -- do not depend on this long-term
+                        $wpdb->query( "ALTER TABLE {$books} MODIFY title_author_hash CHAR(64) NOT NULL" ); // LEGACY SAFETY NET -- do not depend on this long-term
                 }
 
-                self::maybe_add_unique( $books, 'uniq_title_author_hash', array( 'title_author_hash' ) );
+                self::maybe_add_unique( $books, 'uniq_title_author_hash', array( 'title_author_hash' ) ); // LEGACY SAFETY NET -- do not depend on this long-term
         }
 
         private static function ensure_unique_user_book(): void {
@@ -95,13 +98,13 @@ class LegacySchema {
         private static function dedupe_books_and_fix_links( string $books_table, string $user_books_table ): void {
                 global $wpdb;
 
-                $duplicates = (int) $wpdb->get_var(
+                $duplicates = (int) $wpdb->get_var( // LEGACY SAFETY NET -- do not depend on this long-term
                         "
             SELECT COUNT(*) FROM (
-              SELECT title_author_hash, COUNT(*) c
+              SELECT title_author_hash, COUNT(*) c /* LEGACY SAFETY NET -- do not depend on this long-term */
               FROM {$books_table}
-              WHERE title_author_hash IS NOT NULL AND title_author_hash <> ''
-              GROUP BY title_author_hash HAVING c > 1
+              WHERE title_author_hash IS NOT NULL AND title_author_hash <> '' /* LEGACY SAFETY NET -- do not depend on this long-term */
+              GROUP BY title_author_hash HAVING c > 1 /* LEGACY SAFETY NET -- do not depend on this long-term */
             ) x
         "
                 );
@@ -111,32 +114,32 @@ class LegacySchema {
                 }
 
                 $wpdb->query( 'DROP TEMPORARY TABLE IF EXISTS _pol_keep' );
-                $wpdb->query(
+                $wpdb->query( // LEGACY SAFETY NET -- do not depend on this long-term
                         "
             CREATE TEMPORARY TABLE _pol_keep
-            SELECT MIN(id) AS keep_id, title_author_hash
+            SELECT MIN(id) AS keep_id, title_author_hash /* LEGACY SAFETY NET -- do not depend on this long-term */
             FROM {$books_table}
-            WHERE title_author_hash IS NOT NULL AND title_author_hash <> ''
-            GROUP BY title_author_hash
+            WHERE title_author_hash IS NOT NULL AND title_author_hash <> '' /* LEGACY SAFETY NET -- do not depend on this long-term */
+            GROUP BY title_author_hash /* LEGACY SAFETY NET -- do not depend on this long-term */
         "
                 );
 
-                $wpdb->query(
+                $wpdb->query( // LEGACY SAFETY NET -- do not depend on this long-term
                         "
             UPDATE {$user_books_table} ub
             JOIN {$books_table} b  ON ub.book_id = b.id
-            JOIN _pol_keep k       ON b.title_author_hash = k.title_author_hash
+            JOIN _pol_keep k       ON b.title_author_hash = k.title_author_hash /* LEGACY SAFETY NET -- do not depend on this long-term */
             SET ub.book_id = k.keep_id
         "
                 );
 
-                $wpdb->query(
+                $wpdb->query( // LEGACY SAFETY NET -- do not depend on this long-term
                         "
             DELETE b
             FROM {$books_table} b
             LEFT JOIN _pol_keep k ON b.id = k.keep_id
             WHERE k.keep_id IS NULL
-              AND b.title_author_hash IS NOT NULL AND b.title_author_hash <> ''
+              AND b.title_author_hash IS NOT NULL AND b.title_author_hash <> '' /* LEGACY SAFETY NET -- do not depend on this long-term */
         "
                 );
         }

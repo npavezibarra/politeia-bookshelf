@@ -9,7 +9,7 @@
  *   - {$wpdb->prefix}politeia_user_books     (user-to-book links; primary key: id)
  *
  * Optional columns in politeia_books that this class will use if present:
- *   - title_author_hash (VARCHAR)  // unique dedup key from normalized title+author
+ *   - title_author_hash (VARCHAR)  // unique dedup key from normalized title+author (LEGACY SAFETY NET -- do not depend on this long-term)
  *   - normalized_title  (VARCHAR)
  *   - normalized_author (VARCHAR)
  *   - slug              (VARCHAR)  // pretty URL id; unique in table
@@ -65,7 +65,7 @@ class Politeia_Book_DB_Handler {
     protected function introspect_schema() {
         // Quietly detect what exists; callers can verify readiness with is_ready().
         if ( $this->table_exists( $this->tbl_books ) ) {
-            $this->has_hash_col    = $this->column_exists( $this->tbl_books, 'title_author_hash' );
+        $this->has_hash_col    = $this->column_exists( $this->tbl_books, 'title_author_hash' ); // LEGACY SAFETY NET -- do not depend on this long-term
             $this->has_norm_title  = $this->column_exists( $this->tbl_books, 'normalized_title' );
             $this->has_norm_author = $this->column_exists( $this->tbl_books, 'normalized_author' );
             $this->has_slug_col    = $this->column_exists( $this->tbl_books, 'slug' );
@@ -125,7 +125,8 @@ class Politeia_Book_DB_Handler {
      * @param string $author
      * @return string sha256 hex
      */
-    public function title_author_hash( $title, $author ) {
+    public function title_author_hash( $title, $author ) { // LEGACY SAFETY NET -- do not depend on this long-term
+        // LEGACY SAFETY NET -- do not depend on this long-term
         $norm = $this->normalize( $title ) . '|' . $this->normalize( $author );
         return hash( 'sha256', $norm );
     }
@@ -138,9 +139,10 @@ class Politeia_Book_DB_Handler {
     public function find_by_hash( $hash ) {
         if ( ! $this->has_hash_col ) return null;
         global $wpdb;
+        // LEGACY SAFETY NET -- do not depend on this long-term
         $row = $wpdb->get_row(
             $wpdb->prepare(
-                "SELECT * FROM {$this->tbl_books} WHERE title_author_hash = %s LIMIT 1",
+                "SELECT * FROM {$this->tbl_books} WHERE title_author_hash = %s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
                 $hash
             ),
             ARRAY_A
@@ -203,8 +205,8 @@ class Politeia_Book_DB_Handler {
         }
 
         // 4) Hash safety net (exact match)
-        if ( $this->has_hash_col ) {
-            $hash = $this->title_author_hash( $title, $author );
+        if ( $this->has_hash_col ) { // LEGACY SAFETY NET -- do not depend on this long-term
+            $hash = $this->title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
             $row  = $this->find_by_hash( $hash );
             if ( $row ) {
                 return [ 'match' => $row, 'method' => 'hash' ];
@@ -316,7 +318,7 @@ class Politeia_Book_DB_Handler {
             $fmt[] = '%s';
         }
         if ( $this->has_hash_col ) {
-            $data['title_author_hash'] = $this->title_author_hash( $title, $author );
+            $data['title_author_hash'] = $this->title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
             $fmt[] = '%s';
         }
 

@@ -27,8 +27,9 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
         $normalized_title  = $normalized_title !== '' ? $normalized_title : null;
         $normalized_author = $normalized_author !== '' ? $normalized_author : null;
 
-        if ( function_exists( 'politeia__title_author_hash' ) ) {
-                $hash = politeia__title_author_hash( $title, $author );
+        // Legacy hash exists only as a safety net until Phase 7 removal conditions are met.
+        if ( function_exists( 'politeia__title_author_hash' ) ) { // LEGACY SAFETY NET -- do not depend on this long-term
+                $hash = politeia__title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
         } else {
                 $hash = hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
         }
@@ -70,9 +71,9 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
         }
 
         // Hash remains a safety net for near-duplicates.
-        $existing_id = $wpdb->get_var(
+        $existing_id = $wpdb->get_var( // LEGACY SAFETY NET -- do not depend on this long-term
                 $wpdb->prepare(
-                        "SELECT id FROM {$table} WHERE title_author_hash = %s LIMIT 1",
+                        "SELECT id FROM {$table} WHERE title_author_hash = %s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
                         $hash
                 )
         );
@@ -99,7 +100,7 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                         'slug'                => $slug,
                         'normalized_title'    => $normalized_title,
                         'normalized_author'   => null,
-                        'title_author_hash'   => $hash,
+                        'title_author_hash'   => $hash, // LEGACY SAFETY NET -- do not depend on this long-term
                         'created_at'          => current_time( 'mysql' ),
                         'updated_at'          => current_time( 'mysql' ),
                 )
@@ -335,13 +336,13 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
         }
 
         if ( ! $existing_id ) {
-                $hash = function_exists( 'politeia__title_author_hash' )
-                        ? politeia__title_author_hash( $title, $author )
+                $hash = function_exists( 'politeia__title_author_hash' ) // LEGACY SAFETY NET -- do not depend on this long-term
+                        ? politeia__title_author_hash( $title, $author ) // LEGACY SAFETY NET -- do not depend on this long-term
                         : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $author ) ) );
 
-                $existing_id = (int) $wpdb->get_var(
+                $existing_id = (int) $wpdb->get_var( // LEGACY SAFETY NET -- do not depend on this long-term
                         $wpdb->prepare(
-                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
+                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
                                 $hash
                         )
                 );
@@ -383,6 +384,365 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
                 'user_book_id' => (int) $user_book_id,
                 'created'      => ( $existing_id > 0 ) ? false : true,
         );
+}
+
+/**
+ * Diagnostic: inventory canonical integrity gaps (read-only).
+ *
+ * @param int $limit Optional limit for number of books inspected (0 = no limit).
+ * @return array{rows:array<int,array>,counts:array<string,int>}
+ */
+function prs_diagnose_canonical_integrity( $limit = 0 ) {
+        global $wpdb;
+
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $pivot_table = $wpdb->prefix . 'politeia_book_authors';
+
+        $limit_clause = '';
+        if ( is_int( $limit ) && $limit > 0 ) {
+                $limit_clause = $wpdb->prepare( ' LIMIT %d', $limit );
+        }
+
+        // Single pass with pivot presence computed via LEFT JOIN.
+        // LEGACY SAFETY NET -- do not depend on this long-term
+        $sql = "
+                SELECT b.id, b.title, b.author, b.normalized_author, b.title_author_hash, /* LEGACY SAFETY NET -- do not depend on this long-term */
+                       COUNT(ba.id) AS pivot_count
+                FROM {$books_table} b
+                LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
+                GROUP BY b.id
+                ORDER BY b.id ASC
+                {$limit_clause}
+        ";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results( $sql, ARRAY_A );
+
+        $report_rows = array();
+        $counts = array(
+                'missing_pivot'        => 0,
+                'legacy_only_authors'  => 0,
+                'fully_canonical'      => 0,
+                'missing_legacy_author'=> 0,
+                'missing_norm_author'  => 0,
+                'missing_hash'         => 0,
+        );
+
+        foreach ( (array) $rows as $row ) {
+                $has_pivot = ! empty( $row['pivot_count'] );
+                $legacy_author_populated = isset( $row['author'] ) && '' !== trim( (string) $row['author'] );
+                $normalized_author_populated = isset( $row['normalized_author'] ) && '' !== trim( (string) $row['normalized_author'] );
+                $hash_populated = isset( $row['title_author_hash'] ) && '' !== trim( (string) $row['title_author_hash'] ); // LEGACY SAFETY NET -- do not depend on this long-term
+
+                if ( ! $has_pivot ) {
+                        $counts['missing_pivot']++;
+                }
+                if ( $legacy_author_populated && ! $has_pivot ) {
+                        $counts['legacy_only_authors']++;
+                }
+                if ( $has_pivot ) {
+                        $counts['fully_canonical']++;
+                }
+                if ( ! $legacy_author_populated ) {
+                        $counts['missing_legacy_author']++;
+                }
+                if ( ! $normalized_author_populated ) {
+                        $counts['missing_norm_author']++;
+                }
+                if ( ! $hash_populated ) {
+                        $counts['missing_hash']++;
+                }
+
+                $report_rows[] = array(
+                        'book_id'                   => (int) $row['id'],
+                        'title'                     => (string) $row['title'],
+                        'has_author_pivot'          => $has_pivot ? 'yes' : 'no',
+                        'legacy_author_populated'   => $legacy_author_populated ? 'yes' : 'no',
+                        'normalized_author_present' => $normalized_author_populated ? 'yes' : 'no',
+                        'title_author_hash_present' => $hash_populated ? 'yes' : 'no', // LEGACY SAFETY NET -- do not depend on this long-term
+                );
+        }
+
+        return array(
+                'rows'   => $report_rows,
+                'counts' => $counts,
+        );
+}
+
+/**
+ * Backfill author pivots using legacy author strings (read/write, idempotent).
+ *
+ * @param int $limit Optional limit for number of books inspected (0 = no limit).
+ * @return array{logs:array<int,array>,counts:array<string,int>}
+ */
+function prs_backfill_author_pivots_from_legacy( $limit = 0 ) {
+        global $wpdb;
+
+        $books_table   = $wpdb->prefix . 'politeia_books';
+        $authors_table = $wpdb->prefix . 'politeia_authors';
+        $pivot_table   = $wpdb->prefix . 'politeia_book_authors';
+
+        $limit_clause = '';
+        if ( is_int( $limit ) && $limit > 0 ) {
+                $limit_clause = $wpdb->prepare( ' LIMIT %d', $limit );
+        }
+
+        $sql = "
+                SELECT b.id, b.author, COUNT(ba.id) AS pivot_count
+                FROM {$books_table} b
+                LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
+                GROUP BY b.id
+                ORDER BY b.id ASC
+                {$limit_clause}
+        ";
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results( $sql, ARRAY_A );
+
+        $logs = array();
+        $counts = array(
+                'processed'            => 0,
+                'skipped_has_pivot'    => 0,
+                'skipped_no_legacy'    => 0,
+                'created_authors'      => 0,
+                'created_pivots'       => 0,
+        );
+
+        foreach ( (array) $rows as $row ) {
+                $book_id = (int) $row['id'];
+                $pivot_count = (int) $row['pivot_count'];
+                $legacy_author = isset( $row['author'] ) ? trim( (string) $row['author'] ) : '';
+
+                if ( $pivot_count > 0 ) {
+                        $counts['skipped_has_pivot']++;
+                        continue;
+                }
+
+                if ( '' === $legacy_author ) {
+                        $counts['skipped_no_legacy']++;
+                        continue;
+                }
+
+                $raw_parts = array_map( 'trim', explode( ',', $legacy_author ) );
+                $raw_parts = array_values( array_filter( $raw_parts, static function ( $part ) {
+                        return '' !== $part;
+                } ) );
+
+                if ( empty( $raw_parts ) ) {
+                        $counts['skipped_no_legacy']++;
+                        continue;
+                }
+
+                $unique = array();
+                $canonical = array();
+                $position = 1;
+
+                foreach ( $raw_parts as $raw_name ) {
+                        $name = trim( wp_strip_all_tags( (string) $raw_name ) );
+                        if ( '' === $name ) {
+                                continue;
+                        }
+
+                        $normalized = function_exists( 'politeia__normalize_text' )
+                                ? politeia__normalize_text( $name )
+                                : strtolower( $name );
+                        $normalized = ( '' !== trim( (string) $normalized ) ) ? $normalized : null;
+
+                        $hash_source = $normalized ?: strtolower( $name );
+                        if ( '' === $hash_source ) {
+                                continue;
+                        }
+
+                        $hash = hash( 'sha256', $hash_source );
+                        if ( isset( $unique[ $hash ] ) ) {
+                                continue;
+                        }
+
+                        $unique[ $hash ] = true;
+                        $canonical[] = array(
+                                'name'       => $name,
+                                'normalized' => $normalized,
+                                'hash'       => $hash,
+                                'position'   => $position,
+                        );
+                        $position++;
+                }
+
+                if ( empty( $canonical ) ) {
+                        $counts['skipped_no_legacy']++;
+                        continue;
+                }
+
+                $hashes = array_keys( $unique );
+                $existing = array();
+
+                if ( ! empty( $hashes ) ) {
+                        $placeholders = implode( ', ', array_fill( 0, count( $hashes ), '%s' ) );
+                        $sql = "SELECT id, name_hash FROM {$authors_table} WHERE name_hash IN ({$placeholders})";
+                        $rows_authors = $wpdb->get_results( $wpdb->prepare( $sql, $hashes ) );
+                        foreach ( $rows_authors as $author_row ) {
+                                $existing[ $author_row->name_hash ] = (int) $author_row->id;
+                        }
+                }
+
+                $author_ids = array();
+                $created_ids = array();
+                $now = current_time( 'mysql', true );
+
+                foreach ( $canonical as $author ) {
+                        $author_id = isset( $existing[ $author['hash'] ] ) ? $existing[ $author['hash'] ] : 0;
+
+                        if ( ! $author_id ) {
+                                $slug_base = sanitize_title( $author['name'] );
+                                $slug = prs_generate_unique_author_slug( $slug_base, $authors_table, $author['hash'] );
+
+                                $wpdb->insert(
+                                        $authors_table,
+                                        array(
+                                                'display_name'    => $author['name'],
+                                                'normalized_name' => $author['normalized'],
+                                                'name_hash'       => $author['hash'],
+                                                'slug'            => $slug,
+                                                'created_at'      => $now,
+                                                'updated_at'      => $now,
+                                        ),
+                                        array( '%s', '%s', '%s', '%s', '%s', '%s' )
+                                );
+
+                                if ( ! $wpdb->last_error ) {
+                                        $author_id = (int) $wpdb->insert_id;
+                                        $created_ids[] = $author_id;
+                                        $counts['created_authors']++;
+                                }
+                        }
+
+                        if ( ! $author_id ) {
+                                continue;
+                        }
+
+                        $author_ids[] = $author_id;
+
+                        $pivot_exists = (int) $wpdb->get_var(
+                                $wpdb->prepare(
+                                        "SELECT id FROM {$pivot_table} WHERE book_id=%d AND author_id=%d LIMIT 1",
+                                        $book_id,
+                                        $author_id
+                                )
+                        );
+                        if ( $pivot_exists ) {
+                                continue;
+                        }
+
+                        $wpdb->insert(
+                                $pivot_table,
+                                array(
+                                        'book_id'    => $book_id,
+                                        'author_id'  => $author_id,
+                                        'sort_order' => (int) $author['position'],
+                                        'created_at' => $now,
+                                        'updated_at' => $now,
+                                ),
+                                array( '%d', '%d', '%d', '%s', '%s' )
+                        );
+
+                        if ( ! $wpdb->last_error ) {
+                                $counts['created_pivots']++;
+                        }
+                }
+
+                $logs[] = array(
+                        'book_id'              => $book_id,
+                        'legacy_author_string' => $legacy_author,
+                        'author_ids'           => $author_ids,
+                        'created_author_ids'   => $created_ids,
+                );
+                $counts['processed']++;
+        }
+
+        return array(
+                'logs'   => $logs,
+                'counts' => $counts,
+        );
+}
+
+/**
+ * Diagnostic: detect canonical identity collisions without title_author_hash (read-only). // LEGACY SAFETY NET -- do not depend on this long-term
+ *
+ * @return array{total_books:int,unique_identities:int,collisions:int,collision_details:array<int,array>}
+ */
+function prs_diagnose_canonical_identity_collisions() {
+        global $wpdb;
+
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $pivot_table = $wpdb->prefix . 'politeia_book_authors';
+
+        $sql = "
+                SELECT b.id, b.normalized_title, b.year,
+                       GROUP_CONCAT(ba.author_id ORDER BY ba.sort_order ASC SEPARATOR ',') AS author_ids
+                FROM {$books_table} b
+                LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
+                GROUP BY b.id
+                ORDER BY b.id ASC
+        ";
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $rows = $wpdb->get_results( $sql, ARRAY_A );
+
+        $identity_map = array();
+
+        foreach ( (array) $rows as $row ) {
+                $normalized_title = isset( $row['normalized_title'] ) ? trim( (string) $row['normalized_title'] ) : '';
+                $author_ids = isset( $row['author_ids'] ) && $row['author_ids'] !== null ? (string) $row['author_ids'] : '';
+                $year = isset( $row['year'] ) && $row['year'] !== null && $row['year'] !== '' ? (string) $row['year'] : '';
+
+                $identity = $normalized_title . '|' . $author_ids;
+                if ( '' !== $year ) {
+                        $identity .= '|' . $year;
+                }
+
+                if ( ! isset( $identity_map[ $identity ] ) ) {
+                        $identity_map[ $identity ] = array();
+                }
+                $identity_map[ $identity ][] = (int) $row['id'];
+        }
+
+        $collision_details = array();
+        foreach ( $identity_map as $identity => $ids ) {
+                if ( count( $ids ) > 1 ) {
+                        $collision_details[] = array(
+                                'identity' => $identity,
+                                'book_ids' => array_values( $ids ),
+                        );
+                }
+        }
+
+        return array(
+                'total_books'       => count( $rows ),
+                'unique_identities' => count( $identity_map ),
+                'collisions'        => count( $collision_details ),
+                'collision_details' => $collision_details,
+        );
+}
+
+/**
+ * Gatekeeper: decide if title_author_hash can be removed (read-only).
+ *
+ * The hash remains only as a legacy safety net pending Phase 7 removal.
+ * It can be deleted once: all books have author pivots, identity collisions are zero,
+ * and every code usage is explicitly marked as legacy fallback.
+ *
+ * @return bool
+ */
+function prs_can_remove_title_author_hash(): bool {
+        $integrity = prs_diagnose_canonical_integrity();
+        if ( ( $integrity['counts']['missing_pivot'] ?? 0 ) > 0 ) {
+                return false;
+        }
+
+        $collisions = prs_diagnose_canonical_identity_collisions();
+        if ( ( $collisions['collisions'] ?? 0 ) > 0 ) {
+                return false;
+        }
+
+        return true;
 }
 
 function prs_ensure_user_book( $user_id, $book_id ) {

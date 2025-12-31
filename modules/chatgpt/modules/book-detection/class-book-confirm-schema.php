@@ -4,7 +4,7 @@
  * Purpose:
  *   - Create/upgrade the confirmation queue table (wp_politeia_book_confirm).
  *   - Provide helpers to mark items as "In Shelf" (book already in user's library),
- *     matching by Title + Author (no ISBN), prioritizing title_author_hash with fuzzy fallback.
+ *     matching by Title + Author (no ISBN), prioritizing title_author_hash with fuzzy fallback. // LEGACY SAFETY NET -- do not depend on this long-term
  *   - Store and expose suggested covers for queue rows (external source).
  * Language: English, translatable via 'politeia-chatgpt'.
  *
@@ -35,7 +35,7 @@ class Politeia_Book_Confirm_Schema {
 
     /**
      * Ensure confirmation table is created/updated (idempotent).
-     * - UNIQUE (user_id, status, title_author_hash)
+     * - UNIQUE (user_id, status, title_author_hash) // LEGACY SAFETY NET -- do not depend on this long-term
      * - cover columns
      */
     public static function ensure() {
@@ -53,7 +53,7 @@ class Politeia_Book_Confirm_Schema {
             author VARCHAR(255) NOT NULL,
             normalized_title VARCHAR(255) DEFAULT NULL,
             normalized_author VARCHAR(255) DEFAULT NULL,
-            title_author_hash CHAR(64) DEFAULT NULL,
+            title_author_hash CHAR(64) DEFAULT NULL, /* LEGACY SAFETY NET -- do not depend on this long-term */
             external_isbn VARCHAR(32) DEFAULT NULL,
             external_source VARCHAR(50) DEFAULT NULL,
             external_score FLOAT DEFAULT NULL,
@@ -69,9 +69,9 @@ class Politeia_Book_Confirm_Schema {
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY (id),
-            UNIQUE KEY uq_user_status_hash (user_id, status, title_author_hash),
+            UNIQUE KEY uq_user_status_hash (user_id, status, title_author_hash), /* LEGACY SAFETY NET -- do not depend on this long-term */
             KEY idx_user_status (user_id, status),
-            KEY idx_hash (title_author_hash),
+            KEY idx_hash (title_author_hash), /* LEGACY SAFETY NET -- do not depend on this long-term */
             KEY idx_matched (matched_book_id)
         ) {$charset_collate};";
 
@@ -91,7 +91,8 @@ class Politeia_Book_Confirm_Schema {
         $have_old = $wpdb->get_var("SHOW INDEX FROM {$t} WHERE Key_name='uniq_user_hash_pending'");
         if ( ! $have_new && ! $have_old ) {
             // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-            $wpdb->query("ALTER TABLE {$t} ADD UNIQUE KEY uq_user_status_hash (user_id, status, title_author_hash)");
+            // LEGACY SAFETY NET -- do not depend on this long-term
+            $wpdb->query("ALTER TABLE {$t} ADD UNIQUE KEY uq_user_status_hash (user_id, status, title_author_hash)"); // LEGACY SAFETY NET -- do not depend on this long-term
         }
     }
 
@@ -156,7 +157,8 @@ class Politeia_Book_Confirm_Schema {
     }
 
     /** Deterministic hash for Title+Author (used across system) */
-    public static function compute_title_author_hash($title, $author) {
+    public static function compute_title_author_hash($title, $author) { // LEGACY SAFETY NET -- do not depend on this long-term
+        // LEGACY SAFETY NET -- do not depend on this long-term
         return hash('sha256', self::norm_title_author($title, $author));
     }
 
@@ -168,7 +170,7 @@ class Politeia_Book_Confirm_Schema {
             $author = $r['author'] ?? '';
             if (empty($r['normalized_title']))  $r['normalized_title']  = self::normalize_key($title);
             if (empty($r['normalized_author'])) $r['normalized_author'] = self::normalize_key($author);
-            if (empty($r['title_author_hash'])) $r['title_author_hash'] = self::compute_title_author_hash($title, $author);
+            if (empty($r['title_author_hash'])) $r['title_author_hash'] = self::compute_title_author_hash($title, $author); // LEGACY SAFETY NET -- do not depend on this long-term
 
             if ($persist && !empty($r['id'])) {
                 $wpdb->update(
@@ -176,7 +178,7 @@ class Politeia_Book_Confirm_Schema {
                     [
                         'normalized_title'  => $r['normalized_title'],
                         'normalized_author' => $r['normalized_author'],
-                        'title_author_hash' => $r['title_author_hash'],
+                        'title_author_hash' => $r['title_author_hash'], // LEGACY SAFETY NET -- do not depend on this long-term
                     ],
                     [ 'id' => (int)$r['id'] ],
                     [ '%s','%s','%s' ],
@@ -206,9 +208,10 @@ class Politeia_Book_Confirm_Schema {
             unset($r); return $rows;
         }
 
-        // User library with hash (+year)
+        // User library with hash (+year). LEGACY SAFETY NET -- do not depend on this long-term
+        // LEGACY SAFETY NET -- do not depend on this long-term
         $sql = $wpdb->prepare("
-            SELECT b.id, b.slug, b.title, b.author, b.title_author_hash, b.year
+            SELECT b.id, b.slug, b.title, b.author, b.title_author_hash, b.year /* LEGACY SAFETY NET -- do not depend on this long-term */
             FROM {$books_tbl} b
             INNER JOIN {$ub_tbl} ub
                 ON ub.book_id = b.id AND ub.user_id = %d
@@ -218,7 +221,7 @@ class Politeia_Book_Confirm_Schema {
 
         $by_hash = []; $lib_fuzzy = [];
         foreach ($user_books as $b) {
-            $hash = !empty($b['title_author_hash']) ? strtolower((string)$b['title_author_hash']) : null;
+            $hash = !empty($b['title_author_hash']) ? strtolower((string)$b['title_author_hash']) : null; // LEGACY SAFETY NET -- do not depend on this long-term
             if ($hash && strlen($hash) >= 40) {
                 $by_hash[$hash] = [
                     'id'   => (int)$b['id'],
@@ -237,7 +240,7 @@ class Politeia_Book_Confirm_Schema {
         self::backfill_normalized_fields($rows, false);
 
         foreach ($rows as &$r) {
-            $row_hash = !empty($r['title_author_hash']) ? strtolower((string)$r['title_author_hash']) : null;
+            $row_hash = !empty($r['title_author_hash']) ? strtolower((string)$r['title_author_hash']) : null; // LEGACY SAFETY NET -- do not depend on this long-term
             if ($row_hash && isset($by_hash[$row_hash])) {
                 $hit = $by_hash[$row_hash];
                 $r['already_in_shelf']=1; $r['shelf_slug']=$hit['slug']; $r['matched_book_id']=$hit['id']; $r['matched_book_year']=$hit['year'];
@@ -282,9 +285,10 @@ class Politeia_Book_Confirm_Schema {
         $ph = implode(',', array_fill(0, count($valid), '%s'));
 
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        // LEGACY SAFETY NET -- do not depend on this long-term
         $sql = $wpdb->prepare("
             SELECT id, user_id, input_type, source_note, title, author,
-                   normalized_title, normalized_author, title_author_hash,
+                   normalized_title, normalized_author, title_author_hash, /* LEGACY SAFETY NET -- do not depend on this long-term */
                    external_isbn, external_source, external_score,
                    match_method, matched_book_id,
                    external_cover_url, external_cover_source,
@@ -360,7 +364,7 @@ class Politeia_Book_Confirm_Schema {
         // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
         $rows = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT id, user_id, title, author, normalized_title, normalized_author, title_author_hash
+                "SELECT id, user_id, title, author, normalized_title, normalized_author, title_author_hash /* LEGACY SAFETY NET -- do not depend on this long-term */
                    FROM {$confirm_tbl}
                   WHERE user_id = %d AND status = 'pending'
                   ORDER BY id DESC

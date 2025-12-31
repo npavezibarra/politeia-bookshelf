@@ -19,9 +19,19 @@ December 31st, 2025, 15:27 UTC
 2. Added canonical re-checks in promotion and ensured author/pivot sync happens only at promotion time.
 3. Made promotion idempotent by reusing existing book/user-book records when present.
 
+December 31st, 2025, 15:38 UTC
+1. Deprecated canonical author columns for new writes (legacy fields left blank).
+2. Shifted canonical lookups to prefer slug and use title_author_hash (LEGACY SAFETY NET -- do not depend on this long-term) as a safety net only.
+
+December 31st, 2025, 20:43 UTC
+1. Phase 6 diagnostics executed via temporary admin-only hook.
+2. Canonical integrity and collision checks completed; hash removal gate evaluated.
+3. Hash is currently required. (Update with exact counts in this entry.)
+
 ------
 
 TO DO:
 
 December 31st
 1. Add detailed session entries as new development tasks are completed.
+2. Add a user-facing button to export personal book records to a standardized CSV download.

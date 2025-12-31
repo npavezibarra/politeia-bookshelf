@@ -76,24 +76,27 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 
 	if ( class_exists('Politeia_Book_Confirm_Schema') ) {
 		// Trae la biblioteca del usuario
+		// LEGACY SAFETY NET -- do not depend on this long-term
 		$sql = $wpdb->prepare("
-			SELECT b.id, b.title, b.author, b.year, b.slug, b.title_author_hash
+			SELECT b.id, b.title, b.author, b.year, b.slug, b.title_author_hash /* LEGACY SAFETY NET -- do not depend on this long-term */
 			  FROM {$tbl_books} b
 			  JOIN {$tbl_users} ub ON ub.book_id=b.id AND ub.user_id=%d
 		", $user_id);
 		// phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 		$rows = $wpdb->get_results($sql, ARRAY_A);
 		foreach ($rows as $r) {
-			$h = !empty($r['title_author_hash']) ? strtolower((string)$r['title_author_hash']) : '';
+			$h = !empty($r['title_author_hash']) ? strtolower((string)$r['title_author_hash']) : ''; // LEGACY SAFETY NET -- do not depend on this long-term
 			if ($h) $user_lib_hash[$h] = ['id'=>(int)$r['id'],'year'=>$r['year']? (int)$r['year']:null,'slug'=>$r['slug']];
-			$key = Politeia_Book_Confirm_Schema::compute_title_author_hash($r['title'] ?? '', $r['author'] ?? '');
+			// LEGACY SAFETY NET -- do not depend on this long-term
+			$key = Politeia_Book_Confirm_Schema::compute_title_author_hash($r['title'] ?? '', $r['author'] ?? ''); // LEGACY SAFETY NET -- do not depend on this long-term
 			$user_lib_fuzzy[] = [
 				'id'   => (int)$r['id'],
 				'year' => $r['year']? (int)$r['year']:null,
 				'slug' => (string)$r['slug'],
 				// para comparar usamos la misma normalización que usa el hash: norm_title_author -> sha256,
 				// pero para fuzzy comparamos strings "norm" (distancia relativa)
-				'key'  => strtolower(Politeia_Book_Confirm_Schema::compute_title_author_hash($r['title'] ?? '', $r['author'] ?? '')),
+				// LEGACY SAFETY NET -- do not depend on this long-term
+				'key'  => strtolower(Politeia_Book_Confirm_Schema::compute_title_author_hash($r['title'] ?? '', $r['author'] ?? '')), // LEGACY SAFETY NET -- do not depend on this long-term
 			];
 		}
 	}
@@ -108,7 +111,7 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 
 		$norm_title  = politeia__normalize_candidate_text( $title );
 		$norm_author = politeia__normalize_candidate_text( $author );
-		$hash        = politeia__title_author_hash( $title, $author );
+		$hash        = politeia__title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
 		$hash_lc     = strtolower($hash);
 
 		// Lote: si ya vimos el mismo hash en esta misma respuesta, saltar
@@ -123,12 +126,13 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 			$owned_year = $user_lib_hash[$hash_lc]['year'];
 		} else {
 			// Intento por DB directo (por si faltó precarga)
+			// LEGACY SAFETY NET -- do not depend on this long-term
 			$owned = $wpdb->get_row(
 				$wpdb->prepare(
 					"SELECT b.id, b.year
 					   FROM {$tbl_books} b
 					   JOIN {$tbl_users} ub ON ub.book_id=b.id AND ub.user_id=%d
-					  WHERE b.title_author_hash=%s
+					  WHERE b.title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */
 					  LIMIT 1",
 					$user_id,
 					$hash
@@ -158,14 +162,15 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		$fuzzy_hit = null; $fuzzy_best = 1.0;
 		if ( !empty($user_lib_fuzzy) && class_exists('Politeia_Book_Confirm_Schema') ) {
 			// clave "normalizada" para comparar (usamos el mismo pipeline)
-			$probe = strtolower(Politeia_Book_Confirm_Schema::compute_title_author_hash($title, $author));
+			// LEGACY SAFETY NET -- do not depend on this long-term
+			$probe = strtolower(Politeia_Book_Confirm_Schema::compute_title_author_hash($title, $author)); // LEGACY SAFETY NET -- do not depend on this long-term
 			foreach ($user_lib_fuzzy as $row) {
 				// distancia relativa sobre la string normalizada (sha256 no sirve para distancia)
 				// usamos la "rel_levenshtein" del schema sobre el "norm" no cifrado:
-				// truco: el compute_title_author_hash del schema es sha256(norm), necesitamos norm,
+				// truco: el compute_title_author_hash del schema es sha256(norm), necesitamos norm, // LEGACY SAFETY NET -- do not depend on this long-term
 				// así que reconstruimos norm con normalize_key+concat (igual que schema).
 				$norm_probe = method_exists('Politeia_Book_Confirm_Schema','norm_title_author')
-					? Politeia_Book_Confirm_Schema::compute_title_author_hash($title,$author) // usa mismo norm internamente
+					? Politeia_Book_Confirm_Schema::compute_title_author_hash($title,$author) // LEGACY SAFETY NET -- do not depend on this long-term
 					: $probe;
 
 				$rel = levenshtein($norm_probe, $row['key']) / max(1, max(strlen($norm_probe), strlen($row['key'])));
@@ -188,10 +193,10 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		// -----------------------------------------------
 		// 2) ¿Ya pending en la cola para este usuario+hash?
 		// -----------------------------------------------
-		$pending_row = $wpdb->get_row(
+		$pending_row = $wpdb->get_row( // LEGACY SAFETY NET -- do not depend on this long-term
 			$wpdb->prepare(
 				"SELECT id, title, author FROM {$tbl_confirm}
-				  WHERE user_id=%d AND status='pending' AND title_author_hash=%s
+				  WHERE user_id=%d AND status='pending' AND title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */
 				  LIMIT 1",
 				$user_id,
 				$hash
@@ -221,7 +226,7 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 			'author'            => $author,
 			'normalized_title'  => $norm_title,
 			'normalized_author' => $norm_author,
-			'title_author_hash' => $hash,
+			'title_author_hash' => $hash, // LEGACY SAFETY NET -- do not depend on this long-term
 			'status'            => 'pending',
 		];
 		$fmt  = [ '%d','%s','%s','%s','%s','%s','%s','%s','%s' ];
@@ -344,13 +349,14 @@ if ( ! function_exists('politeia__normalize_candidate_text') ) {
 
 /**
  * Hash unificado con el schema:
- * - Si existe la clase del schema, usamos su compute_title_author_hash (idéntico).
+ * - Si existe la clase del schema, usamos su compute_title_author_hash (idéntico). // LEGACY SAFETY NET -- do not depend on this long-term
  * - Fallback compatible (por si se carga este archivo antes del schema).
  */
-if ( ! function_exists('politeia__title_author_hash') ) {
-	function politeia__title_author_hash( $title, $author ) {
+if ( ! function_exists('politeia__title_author_hash') ) { // LEGACY SAFETY NET -- do not depend on this long-term
+	function politeia__title_author_hash( $title, $author ) { // LEGACY SAFETY NET -- do not depend on this long-term
+		// LEGACY SAFETY NET -- do not depend on this long-term
 		if ( class_exists('Politeia_Book_Confirm_Schema') ) {
-			return Politeia_Book_Confirm_Schema::compute_title_author_hash( $title, $author );
+			return Politeia_Book_Confirm_Schema::compute_title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
 		}
 		// Fallback aproximado
 		$t = strtolower( remove_accents( trim( politeia__normalize_text( $title ) ) ) );

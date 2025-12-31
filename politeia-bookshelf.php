@@ -16,6 +16,8 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 // Cargar utilidades del administrador.
 require_once __DIR__ . '/admin/google-books-settings.php';
+// Temporary Phase 6 admin-only hook (remove after verification).
+require_once __DIR__ . '/includes/helpers.php';
 
 // Inicializar módulos.
 Politeia\Reading\Init::register();

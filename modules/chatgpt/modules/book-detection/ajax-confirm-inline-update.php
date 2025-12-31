@@ -50,8 +50,9 @@ function politeia_confirm_update_field_ajax() {
 				return $s;
 			}
 		}
-		if ( ! function_exists('politeia__title_author_hash') ) {
-			function politeia__title_author_hash( $title, $author ) {
+		if ( ! function_exists('politeia__title_author_hash') ) { // LEGACY SAFETY NET -- do not depend on this long-term
+			function politeia__title_author_hash( $title, $author ) { // LEGACY SAFETY NET -- do not depend on this long-term
+				// LEGACY SAFETY NET -- do not depend on this long-term
 				$t = strtolower( trim( politeia__normalize_text( $title ) ) );
 				$a = strtolower( trim( politeia__normalize_text( $author ) ) );
 				return hash( 'sha256', $t . '|' . $a );
@@ -64,13 +65,13 @@ function politeia_confirm_update_field_ajax() {
 
 		$norm_title  = politeia__normalize_text( $title );
 		$norm_author = politeia__normalize_text( $author );
-		$hash        = politeia__title_author_hash( $title, $author );
+		$hash        = politeia__title_author_hash( $title, $author ); // LEGACY SAFETY NET -- do not depend on this long-term
 
 		// Avoid duplicate pending for same user+hash (merge by deleting the OTHER duplicate)
-		$dup_id = (int) $wpdb->get_var(
+		$dup_id = (int) $wpdb->get_var( // LEGACY SAFETY NET -- do not depend on this long-term
 			$wpdb->prepare(
 				"SELECT id FROM {$tbl}
-				  WHERE user_id=%d AND status='pending' AND title_author_hash=%s AND id<>%d
+				  WHERE user_id=%d AND status='pending' AND title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */ AND id<>%d
 				  LIMIT 1",
 				$user_id, $hash, $id
 			)
@@ -86,7 +87,7 @@ function politeia_confirm_update_field_ajax() {
 				'author'            => $author,
 				'normalized_title'  => $norm_title,
 				'normalized_author' => $norm_author,
-				'title_author_hash' => $hash,
+				'title_author_hash' => $hash, // LEGACY SAFETY NET -- do not depend on this long-term
 				'updated_at'        => current_time( 'mysql', 1 ),
 			],
 			[ 'id' => $id, 'user_id' => $user_id ],

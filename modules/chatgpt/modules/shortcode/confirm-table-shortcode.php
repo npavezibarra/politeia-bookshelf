@@ -49,7 +49,7 @@ function politeia_confirm_table_shortcode() {
 				'author'                => $author,
 				'normalized_title'      => '',
 				'normalized_author'     => '',
-				'title_author_hash'     => '',
+				'title_author_hash'     => '', // LEGACY SAFETY NET -- do not depend on this long-term
 				'external_isbn'         => null,
 				'external_source'       => null,
 				'external_score'        => null,

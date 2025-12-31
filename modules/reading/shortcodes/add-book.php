@@ -512,13 +512,14 @@ function prs_add_book_submit_handler() {
         }
 
         if ( ! $book_id ) {
-                $hash = function_exists( 'politeia__title_author_hash' )
-                        ? politeia__title_author_hash( $title, $primary_author )
+                $hash = function_exists( 'politeia__title_author_hash' ) // LEGACY SAFETY NET -- do not depend on this long-term
+                        ? politeia__title_author_hash( $title, $primary_author ) // LEGACY SAFETY NET -- do not depend on this long-term
                         : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
 
+                // LEGACY SAFETY NET -- do not depend on this long-term
                 $book_id = (int) $wpdb->get_var(
                         $wpdb->prepare(
-                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1",
+                                "SELECT id FROM {$books_table} WHERE title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1",
                                 $hash
                         )
                 );
@@ -592,13 +593,14 @@ function prs_add_book_submit_handler() {
 
                 if ( null !== $pages ) {
                 if ( ! isset( $hash ) ) {
-                        $hash = function_exists( 'politeia__title_author_hash' )
-                                ? politeia__title_author_hash( $title, $primary_author )
+                        $hash = function_exists( 'politeia__title_author_hash' ) // LEGACY SAFETY NET -- do not depend on this long-term
+                                ? politeia__title_author_hash( $title, $primary_author ) // LEGACY SAFETY NET -- do not depend on this long-term
                                 : hash( 'sha256', strtolower( trim( $title ) ) . '|' . strtolower( trim( $primary_author ) ) );
                 }
 
+                // LEGACY SAFETY NET -- do not depend on this long-term
                 $book_id = (int) $wpdb->get_var(
-                        $wpdb->prepare( "SELECT id FROM {$books_table} WHERE title_author_hash=%s LIMIT 1", $hash )
+                        $wpdb->prepare( "SELECT id FROM {$books_table} WHERE title_author_hash=%s /* LEGACY SAFETY NET -- do not depend on this long-term */ LIMIT 1", $hash )
                 );
 
                         if ( $book_id ) {
