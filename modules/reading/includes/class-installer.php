@@ -28,18 +28,15 @@ class Installer {
                                 'CREATE TABLE %s (
             id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
             title VARCHAR(255) NOT NULL,
-            author VARCHAR(255) NOT NULL,
             year SMALLINT UNSIGNED NULL,
             cover_attachment_id BIGINT UNSIGNED NULL,
             cover_url VARCHAR(800) NULL,
             slug VARCHAR(255) NULL,
             normalized_title VARCHAR(255) NULL,
-            normalized_author VARCHAR(255) NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY idx_title (title),
-            KEY idx_author (author),
             UNIQUE KEY uniq_slug (slug)
         ) %s;',
                                 $books_table,

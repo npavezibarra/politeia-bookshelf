@@ -1175,7 +1175,14 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const domAuthor = qs(".prs-book-author");
 
     const localizedTitle = (window.PRS_BOOK && typeof PRS_BOOK.title === "string") ? PRS_BOOK.title.trim() : "";
-    const localizedAuthor = (window.PRS_BOOK && typeof PRS_BOOK.author === "string") ? PRS_BOOK.author.trim() : "";
+    let localizedAuthor = "";
+    if (window.PRS_BOOK) {
+      if (Array.isArray(PRS_BOOK.authors)) {
+        localizedAuthor = PRS_BOOK.authors.filter(Boolean).join(", ").trim();
+      } else if (typeof PRS_BOOK.authors === "string") {
+        localizedAuthor = PRS_BOOK.authors.trim();
+      }
+    }
 
     const sourceTitle = domTitle && domTitle.textContent ? domTitle.textContent.trim() : localizedTitle;
     const sourceAuthor = domAuthor && domAuthor.textContent ? domAuthor.textContent.trim() : localizedAuthor;

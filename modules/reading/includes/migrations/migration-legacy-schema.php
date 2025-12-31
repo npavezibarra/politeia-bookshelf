@@ -43,7 +43,6 @@ class LegacySchema {
                 $books = $wpdb->prefix . 'politeia_books';
 
                 self::maybe_add_column( $books, 'normalized_title', 'VARCHAR(255) NULL' );
-                self::maybe_add_column( $books, 'normalized_author', 'VARCHAR(255) NULL' );
         }
 
         private static function ensure_unique_user_book(): void {

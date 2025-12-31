@@ -22,10 +22,7 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
         }
 
         $normalized_title  = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $title ) : $title;
-        $normalized_author = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $author ) : $author;
-
         $normalized_title  = $normalized_title !== '' ? $normalized_title : null;
-        $normalized_author = $normalized_author !== '' ? $normalized_author : null;
 
         $slug = sanitize_title( $title . '-' . $author . ( $year ? '-' . $year : '' ) );
 
@@ -62,17 +59,14 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 return new WP_Error( 'prs_canonical_write_blocked', 'Canonical writes require confirmation.' );
         }
 
-        // Legacy columns (author/normalized_author) are intentionally left blank on new writes.
         $inserted = $wpdb->insert(
                 $table,
                 array(
                         'title'               => $title,
-                        'author'              => '',
                         'year'                => $year ? (int) $year : null,
                         'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
                         'slug'                => $slug,
                         'normalized_title'    => $normalized_title,
-                        'normalized_author'   => null,
                         'created_at'          => current_time( 'mysql' ),
                         'updated_at'          => current_time( 'mysql' ),
                 )
@@ -351,269 +345,6 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
  * @param int $limit Optional limit for number of books inspected (0 = no limit).
  * @return array{rows:array<int,array>,counts:array<string,int>}
  */
-function prs_diagnose_canonical_integrity( $limit = 0 ) {
-        global $wpdb;
-
-        $books_table = $wpdb->prefix . 'politeia_books';
-        $pivot_table = $wpdb->prefix . 'politeia_book_authors';
-
-        $limit_clause = '';
-        if ( is_int( $limit ) && $limit > 0 ) {
-                $limit_clause = $wpdb->prepare( ' LIMIT %d', $limit );
-        }
-
-        // Single pass with pivot presence computed via LEFT JOIN.
-        $sql = "
-                SELECT b.id, b.title, b.author, b.normalized_author,
-                       COUNT(ba.id) AS pivot_count
-                FROM {$books_table} b
-                LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
-                GROUP BY b.id
-                ORDER BY b.id ASC
-                {$limit_clause}
-        ";
-
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $rows = $wpdb->get_results( $sql, ARRAY_A );
-
-        $report_rows = array();
-        $counts = array(
-                'missing_pivot'        => 0,
-                'legacy_only_authors'  => 0,
-                'fully_canonical'      => 0,
-                'missing_legacy_author'=> 0,
-                'missing_norm_author'  => 0,
-        );
-
-        foreach ( (array) $rows as $row ) {
-                $has_pivot = ! empty( $row['pivot_count'] );
-                $legacy_author_populated = isset( $row['author'] ) && '' !== trim( (string) $row['author'] );
-                $normalized_author_populated = isset( $row['normalized_author'] ) && '' !== trim( (string) $row['normalized_author'] );
-                if ( ! $has_pivot ) {
-                        $counts['missing_pivot']++;
-                }
-                if ( $legacy_author_populated && ! $has_pivot ) {
-                        $counts['legacy_only_authors']++;
-                }
-                if ( $has_pivot ) {
-                        $counts['fully_canonical']++;
-                }
-                if ( ! $legacy_author_populated ) {
-                        $counts['missing_legacy_author']++;
-                }
-                if ( ! $normalized_author_populated ) {
-                        $counts['missing_norm_author']++;
-                }
-                $report_rows[] = array(
-                        'book_id'                   => (int) $row['id'],
-                        'title'                     => (string) $row['title'],
-                        'has_author_pivot'          => $has_pivot ? 'yes' : 'no',
-                        'legacy_author_populated'   => $legacy_author_populated ? 'yes' : 'no',
-                        'normalized_author_present' => $normalized_author_populated ? 'yes' : 'no',
-                );
-        }
-
-        return array(
-                'rows'   => $report_rows,
-                'counts' => $counts,
-        );
-}
-
-/**
- * Backfill author pivots using legacy author strings (read/write, idempotent).
- *
- * @param int $limit Optional limit for number of books inspected (0 = no limit).
- * @return array{logs:array<int,array>,counts:array<string,int>}
- */
-function prs_backfill_author_pivots_from_legacy( $limit = 0 ) {
-        global $wpdb;
-
-        $books_table   = $wpdb->prefix . 'politeia_books';
-        $authors_table = $wpdb->prefix . 'politeia_authors';
-        $pivot_table   = $wpdb->prefix . 'politeia_book_authors';
-
-        $limit_clause = '';
-        if ( is_int( $limit ) && $limit > 0 ) {
-                $limit_clause = $wpdb->prepare( ' LIMIT %d', $limit );
-        }
-
-        $sql = "
-                SELECT b.id, b.author, COUNT(ba.id) AS pivot_count
-                FROM {$books_table} b
-                LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
-                GROUP BY b.id
-                ORDER BY b.id ASC
-                {$limit_clause}
-        ";
-        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
-        $rows = $wpdb->get_results( $sql, ARRAY_A );
-
-        $logs = array();
-        $counts = array(
-                'processed'            => 0,
-                'skipped_has_pivot'    => 0,
-                'skipped_no_legacy'    => 0,
-                'created_authors'      => 0,
-                'created_pivots'       => 0,
-        );
-
-        foreach ( (array) $rows as $row ) {
-                $book_id = (int) $row['id'];
-                $pivot_count = (int) $row['pivot_count'];
-                $legacy_author = isset( $row['author'] ) ? trim( (string) $row['author'] ) : '';
-
-                if ( $pivot_count > 0 ) {
-                        $counts['skipped_has_pivot']++;
-                        continue;
-                }
-
-                if ( '' === $legacy_author ) {
-                        $counts['skipped_no_legacy']++;
-                        continue;
-                }
-
-                $raw_parts = array_map( 'trim', explode( ',', $legacy_author ) );
-                $raw_parts = array_values( array_filter( $raw_parts, static function ( $part ) {
-                        return '' !== $part;
-                } ) );
-
-                if ( empty( $raw_parts ) ) {
-                        $counts['skipped_no_legacy']++;
-                        continue;
-                }
-
-                $unique = array();
-                $canonical = array();
-                $position = 1;
-
-                foreach ( $raw_parts as $raw_name ) {
-                        $name = trim( wp_strip_all_tags( (string) $raw_name ) );
-                        if ( '' === $name ) {
-                                continue;
-                        }
-
-                        $normalized = function_exists( 'politeia__normalize_text' )
-                                ? politeia__normalize_text( $name )
-                                : strtolower( $name );
-                        $normalized = ( '' !== trim( (string) $normalized ) ) ? $normalized : null;
-
-                        $hash_source = $normalized ?: strtolower( $name );
-                        if ( '' === $hash_source ) {
-                                continue;
-                        }
-
-                        $hash = hash( 'sha256', $hash_source );
-                        if ( isset( $unique[ $hash ] ) ) {
-                                continue;
-                        }
-
-                        $unique[ $hash ] = true;
-                        $canonical[] = array(
-                                'name'       => $name,
-                                'normalized' => $normalized,
-                                'hash'       => $hash,
-                                'position'   => $position,
-                        );
-                        $position++;
-                }
-
-                if ( empty( $canonical ) ) {
-                        $counts['skipped_no_legacy']++;
-                        continue;
-                }
-
-                $hashes = array_keys( $unique );
-                $existing = array();
-
-                if ( ! empty( $hashes ) ) {
-                        $placeholders = implode( ', ', array_fill( 0, count( $hashes ), '%s' ) );
-                        $sql = "SELECT id, name_hash FROM {$authors_table} WHERE name_hash IN ({$placeholders})";
-                        $rows_authors = $wpdb->get_results( $wpdb->prepare( $sql, $hashes ) );
-                        foreach ( $rows_authors as $author_row ) {
-                                $existing[ $author_row->name_hash ] = (int) $author_row->id;
-                        }
-                }
-
-                $author_ids = array();
-                $created_ids = array();
-                $now = current_time( 'mysql', true );
-
-                foreach ( $canonical as $author ) {
-                        $author_id = isset( $existing[ $author['hash'] ] ) ? $existing[ $author['hash'] ] : 0;
-
-                        if ( ! $author_id ) {
-                                $slug_base = sanitize_title( $author['name'] );
-                                $slug = prs_generate_unique_author_slug( $slug_base, $authors_table, $author['hash'] );
-
-                                $wpdb->insert(
-                                        $authors_table,
-                                        array(
-                                                'display_name'    => $author['name'],
-                                                'normalized_name' => $author['normalized'],
-                                                'name_hash'       => $author['hash'],
-                                                'slug'            => $slug,
-                                                'created_at'      => $now,
-                                                'updated_at'      => $now,
-                                        ),
-                                        array( '%s', '%s', '%s', '%s', '%s', '%s' )
-                                );
-
-                                if ( ! $wpdb->last_error ) {
-                                        $author_id = (int) $wpdb->insert_id;
-                                        $created_ids[] = $author_id;
-                                        $counts['created_authors']++;
-                                }
-                        }
-
-                        if ( ! $author_id ) {
-                                continue;
-                        }
-
-                        $author_ids[] = $author_id;
-
-                        $pivot_exists = (int) $wpdb->get_var(
-                                $wpdb->prepare(
-                                        "SELECT id FROM {$pivot_table} WHERE book_id=%d AND author_id=%d LIMIT 1",
-                                        $book_id,
-                                        $author_id
-                                )
-                        );
-                        if ( $pivot_exists ) {
-                                continue;
-                        }
-
-                        $wpdb->insert(
-                                $pivot_table,
-                                array(
-                                        'book_id'    => $book_id,
-                                        'author_id'  => $author_id,
-                                        'sort_order' => (int) $author['position'],
-                                        'created_at' => $now,
-                                        'updated_at' => $now,
-                                ),
-                                array( '%d', '%d', '%d', '%s', '%s' )
-                        );
-
-                        if ( ! $wpdb->last_error ) {
-                                $counts['created_pivots']++;
-                        }
-                }
-
-                $logs[] = array(
-                        'book_id'              => $book_id,
-                        'legacy_author_string' => $legacy_author,
-                        'author_ids'           => $author_ids,
-                        'created_author_ids'   => $created_ids,
-                );
-                $counts['processed']++;
-        }
-
-        return array(
-                'logs'   => $logs,
-                'counts' => $counts,
-        );
-}
-
 /**
  * Diagnostic: detect canonical identity collisions without title_author_hash (read-only).
  *
@@ -1160,6 +891,8 @@ function prs_get_user_books_for_library( $user_id, $args = array() ) {
         $ub = $wpdb->prefix . 'politeia_user_books';
         $b  = $wpdb->prefix . 'politeia_books';
         $l  = $wpdb->prefix . 'politeia_loans';
+        $ba = $wpdb->prefix . 'politeia_book_authors';
+        $a  = $wpdb->prefix . 'politeia_authors';
 
         static $books_has_total_pages = null;
         if ( null === $books_has_total_pages ) {
@@ -1189,10 +922,15 @@ function prs_get_user_books_for_library( $user_id, $args = array() ) {
                 ) AS active_loan_start,
                 b.id AS book_id,
                 b.title,
-                b.author,
                 b.year,
                 b.cover_attachment_id,
                 b.slug,
+                (
+                        SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+                        FROM {$ba} ba
+                        LEFT JOIN {$a} a ON a.id = ba.author_id
+                        WHERE ba.book_id = b.id
+                ) AS authors,
                 {$book_pages_select} AS book_total_pages
         FROM {$ub} ub
         JOIN {$b} b ON b.id = ub.book_id
@@ -1252,7 +990,8 @@ function prs_render_book_row( $book, $context = array() ) {
         $label_not_in_shelf = $labels['not_in_shelf'];
         $label_unknown      = $labels['unknown'];
 
-        $slug = $book->slug ? $book->slug : sanitize_title( $book->title . '-' . $book->author . ( $book->year ? '-' . $book->year : '' ) );
+        $authors_value = isset( $book->authors ) ? (string) $book->authors : '';
+        $slug = $book->slug ? $book->slug : sanitize_title( $book->title . ( $authors_value ? '-' . $authors_value : '' ) . ( $book->year ? '-' . $book->year : '' ) );
         $url  = home_url( '/my-books/my-book-' . $slug );
 
         $year            = $book->year ? (int) $book->year : null;
@@ -1264,7 +1003,7 @@ function prs_render_book_row( $book, $context = array() ) {
         $owning_status   = isset( $book->owning_status ) ? (string) $book->owning_status : '';
         $row_owning_attr = $owning_status ? $owning_status : 'in_shelf';
         $reading_status  = isset( $book->reading_status ) ? (string) $book->reading_status : '';
-        $author_value    = isset( $book->author ) ? (string) $book->author : '';
+        $author_value    = $authors_value;
         $title_value     = isset( $book->title ) ? (string) $book->title : '';
 
         if ( class_exists( 'Politeia_Reading_Sessions' ) && $effective_pages > 0 ) {
@@ -1443,8 +1182,8 @@ function prs_render_book_row( $book, $context = array() ) {
                                 <span class="prs-book-title__text"><?php echo esc_html( $book->title ); ?></span>
                         </a>
                         <div class="prs-library__meta">
-                                <?php if ( ! empty( $book->author ) ) : ?>
-                                <span class="prs-library__meta-item prs-library__author"><span class="prs-book-author"><?php echo esc_html( $book->author ); ?></span></span>
+                                <?php if ( '' !== $author_value ) : ?>
+                                <span class="prs-library__meta-item prs-library__author"><span class="prs-book-author"><?php echo esc_html( $author_value ); ?></span></span>
                                 <?php endif; ?>
                                 <span class="prs-library__meta-item prs-library__year"><?php echo esc_html( $year_text ); ?></span>
                                 <span class="prs-library__meta-item prs-library__pages" data-pages="<?php echo esc_attr( $pages_value ); ?>">

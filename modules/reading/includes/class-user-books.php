@@ -698,10 +698,21 @@ class Politeia_Reading_User_Books {
                 }
 
                 global $wpdb;
-                $books_table = $wpdb->prefix . 'politeia_books';
-                $book        = $wpdb->get_row(
+                $books_table   = $wpdb->prefix . 'politeia_books';
+                $authors_table = $wpdb->prefix . 'politeia_authors';
+                $pivot_table   = $wpdb->prefix . 'politeia_book_authors';
+                $book          = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id, title, author FROM {$books_table} WHERE id=%d LIMIT 1",
+                                "SELECT b.id, b.title,
+                                        (
+                                                SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+                                                FROM {$pivot_table} ba
+                                                LEFT JOIN {$authors_table} a ON a.id = ba.author_id
+                                                WHERE ba.book_id = b.id
+                                        ) AS authors
+                                 FROM {$books_table} b
+                                 WHERE b.id=%d
+                                 LIMIT 1",
                                 $book_id
                         )
                 );
@@ -711,7 +722,7 @@ class Politeia_Reading_User_Books {
                 }
 
                 $title_raw  = isset( $book->title ) ? (string) $book->title : '';
-                $author_raw = isset( $book->author ) ? (string) $book->author : '';
+                $author_raw = isset( $book->authors ) ? (string) $book->authors : '';
 
                 $title  = $title_raw ? wp_strip_all_tags( $title_raw ) : '';
                 $author = $author_raw ? wp_strip_all_tags( $author_raw ) : '';

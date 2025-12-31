@@ -182,8 +182,16 @@ class Politeia_Book_Confirm_Schema {
         }
 
         // User library with normalized key (+year)
+        $authors_tbl = $wpdb->prefix . 'politeia_authors';
+        $pivot_tbl   = $wpdb->prefix . 'politeia_book_authors';
         $sql = $wpdb->prepare("
-            SELECT b.id, b.slug, b.title, b.author, b.year
+            SELECT b.id, b.slug, b.title, b.year,
+                   (
+                       SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+                       FROM {$pivot_tbl} ba
+                       LEFT JOIN {$authors_tbl} a ON a.id = ba.author_id
+                       WHERE ba.book_id = b.id
+                   ) AS authors
             FROM {$books_tbl} b
             INNER JOIN {$ub_tbl} ub
                 ON ub.book_id = b.id AND ub.user_id = %d
@@ -197,7 +205,7 @@ class Politeia_Book_Confirm_Schema {
                 'id'   => (int)$b['id'],
                 'slug' => (string)$b['slug'],
                 'year' => ( isset($b['year']) && $b['year'] !== null && $b['year'] !== '' ) ? (int)$b['year'] : null,
-                'key'  => self::norm_title_author($b['title'] ?? '', $b['author'] ?? ''),
+                'key'  => self::norm_title_author($b['title'] ?? '', $b['authors'] ?? ''),
             ];
         }
 

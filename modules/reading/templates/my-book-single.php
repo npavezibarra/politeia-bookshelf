@@ -19,8 +19,24 @@ $tbl_ub            = $wpdb->prefix . 'politeia_user_books';
 $tbl_loans         = $wpdb->prefix . 'politeia_loans';
 $tbl_sessions      = $wpdb->prefix . 'politeia_reading_sessions';
 $tbl_session_notes = $wpdb->prefix . 'politeia_read_ses_notes';
+$tbl_authors       = $wpdb->prefix . 'politeia_authors';
+$tbl_book_authors  = $wpdb->prefix . 'politeia_book_authors';
 
-$book = $wpdb->get_row( $wpdb->prepare( "SELECT * FROM {$tbl_b} WHERE slug=%s LIMIT 1", $slug ) );
+$book = $wpdb->get_row(
+        $wpdb->prepare(
+                "SELECT b.*,
+                        (
+                                SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+                                FROM {$tbl_book_authors} ba
+                                LEFT JOIN {$tbl_authors} a ON a.id = ba.author_id
+                                WHERE ba.book_id = b.id
+                        ) AS authors
+                 FROM {$tbl_b} b
+                 WHERE b.slug=%s
+                 LIMIT 1",
+                $slug
+        )
+);
 if ( ! $book ) {
 	status_header( 404 );
 	echo '<div class="wrap"><h1>Not found</h1></div>';
@@ -140,6 +156,7 @@ $placeholder_label       = __( 'Default book cover', 'politeia-reading' );
 $search_cover_label      = __( 'Search Cover', 'politeia-reading' );
 $remove_cover_label      = __( 'Remove book cover', 'politeia-reading' );
 $remove_cover_confirm    = __( 'Are you sure you want to remove this book cover?', 'politeia-reading' );
+$book_authors            = isset( $book->authors ) ? trim( (string) $book->authors ) : '';
 
 /** Encolar assets */
 wp_enqueue_style( 'politeia-reading' );
@@ -169,7 +186,7 @@ wp_localize_script(
                 'rating'        => isset( $ub->rating ) && $ub->rating !== null ? (int) $ub->rating : 0,
                 'type_book'     => (string) $current_type,
                 'title'         => (string) $book->title,
-                'author'        => (string) $book->author,
+                'authors'       => $book_authors,
                 'cover_url'     => $cover_url,
                 'cover_nonce'   => $cover_actions_nonce,
                 'user_id'       => (int) $user_id,
@@ -611,7 +628,11 @@ wp_add_inline_script(
                         </button>
                 </h2>
                 <div class="prs-meta">
-                        <strong class="prs-book-author"><?php echo esc_html( $book->author ); ?></strong>
+                        <?php if ( '' !== $book_authors ) : ?>
+                                <strong class="prs-book-author"><?php echo esc_html( $book_authors ); ?></strong>
+                        <?php else : ?>
+                                <strong class="prs-book-author"><?php echo esc_html( $placeholder_author ); ?></strong>
+                        <?php endif; ?>
                         <?php echo $book->year ? ' · ' . (int) $book->year : ''; ?>
                 </div>
 

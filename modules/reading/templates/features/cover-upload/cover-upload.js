@@ -16,9 +16,10 @@
 
   function getBookDetails() {
     const g = (window.PRS_BOOK || {});
+    const authors = Array.isArray(g.authors) ? g.authors.filter(Boolean).join(", ") : (g.authors || "");
     return {
       title: g.title || '',
-      author: g.author || '',
+      author: authors,
       language: g.language || ''
     };
   }

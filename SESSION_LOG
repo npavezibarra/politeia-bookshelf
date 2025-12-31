@@ -33,6 +33,11 @@ December 31st, 2025, 21:31 UTC
 2. Phase 7.2: Added versioned migration (DB version bump) to drop title_author_hash column/index safely and idempotently.
 3. Phase 7.3: Removed remaining code paths relying on title_author_hash and deleted temporary Phase 6 admin hook.
 
+December 31st, 2025, 22:41 UTC
+1. Phase 8.1: Removed legacy author column reads/writes and routed author display, cover search, and confirm matching through canonical author pivots.
+2. Phase 8.2: Updated wp_politeia_books schema definitions to drop author and normalized_author from new installs.
+3. Phase 8.3: Added versioned migration (DB version 1.8.0) to drop legacy author columns safely and idempotently.
+
 ------
 
 TO DO:

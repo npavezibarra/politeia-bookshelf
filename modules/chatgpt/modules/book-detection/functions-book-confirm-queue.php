@@ -64,6 +64,8 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 	$tbl_books   = $wpdb->prefix . 'politeia_books';
 	$tbl_users   = $wpdb->prefix . 'politeia_user_books';
 	$tbl_confirm = $wpdb->prefix . 'politeia_book_confirm';
+	$tbl_authors = $wpdb->prefix . 'politeia_authors';
+	$tbl_pivot   = $wpdb->prefix . 'politeia_book_authors';
 
 	$queued    = 0;
 	$skipped   = 0;
@@ -72,12 +74,18 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 
 	// --------- Pre-cargar librería del usuario (una sola vez) ----------
 	$user_lib_slug = []; // slug -> ['id','year','slug']
-	$user_lib_key  = []; // normalized title|author -> ['id','year','slug']
+	$user_lib_key  = []; // normalized title|authors -> ['id','year','slug']
 
 	if ( class_exists('Politeia_Book_Confirm_Schema') ) {
 		// Trae la biblioteca del usuario
 		$sql = $wpdb->prepare("
-			SELECT b.id, b.title, b.author, b.year, b.slug
+			SELECT b.id, b.title, b.year, b.slug,
+			       (
+			       		SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+			       		FROM {$tbl_pivot} ba
+			       		LEFT JOIN {$tbl_authors} a ON a.id = ba.author_id
+			       		WHERE ba.book_id = b.id
+			       ) AS authors
 			  FROM {$tbl_books} b
 			  JOIN {$tbl_users} ub ON ub.book_id=b.id AND ub.user_id=%d
 		", $user_id);
@@ -94,7 +102,7 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 			}
 
 			$norm_title  = politeia__normalize_candidate_text( $r['title'] ?? '' );
-			$norm_author = politeia__normalize_candidate_text( $r['author'] ?? '' );
+			$norm_author = politeia__normalize_candidate_text( $r['authors'] ?? '' );
 			if ( $norm_title !== '' && $norm_author !== '' ) {
 				$key = strtolower( $norm_title . '|' . $norm_author );
 				$user_lib_key[$key] = [

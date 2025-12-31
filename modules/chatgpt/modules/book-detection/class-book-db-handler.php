@@ -10,7 +10,6 @@
  *
  * Optional columns in politeia_books that this class will use if present:
  *   - normalized_title  (VARCHAR)
- *   - normalized_author (VARCHAR)
  *   - slug              (VARCHAR)  // pretty URL id; unique in table
  *
  * This class does not create or migrate tables.
@@ -28,9 +27,6 @@ class Politeia_Book_DB_Handler {
 
     /** @var bool */
     protected $has_norm_title = false;
-
-    /** @var bool */
-    protected $has_norm_author = false;
 
     /** @var bool */
     protected $has_slug_col = false;
@@ -62,7 +58,6 @@ class Politeia_Book_DB_Handler {
         // Quietly detect what exists; callers can verify readiness with is_ready().
         if ( $this->table_exists( $this->tbl_books ) ) {
             $this->has_norm_title  = $this->column_exists( $this->tbl_books, 'normalized_title' );
-            $this->has_norm_author = $this->column_exists( $this->tbl_books, 'normalized_author' );
             $this->has_slug_col    = $this->column_exists( $this->tbl_books, 'slug' );
         }
     }
@@ -131,20 +126,27 @@ class Politeia_Book_DB_Handler {
         $nt = $this->normalize( $title );
         $na = $this->normalize( $author );
 
-        // 2) Normalized LIKE
-        if ( $this->has_norm_title && $this->has_norm_author ) {
+        $authors_table = $wpdb->prefix . 'politeia_authors';
+        $pivot_table   = $wpdb->prefix . 'politeia_book_authors';
+        $author_select = "(SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+                           FROM {$pivot_table} ba
+                           LEFT JOIN {$authors_table} a ON a.id = ba.author_id
+                           WHERE ba.book_id = b.id) AS author_names";
+
+        // 2) Normalized LIKE (title-only filter, author resolved via pivot)
+        if ( $this->has_norm_title ) {
             $like_t = '%' . $wpdb->esc_like( $nt ) . '%';
-            $like_a = '%' . $wpdb->esc_like( $na ) . '%';
             $candidates = $wpdb->get_results(
                 $wpdb->prepare(
-                    "SELECT * FROM {$this->tbl_books}
-                     WHERE normalized_title LIKE %s AND normalized_author LIKE %s
-                     LIMIT 20",
-                    $like_t, $like_a
+                    "SELECT b.*, {$author_select}
+                     FROM {$this->tbl_books} b
+                     WHERE b.normalized_title LIKE %s
+                     LIMIT 50",
+                    $like_t
                 ),
                 ARRAY_A
             );
-            $picked = $this->pick_best_similarity( $candidates, $nt, $na, 'normalized_title', 'normalized_author' );
+            $picked = $this->pick_best_similarity( $candidates, $nt, $na, 'normalized_title', 'author_names' );
             if ( $picked ) {
                 return [ 'match' => $picked, 'method' => 'normalized_like' ];
             }
@@ -152,17 +154,17 @@ class Politeia_Book_DB_Handler {
 
         // 3) Raw LIKE
         $like_t = '%' . $wpdb->esc_like( $title ) . '%';
-        $like_a = '%' . $wpdb->esc_like( $author ) . '%';
         $candidates = $wpdb->get_results(
             $wpdb->prepare(
-                "SELECT * FROM {$this->tbl_books}
-                 WHERE title LIKE %s AND author LIKE %s
-                 LIMIT 20",
-                $like_t, $like_a
+                "SELECT b.*, {$author_select}
+                 FROM {$this->tbl_books} b
+                 WHERE b.title LIKE %s
+                 LIMIT 50",
+                $like_t
             ),
             ARRAY_A
         );
-        $picked = $this->pick_best_similarity( $candidates, $nt, $na, 'title', 'author' );
+        $picked = $this->pick_best_similarity( $candidates, $nt, $na, 'title', 'author_names' );
         if ( $picked ) {
             return [ 'match' => $picked, 'method' => 'raw_like' ];
         }
@@ -256,19 +258,13 @@ class Politeia_Book_DB_Handler {
             );
         }
 
-        // Legacy columns (author/normalized_author) are intentionally left blank on new writes.
         $data = [
             'title'  => sanitize_text_field( $title ),
-            'author' => '',
         ];
-        $fmt  = [ '%s', '%s' ];
+        $fmt  = [ '%s' ];
 
         if ( $this->has_norm_title ) {
             $data['normalized_title'] = $this->normalize( $title );
-            $fmt[] = '%s';
-        }
-        if ( $this->has_norm_author ) {
-            $data['normalized_author'] = null;
             $fmt[] = '%s';
         }
         // --- NEW: slug generation if column exists ---
