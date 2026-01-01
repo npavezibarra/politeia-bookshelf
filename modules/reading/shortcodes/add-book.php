@@ -258,11 +258,20 @@ add_shortcode(
 								</th>
 								<td>
                                                                         <div class="prs-add-book__field-inline">
+                                                                        <div class="prs-add-book__field prs-add-book__field--isbn">
 									<input type="text"
 										id="prs_isbn"
 										name="prs_isbn"
 										inputmode="text"
 										autocomplete="off" />
+                                                                        <div
+                                                                                id="prs_isbn_suggestions"
+                                                                                class="prs-add-book__suggestions"
+                                                                                role="listbox"
+                                                                                aria-label="<?php esc_attr_e( 'ISBN suggestions', 'politeia-reading' ); ?>"
+                                                                                aria-hidden="true"
+                                                                        ></div>
+                                                                        </div>
                                                                         <span id="prs_isbn_display" class="prs-add-book__value-chip" hidden></span>
                                                                         <button
                                                                                 type="button"

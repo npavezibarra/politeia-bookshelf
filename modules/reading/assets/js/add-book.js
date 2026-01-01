@@ -655,6 +655,7 @@
 
         var authorInput = getPrimaryAuthorInput();
         var suggestionContainer = document.getElementById('prs_title_suggestions');
+        var isbnSuggestionContainer = document.getElementById('prs_isbn_suggestions');
         var autocompleteConfig = typeof window !== 'undefined' ? window.PRS_ADD_BOOK_AUTOCOMPLETE : null;
         var canonicalEndpoint = autocompleteConfig && autocompleteConfig.ajax_url ? autocompleteConfig.ajax_url : '';
         var canonicalNonce = autocompleteConfig && autocompleteConfig.nonce ? autocompleteConfig.nonce : '';
@@ -685,6 +686,9 @@
         var abortController = null;
         var debounceTimer = null;
         var lastFetchedQuery = '';
+        var isbnAbortController = null;
+        var isbnDebounceTimer = null;
+        var lastFetchedIsbn = '';
         var lastSuggestionItems = [];
         var lastSelectionToken = 0;
 
@@ -722,6 +726,224 @@
                 str = str.replace(/[\u0300-\u036f]/g, '');
                 str = str.replace(/[^a-z0-9]+/g, '');
                 return str;
+        };
+
+        var normalizeIsbnInput = function (value) {
+                if (!value) {
+                        return '';
+                }
+                return String(value).replace(/[^0-9Xx]/g, '').toUpperCase();
+        };
+
+
+        var resetIsbnSuggestions = function () {
+                if (!isbnSuggestionContainer || !isbnInput) {
+                        return;
+                }
+                isbnSuggestionContainer.innerHTML = '';
+                isbnSuggestionContainer.classList.remove('is-visible');
+                isbnSuggestionContainer.setAttribute('aria-hidden', 'true');
+                isbnInput.setAttribute('aria-expanded', 'false');
+        };
+
+        var cancelIsbnRequest = function () {
+                if (supportsAbortController && isbnAbortController) {
+                        isbnAbortController.abort();
+                        isbnAbortController = null;
+                }
+        };
+
+        var clearIsbnSuggestions = function () {
+                cancelIsbnRequest();
+                lastFetchedIsbn = '';
+                resetIsbnSuggestions();
+        };
+
+        var focusIsbnSuggestionAtIndex = function (index) {
+                if (!isbnSuggestionContainer) {
+                        return;
+                }
+                var buttons = isbnSuggestionContainer.querySelectorAll('.prs-add-book__suggestion');
+                if (!buttons.length) {
+                        return;
+                }
+                if (index < 0) {
+                        index = 0;
+                }
+                if (index >= buttons.length) {
+                        index = buttons.length - 1;
+                }
+                buttons[index].focus();
+        };
+
+        var handleIsbnSuggestionKeydown = function (event) {
+                var target = event.currentTarget;
+                var index = parseInt(target.getAttribute('data-index'), 10);
+                if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        focusIsbnSuggestionAtIndex(index + 1);
+                } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        if (index <= 0) {
+                                isbnInput.focus();
+                        } else {
+                                focusIsbnSuggestionAtIndex(index - 1);
+                        }
+                } else if (event.key === 'Escape') {
+                        event.preventDefault();
+                        resetIsbnSuggestions();
+                        isbnInput.focus();
+                } else if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        handleIsbnSuggestionSelection(target);
+                }
+        };
+
+        var showIsbnSuggestions = function (items) {
+                if (!isbnSuggestionContainer || !isbnInput) {
+                        return;
+                }
+
+                isbnSuggestionContainer.innerHTML = '';
+
+                if (!items || !items.length) {
+                        resetIsbnSuggestions();
+                        return;
+                }
+
+                for (var i = 0; i < items.length; i++) {
+                        var item = items[i];
+                        var button = document.createElement('button');
+                        button.type = 'button';
+                        button.className = 'prs-add-book__suggestion';
+                        button.setAttribute('data-index', i);
+                        button.setAttribute('role', 'option');
+                        button.dataset.title = item.title || '';
+                        button.dataset.author = item.author || '';
+                        button.dataset.year = item.year || '';
+                        if (item.authors && item.authors.length) {
+                                try {
+                                        button.dataset.authors = JSON.stringify(item.authors);
+                                } catch (error) {
+                                        button.dataset.authors = '';
+                                }
+                        }
+
+                        var titleLine = document.createElement('span');
+                        titleLine.className = 'prs-add-book__suggestion-title';
+                        titleLine.textContent = item.title || '';
+                        button.appendChild(titleLine);
+
+                        var authorsLabel = item.authors && item.authors.length ? item.authors.join(', ') : (item.author || '');
+                        if (authorsLabel) {
+                                var authorLine = document.createElement('span');
+                                authorLine.className = 'prs-add-book__suggestion-author';
+                                authorLine.textContent = authorsLabel;
+                                button.appendChild(authorLine);
+                        }
+
+                        if (item.year) {
+                                var yearLine = document.createElement('span');
+                                yearLine.className = 'prs-add-book__suggestion-year';
+                                yearLine.textContent = item.year;
+                                button.appendChild(yearLine);
+                        }
+
+                        button.addEventListener('keydown', handleIsbnSuggestionKeydown);
+                        button.addEventListener('mousedown', function (event) {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                handleIsbnSuggestionSelection(event.currentTarget);
+                        });
+                        button.addEventListener('click', function (event) {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                handleIsbnSuggestionSelection(event.currentTarget);
+                        });
+                        try {
+                                button.dataset.payload = JSON.stringify(item || {});
+                        } catch (error) {
+                                button.dataset.payload = '{}';
+                        }
+                        isbnSuggestionContainer.appendChild(button);
+                }
+
+                isbnSuggestionContainer.classList.add('is-visible');
+                isbnSuggestionContainer.setAttribute('aria-hidden', 'false');
+                isbnInput.setAttribute('aria-expanded', 'true');
+        };
+
+        var handleIsbnSuggestionSelection = function (target) {
+                if (!target) {
+                        return;
+                }
+
+                var suggestion = {};
+                if (target.dataset.payload) {
+                        try {
+                                suggestion = JSON.parse(target.dataset.payload);
+                        } catch (error) {
+                                suggestion = {};
+                        }
+                }
+
+                var resolvedAuthors = [];
+                if (suggestion.authors && suggestion.authors.length) {
+                        resolvedAuthors = suggestion.authors;
+                } else if (target.dataset.authors) {
+                        try {
+                                var parsedAuthors = JSON.parse(target.dataset.authors);
+                                if (Array.isArray(parsedAuthors)) {
+                                        resolvedAuthors = parsedAuthors;
+                                }
+                        } catch (error) {
+                                resolvedAuthors = [];
+                        }
+                } else if (target.dataset.author) {
+                        resolvedAuthors = [target.dataset.author];
+                }
+
+                var resolved = {
+                        title: suggestion.title || target.dataset.title || '',
+                        author: suggestion.author || target.dataset.author || '',
+                        authors: resolvedAuthors,
+                        year: suggestion.year || target.dataset.year || '',
+                        isbn: suggestion.isbn || (isbnInput ? isbnInput.value : ''),
+                        pages: suggestion.pages || '',
+                        cover: suggestion.cover || '',
+                        selfLink: suggestion.selfLink || ''
+                };
+
+                if (isbnInput && resolved.isbn) {
+                        isbnInput.value = resolved.isbn;
+                        isbnEditMode = false;
+                        updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                }
+
+                applySuggestionValues(resolved);
+
+                if (!getFieldValue(isbnInput) || !getFieldValue(pagesInput)) {
+                        fetchGoogleDetailsForSelection(resolved).then(function (details) {
+                                if (!details) {
+                                        return;
+                                }
+                                if (isbnInput && details.isbn && !getFieldValue(isbnInput)) {
+                                        isbnInput.value = details.isbn;
+                                }
+                                if (pagesInput && details.pages && !getFieldValue(pagesInput)) {
+                                        pagesInput.value = details.pages;
+                                }
+                                if (details.cover) {
+                                        setCoverPreview(details.cover);
+                                }
+                                updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                                updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                        });
+                }
+
+                resetIsbnSuggestions();
         };
 
         var setCoverPreview = function (url) {
@@ -812,15 +1034,14 @@
                 buttons[index].focus();
         };
 
-        var selectSuggestion = function (item) {
+        var applySuggestionValues = function (item) {
                 if (!item) {
                         return;
                 }
 
-                lastSelectionToken += 1;
-                var selectionToken = lastSelectionToken;
-
-                titleInput.value = item.title;
+                if (titleInput && item.title) {
+                        titleInput.value = item.title;
+                }
                 if (item.authors && item.authors.length) {
                         setAuthors(item.authors);
                         authorInput = getPrimaryAuthorInput();
@@ -829,8 +1050,9 @@
                         authorInput = getPrimaryAuthorInput();
                 }
                 if (yearInput) {
-                        yearInput.value = item.year;
+                        yearInput.value = item.year || '';
                 }
+
                 var supplemental = null;
                 if ((!item.isbn && !item.pages) && lastSuggestionItems.length) {
                         supplemental = findSupplementalDetails(item);
@@ -841,15 +1063,29 @@
                 if (pagesInput) {
                         pagesInput.value = item.pages || (supplemental && supplemental.pages ? supplemental.pages : '') || '';
                 }
+
                 yearEditMode = false;
                 isbnEditMode = false;
                 pagesEditMode = false;
                 updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
                 updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
                 updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+
                 if (item.cover) {
                         setCoverPreview(item.cover);
                 }
+        };
+
+        var selectSuggestion = function (item) {
+                if (!item) {
+                        return;
+                }
+
+                lastSelectionToken += 1;
+                var selectionToken = lastSelectionToken;
+
+                applySuggestionValues(item);
+
                 if (!getFieldValue(isbnInput) || !getFieldValue(pagesInput)) {
                         fetchGoogleDetailsForSelection(item).then(function (details) {
                                 if (!details || selectionToken !== lastSelectionToken) {
@@ -869,7 +1105,9 @@
                         });
                 }
                 resetSuggestions();
-                titleInput.focus();
+                if (titleInput) {
+                        titleInput.focus();
+                }
         };
 
         if (coverFileInput && coverUrlInput) {
@@ -1303,6 +1541,277 @@
                         });
         };
 
+        var fetchGoogleIsbnSuggestion = function (isbn, controller) {
+                var baseParams = [
+                        'q=' + encodeURIComponent('isbn:' + isbn),
+                        'maxResults=1',
+                        'printType=books',
+                        'orderBy=relevance'
+                ];
+                var fieldParam = 'fields=items(id,selfLink,volumeInfo/title,volumeInfo/authors,volumeInfo/publishedDate,volumeInfo/industryIdentifiers,volumeInfo/pageCount,volumeInfo/imageLinks)';
+                var url = 'https://www.googleapis.com/books/v1/volumes?' + baseParams.concat([fieldParam]).join('&');
+                var urlNoFields = 'https://www.googleapis.com/books/v1/volumes?' + baseParams.join('&');
+                var fetchOptions = {};
+                if (controller) {
+                        fetchOptions.signal = controller.signal;
+                }
+
+                var parseGoogleItems = function (data) {
+                        if (!data || !data.items || !data.items.length) {
+                                return [];
+                        }
+
+                        var doc = data.items[0];
+                        if (!doc || !doc.volumeInfo) {
+                                return [];
+                        }
+
+                        var volumeInfo = doc.volumeInfo;
+                        var title = volumeInfo.title ? String(volumeInfo.title).trim() : '';
+                        if (!title) {
+                                return [];
+                        }
+
+                        var authors = [];
+                        if (volumeInfo.authors && volumeInfo.authors.length) {
+                                for (var authorIndex = 0; authorIndex < volumeInfo.authors.length; authorIndex++) {
+                                        var candidate = String(volumeInfo.authors[authorIndex]).trim();
+                                        if (!candidate) {
+                                                continue;
+                                        }
+                                        if (authors.indexOf(candidate) === -1) {
+                                                authors.push(candidate);
+                                        }
+                                }
+                        }
+
+                        var author = authors.length ? authors[0] : '';
+                        var year = '';
+                        if (volumeInfo.publishedDate) {
+                                year = parseYear(volumeInfo.publishedDate);
+                        }
+
+                        var isbnValue = '';
+                        if (volumeInfo.industryIdentifiers && volumeInfo.industryIdentifiers.length) {
+                                var identifiers = volumeInfo.industryIdentifiers;
+                                for (var idIndex = 0; idIndex < identifiers.length; idIndex++) {
+                                        var identifier = identifiers[idIndex] || {};
+                                        if (identifier.type === 'ISBN_13' && identifier.identifier) {
+                                                isbnValue = String(identifier.identifier);
+                                                break;
+                                        }
+                                }
+                                if (!isbnValue) {
+                                        for (var fallbackIndex = 0; fallbackIndex < identifiers.length; fallbackIndex++) {
+                                                var fallback = identifiers[fallbackIndex] || {};
+                                                if (fallback.type === 'ISBN_10' && fallback.identifier) {
+                                                        isbnValue = String(fallback.identifier);
+                                                        break;
+                                                }
+                                        }
+                                }
+                                if (!isbnValue) {
+                                        var fallbackIdentifier = identifiers[0];
+                                        if (fallbackIdentifier && fallbackIdentifier.identifier) {
+                                                isbnValue = String(fallbackIdentifier.identifier);
+                                        }
+                                }
+                        }
+
+                        var pages = '';
+                        if (typeof volumeInfo.pageCount !== 'undefined' && volumeInfo.pageCount !== null) {
+                                var pageValue = parseInt(volumeInfo.pageCount, 10);
+                                if (!isNaN(pageValue) && pageValue > 0) {
+                                        pages = pageValue;
+                                }
+                        }
+
+                        var cover = '';
+                        if (volumeInfo.imageLinks) {
+                                cover = volumeInfo.imageLinks.thumbnail || volumeInfo.imageLinks.smallThumbnail || '';
+                        }
+
+                        return [{
+                                id: doc.id || '',
+                                selfLink: doc.selfLink || '',
+                                title: title,
+                                author: author,
+                                authors: authors,
+                                year: year,
+                                isbn: isbnValue || isbn,
+                                pages: pages,
+                                cover: cover,
+                                source: 'googlebooks'
+                        }];
+                };
+
+                var fetchJson = function (targetUrl, allowFallback) {
+                        return fetch(targetUrl, fetchOptions)
+                                .then(function (response) {
+                                        if (!response.ok) {
+                                                var error = new Error('Request failed');
+                                                error.allowFallback = allowFallback;
+                                                throw error;
+                                        }
+                                        return response.json();
+                                })
+                                .then(parseGoogleItems);
+                };
+
+                return fetchJson(url, true)
+                        .catch(function (error) {
+                                if (error && error.allowFallback) {
+                                        return fetchJson(urlNoFields, false);
+                                }
+                                if (error && error.name === 'AbortError') {
+                                        throw error;
+                                }
+                                return [];
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        throw error;
+                                }
+                                return [];
+                        });
+        };
+
+        var fetchOpenLibraryIsbnSuggestion = function (isbn, controller) {
+                var params = [
+                        'isbn=' + encodeURIComponent(isbn),
+                        'limit=1'
+                ];
+                var url = 'https://openlibrary.org/search.json?' + params.join('&');
+                var fetchOptions = {};
+                if (controller) {
+                        fetchOptions.signal = controller.signal;
+                }
+
+                return fetch(url, fetchOptions)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                if (!data || !data.docs || !data.docs.length) {
+                                        return [];
+                                }
+
+                                var doc = data.docs[0];
+                                if (!doc) {
+                                        return [];
+                                }
+
+                                var title = doc.title ? String(doc.title).trim() : '';
+                                if (!title) {
+                                        return [];
+                                }
+
+                                var authors = [];
+                                if (doc.author_name && doc.author_name.length) {
+                                        for (var authorIndex = 0; authorIndex < doc.author_name.length; authorIndex++) {
+                                                var candidate = String(doc.author_name[authorIndex]).trim();
+                                                if (!candidate) {
+                                                        continue;
+                                                }
+                                                if (authors.indexOf(candidate) === -1) {
+                                                        authors.push(candidate);
+                                                }
+                                        }
+                                }
+
+                                var author = authors.length ? authors[0] : '';
+                                var year = '';
+                                if (doc.first_publish_year) {
+                                        year = String(doc.first_publish_year);
+                                } else if (doc.publish_year && doc.publish_year.length) {
+                                        year = String(doc.publish_year[0]);
+                                }
+
+                                var pages = '';
+                                if (doc.number_of_pages_median) {
+                                        var medianPages = parseInt(doc.number_of_pages_median, 10);
+                                        if (!isNaN(medianPages) && medianPages > 0) {
+                                                pages = medianPages;
+                                        }
+                                }
+
+                                var cover = '';
+                                if (doc.cover_i) {
+                                        cover = 'https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg';
+                                }
+
+                                return [{
+                                        title: title,
+                                        author: author,
+                                        authors: authors,
+                                        year: year,
+                                        isbn: isbn,
+                                        pages: pages,
+                                        cover: cover,
+                                        source: 'openlibrary'
+                                }];
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        throw error;
+                                }
+                                return [];
+                        });
+        };
+
+        var fetchIsbnSuggestions = function (isbn) {
+                if (!isbn) {
+                        clearIsbnSuggestions();
+                        return;
+                }
+
+                cancelIsbnRequest();
+                resetIsbnSuggestions();
+
+                isbnAbortController = supportsAbortController ? new AbortController() : null;
+                lastFetchedIsbn = isbn;
+                var requestedIsbn = isbn;
+                var currentController = isbnAbortController;
+
+                fetchGoogleIsbnSuggestion(isbn, currentController)
+                        .then(function (googleItems) {
+                                if (!isbnInput || normalizeIsbnInput(isbnInput.value) !== requestedIsbn) {
+                                        return null;
+                                }
+                                if (googleItems && googleItems.length) {
+                                        return googleItems;
+                                }
+                                return fetchOpenLibraryIsbnSuggestion(isbn, currentController);
+                        })
+                        .then(function (items) {
+                                if (!items) {
+                                        return;
+                                }
+                                if (!isbnInput || normalizeIsbnInput(isbnInput.value) !== requestedIsbn) {
+                                        return;
+                                }
+                                if (!items.length) {
+                                        resetIsbnSuggestions();
+                                        return;
+                                }
+                                showIsbnSuggestions(items);
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        return;
+                                }
+                                resetIsbnSuggestions();
+                        })
+                        .then(function () {
+                                if (isbnAbortController === currentController) {
+                                        isbnAbortController = null;
+                                }
+                        });
+        };
+
         var extractGoogleDetails = function (volumeInfo) {
                 if (!volumeInfo) {
                         return null;
@@ -1550,6 +2059,84 @@
                         fetchSuggestions(query);
                 }, 250);
         });
+
+        if (isbnInput) {
+                isbnInput.setAttribute('role', 'combobox');
+                isbnInput.setAttribute('aria-autocomplete', 'list');
+                isbnInput.setAttribute('autocomplete', 'off');
+                if (isbnSuggestionContainer && !isbnInput.getAttribute('aria-controls')) {
+                        isbnInput.setAttribute('aria-controls', isbnSuggestionContainer.id);
+                }
+                isbnInput.setAttribute('aria-expanded', 'false');
+
+                isbnInput.addEventListener('input', function (event) {
+                        var raw = event.target.value;
+                        var normalized = normalizeIsbnInput(raw);
+
+                        if (isbnDebounceTimer) {
+                                window.clearTimeout(isbnDebounceTimer);
+                        }
+
+                        if (normalized.length < 10) {
+                                clearIsbnSuggestions();
+                                return;
+                        }
+
+                        isbnDebounceTimer = window.setTimeout(function () {
+                                if (normalized === lastFetchedIsbn) {
+                                        return;
+                                }
+                                fetchIsbnSuggestions(normalized);
+                        }, 250);
+                });
+
+                isbnInput.addEventListener('keydown', function (event) {
+                        if (!isbnSuggestionContainer || !isbnSuggestionContainer.classList.contains('is-visible')) {
+                                if (event.key === 'Escape') {
+                                        resetIsbnSuggestions();
+                                }
+                                return;
+                        }
+
+                        if (event.key === 'ArrowDown') {
+                                event.preventDefault();
+                                focusIsbnSuggestionAtIndex(0);
+                        } else if (event.key === 'Escape') {
+                                event.preventDefault();
+                                resetIsbnSuggestions();
+                        }
+                });
+
+                isbnInput.addEventListener('blur', function () {
+                        window.setTimeout(function () {
+                                if (!isbnSuggestionContainer) {
+                                        return;
+                                }
+                                var active = document.activeElement;
+                                if (active === isbnInput) {
+                                        return;
+                                }
+                                if (isbnSuggestionContainer.contains(active)) {
+                                        return;
+                                }
+                                resetIsbnSuggestions();
+                        }, 100);
+                });
+        }
+
+        document.addEventListener('click', function (event) {
+                if (!isbnSuggestionContainer || !isbnInput) {
+                        return;
+                }
+                if (event.target === isbnInput) {
+                        return;
+                }
+                if (isbnSuggestionContainer.contains(event.target)) {
+                        return;
+                }
+                resetIsbnSuggestions();
+        });
+
 
         titleInput.addEventListener('keydown', function (event) {
                 if (!suggestionContainer || !suggestionContainer.classList.contains('is-visible')) {
