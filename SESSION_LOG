@@ -81,6 +81,11 @@ January 1st, 2026, 21:08 UTC
 1. Attempted multiple fixes to ISBN-based autocomplete selection; ISBN suggestions still do not populate Title/Author/Year/Pages/Cover fields.
 2. Deferred final resolution and documented follow-up needed.
 
+January 1st, 2026, 21:22 UTC
+1. Fixed ISBN suggestion selection reliability (mousedown + keyboard selection) so ISBN-driven picks now populate Title/Author/Year/Pages/Cover.
+2. Confirmed ISBN and Title inputs both populate the rest of the form while keeping Title editable.
+3. Removed temporary ISBN debug output after validation.
+
 ------
 
 TO DO:
@@ -88,4 +93,3 @@ TO DO:
 December 31st
 1. Add detailed session entries as new development tasks are completed.
 2. Add a user-facing button to export personal book records to a standardized CSV download.
-3. Fix ISBN autocomplete selection so choosing a suggestion populates Title/Author/Year/Pages/Cover reliably.
