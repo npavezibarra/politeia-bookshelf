@@ -280,7 +280,23 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 return new WP_Error( 'prs_invalid_book', 'Missing title/author' );
         }
 
-        $normalized_title  = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $title ) : $title;
+        if ( function_exists( 'politeia__normalize_text' ) ) {
+                $normalized_title = politeia__normalize_text( $title );
+        } else {
+                $normalized_title = (string) $title;
+                $normalized_title = wp_strip_all_tags( $normalized_title );
+                $normalized_title = html_entity_decode( $normalized_title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
+                $normalized_title = trim( $normalized_title );
+                $normalized_title = remove_accents( $normalized_title );
+                if ( function_exists( 'mb_strtolower' ) ) {
+                        $normalized_title = mb_strtolower( $normalized_title, 'UTF-8' );
+                } else {
+                        $normalized_title = strtolower( $normalized_title );
+                }
+                $normalized_title = preg_replace( '/[^a-z0-9\s\-\_\'\":]+/u', ' ', $normalized_title );
+                $normalized_title = preg_replace( '/\s+/u', ' ', $normalized_title );
+                $normalized_title = trim( $normalized_title );
+        }
         $normalized_title  = $normalized_title !== '' ? $normalized_title : null;
 
         $slug = prs_generate_book_slug( $title, $year );

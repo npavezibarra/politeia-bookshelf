@@ -317,9 +317,16 @@ if ( ! function_exists('politeia__normalize_text') ) {
 		$s = (string) $s;
 		$s = wp_strip_all_tags( $s );
 		$s = html_entity_decode( $s, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8' );
-		$s = preg_replace( '/\s+/u', ' ', $s );
 		$s = trim( $s );
-		return $s;
+		$s = remove_accents( $s );
+		if ( function_exists( 'mb_strtolower' ) ) {
+			$s = mb_strtolower( $s, 'UTF-8' );
+		} else {
+			$s = strtolower( $s );
+		}
+		$s = preg_replace( '/[^a-z0-9\s\-\_\'\":]+/u', ' ', $s );
+		$s = preg_replace( '/\s+/u', ' ', $s );
+		return trim( $s );
 	}
 }
 

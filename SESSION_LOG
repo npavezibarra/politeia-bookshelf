@@ -43,6 +43,11 @@ December 31st, 2025, 23:38 UTC
 2. Phase 9.2: Added non-destructive slug migration to backfill new slugs and store legacy slugs as aliases (DB version 1.9.0).
 3. Phase 9.3-9.5: Enforced predictable slug uniqueness, removed author-based slug logic, and unified slug generation across confirm and single-add flows.
 
+January 1st, 2026, 11:24 UTC
+1. Fixed normalized_title normalization to use canonical lowercasing + cleanup in new inserts/updates.
+2. Unified normalization helpers across candidate queue, inline confirm updates, and canonical insert paths.
+3. Routed book-detection normalization through the shared canonical normalizer for consistent identity comparisons.
+
 ------
 
 TO DO:

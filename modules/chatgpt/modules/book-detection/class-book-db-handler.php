@@ -99,6 +99,10 @@ class Politeia_Book_DB_Handler {
      * @return string
      */
     public function normalize( $text ) {
+        if ( function_exists( 'politeia__normalize_text' ) ) {
+            return politeia__normalize_text( $text );
+        }
+
         $t = (string) $text;
         $t = wp_strip_all_tags( $t );
         $t = trim( $t );
