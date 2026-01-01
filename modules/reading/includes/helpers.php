@@ -398,6 +398,7 @@ function prs_create_book_candidate( $input, $args = array() ) {
         $author = '';
         $year = null;
         $image = null;
+        $isbn = '';
         $raw_candidates = array();
 
         if ( is_array( $input ) ) {
@@ -408,6 +409,7 @@ function prs_create_book_candidate( $input, $args = array() ) {
                 $author = isset( $input['author'] ) ? (string) $input['author'] : '';
                 $year   = isset( $input['year'] ) ? (int) $input['year'] : null;
                 $image  = isset( $input['image'] ) ? (string) $input['image'] : null;
+                $isbn   = isset( $input['isbn'] ) ? (string) $input['isbn'] : '';
         } elseif ( is_string( $input ) ) {
                 $title  = $input;
                 $author = isset( $args['author'] ) ? (string) $args['author'] : '';
@@ -424,6 +426,7 @@ function prs_create_book_candidate( $input, $args = array() ) {
                         'author' => isset( $cand['author'] ) ? (string) $cand['author'] : '',
                         'year'   => isset( $cand['year'] ) ? (int) $cand['year'] : null,
                         'image'  => isset( $cand['image'] ) ? (string) $cand['image'] : null,
+                        'isbn'   => isset( $cand['isbn'] ) ? (string) $cand['isbn'] : '',
                         'source' => isset( $cand['source'] ) ? (string) $cand['source'] : 'input',
                 );
         }
@@ -433,6 +436,7 @@ function prs_create_book_candidate( $input, $args = array() ) {
                         'title'  => $title,
                         'author' => $author,
                         'year'   => $year,
+                        'isbn'   => $isbn,
                         'image'  => $image,
                         'source' => 'input',
                 );
@@ -456,6 +460,7 @@ function prs_create_book_candidate( $input, $args = array() ) {
                                         'title'  => (string) $external_best['title'],
                                         'author' => (string) $external_best['author'],
                                         'year'   => isset( $external_best['year'] ) ? (int) $external_best['year'] : null,
+                                        'isbn'   => isset( $external_best['isbn'] ) ? (string) $external_best['isbn'] : '',
                                         'image'  => null,
                                         'source' => isset( $external_best['source'] ) ? (string) $external_best['source'] : 'external',
                                 );
@@ -1158,6 +1163,7 @@ function prs_get_user_books_for_library( $user_id, $args = array() ) {
         $defaults = array(
                 'per_page' => 0,
                 'offset'   => 0,
+                'order'    => 'title_asc',
         );
 
         $args = wp_parse_args( $args, $defaults );
@@ -1169,6 +1175,7 @@ function prs_get_user_books_for_library( $user_id, $args = array() ) {
 
         $per_page = (int) $args['per_page'];
         $offset   = max( 0, (int) $args['offset'] );
+        $order    = isset( $args['order'] ) ? (string) $args['order'] : 'title_asc';
 
         $ub = $wpdb->prefix . 'politeia_user_books';
         $b  = $wpdb->prefix . 'politeia_books';
@@ -1219,7 +1226,13 @@ function prs_get_user_books_for_library( $user_id, $args = array() ) {
         WHERE ub.user_id = %d
           AND ub.deleted_at IS NULL
           AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
-        ORDER BY b.title ASC";
+        ";
+
+        if ( 'recent' === $order ) {
+                $sql .= ' ORDER BY ub.updated_at DESC, b.title ASC';
+        } else {
+                $sql .= ' ORDER BY b.title ASC';
+        }
 
         $params = array( $user_id );
 

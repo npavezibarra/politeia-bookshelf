@@ -857,7 +857,8 @@ body.prs-filter-open {
         margin: 0;
 }
 
-.prs-add-book__author-add {
+.prs-add-book__author-add,
+.prs-add-book__field-edit {
         align-self: center;
         display: inline-flex;
         align-items: center;
@@ -875,8 +876,25 @@ body.prs-filter-open {
         transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+.prs-add-book__value-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background-color: #f3f4f6;
+        border: 1px solid #e5e7eb;
+        color: #1f2937;
+        border-radius: 9999px;
+        font-size: 0.9rem;
+        font-weight: 500;
+        padding: 4px 10px;
+        line-height: 1.2;
+        white-space: nowrap;
+}
+
 .prs-add-book__author-add:hover,
-.prs-add-book__author-add:focus {
+.prs-add-book__author-add:focus,
+.prs-add-book__field-edit:hover,
+.prs-add-book__field-edit:focus {
         background: #f3f4f6;
         border-color: #9ca3af;
         outline: none;
@@ -986,6 +1004,17 @@ table.prs-form__table {
 
 .prs-add-book__field {
         position: relative;
+}
+
+.prs-add-book__field-inline {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+}
+
+.prs-add-book__field-inline input {
+        flex: 1 1 auto;
+        min-width: 0;
 }
 
 .prs-add-book__suggestions {

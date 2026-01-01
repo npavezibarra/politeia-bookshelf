@@ -63,6 +63,11 @@ January 1st, 2026, 13:14 UTC
 2. Adjusted author Edit button styling and behavior for safer author edits.
 3. Removed source labels from autocomplete titles while preserving source order logic.
 
+January 1st, 2026, 18:25 UTC
+1. Added ISBN field to the add-book form, wired it through candidate creation, and enabled autofill from external sources.
+2. Extended autocomplete to pull ISBN and pages from Google Books/Open Library and display as chips on selection.
+3. Added fallback detail fetches to enrich ISBN/pages when initial search results are missing fields.
+
 ------
 
 TO DO:

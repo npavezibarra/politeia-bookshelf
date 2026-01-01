@@ -241,10 +241,46 @@
         var authorInputWrapper = authorContainer ? authorContainer.querySelector('.prs-add-book__author-input-wrapper') : null;
         var authorHiddenContainer = document.getElementById('prs_author_hidden');
         var authorHint = document.getElementById('prs_author_hint');
+        var titleInput = document.getElementById('prs_title');
+        var yearInput = document.getElementById('prs_year');
+        var yearDisplay = document.getElementById('prs_year_display');
+        var yearEditButton = document.getElementById('prs_year_edit');
+        var isbnInput = document.getElementById('prs_isbn');
+        var isbnDisplay = document.getElementById('prs_isbn_display');
+        var isbnEditButton = document.getElementById('prs_isbn_edit');
+        var pagesInput = document.getElementById('prs_pages');
+        var pagesDisplay = document.getElementById('prs_pages_display');
+        var pagesEditButton = document.getElementById('prs_pages_edit');
         var removeAuthorLabel = authorContainer ? authorContainer.getAttribute('data-remove-label') : '';
         var authorValues = [];
         var authorLookup = Object.create(null);
         var authorEditMode = false;
+        var yearEditMode = false;
+        var isbnEditMode = false;
+        var pagesEditMode = false;
+
+        var getFieldValue = function (input) {
+                if (!input) {
+                        return '';
+                }
+                return String(input.value || '').trim();
+        };
+
+        var updateEditFieldState = function (input, editButton, editMode, display) {
+                if (!input) {
+                        return;
+                }
+                var hasValue = getFieldValue(input) !== '';
+                var hideInput = hasValue && !editMode;
+                input.hidden = hideInput;
+                if (display) {
+                        display.textContent = getFieldValue(input);
+                        display.hidden = !hasValue || editMode;
+                }
+                if (editButton) {
+                        editButton.hidden = !(hasValue && !editMode);
+                }
+        };
 
         var normalizeAuthorValue = function (value) {
                 if (value === null || typeof value === 'undefined') {
@@ -523,13 +559,101 @@
                 refreshAuthors();
         }
 
-        var titleInput = document.getElementById('prs_title');
+        if (yearInput) {
+                updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
+                yearInput.addEventListener('input', function () {
+                        if (!getFieldValue(yearInput)) {
+                                yearEditMode = true;
+                                updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
+                        }
+                });
+                yearInput.addEventListener('blur', function () {
+                        if (getFieldValue(yearInput)) {
+                                yearEditMode = false;
+                                updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
+                        }
+                });
+        }
+
+        if (yearEditButton && yearInput) {
+                yearEditButton.addEventListener('click', function (event) {
+                        if (event && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
+                        }
+                        yearEditMode = true;
+                        updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
+                        yearInput.focus();
+                        if (typeof yearInput.select === 'function') {
+                                yearInput.select();
+                        }
+                });
+        }
+
+        if (isbnInput) {
+                updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                isbnInput.addEventListener('input', function () {
+                        if (!getFieldValue(isbnInput)) {
+                                isbnEditMode = true;
+                                updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                        }
+                });
+                isbnInput.addEventListener('blur', function () {
+                        if (getFieldValue(isbnInput)) {
+                                isbnEditMode = false;
+                                updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                        }
+                });
+        }
+
+        if (isbnEditButton && isbnInput) {
+                isbnEditButton.addEventListener('click', function (event) {
+                        if (event && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
+                        }
+                        isbnEditMode = true;
+                        updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                        isbnInput.focus();
+                        if (typeof isbnInput.select === 'function') {
+                                isbnInput.select();
+                        }
+                });
+        }
+
+        if (pagesInput) {
+                updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                pagesInput.addEventListener('input', function () {
+                        if (!getFieldValue(pagesInput)) {
+                                pagesEditMode = true;
+                                updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                        }
+                });
+                pagesInput.addEventListener('blur', function () {
+                        if (getFieldValue(pagesInput)) {
+                                pagesEditMode = false;
+                                updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                        }
+                });
+        }
+
+        if (pagesEditButton && pagesInput) {
+                pagesEditButton.addEventListener('click', function (event) {
+                        if (event && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
+                        }
+                        pagesEditMode = true;
+                        updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                        pagesInput.focus();
+                        if (typeof pagesInput.select === 'function') {
+                                pagesInput.select();
+                        }
+                });
+        }
+
         if (!titleInput) {
                 return;
         }
 
         var authorInput = getPrimaryAuthorInput();
-        var yearInput = document.getElementById('prs_year');
         var suggestionContainer = document.getElementById('prs_title_suggestions');
         var autocompleteConfig = typeof window !== 'undefined' ? window.PRS_ADD_BOOK_AUTOCOMPLETE : null;
         var canonicalEndpoint = autocompleteConfig && autocompleteConfig.ajax_url ? autocompleteConfig.ajax_url : '';
@@ -556,6 +680,8 @@
         var abortController = null;
         var debounceTimer = null;
         var lastFetchedQuery = '';
+        var lastSuggestionItems = [];
+        var lastSelectionToken = 0;
 
         var resetSuggestions = function () {
                 if (!suggestionContainer) {
@@ -593,6 +719,50 @@
                 return str;
         };
 
+        var findSupplementalDetails = function (item) {
+                if (!item || !lastSuggestionItems.length) {
+                        return null;
+                }
+
+                var titleKey = normalizeForComparison(item.title);
+                var authorKey = '';
+                if (item.authors && item.authors.length) {
+                        authorKey = normalizeForComparison(item.authors[0]);
+                } else if (item.author) {
+                        authorKey = normalizeForComparison(item.author);
+                }
+
+                if (!titleKey) {
+                        return null;
+                }
+
+                for (var i = 0; i < lastSuggestionItems.length; i++) {
+                        var candidate = lastSuggestionItems[i];
+                        if (!candidate || candidate.source === 'canonical') {
+                                continue;
+                        }
+                        if (titleKey !== normalizeForComparison(candidate.title)) {
+                                continue;
+                        }
+                        if (authorKey) {
+                                var candidateAuthor = '';
+                                if (candidate.authors && candidate.authors.length) {
+                                        candidateAuthor = normalizeForComparison(candidate.authors[0]);
+                                } else if (candidate.author) {
+                                        candidateAuthor = normalizeForComparison(candidate.author);
+                                }
+                                if (candidateAuthor && authorKey !== candidateAuthor) {
+                                        continue;
+                                }
+                        }
+                        if (candidate.isbn || candidate.pages) {
+                                return candidate;
+                        }
+                }
+
+                return null;
+        };
+
         var isStaleQuery = function (requestedQuery) {
                 if (!titleInput || !titleInput.value) {
                         return true;
@@ -622,6 +792,9 @@
                         return;
                 }
 
+                lastSelectionToken += 1;
+                var selectionToken = lastSelectionToken;
+
                 titleInput.value = item.title;
                 if (item.authors && item.authors.length) {
                         setAuthors(item.authors);
@@ -632,6 +805,37 @@
                 }
                 if (yearInput) {
                         yearInput.value = item.year;
+                }
+                var supplemental = null;
+                if ((!item.isbn && !item.pages) && lastSuggestionItems.length) {
+                        supplemental = findSupplementalDetails(item);
+                }
+                if (isbnInput) {
+                        isbnInput.value = item.isbn || (supplemental && supplemental.isbn ? supplemental.isbn : '') || '';
+                }
+                if (pagesInput) {
+                        pagesInput.value = item.pages || (supplemental && supplemental.pages ? supplemental.pages : '') || '';
+                }
+                yearEditMode = false;
+                isbnEditMode = false;
+                pagesEditMode = false;
+                updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
+                updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                if (!getFieldValue(isbnInput) || !getFieldValue(pagesInput)) {
+                        fetchGoogleDetailsForSelection(item).then(function (details) {
+                                if (!details || selectionToken !== lastSelectionToken) {
+                                        return;
+                                }
+                                if (isbnInput && details.isbn && !getFieldValue(isbnInput)) {
+                                        isbnInput.value = details.isbn;
+                                }
+                                if (pagesInput && details.pages && !getFieldValue(pagesInput)) {
+                                        pagesInput.value = details.pages;
+                                }
+                                updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
+                                updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                        });
                 }
                 resetSuggestions();
                 titleInput.focus();
@@ -801,7 +1005,7 @@
                         'maxResults=6',
                         'printType=books',
                         'orderBy=relevance',
-                        'fields=items(volumeInfo/title,volumeInfo/authors,volumeInfo/publishedDate)'
+                        'fields=items(id,selfLink,volumeInfo/title,volumeInfo/authors,volumeInfo/publishedDate,volumeInfo/industryIdentifiers,volumeInfo/pageCount)'
                 ];
                 var url = baseUrl + '?' + params.join('&');
                 var fetchOptions = {};
@@ -857,6 +1061,41 @@
                                                 year = parseYear(volumeInfo.publishedDate);
                                         }
 
+                                        var isbn = '';
+                                        if (volumeInfo.industryIdentifiers && volumeInfo.industryIdentifiers.length) {
+                                                var identifiers = volumeInfo.industryIdentifiers;
+                                                for (var idIndex = 0; idIndex < identifiers.length; idIndex++) {
+                                                        var identifier = identifiers[idIndex] || {};
+                                                        if (identifier.type === 'ISBN_13' && identifier.identifier) {
+                                                                isbn = String(identifier.identifier);
+                                                                break;
+                                                        }
+                                                }
+                                                if (!isbn) {
+                                                        for (var fallbackIndex = 0; fallbackIndex < identifiers.length; fallbackIndex++) {
+                                                                var fallback = identifiers[fallbackIndex] || {};
+                                                                if (fallback.type === 'ISBN_10' && fallback.identifier) {
+                                                                        isbn = String(fallback.identifier);
+                                                                        break;
+                                                                }
+                                                        }
+                                                }
+                                                if (!isbn) {
+                                                        var fallbackIdentifier = identifiers[0];
+                                                        if (fallbackIdentifier && fallbackIdentifier.identifier) {
+                                                                isbn = String(fallbackIdentifier.identifier);
+                                                        }
+                                                }
+                                        }
+
+                                        var pages = '';
+                                        if (typeof volumeInfo.pageCount !== 'undefined' && volumeInfo.pageCount !== null) {
+                                                var pageValue = parseInt(volumeInfo.pageCount, 10);
+                                                if (!isNaN(pageValue) && pageValue > 0) {
+                                                        pages = pageValue;
+                                                }
+                                        }
+
                                         if (!author || !year) {
                                                 continue;
                                         }
@@ -868,10 +1107,15 @@
                                         seen[key] = true;
 
                                         items.push({
+                                                id: doc.id || '',
+                                                selfLink: doc.selfLink || '',
                                                 title: title,
                                                 author: author,
                                                 authors: authors,
-                                                year: year
+                                                year: year,
+                                                isbn: isbn,
+                                                pages: pages,
+                                                source: 'googlebooks'
                                         });
 
                                         if (items.length >= 6) {
@@ -950,6 +1194,31 @@
                                                 year = String(doc.publish_year[0]);
                                         }
 
+                                        var isbn = '';
+                                        if (doc.isbn && doc.isbn.length) {
+                                                for (var isbnIndex = 0; isbnIndex < doc.isbn.length; isbnIndex++) {
+                                                        var candidateIsbn = String(doc.isbn[isbnIndex]).trim();
+                                                        if (!candidateIsbn) {
+                                                                continue;
+                                                        }
+                                                        if (/^\d{13}$/.test(candidateIsbn)) {
+                                                                isbn = candidateIsbn;
+                                                                break;
+                                                        }
+                                                }
+                                                if (!isbn) {
+                                                        isbn = String(doc.isbn[0]).trim();
+                                                }
+                                        }
+
+                                        var pages = '';
+                                        if (doc.number_of_pages_median) {
+                                                var medianPages = parseInt(doc.number_of_pages_median, 10);
+                                                if (!isNaN(medianPages) && medianPages > 0) {
+                                                        pages = medianPages;
+                                                }
+                                        }
+
                                         if (!author || !year) {
                                                 continue;
                                         }
@@ -965,6 +1234,8 @@
                                                 author: author,
                                                 authors: authors,
                                                 year: year,
+                                                isbn: isbn,
+                                                pages: pages,
                                                 source: 'openlibrary'
                                         });
 
@@ -981,6 +1252,151 @@
                                 }
                                 return [];
                         });
+        };
+
+        var extractGoogleDetails = function (volumeInfo) {
+                if (!volumeInfo) {
+                        return null;
+                }
+
+                var isbn = '';
+                if (volumeInfo.industryIdentifiers && volumeInfo.industryIdentifiers.length) {
+                        var identifiers = volumeInfo.industryIdentifiers;
+                        for (var idIndex = 0; idIndex < identifiers.length; idIndex++) {
+                                var identifier = identifiers[idIndex] || {};
+                                if (identifier.type === 'ISBN_13' && identifier.identifier) {
+                                        isbn = String(identifier.identifier);
+                                        break;
+                                }
+                        }
+                        if (!isbn) {
+                                for (var fallbackIndex = 0; fallbackIndex < identifiers.length; fallbackIndex++) {
+                                        var fallback = identifiers[fallbackIndex] || {};
+                                        if (fallback.type === 'ISBN_10' && fallback.identifier) {
+                                                isbn = String(fallback.identifier);
+                                                break;
+                                        }
+                                }
+                        }
+                        if (!isbn) {
+                                var fallbackIdentifier = identifiers[0];
+                                if (fallbackIdentifier && fallbackIdentifier.identifier) {
+                                        isbn = String(fallbackIdentifier.identifier);
+                                }
+                        }
+                }
+
+                var pages = '';
+                if (typeof volumeInfo.pageCount !== 'undefined' && volumeInfo.pageCount !== null) {
+                        var pageValue = parseInt(volumeInfo.pageCount, 10);
+                        if (!isNaN(pageValue) && pageValue > 0) {
+                                pages = pageValue;
+                        }
+                }
+
+                if (!isbn && !pages) {
+                        return null;
+                }
+
+                return {
+                        isbn: isbn,
+                        pages: pages
+                };
+        };
+
+        var fetchGoogleVolumeDetails = function (selfLink) {
+                if (!selfLink) {
+                        return Promise.resolve(null);
+                }
+
+                return fetch(selfLink)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                if (!data || !data.volumeInfo) {
+                                        return null;
+                                }
+                                return extractGoogleDetails(data.volumeInfo);
+                        })
+                        .catch(function () {
+                                return null;
+                        });
+        };
+
+        var fetchGoogleDetailsByQuery = function (title, author) {
+                if (!title) {
+                        return Promise.resolve(null);
+                }
+
+                var parts = [];
+                parts.push('intitle:' + title);
+                if (author) {
+                        parts.push('inauthor:' + author);
+                }
+                var query = parts.join(' ');
+                var params = [
+                        'q=' + encodeURIComponent(query),
+                        'maxResults=1',
+                        'printType=books',
+                        'orderBy=relevance',
+                        'fields=items(selfLink,volumeInfo/industryIdentifiers,volumeInfo/pageCount)'
+                ];
+                var url = 'https://www.googleapis.com/books/v1/volumes?' + params.join('&');
+
+                return fetch(url)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                if (!data || !data.items || !data.items.length) {
+                                        return null;
+                                }
+
+                                var item = data.items[0];
+                                if (!item || !item.volumeInfo) {
+                                        return null;
+                                }
+
+                                var details = extractGoogleDetails(item.volumeInfo);
+                                if (details) {
+                                        return details;
+                                }
+
+                                if (item.selfLink) {
+                                        return fetchGoogleVolumeDetails(item.selfLink);
+                                }
+
+                                return null;
+                        })
+                        .catch(function () {
+                                return null;
+                        });
+        };
+
+        var fetchGoogleDetailsForSelection = function (item) {
+                if (!item) {
+                        return Promise.resolve(null);
+                }
+
+                if (item.selfLink) {
+                        return fetchGoogleVolumeDetails(item.selfLink);
+                }
+
+                var author = '';
+                if (item.authors && item.authors.length) {
+                        author = item.authors[0];
+                } else if (item.author) {
+                        author = item.author;
+                }
+
+                return fetchGoogleDetailsByQuery(item.title, author);
         };
 
         var fetchSuggestions = function (query) {
@@ -1045,6 +1461,7 @@
                                         return;
                                 }
 
+                                lastSuggestionItems = canonicalItems.concat(googleItems, openLibraryItems);
                                 showSuggestions(items);
                         })
                         .catch(function (error) {

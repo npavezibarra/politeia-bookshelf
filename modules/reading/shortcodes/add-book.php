@@ -229,32 +229,74 @@ add_shortcode(
                                                                                 </div>
                                                                         </td>
                                                                 </tr>
-        							<tr>
-        								<th scope="row">
-        									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
-        								</th>
-        								<td>
-        									<input type="number"
-        										id="prs_year"
-        										name="prs_year"
-        										min="1400"
-        										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
-        								</td>
-        							</tr>
-        							<tr>
-        								<th scope="row">
-        									<label for="prs_pages"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></label>
-        								</th>
-        								<td>
-        									<input type="number"
-        										id="prs_pages"
-        										name="prs_pages"
-        										min="1"
-        										step="1"
-        										inputmode="numeric"
-        										pattern="[0-9]*" />
-        								</td>
-        							</tr>
+							<tr>
+								<th scope="row">
+									<label for="prs_year"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></label>
+								</th>
+								<td>
+                                                                        <div class="prs-add-book__field-inline">
+									<input type="number"
+										id="prs_year"
+										name="prs_year"
+										min="1400"
+										max="<?php echo esc_attr( (int) date( 'Y' ) + 1 ); ?>" />
+                                                                        <span id="prs_year_display" class="prs-add-book__value-chip" hidden></span>
+                                                                        <button
+                                                                                type="button"
+                                                                                id="prs_year_edit"
+                                                                                class="prs-add-book__field-edit"
+                                                                                aria-label="<?php echo esc_attr__( 'Edit year', 'politeia-reading' ); ?>"
+                                                                                hidden
+                                                                        ><?php echo esc_html__( 'Edit', 'politeia-reading' ); ?></button>
+                                                                        </div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="prs_isbn"><?php esc_html_e( 'ISBN', 'politeia-reading' ); ?></label>
+								</th>
+								<td>
+                                                                        <div class="prs-add-book__field-inline">
+									<input type="text"
+										id="prs_isbn"
+										name="prs_isbn"
+										inputmode="text"
+										autocomplete="off" />
+                                                                        <span id="prs_isbn_display" class="prs-add-book__value-chip" hidden></span>
+                                                                        <button
+                                                                                type="button"
+                                                                                id="prs_isbn_edit"
+                                                                                class="prs-add-book__field-edit"
+                                                                                aria-label="<?php echo esc_attr__( 'Edit ISBN', 'politeia-reading' ); ?>"
+                                                                                hidden
+                                                                        ><?php echo esc_html__( 'Edit', 'politeia-reading' ); ?></button>
+                                                                        </div>
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="prs_pages"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></label>
+								</th>
+								<td>
+                                                                        <div class="prs-add-book__field-inline">
+									<input type="number"
+										id="prs_pages"
+										name="prs_pages"
+										min="1"
+										step="1"
+										inputmode="numeric"
+										pattern="[0-9]*" />
+                                                                        <span id="prs_pages_display" class="prs-add-book__value-chip" hidden></span>
+                                                                        <button
+                                                                                type="button"
+                                                                                id="prs_pages_edit"
+                                                                                class="prs-add-book__field-edit"
+                                                                                aria-label="<?php echo esc_attr__( 'Edit pages', 'politeia-reading' ); ?>"
+                                                                                hidden
+                                                                        ><?php echo esc_html__( 'Edit', 'politeia-reading' ); ?></button>
+                                                                        </div>
+								</td>
+							</tr>
         							<tr>
         								<th scope="row">
         									<label class="prs-form__label" for="prs_cover">
@@ -520,6 +562,8 @@ function prs_add_book_submit_handler() {
 		wp_die( 'Invalid nonce.' );
 	}
 
+        global $wpdb;
+
 	$user_id = get_current_user_id();
 
         // Sanitización
@@ -599,6 +643,15 @@ function prs_add_book_submit_handler() {
 		}
 	}
 
+        $isbn = '';
+        if ( isset( $_POST['prs_isbn'] ) && $_POST['prs_isbn'] !== '' ) {
+                $raw_isbn = sanitize_text_field( wp_unslash( $_POST['prs_isbn'] ) );
+                $raw_isbn = preg_replace( '/[^0-9Xx]/', '', (string) $raw_isbn );
+                if ( '' !== $raw_isbn ) {
+                        $isbn = strtoupper( $raw_isbn );
+                }
+        }
+
         if ( '' === $title || '' === $primary_author ) {
                 wp_safe_redirect( add_query_arg( 'prs_error', 1, wp_get_referer() ?: home_url() ) );
                 exit;
@@ -631,6 +684,7 @@ function prs_add_book_submit_handler() {
                 'title'  => $title,
                 'author' => $primary_author,
                 'year'   => $year,
+                'isbn'   => $isbn,
                 'image'  => $attachment_id ? (int) $attachment_id : null,
         );
         $candidate_args = array(
@@ -642,6 +696,7 @@ function prs_add_book_submit_handler() {
                         'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
                         'pages'               => $pages,
                         'authors'             => $authors,
+                        'isbn'                => $isbn,
                 ),
         );
 

@@ -65,6 +65,11 @@ add_shortcode(
 		// Usamos un parámetro propio para no interferir con 'paged'
 		$paged  = isset( $_GET['prs_page'] ) ? max( 1, absint( $_GET['prs_page'] ) ) : 1;
 		$offset = ( $paged - 1 ) * $per_page;
+                $force_recent = ! empty( $_GET['prs_added'] ) && '1' === (string) $_GET['prs_added'];
+                if ( $force_recent ) {
+                        $paged  = 1;
+                        $offset = 0;
+                }
 
 		global $wpdb;
                 $ub = $wpdb->prefix . 'politeia_user_books';
@@ -102,6 +107,7 @@ add_shortcode(
                         array(
                                 'per_page' => $per_page,
                                 'offset'   => $offset,
+                                'order'    => $force_recent ? 'recent' : 'title_asc',
                         )
                 );
 
