@@ -68,6 +68,10 @@ January 1st, 2026, 18:25 UTC
 2. Extended autocomplete to pull ISBN and pages from Google Books/Open Library and display as chips on selection.
 3. Added fallback detail fetches to enrich ISBN/pages when initial search results are missing fields.
 
+January 1st, 2026, 18:42 UTC
+1. Added cover autofill from Google Books/Open Library to the add-book preview image.
+2. Adjusted cover preview sizing to keep width fixed and allow height to adapt to remote covers.
+
 ------
 
 TO DO:

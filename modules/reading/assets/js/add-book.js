@@ -658,6 +658,9 @@
         var autocompleteConfig = typeof window !== 'undefined' ? window.PRS_ADD_BOOK_AUTOCOMPLETE : null;
         var canonicalEndpoint = autocompleteConfig && autocompleteConfig.ajax_url ? autocompleteConfig.ajax_url : '';
         var canonicalNonce = autocompleteConfig && autocompleteConfig.nonce ? autocompleteConfig.nonce : '';
+        var coverPreviewWrapper = document.getElementById('prs_cover_preview');
+        var coverPreviewImage = coverPreviewWrapper ? coverPreviewWrapper.querySelector('img') : null;
+        var coverPlaceholder = coverPreviewImage ? coverPreviewImage.getAttribute('data-placeholder-src') : '';
 
         if (!suggestionContainer) {
                 suggestionContainer = document.createElement('div');
@@ -717,6 +720,23 @@
                 str = str.replace(/[\u0300-\u036f]/g, '');
                 str = str.replace(/[^a-z0-9]+/g, '');
                 return str;
+        };
+
+        var setCoverPreview = function (url) {
+                if (!coverPreviewWrapper || !coverPreviewImage) {
+                        return;
+                }
+                if (!url) {
+                        coverPreviewWrapper.hidden = true;
+                        if (coverPlaceholder) {
+                                coverPreviewImage.src = coverPlaceholder;
+                        } else {
+                                coverPreviewImage.removeAttribute('src');
+                        }
+                        return;
+                }
+                coverPreviewImage.src = url;
+                coverPreviewWrapper.hidden = false;
         };
 
         var findSupplementalDetails = function (item) {
@@ -822,6 +842,9 @@
                 updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
                 updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
                 updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
+                if (item.cover) {
+                        setCoverPreview(item.cover);
+                }
                 if (!getFieldValue(isbnInput) || !getFieldValue(pagesInput)) {
                         fetchGoogleDetailsForSelection(item).then(function (details) {
                                 if (!details || selectionToken !== lastSelectionToken) {
@@ -832,6 +855,9 @@
                                 }
                                 if (pagesInput && details.pages && !getFieldValue(pagesInput)) {
                                         pagesInput.value = details.pages;
+                                }
+                                if (details.cover) {
+                                        setCoverPreview(details.cover);
                                 }
                                 updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
                                 updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
@@ -1005,7 +1031,7 @@
                         'maxResults=6',
                         'printType=books',
                         'orderBy=relevance',
-                        'fields=items(id,selfLink,volumeInfo/title,volumeInfo/authors,volumeInfo/publishedDate,volumeInfo/industryIdentifiers,volumeInfo/pageCount)'
+                        'fields=items(id,selfLink,volumeInfo/title,volumeInfo/authors,volumeInfo/publishedDate,volumeInfo/industryIdentifiers,volumeInfo/pageCount,volumeInfo/imageLinks)'
                 ];
                 var url = baseUrl + '?' + params.join('&');
                 var fetchOptions = {};
@@ -1095,6 +1121,10 @@
                                                         pages = pageValue;
                                                 }
                                         }
+                                        var cover = '';
+                                        if (volumeInfo.imageLinks) {
+                                                cover = volumeInfo.imageLinks.thumbnail || volumeInfo.imageLinks.smallThumbnail || '';
+                                        }
 
                                         if (!author || !year) {
                                                 continue;
@@ -1115,6 +1145,7 @@
                                                 year: year,
                                                 isbn: isbn,
                                                 pages: pages,
+                                                cover: cover,
                                                 source: 'googlebooks'
                                         });
 
@@ -1218,6 +1249,10 @@
                                                         pages = medianPages;
                                                 }
                                         }
+                                        var cover = '';
+                                        if (doc.cover_i) {
+                                                cover = 'https://covers.openlibrary.org/b/id/' + doc.cover_i + '-M.jpg';
+                                        }
 
                                         if (!author || !year) {
                                                 continue;
@@ -1236,6 +1271,7 @@
                                                 year: year,
                                                 isbn: isbn,
                                                 pages: pages,
+                                                cover: cover,
                                                 source: 'openlibrary'
                                         });
 
@@ -1293,14 +1329,19 @@
                                 pages = pageValue;
                         }
                 }
+                var cover = '';
+                if (volumeInfo.imageLinks) {
+                        cover = volumeInfo.imageLinks.thumbnail || volumeInfo.imageLinks.smallThumbnail || '';
+                }
 
-                if (!isbn && !pages) {
+                if (!isbn && !pages && !cover) {
                         return null;
                 }
 
                 return {
                         isbn: isbn,
-                        pages: pages
+                        pages: pages,
+                        cover: cover
                 };
         };
 
@@ -1343,7 +1384,7 @@
                         'maxResults=1',
                         'printType=books',
                         'orderBy=relevance',
-                        'fields=items(selfLink,volumeInfo/industryIdentifiers,volumeInfo/pageCount)'
+                        'fields=items(selfLink,volumeInfo/industryIdentifiers,volumeInfo/pageCount,volumeInfo/imageLinks)'
                 ];
                 var url = 'https://www.googleapis.com/books/v1/volumes?' + params.join('&');
 
