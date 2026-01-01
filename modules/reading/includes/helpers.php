@@ -15,6 +15,55 @@ function prs_books_slugs_table_name() {
         return $wpdb->prefix . 'politeia_book_slugs';
 }
 
+function prs_books_has_isbn_column() {
+        static $has_column = null;
+        if ( null !== $has_column ) {
+                return $has_column;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'politeia_books';
+        $has_column = (bool) $wpdb->get_var(
+                $wpdb->prepare(
+                        'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s LIMIT 1',
+                        $table,
+                        'isbn'
+                )
+        );
+        return $has_column;
+}
+
+function prs_normalize_isbn( $isbn ) {
+        if ( null === $isbn ) {
+                return '';
+        }
+        $isbn = preg_replace( '/[^0-9Xx]/', '', (string) $isbn );
+        return $isbn ? strtoupper( $isbn ) : '';
+}
+
+function prs_update_book_isbn_if_empty( $book_id, $isbn ) {
+        global $wpdb;
+
+        $book_id = (int) $book_id;
+        if ( $book_id <= 0 || ! prs_books_has_isbn_column() ) {
+                return;
+        }
+
+        $isbn = prs_normalize_isbn( $isbn );
+        if ( '' === $isbn ) {
+                return;
+        }
+
+        $table = $wpdb->prefix . 'politeia_books';
+        $wpdb->query(
+                $wpdb->prepare(
+                        "UPDATE {$table} SET isbn = %s WHERE id = %d AND (isbn IS NULL OR isbn = '')",
+                        $isbn,
+                        $book_id
+                )
+        );
+}
+
 function prs_normalize_title( $title ) {
         if ( function_exists( 'politeia__normalize_text' ) ) {
                 return politeia__normalize_text( $title );
@@ -289,12 +338,13 @@ function prs_add_book_slug_alias( $book_id, $slug ) {
         );
 }
 
-function prs_find_or_create_book( $title, $author, $year = null, $attachment_id = null, $all_authors = null, $source = 'candidate' ) {
+function prs_find_or_create_book( $title, $author, $year = null, $isbn = '', $attachment_id = null, $all_authors = null, $source = 'candidate' ) {
         global $wpdb;
         $table = $wpdb->prefix . 'politeia_books';
 
         $title  = trim( wp_strip_all_tags( $title ) );
         $author = trim( wp_strip_all_tags( $author ) );
+        $isbn   = prs_normalize_isbn( $isbn );
 
         if ( $title === '' || $author === '' ) {
                 return new WP_Error( 'prs_invalid_book', 'Missing title/author' );
@@ -332,6 +382,9 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
                 if ( 'confirmed' === $source ) {
                         prs_sync_book_author_links( $book_id, $authors_payload, $source );
                 }
+                if ( $isbn ) {
+                        prs_update_book_isbn_if_empty( $book_id, $isbn );
+                }
                 return $book_id;
         }
 
@@ -349,6 +402,9 @@ function prs_find_or_create_book( $title, $author, $year = null, $attachment_id 
         );
         if ( $slug ) {
                 $insert_data['slug'] = $slug;
+        }
+        if ( $isbn && prs_books_has_isbn_column() ) {
+                $insert_data['isbn'] = $isbn;
         }
 
         $inserted = $wpdb->insert(
@@ -580,6 +636,14 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
 
         $attachment_id = isset( $raw_payload['cover_attachment_id'] ) ? (int) $raw_payload['cover_attachment_id'] : null;
         $all_authors   = isset( $raw_payload['authors'] ) ? $raw_payload['authors'] : null;
+        $isbn = '';
+        if ( isset( $raw_payload['isbn'] ) && $raw_payload['isbn'] !== '' ) {
+                $isbn = (string) $raw_payload['isbn'];
+        } elseif ( isset( $original['isbn'] ) && $original['isbn'] !== '' ) {
+                $isbn = (string) $original['isbn'];
+        } elseif ( isset( $row['external_isbn'] ) && $row['external_isbn'] !== '' ) {
+                $isbn = (string) $row['external_isbn'];
+        }
 
         $books_table = $wpdb->prefix . 'politeia_books';
         $slug = prs_generate_book_slug( $title, $year );
@@ -592,8 +656,11 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
         if ( $existing_id ) {
                 $book_id = (int) $existing_id;
                 prs_sync_book_author_links( $book_id, $all_authors, 'confirmed' );
+                if ( $isbn ) {
+                        prs_update_book_isbn_if_empty( $book_id, $isbn );
+                }
         } else {
-                $book_id = prs_find_or_create_book( $title, $author, $year, $attachment_id, $all_authors, 'confirmed' );
+                $book_id = prs_find_or_create_book( $title, $author, $year, $isbn, $attachment_id, $all_authors, 'confirmed' );
                 if ( is_wp_error( $book_id ) ) {
                         return $book_id;
                 }

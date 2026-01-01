@@ -32,6 +32,7 @@ class Installer {
             year SMALLINT UNSIGNED NULL,
             cover_attachment_id BIGINT UNSIGNED NULL,
             cover_url VARCHAR(800) NULL,
+            isbn VARCHAR(32) NULL,
             slug VARCHAR(255) NULL,
             normalized_title VARCHAR(255) NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

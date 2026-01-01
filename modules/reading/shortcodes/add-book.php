@@ -151,16 +151,17 @@ add_shortcode(
                                                         <?php esc_html_e( 'Multiple', 'politeia-reading' ); ?>
                                                 </button>
                                         </div>
-                                        <form id="prs-add-book-form"
-                                                class="prs-form"
-                                                method="post"
-                                                enctype="multipart/form-data"
-                                                action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $success ? ' hidden' : ''; ?>>
+                                                        <form id="prs-add-book-form"
+                                                                class="prs-form"
+                                                                method="post"
+                                                                enctype="multipart/form-data"
+                                                                action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>"<?php echo $success ? ' hidden' : ''; ?>>
                                                 <h2 id="prs-add-book-form-title" class="prs-add-book__heading"<?php echo $success ? ' hidden' : ''; ?>>
                                                         <?php echo esc_html__( 'Add to Library', 'politeia-reading' ); ?>
                                                 </h2>
                                                 <?php wp_nonce_field( 'prs_add_book', 'prs_nonce' ); ?>
-                                                <input type="hidden" name="action" value="prs_add_book_submit" />
+                                                                <input type="hidden" name="action" value="prs_add_book_submit" />
+                                                                <input type="hidden" id="prs_cover_url" name="prs_cover_url" value="" />
         
         					<table class="prs-form__table">
         						<tbody>
@@ -659,6 +660,10 @@ function prs_add_book_submit_handler() {
 
         // Upload opcional de portada
         $attachment_id = prs_handle_cover_upload( 'prs_cover' );
+        $cover_url = '';
+        if ( ! $attachment_id && isset( $_POST['prs_cover_url'] ) && $_POST['prs_cover_url'] !== '' ) {
+                $cover_url = esc_url_raw( wp_unslash( $_POST['prs_cover_url'] ) );
+        }
 
         // Normalizar y revisar si el libro canónico ya existe antes de crear candidato.
         $book_id = 0;
@@ -678,6 +683,18 @@ function prs_add_book_submit_handler() {
                                 array( '%d' )
                         );
                 }
+                if ( $book_id && $isbn ) {
+                        prs_update_book_isbn_if_empty( $book_id, $isbn );
+                }
+                if ( $user_book_id && $cover_url ) {
+                        $wpdb->update(
+                                $wpdb->prefix . 'politeia_user_books',
+                                array( 'cover_reference' => $cover_url ),
+                                array( 'id' => (int) $user_book_id ),
+                                array( '%s' ),
+                                array( '%d' )
+                        );
+                }
         } else {
         // Crear candidato y confirmar de inmediato (flujo por etapas).
         $candidate_input = array(
@@ -694,6 +711,7 @@ function prs_add_book_submit_handler() {
                 'enqueue'      => true,
                 'raw_response' => array(
                         'cover_attachment_id' => $attachment_id ? (int) $attachment_id : null,
+                        'cover_url'           => $cover_url,
                         'pages'               => $pages,
                         'authors'             => $authors,
                         'isbn'                => $isbn,
@@ -749,6 +767,15 @@ function prs_add_book_submit_handler() {
                                                 array( 'pages' => $pages ),
                                                 array( 'id' => (int) $user_book_id ),
                                                 array( '%d' ),
+                                                array( '%d' )
+                                        );
+                                }
+                                if ( $user_book_id && $cover_url ) {
+                                        $wpdb->update(
+                                                $wpdb->prefix . 'politeia_user_books',
+                                                array( 'cover_reference' => $cover_url ),
+                                                array( 'id' => (int) $user_book_id ),
+                                                array( '%s' ),
                                                 array( '%d' )
                                         );
                                 }

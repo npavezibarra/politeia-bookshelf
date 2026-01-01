@@ -72,6 +72,11 @@ January 1st, 2026, 18:42 UTC
 1. Added cover autofill from Google Books/Open Library to the add-book preview image.
 2. Adjusted cover preview sizing to keep width fixed and allow height to adapt to remote covers.
 
+January 1st, 2026, 20:56 UTC
+1. Added canonical ISBN storage to wp_politeia_books with installer + migration updates.
+2. Wired ISBN persistence through confirm and add-book flows with normalization safeguards.
+3. Guarded ISBN writes in the ChatGPT DB handler when the column is present.
+
 ------
 
 TO DO:

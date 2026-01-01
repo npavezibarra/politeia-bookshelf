@@ -661,6 +661,8 @@
         var coverPreviewWrapper = document.getElementById('prs_cover_preview');
         var coverPreviewImage = coverPreviewWrapper ? coverPreviewWrapper.querySelector('img') : null;
         var coverPlaceholder = coverPreviewImage ? coverPreviewImage.getAttribute('data-placeholder-src') : '';
+        var coverUrlInput = document.getElementById('prs_cover_url');
+        var coverFileInput = document.getElementById('prs_cover');
 
         if (!suggestionContainer) {
                 suggestionContainer = document.createElement('div');
@@ -725,6 +727,9 @@
         var setCoverPreview = function (url) {
                 if (!coverPreviewWrapper || !coverPreviewImage) {
                         return;
+                }
+                if (coverUrlInput) {
+                        coverUrlInput.value = url || '';
                 }
                 if (!url) {
                         coverPreviewWrapper.hidden = true;
@@ -866,6 +871,14 @@
                 resetSuggestions();
                 titleInput.focus();
         };
+
+        if (coverFileInput && coverUrlInput) {
+                coverFileInput.addEventListener('change', function () {
+                        if (coverFileInput.files && coverFileInput.files.length) {
+                                coverUrlInput.value = '';
+                        }
+                });
+        }
 
         var handleSuggestionKeydown = function (event) {
                 var target = event.currentTarget;

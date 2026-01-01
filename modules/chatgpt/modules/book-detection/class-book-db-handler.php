@@ -31,6 +31,9 @@ class Politeia_Book_DB_Handler {
     /** @var bool */
     protected $has_slug_col = false;
 
+    /** @var bool */
+    protected $has_isbn_col = false;
+
     /** @var string */
     protected $text_domain = 'politeia-chatgpt';
 
@@ -59,6 +62,7 @@ class Politeia_Book_DB_Handler {
         if ( $this->table_exists( $this->tbl_books ) ) {
             $this->has_norm_title  = $this->column_exists( $this->tbl_books, 'normalized_title' );
             $this->has_slug_col    = $this->column_exists( $this->tbl_books, 'slug' );
+            $this->has_isbn_col    = $this->column_exists( $this->tbl_books, 'isbn' );
         }
     }
 
@@ -388,6 +392,9 @@ class Politeia_Book_DB_Handler {
 
         // Merge extras (only scalar, without overwriting already set keys)
         foreach ( (array) $extra as $k => $v ) {
+            if ( $k === 'isbn' && ! $this->has_isbn_col ) {
+                continue;
+            }
             if ( is_scalar( $v ) && ! array_key_exists( $k, $data ) ) {
                 $data[ $k ] = sanitize_text_field( (string) $v );
                 $fmt[] = '%s';

@@ -21,6 +21,7 @@ class LegacySchema {
 
                 self::maybe_add_column( $books, 'cover_url', 'VARCHAR(800) NULL' );
                 self::maybe_add_column( $books, 'cover_source', 'VARCHAR(800) NULL' );
+                self::maybe_add_column( $books, 'isbn', 'VARCHAR(32) NULL' );
                 self::maybe_add_column( $user_books, 'cover_reference', 'TEXT NULL AFTER rating' );
                 self::maybe_add_column( $user_books, 'deleted_at', 'DATETIME NULL DEFAULT NULL AFTER updated_at' );
                 self::maybe_add_column( $sessions, 'deleted_at', 'DATETIME NULL DEFAULT NULL' );
