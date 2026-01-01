@@ -857,6 +857,31 @@ body.prs-filter-open {
         margin: 0;
 }
 
+.prs-add-book__author-add {
+        align-self: center;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2px 10px;
+        min-height: 26px;
+        border-radius: 9999px;
+        border: 1px solid #d1d5db;
+        background: #fff;
+        color: #111827;
+        font-size: 0.75rem;
+        font-weight: 600;
+        line-height: 1;
+        cursor: pointer;
+        transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.prs-add-book__author-add:hover,
+.prs-add-book__author-add:focus {
+        background: #f3f4f6;
+        border-color: #9ca3af;
+        outline: none;
+}
+
 .prs-add-book__multiple {
         margin-top: 16px;
 }
@@ -986,7 +1011,7 @@ table.prs-form__table {
 
 .prs-add-book__suggestion {
         width: 100%;
-        padding: 10px 14px;
+        padding: 12px 16px;
         background: transparent;
         border: none;
         text-align: left;
@@ -995,12 +1020,32 @@ table.prs-form__table {
         color: #1f2937;
         cursor: pointer;
         white-space: normal;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        border-bottom: 1px solid #e5e7eb;
 }
 
 .prs-add-book__suggestion:hover,
 .prs-add-book__suggestion:focus {
         background: #f3f4f6;
         outline: none;
+}
+
+.prs-add-book__suggestion:last-child {
+        border-bottom: none;
+}
+
+.prs-add-book__suggestion-title {
+        font-size: 1rem;
+        font-weight: 600;
+        color: #111827;
+}
+
+.prs-add-book__suggestion-author,
+.prs-add-book__suggestion-year {
+        font-size: 0.9rem;
+        color: #4b5563;
 }
 
 .prs-form__table input[type="file"] {

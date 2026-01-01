@@ -13,6 +13,14 @@ add_shortcode(
 
 		wp_enqueue_style( 'politeia-reading' );
                 wp_enqueue_script( 'politeia-add-book' );
+                wp_localize_script(
+                        'politeia-add-book',
+                        'PRS_ADD_BOOK_AUTOCOMPLETE',
+                        array(
+                                'ajax_url' => admin_url( 'admin-ajax.php' ),
+                                'nonce'    => wp_create_nonce( 'prs_canonical_title_search' ),
+                        )
+                );
 
                 $success                = ! empty( $_GET['prs_added'] ) && '1' === $_GET['prs_added'];
                 $success_title          = '';
@@ -196,6 +204,13 @@ add_shortcode(
                                                                                                         aria-live="polite"
                                                                                                         aria-relevant="additions removals"
                                                                                         ></div>
+                                                                                        <button
+                                                                                                        type="button"
+                                                                                                        id="prs_author_add"
+                                                                                                        class="prs-add-book__author-add"
+                                                                                                        aria-label="<?php echo esc_attr__( 'Add author', 'politeia-reading' ); ?>"
+                                                                                                        hidden
+                                                                                        ><?php echo esc_html__( 'Edit', 'politeia-reading' ); ?></button>
                                                                                         <div class="prs-add-book__author-input-wrapper">
                                                                                                 <input
                                                                                                                 type="text"
@@ -402,6 +417,100 @@ add_shortcode(
 // Handle submit (front-end safe handler)
 add_action( 'admin_post_prs_add_book_submit', 'prs_add_book_submit_handler' );
 add_action( 'admin_post_nopriv_prs_add_book_submit', 'prs_add_book_submit_handler' );
+add_action( 'wp_ajax_prs_canonical_title_search', 'prs_canonical_title_search_handler' );
+add_action( 'wp_ajax_nopriv_prs_canonical_title_search', 'prs_canonical_title_search_handler' );
+
+function prs_canonical_title_search_handler() {
+        if ( ! is_user_logged_in() ) {
+                wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+        }
+
+        $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'prs_canonical_title_search' ) ) {
+                wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+        }
+
+        $query = isset( $_POST['query'] ) ? wp_unslash( $_POST['query'] ) : '';
+        $query = prs_normalize_title( $query );
+
+        if ( '' === $query ) {
+                wp_send_json(
+                        array(
+                                'source' => 'canonical',
+                                'items'  => array(),
+                        )
+                );
+        }
+
+        global $wpdb;
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $book_authors_table = $wpdb->prefix . 'politeia_book_authors';
+        $authors_table = $wpdb->prefix . 'politeia_authors';
+        $like = $wpdb->esc_like( $query ) . '%';
+        $rows = $wpdb->get_results(
+                $wpdb->prepare(
+                        "SELECT id, title, year, slug FROM {$books_table} WHERE normalized_title LIKE %s ORDER BY year DESC LIMIT 10",
+                        $like
+                ),
+                ARRAY_A
+        );
+
+        $author_map = array();
+        if ( $rows ) {
+                $book_ids = array();
+                foreach ( $rows as $row ) {
+                        if ( ! empty( $row['id'] ) ) {
+                                $book_ids[] = (int) $row['id'];
+                        }
+                }
+
+                if ( $book_ids ) {
+                        $placeholders = implode( ',', array_fill( 0, count( $book_ids ), '%d' ) );
+                        $author_rows  = $wpdb->get_results(
+                                $wpdb->prepare(
+                                        "SELECT ba.book_id, a.name FROM {$book_authors_table} ba INNER JOIN {$authors_table} a ON a.id = ba.author_id WHERE ba.book_id IN ({$placeholders}) ORDER BY a.name ASC",
+                                        $book_ids
+                                ),
+                                ARRAY_A
+                        );
+
+                        if ( $author_rows ) {
+                                foreach ( $author_rows as $author_row ) {
+                                        $book_id = isset( $author_row['book_id'] ) ? (int) $author_row['book_id'] : 0;
+                                        $name = isset( $author_row['name'] ) ? (string) $author_row['name'] : '';
+                                        if ( $book_id && '' !== $name ) {
+                                                if ( ! isset( $author_map[ $book_id ] ) ) {
+                                                        $author_map[ $book_id ] = array();
+                                                }
+                                                $author_map[ $book_id ][] = $name;
+                                        }
+                                }
+                        }
+                }
+        }
+
+        $items = array();
+        if ( $rows ) {
+                foreach ( $rows as $row ) {
+                        $book_id = isset( $row['id'] ) ? (int) $row['id'] : 0;
+                        $year = isset( $row['year'] ) ? (int) $row['year'] : 0;
+                        $items[] = array(
+                                'id'      => $book_id,
+                                'title'   => isset( $row['title'] ) ? (string) $row['title'] : '',
+                                'year'    => $year > 0 ? $year : '',
+                                'slug'    => isset( $row['slug'] ) ? (string) $row['slug'] : '',
+                                'authors' => isset( $author_map[ $book_id ] ) ? array_values( $author_map[ $book_id ] ) : array(),
+                        );
+                }
+        }
+
+        wp_send_json(
+                array(
+                        'source' => 'canonical',
+                        'items'  => $items,
+                )
+        );
+}
 
 function prs_add_book_submit_handler() {
 	if ( ! is_user_logged_in() ) {

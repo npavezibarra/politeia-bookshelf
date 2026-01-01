@@ -48,6 +48,21 @@ January 1st, 2026, 11:24 UTC
 2. Unified normalization helpers across candidate queue, inline confirm updates, and canonical insert paths.
 3. Routed book-detection normalization through the shared canonical normalizer for consistent identity comparisons.
 
+January 1st, 2026, 12:13 UTC
+1. Added canonical title autocomplete endpoint using normalized_title and localized its nonce/URL to the add-book script.
+2. Updated add-book autocomplete to query canonical matches first and fall back to external providers only when empty.
+3. Labeled canonical suggestions distinctly while preserving existing dropdown behavior.
+
+January 1st, 2026, 12:37 UTC
+1. Expanded title autocomplete to include canonical + Google Books + Open Library results (one per source when available).
+2. Returned canonical authors via pivot lookup to support consistent dropdown metadata.
+3. Restyled dropdown items to show title + source label with separate author/year lines.
+
+January 1st, 2026, 13:14 UTC
+1. Hid author input and hint when authors are set, exposing an Edit button to reveal and prefill the input.
+2. Adjusted author Edit button styling and behavior for safer author edits.
+3. Removed source labels from autocomplete titles while preserving source order logic.
+
 ------
 
 TO DO:

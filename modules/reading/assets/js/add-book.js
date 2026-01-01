@@ -237,10 +237,14 @@
         var authorContainer = document.getElementById('prs_author_fields');
         var authorInputField = document.getElementById('prs_author_input');
         var authorList = document.getElementById('prs_author_list');
+        var authorAddButton = document.getElementById('prs_author_add');
+        var authorInputWrapper = authorContainer ? authorContainer.querySelector('.prs-add-book__author-input-wrapper') : null;
         var authorHiddenContainer = document.getElementById('prs_author_hidden');
+        var authorHint = document.getElementById('prs_author_hint');
         var removeAuthorLabel = authorContainer ? authorContainer.getAttribute('data-remove-label') : '';
         var authorValues = [];
         var authorLookup = Object.create(null);
+        var authorEditMode = false;
 
         var normalizeAuthorValue = function (value) {
                 if (value === null || typeof value === 'undefined') {
@@ -326,6 +330,31 @@
                         }
                 }
 
+                if (authorAddButton) {
+                        if (authorValues.length && !authorEditMode) {
+                                authorAddButton.hidden = false;
+                                if (authorList) {
+                                        authorList.appendChild(authorAddButton);
+                                }
+                        } else {
+                                authorAddButton.hidden = true;
+                                if (authorAddButton.parentNode) {
+                                        authorAddButton.parentNode.removeChild(authorAddButton);
+                                }
+                        }
+                }
+
+                var hideAuthorInput = authorValues.length > 0 && !authorEditMode;
+                if (authorInputWrapper) {
+                        authorInputWrapper.hidden = hideAuthorInput;
+                }
+                if (authorInputField) {
+                        authorInputField.hidden = hideAuthorInput;
+                }
+                if (authorHint) {
+                        authorHint.hidden = hideAuthorInput;
+                }
+
                 syncAuthorRequirement();
         };
 
@@ -392,6 +421,9 @@
                 if (commitRemainder) {
                         addAuthorValue(remainder);
                         remainder = '';
+                        if (authorValues.length) {
+                                authorEditMode = false;
+                        }
                 }
 
                 authorInputField.value = remainder ? remainder.replace(/^\s+/, '') : '';
@@ -433,8 +465,29 @@
                         authorInputField.value = '';
                 }
 
+                authorEditMode = false;
                 refreshAuthors();
         };
+
+        if (authorAddButton && authorInputField) {
+                authorAddButton.addEventListener('click', function (event) {
+                        if (event && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
+                        }
+                        authorEditMode = true;
+                        if (authorInputWrapper) {
+                                authorInputWrapper.hidden = false;
+                        }
+                        authorInputField.hidden = false;
+                        if (authorHint) {
+                                authorHint.hidden = false;
+                        }
+                        if (authorValues.length) {
+                                authorInputField.value = authorValues.join(', ');
+                        }
+                        authorInputField.focus();
+                });
+        }
 
         if (authorInputField) {
                 authorInputField.addEventListener('input', function (event) {
@@ -478,6 +531,9 @@
         var authorInput = getPrimaryAuthorInput();
         var yearInput = document.getElementById('prs_year');
         var suggestionContainer = document.getElementById('prs_title_suggestions');
+        var autocompleteConfig = typeof window !== 'undefined' ? window.PRS_ADD_BOOK_AUTOCOMPLETE : null;
+        var canonicalEndpoint = autocompleteConfig && autocompleteConfig.ajax_url ? autocompleteConfig.ajax_url : '';
+        var canonicalNonce = autocompleteConfig && autocompleteConfig.nonce ? autocompleteConfig.nonce : '';
 
         if (!suggestionContainer) {
                 suggestionContainer = document.createElement('div');
@@ -535,6 +591,13 @@
                 str = str.replace(/[\u0300-\u036f]/g, '');
                 str = str.replace(/[^a-z0-9]+/g, '');
                 return str;
+        };
+
+        var isStaleQuery = function (requestedQuery) {
+                if (!titleInput || !titleInput.value) {
+                        return true;
+                }
+                return titleInput.value.trim().toLowerCase() !== requestedQuery.toLowerCase();
         };
 
         var focusSuggestionAtIndex = function (index) {
@@ -607,30 +670,52 @@
                 }
 
                 for (var i = 0; i < items.length; i++) {
+                        var item = items[i];
                         var button = document.createElement('button');
                         button.type = 'button';
                         button.className = 'prs-add-book__suggestion';
                         button.setAttribute('data-index', i);
                         button.setAttribute('role', 'option');
-                        button.dataset.title = items[i].title;
-                        button.dataset.author = items[i].author;
-                        if (items[i].authors && items[i].authors.length) {
+                        button.dataset.title = item.title || '';
+                        button.dataset.author = item.author || '';
+                        if (item.authors && item.authors.length) {
                                 try {
-                                        button.dataset.authors = JSON.stringify(items[i].authors);
+                                        button.dataset.authors = JSON.stringify(item.authors);
                                 } catch (error) {
                                         button.dataset.authors = '';
                                 }
                         }
-                        button.dataset.year = items[i].year;
-                        var authorsLabel = items[i].authors && items[i].authors.length ? items[i].authors.join(', ') : items[i].author;
-                        button.textContent = items[i].title + ' - ' + authorsLabel + ' - ' + items[i].year;
+                        button.dataset.year = item.year || '';
+                        if (item.source) {
+                                button.classList.add('prs-add-book__suggestion--' + item.source);
+                        }
+
+                        var titleLine = document.createElement('span');
+                        titleLine.className = 'prs-add-book__suggestion-title';
+                        titleLine.textContent = item.title || '';
+                        button.appendChild(titleLine);
+
+                        var authorsLabel = item.authors && item.authors.length ? item.authors.join(', ') : (item.author || '');
+                        if (authorsLabel) {
+                                var authorLine = document.createElement('span');
+                                authorLine.className = 'prs-add-book__suggestion-author';
+                                authorLine.textContent = authorsLabel;
+                                button.appendChild(authorLine);
+                        }
+
+                        if (item.year) {
+                                var yearLine = document.createElement('span');
+                                yearLine.className = 'prs-add-book__suggestion-year';
+                                yearLine.textContent = item.year;
+                                button.appendChild(yearLine);
+                        }
                         button.addEventListener('keydown', handleSuggestionKeydown);
                         button.addEventListener('click', (function (suggestion) {
                                 return function (clickEvent) {
                                         clickEvent.preventDefault();
                                         selectSuggestion(suggestion);
                                 };
-                        })(items[i]));
+                        })(item));
                         suggestionContainer.appendChild(button);
                 }
 
@@ -648,19 +733,68 @@
                 return match ? match[0] : '';
         };
 
-        var fetchSuggestions = function (query) {
-                if (!query) {
-                        clearSuggestions();
-                        return;
+        var fetchCanonicalSuggestions = function (query, controller) {
+                if (!canonicalEndpoint || !canonicalNonce) {
+                        return Promise.resolve([]);
                 }
 
-                cancelPendingRequest();
-                resetSuggestions();
+                var params = new window.URLSearchParams();
+                params.append('action', 'prs_canonical_title_search');
+                params.append('nonce', canonicalNonce);
+                params.append('query', query);
 
-                abortController = supportsAbortController ? new AbortController() : null;
-                lastFetchedQuery = query;
-                var requestedQuery = query;
+                var fetchOptions = {
+                        method: 'POST',
+                        headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: params.toString()
+                };
+                if (controller) {
+                        fetchOptions.signal = controller.signal;
+                }
 
+                return fetch(canonicalEndpoint, fetchOptions)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                var payload = data && data.data ? data.data : data;
+                                if (!payload || !payload.items || !payload.items.length) {
+                                        return [];
+                                }
+
+                                var items = [];
+                                for (var i = 0; i < payload.items.length; i++) {
+                                        var item = payload.items[i];
+                                        if (!item || !item.title) {
+                                                continue;
+                                        }
+                                        var authors = Array.isArray(item.authors) ? item.authors : [];
+                                        items.push({
+                                                id: item.id,
+                                                title: item.title,
+                                                year: item.year || '',
+                                                slug: item.slug || '',
+                                                author: authors.length ? authors[0] : '',
+                                                authors: authors,
+                                                source: 'canonical'
+                                        });
+                                }
+                                return items;
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        throw error;
+                                }
+                                return [];
+                        });
+        };
+
+        var fetchGoogleSuggestions = function (query, controller) {
                 var baseUrl = 'https://www.googleapis.com/books/v1/volumes';
                 var params = [
                         'q=' + encodeURIComponent('intitle:' + query),
@@ -671,12 +805,11 @@
                 ];
                 var url = baseUrl + '?' + params.join('&');
                 var fetchOptions = {};
-                var currentController = abortController;
-                if (currentController) {
-                        fetchOptions.signal = currentController.signal;
+                if (controller) {
+                        fetchOptions.signal = controller.signal;
                 }
 
-                fetch(url, fetchOptions)
+                return fetch(url, fetchOptions)
                         .then(function (response) {
                                 if (!response.ok) {
                                         throw new Error('Request failed');
@@ -685,8 +818,7 @@
                         })
                         .then(function (data) {
                                 if (!data || !data.items || !data.items.length) {
-                                        resetSuggestions();
-                                        return;
+                                        return [];
                                 }
 
                                 var docs = data.items;
@@ -747,12 +879,169 @@
                                         }
                                 }
 
-                                if (!items.length) {
-                                        resetSuggestions();
+                                return items;
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        throw error;
+                                }
+                                return [];
+                        });
+        };
+
+        var fetchOpenLibrarySuggestions = function (query, controller) {
+                var baseUrl = 'https://openlibrary.org/search.json';
+                var params = [
+                        'title=' + encodeURIComponent(query),
+                        'limit=6'
+                ];
+                var url = baseUrl + '?' + params.join('&');
+                var fetchOptions = {};
+                if (controller) {
+                        fetchOptions.signal = controller.signal;
+                }
+
+                return fetch(url, fetchOptions)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                if (!data || !data.docs || !data.docs.length) {
+                                        return [];
+                                }
+
+                                var docs = data.docs;
+                                var items = [];
+                                var seen = Object.create(null);
+
+                                for (var i = 0; i < docs.length; i++) {
+                                        var doc = docs[i];
+                                        if (!doc) {
+                                                continue;
+                                        }
+
+                                        var title = doc.title ? String(doc.title).trim() : '';
+                                        if (!title) {
+                                                continue;
+                                        }
+
+                                        var authors = [];
+                                        if (doc.author_name && doc.author_name.length) {
+                                                for (var authorIndex = 0; authorIndex < doc.author_name.length; authorIndex++) {
+                                                        var candidate = String(doc.author_name[authorIndex]).trim();
+                                                        if (!candidate) {
+                                                                continue;
+                                                        }
+                                                        if (authors.indexOf(candidate) === -1) {
+                                                                authors.push(candidate);
+                                                        }
+                                                }
+                                        }
+
+                                        var author = authors.length ? authors[0] : '';
+
+                                        var year = '';
+                                        if (doc.first_publish_year) {
+                                                year = String(doc.first_publish_year);
+                                        } else if (doc.publish_year && doc.publish_year.length) {
+                                                year = String(doc.publish_year[0]);
+                                        }
+
+                                        if (!author || !year) {
+                                                continue;
+                                        }
+
+                                        var key = normalizeForComparison(title) + '|' + normalizeForComparison(authors.join('|'));
+                                        if (seen[key]) {
+                                                continue;
+                                        }
+                                        seen[key] = true;
+
+                                        items.push({
+                                                title: title,
+                                                author: author,
+                                                authors: authors,
+                                                year: year,
+                                                source: 'openlibrary'
+                                        });
+
+                                        if (items.length >= 6) {
+                                                break;
+                                        }
+                                }
+
+                                return items;
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        throw error;
+                                }
+                                return [];
+                        });
+        };
+
+        var fetchSuggestions = function (query) {
+                if (!query) {
+                        clearSuggestions();
+                        return;
+                }
+
+                cancelPendingRequest();
+                resetSuggestions();
+
+                abortController = supportsAbortController ? new AbortController() : null;
+                lastFetchedQuery = query;
+                var requestedQuery = query;
+                var currentController = abortController;
+
+                fetchCanonicalSuggestions(query, currentController)
+                        .then(function (canonicalItems) {
+                                if (isStaleQuery(requestedQuery)) {
+                                        return null;
+                                }
+                                return Promise.all([
+                                        Promise.resolve(canonicalItems || []),
+                                        fetchGoogleSuggestions(query, currentController),
+                                        fetchOpenLibrarySuggestions(query, currentController)
+                                ]);
+                        })
+                        .then(function (results) {
+                                if (!results) {
                                         return;
                                 }
 
-                                if (titleInput.value && titleInput.value.trim().toLowerCase() !== requestedQuery.toLowerCase()) {
+                                if (isStaleQuery(requestedQuery)) {
+                                        return;
+                                }
+
+                                var canonicalItems = results[0] || [];
+                                var googleItems = results[1] || [];
+                                var openLibraryItems = results[2] || [];
+                                var items = [];
+
+                                if (canonicalItems.length) {
+                                        var canonicalItem = canonicalItems[0];
+                                        canonicalItem.source = 'canonical';
+                                        items.push(canonicalItem);
+                                }
+
+                                if (googleItems.length) {
+                                        var googleItem = googleItems[0];
+                                        googleItem.source = 'googlebooks';
+                                        items.push(googleItem);
+                                }
+
+                                if (openLibraryItems.length) {
+                                        var openItem = openLibraryItems[0];
+                                        openItem.source = 'openlibrary';
+                                        items.push(openItem);
+                                }
+
+                                if (!items.length) {
+                                        resetSuggestions();
                                         return;
                                 }
 
