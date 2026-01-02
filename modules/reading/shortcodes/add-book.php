@@ -28,11 +28,16 @@ add_shortcode(
                 $success_year           = null;
                 $success_pages          = null;
                 $success_cover_url      = '';
+                $duplicate_message      = '';
                 $multiple_mode_content  = '';
                 $multiple_shortcode_tag = 'politeia_chatgpt_input';
 
                 if ( shortcode_exists( $multiple_shortcode_tag ) ) {
                         $multiple_mode_content = do_shortcode( '[' . $multiple_shortcode_tag . ']' );
+                }
+
+                if ( ! empty( $_GET['prs_error'] ) && $_GET['prs_error'] === 'duplicate' ) {
+                        $duplicate_message = esc_html__( 'Already in your library', 'politeia-reading' );
                 }
 
 		if ( $success ) {
@@ -182,6 +187,12 @@ add_shortcode(
         											aria-label="<?php esc_attr_e( 'Book suggestions', 'politeia-reading' ); ?>"
         											aria-hidden="true"
         										></div>
+                                                                                <div
+                                                                                        id="prs_add_book_duplicate"
+                                                                                        class="prs-add-book__inline-warning"
+                                                                                        data-default-message="<?php echo esc_attr__( 'Already in your library', 'politeia-reading' ); ?>"
+                                                                                        <?php echo $duplicate_message ? '' : 'hidden'; ?>
+                                                                                ><?php echo esc_html( $duplicate_message ); ?></div>
         									</div>
         								</td>
         							</tr>
@@ -471,6 +482,8 @@ add_action( 'admin_post_prs_add_book_submit', 'prs_add_book_submit_handler' );
 add_action( 'admin_post_nopriv_prs_add_book_submit', 'prs_add_book_submit_handler' );
 add_action( 'wp_ajax_prs_canonical_title_search', 'prs_canonical_title_search_handler' );
 add_action( 'wp_ajax_nopriv_prs_canonical_title_search', 'prs_canonical_title_search_handler' );
+add_action( 'wp_ajax_prs_check_user_book', 'prs_check_user_book_status' );
+add_action( 'wp_ajax_prs_check_user_book_identity', 'prs_check_user_book_identity' );
 
 function prs_canonical_title_search_handler() {
         if ( ! is_user_logged_in() ) {
@@ -560,6 +573,138 @@ function prs_canonical_title_search_handler() {
                 array(
                         'source' => 'canonical',
                         'items'  => $items,
+                )
+        );
+}
+
+function prs_check_user_book_status() {
+        if ( ! is_user_logged_in() ) {
+                wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+        }
+
+        $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'prs_canonical_title_search' ) ) {
+                wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+        }
+
+        $book_id = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+        if ( $book_id <= 0 ) {
+                wp_send_json_success(
+                        array(
+                                'exists'  => false,
+                                'allowed' => true,
+                        )
+                );
+        }
+
+        $user_id = get_current_user_id();
+        global $wpdb;
+        $table = $wpdb->prefix . 'politeia_user_books';
+        $existing = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$table} WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+                        $user_id,
+                        $book_id
+                )
+        );
+
+        if ( $existing ) {
+                wp_send_json_success(
+                        array(
+                                'exists'  => true,
+                                'allowed' => false,
+                                'message' => __( 'Already in your library', 'politeia-reading' ),
+                        )
+                );
+        }
+
+        wp_send_json_success(
+                array(
+                        'exists'  => false,
+                        'allowed' => true,
+                )
+        );
+}
+
+function prs_check_user_book_identity() {
+        if ( ! is_user_logged_in() ) {
+                wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+        }
+
+        $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
+        if ( ! wp_verify_nonce( $nonce, 'prs_canonical_title_search' ) ) {
+                wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+        }
+
+        $title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+        $year  = isset( $_POST['year'] ) && '' !== $_POST['year'] ? absint( $_POST['year'] ) : null;
+        $isbn  = isset( $_POST['isbn'] ) ? sanitize_text_field( wp_unslash( $_POST['isbn'] ) ) : '';
+        $authors = array();
+        if ( isset( $_POST['authors'] ) ) {
+                $raw_authors = wp_unslash( $_POST['authors'] );
+                if ( is_array( $raw_authors ) ) {
+                        $authors = $raw_authors;
+                } elseif ( is_string( $raw_authors ) ) {
+                        $authors = preg_split( '/[;,\|]+/', (string) $raw_authors );
+                }
+        }
+
+        if ( '' === $title || empty( $authors ) ) {
+                wp_send_json_success(
+                        array(
+                                'exists'  => false,
+                                'allowed' => true,
+                        )
+                );
+        }
+
+        $book_id = 0;
+        $isbn = prs_normalize_isbn( $isbn );
+        if ( $isbn ) {
+                $book_id = (int) prs_get_book_id_by_isbn( $isbn );
+        }
+        if ( ! $book_id ) {
+                $book_id = (int) prs_get_book_id_by_identity( $title, $authors, $year );
+        }
+
+        if ( ! $book_id ) {
+                wp_send_json_success(
+                        array(
+                                'exists'  => false,
+                                'allowed' => true,
+                        )
+                );
+        }
+
+        $user_id = get_current_user_id();
+        global $wpdb;
+        $table = $wpdb->prefix . 'politeia_user_books';
+        $existing = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$table} WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+                        $user_id,
+                        $book_id
+                )
+        );
+
+        if ( $existing ) {
+                $canonical_isbn = prs_get_book_isbn( $book_id );
+                $allow_duplicate = ( '' !== $isbn && '' !== $canonical_isbn && $isbn !== $canonical_isbn );
+                if ( ! $allow_duplicate ) {
+                        wp_send_json_success(
+                                array(
+                                        'exists'  => true,
+                                        'allowed' => false,
+                                        'message' => __( 'Already in your library', 'politeia-reading' ),
+                                )
+                        );
+                }
+        }
+
+        wp_send_json_success(
+                array(
+                        'exists'  => false,
+                        'allowed' => true,
                 )
         );
 }
@@ -667,6 +812,8 @@ function prs_add_book_submit_handler() {
                 exit;
         }
 
+        $all_authors = array_merge( array( $primary_author ), $authors );
+
         // Upload opcional de portada
         $attachment_id = prs_handle_cover_upload( 'prs_cover' );
         $cover_url = '';
@@ -676,12 +823,40 @@ function prs_add_book_submit_handler() {
 
         // Normalizar y revisar si el libro canónico ya existe antes de crear candidato.
         $book_id = 0;
+        if ( $isbn ) {
+                $book_id = (int) prs_get_book_id_by_isbn( $isbn );
+        }
         $slug = prs_generate_book_slug( $title, $year );
-        if ( $slug ) {
+        if ( ! $book_id && $slug ) {
                 $book_id = (int) prs_get_book_id_by_slug( $slug );
+        }
+        if ( ! $book_id ) {
+                $book_id = (int) prs_get_book_id_by_identity( $title, $all_authors, $year );
         }
 
         if ( $book_id ) {
+                $existing_user_book_id = (int) $wpdb->get_var(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$wpdb->prefix}politeia_user_books WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+                                $user_id,
+                                $book_id
+                        )
+                );
+                if ( $existing_user_book_id ) {
+                        $input_isbn     = prs_normalize_isbn( $isbn );
+                        $canonical_isbn = prs_get_book_isbn( $book_id );
+                        $allow_duplicate = ( '' !== $input_isbn && '' !== $canonical_isbn && $input_isbn !== $canonical_isbn );
+                        if ( ! $allow_duplicate ) {
+                                $redirect_url = wp_get_referer() ?: home_url();
+                                $query_args   = array(
+                                        'prs_error'       => 'duplicate',
+                                        'prs_error_title' => $title,
+                                );
+                                wp_safe_redirect( add_query_arg( $query_args, $redirect_url ) );
+                                exit;
+                        }
+                }
+
                 $user_book_id = prs_ensure_user_book( $user_id, (int) $book_id );
                 if ( $user_book_id && null !== $pages ) {
                         $wpdb->update(

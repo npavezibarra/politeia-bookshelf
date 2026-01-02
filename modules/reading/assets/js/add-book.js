@@ -664,6 +664,9 @@
         var coverPlaceholder = coverPreviewImage ? coverPreviewImage.getAttribute('data-placeholder-src') : '';
         var coverUrlInput = document.getElementById('prs_cover_url');
         var coverFileInput = document.getElementById('prs_cover');
+        var duplicateNotice = document.getElementById('prs_add_book_duplicate');
+        var addBookForm = document.getElementById('prs-add-book-form');
+        var submitButton = addBookForm ? addBookForm.querySelector('button[type="submit"]') : null;
 
         if (!suggestionContainer) {
                 suggestionContainer = document.createElement('div');
@@ -691,6 +694,8 @@
         var lastFetchedIsbn = '';
         var lastSuggestionItems = [];
         var lastSelectionToken = 0;
+        var duplicateAbortController = null;
+        var duplicateIdentityAbortController = null;
 
         var resetSuggestions = function () {
                 if (!suggestionContainer) {
@@ -734,6 +739,25 @@
                 }
                 return String(value).replace(/[^0-9Xx]/g, '').toUpperCase();
         };
+
+        var setDuplicateState = function (isDuplicate, message) {
+                if (duplicateNotice) {
+                        var defaultMessage = duplicateNotice.getAttribute('data-default-message') || '';
+                        duplicateNotice.textContent = message || defaultMessage;
+                        duplicateNotice.hidden = !isDuplicate;
+                }
+                if (submitButton) {
+                        submitButton.disabled = !!isDuplicate;
+                }
+        };
+
+        var clearDuplicateState = function () {
+                setDuplicateState(false, '');
+        };
+
+        if (duplicateNotice && !duplicateNotice.hidden) {
+                setDuplicateState(true, duplicateNotice.textContent || '');
+        }
 
 
         var resetIsbnSuggestions = function () {
@@ -923,6 +947,12 @@
                 }
 
                 applySuggestionValues(resolved);
+                checkUserBookIdentity({
+                        title: resolved.title || '',
+                        authors: resolved.authors || [],
+                        year: resolved.year || '',
+                        isbn: resolved.isbn || ''
+                });
 
                 if (!getFieldValue(isbnInput) || !getFieldValue(pagesInput)) {
                         fetchGoogleDetailsForSelection(resolved).then(function (details) {
@@ -964,6 +994,125 @@
                 }
                 coverPreviewImage.src = url;
                 coverPreviewWrapper.hidden = false;
+        };
+
+        var checkUserBookStatus = function (item) {
+                if (!item || item.source !== 'canonical' || !item.id) {
+                        clearDuplicateState();
+                        return;
+                }
+                if (!canonicalEndpoint || !canonicalNonce) {
+                        return;
+                }
+
+                if (duplicateAbortController && typeof duplicateAbortController.abort === 'function') {
+                        duplicateAbortController.abort();
+                }
+                duplicateAbortController = supportsAbortController ? new AbortController() : null;
+
+                var params = new window.URLSearchParams();
+                params.append('action', 'prs_check_user_book');
+                params.append('nonce', canonicalNonce);
+                params.append('book_id', item.id);
+
+                var fetchOptions = {
+                        method: 'POST',
+                        headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: params.toString()
+                };
+                if (duplicateAbortController) {
+                        fetchOptions.signal = duplicateAbortController.signal;
+                }
+
+                fetch(canonicalEndpoint, fetchOptions)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                var payload = data && data.data ? data.data : data;
+                                if (!payload) {
+                                        clearDuplicateState();
+                                        return;
+                                }
+                                if (payload.exists && payload.allowed === false) {
+                                        setDuplicateState(true, payload.message || '');
+                                        return;
+                                }
+                                clearDuplicateState();
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        return;
+                                }
+                                clearDuplicateState();
+                        });
+        };
+
+        var checkUserBookIdentity = function (details) {
+                if (!details || !details.title || !details.authors || !details.authors.length) {
+                        clearDuplicateState();
+                        return;
+                }
+                if (!canonicalEndpoint || !canonicalNonce) {
+                        return;
+                }
+
+                if (duplicateIdentityAbortController && typeof duplicateIdentityAbortController.abort === 'function') {
+                        duplicateIdentityAbortController.abort();
+                }
+                duplicateIdentityAbortController = supportsAbortController ? new AbortController() : null;
+
+                var params = new window.URLSearchParams();
+                params.append('action', 'prs_check_user_book_identity');
+                params.append('nonce', canonicalNonce);
+                params.append('title', details.title || '');
+                params.append('year', details.year || '');
+                params.append('isbn', details.isbn || '');
+                for (var i = 0; i < details.authors.length; i++) {
+                        params.append('authors[]', details.authors[i]);
+                }
+
+                var fetchOptions = {
+                        method: 'POST',
+                        headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                        },
+                        body: params.toString()
+                };
+                if (duplicateIdentityAbortController) {
+                        fetchOptions.signal = duplicateIdentityAbortController.signal;
+                }
+
+                fetch(canonicalEndpoint, fetchOptions)
+                        .then(function (response) {
+                                if (!response.ok) {
+                                        throw new Error('Request failed');
+                                }
+                                return response.json();
+                        })
+                        .then(function (data) {
+                                var payload = data && data.data ? data.data : data;
+                                if (!payload) {
+                                        clearDuplicateState();
+                                        return;
+                                }
+                                if (payload.exists && payload.allowed === false) {
+                                        setDuplicateState(true, payload.message || '');
+                                        return;
+                                }
+                                clearDuplicateState();
+                        })
+                        .catch(function (error) {
+                                if (error && error.name === 'AbortError') {
+                                        return;
+                                }
+                                clearDuplicateState();
+                        });
         };
 
         var findSupplementalDetails = function (item) {
@@ -1085,6 +1234,21 @@
                 var selectionToken = lastSelectionToken;
 
                 applySuggestionValues(item);
+                checkUserBookStatus(item);
+                if (item.source !== 'canonical') {
+                        var itemAuthors = [];
+                        if (item.authors && item.authors.length) {
+                                itemAuthors = item.authors;
+                        } else if (item.author) {
+                                itemAuthors = [item.author];
+                        }
+                        checkUserBookIdentity({
+                                title: item.title || '',
+                                authors: itemAuthors,
+                                year: item.year || '',
+                                isbn: item.isbn || ''
+                        });
+                }
 
                 if (!getFieldValue(isbnInput) || !getFieldValue(pagesInput)) {
                         fetchGoogleDetailsForSelection(item).then(function (details) {
@@ -2042,6 +2206,7 @@
 
         titleInput.addEventListener('input', function (event) {
                 var query = event.target.value.trim();
+                clearDuplicateState();
 
                 if (debounceTimer) {
                         window.clearTimeout(debounceTimer);
@@ -2072,6 +2237,7 @@
                 isbnInput.addEventListener('input', function (event) {
                         var raw = event.target.value;
                         var normalized = normalizeIsbnInput(raw);
+                        clearDuplicateState();
 
                         if (isbnDebounceTimer) {
                                 window.clearTimeout(isbnDebounceTimer);
@@ -2121,6 +2287,15 @@
                                 }
                                 resetIsbnSuggestions();
                         }, 100);
+                });
+        }
+
+        if (addBookForm) {
+                addBookForm.addEventListener('submit', function (event) {
+                        if (duplicateNotice && !duplicateNotice.hidden) {
+                                event.preventDefault();
+                                event.stopPropagation();
+                        }
                 });
         }
 

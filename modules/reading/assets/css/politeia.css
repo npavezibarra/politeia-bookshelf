@@ -1006,6 +1006,12 @@ table.prs-form__table {
         position: relative;
 }
 
+.prs-add-book__inline-warning {
+        margin-top: 6px;
+        font-size: 0.85rem;
+        color: #dc2626;
+}
+
 .prs-add-book__field-inline {
         display: flex;
         align-items: center;

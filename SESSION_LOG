@@ -86,6 +86,11 @@ January 1st, 2026, 21:22 UTC
 2. Confirmed ISBN and Title inputs both populate the rest of the form while keeping Title editable.
 3. Removed temporary ISBN debug output after validation.
 
+January 1st, 2026, 22:08 UTC
+1. Added duplicate detection to block re-adding books already in a user’s library (server-side guard + client-side check).
+2. Introduced canonical identity matching (normalized title + author hashes + optional year, with ISBN override) to detect duplicates even when not selecting canonical suggestions.
+3. Displayed an inline “Already in your library” warning under Title and disabled submit when triggered.
+
 ------
 
 TO DO:

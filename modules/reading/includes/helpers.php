@@ -64,6 +64,126 @@ function prs_update_book_isbn_if_empty( $book_id, $isbn ) {
         );
 }
 
+function prs_get_book_id_by_isbn( $isbn ) {
+        if ( ! prs_books_has_isbn_column() ) {
+                return 0;
+        }
+
+        $isbn = prs_normalize_isbn( $isbn );
+        if ( '' === $isbn ) {
+                return 0;
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'politeia_books';
+        $book_id = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT id FROM {$table} WHERE isbn = %s LIMIT 1",
+                        $isbn
+                )
+        );
+        return $book_id ? (int) $book_id : 0;
+}
+
+function prs_get_book_isbn( $book_id ) {
+        if ( ! prs_books_has_isbn_column() ) {
+                return '';
+        }
+
+        $book_id = (int) $book_id;
+        if ( $book_id <= 0 ) {
+                return '';
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'politeia_books';
+        $isbn = $wpdb->get_var(
+                $wpdb->prepare(
+                        "SELECT isbn FROM {$table} WHERE id = %d LIMIT 1",
+                        $book_id
+                )
+        );
+        return prs_normalize_isbn( $isbn );
+}
+
+function prs_get_author_hashes_from_names( $authors ) {
+        if ( null === $authors ) {
+                return array();
+        }
+
+        if ( is_string( $authors ) ) {
+                $parts   = preg_split( '/[;,\|]+/', $authors );
+                $authors = is_array( $parts ) ? $parts : array( $authors );
+        } elseif ( $authors instanceof \Traversable ) {
+                $authors = iterator_to_array( $authors, false );
+        } elseif ( ! is_array( $authors ) ) {
+                $authors = array( $authors );
+        }
+
+        $hashes = array();
+        foreach ( $authors as $raw_author ) {
+                $name = trim( wp_strip_all_tags( (string) $raw_author ) );
+                if ( '' === $name ) {
+                        continue;
+                }
+                $normalized = function_exists( 'politeia__normalize_text' ) ? politeia__normalize_text( $name ) : strtolower( $name );
+                $normalized = ( '' !== trim( (string) $normalized ) ) ? $normalized : null;
+                $hash_source = $normalized ?: strtolower( $name );
+                if ( '' === $hash_source ) {
+                        continue;
+                }
+                $hashes[] = hash( 'sha256', $hash_source );
+        }
+
+        return array_values( array_unique( $hashes ) );
+}
+
+function prs_get_book_id_by_identity( $title, $authors, $year = null ) {
+        $normalized_title = prs_normalize_title( $title );
+        if ( '' === $normalized_title ) {
+                return 0;
+        }
+
+        $hashes = prs_get_author_hashes_from_names( $authors );
+        if ( empty( $hashes ) ) {
+                return 0;
+        }
+
+        global $wpdb;
+        $books_table = $wpdb->prefix . 'politeia_books';
+        $pivot_table = $wpdb->prefix . 'politeia_book_authors';
+        $authors_table = $wpdb->prefix . 'politeia_authors';
+
+        $placeholders = implode( ', ', array_fill( 0, count( $hashes ), '%s' ) );
+        $year_clause = '';
+        $params = array_merge( array( $normalized_title ), $hashes );
+
+        if ( null !== $year && '' !== $year ) {
+                $year_clause = ' AND b.year = %d';
+                $params[] = (int) $year;
+        }
+
+        $params[] = count( $hashes );
+        $params[] = count( $hashes );
+
+        $sql = "
+                SELECT b.id
+                FROM {$books_table} b
+                INNER JOIN {$pivot_table} ba ON ba.book_id = b.id
+                INNER JOIN {$authors_table} a ON a.id = ba.author_id
+                WHERE b.normalized_title = %s
+                  AND a.name_hash IN ({$placeholders})
+                  {$year_clause}
+                GROUP BY b.id
+                HAVING COUNT(DISTINCT a.name_hash) = %d
+                   AND (SELECT COUNT(*) FROM {$pivot_table} WHERE book_id = b.id) = %d
+                LIMIT 1
+        ";
+
+        $book_id = $wpdb->get_var( $wpdb->prepare( $sql, $params ) );
+        return $book_id ? (int) $book_id : 0;
+}
+
 function prs_normalize_title( $title ) {
         if ( function_exists( 'politeia__normalize_text' ) ) {
                 return politeia__normalize_text( $title );
