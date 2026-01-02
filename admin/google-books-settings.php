@@ -10,6 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! defined( 'POLITEIA_BOOKSHELF_GOOGLE_BOOKS_OPTION' ) ) {
     define( 'POLITEIA_BOOKSHELF_GOOGLE_BOOKS_OPTION', 'politeia_bookshelf_google_api_key' );
 }
+if ( ! defined( 'POLITEIA_BOOKSHELF_FORCE_HTTP_COVERS_OPTION' ) ) {
+    define( 'POLITEIA_BOOKSHELF_FORCE_HTTP_COVERS_OPTION', 'politeia_bookshelf_force_http_covers' );
+}
 
 if ( ! function_exists( 'politeia_bookshelf_get_google_books_api_key' ) ) {
     /**
@@ -31,6 +34,29 @@ if ( ! function_exists( 'politeia_bookshelf_get_google_books_api_key' ) ) {
     }
 }
 
+if ( ! function_exists( 'politeia_bookshelf_force_http_covers' ) ) {
+    /**
+     * Check if single-book cover URLs should be forced to HTTP (test-only).
+     *
+     * @return bool
+     */
+    function politeia_bookshelf_force_http_covers() {
+        $value = get_option( POLITEIA_BOOKSHELF_FORCE_HTTP_COVERS_OPTION, false );
+        return in_array( $value, array( '1', 1, true, 'on' ), true );
+    }
+}
+
+/**
+ * Sanitize on/off toggles stored as options.
+ *
+ * @param mixed $value Submitted value.
+ *
+ * @return string
+ */
+function politeia_bookshelf_sanitize_toggle( $value ) {
+    return ! empty( $value ) ? '1' : '0';
+}
+
 /**
  * Register Google Books API settings section and field.
  */
@@ -42,6 +68,16 @@ function politeia_bookshelf_register_google_books_settings() {
             'type'              => 'string',
             'sanitize_callback' => 'sanitize_text_field',
             'default'           => '',
+        ]
+    );
+
+    register_setting(
+        'politeia_bookshelf_test_settings',
+        POLITEIA_BOOKSHELF_FORCE_HTTP_COVERS_OPTION,
+        [
+            'type'              => 'string',
+            'sanitize_callback' => 'politeia_bookshelf_sanitize_toggle',
+            'default'           => '0',
         ]
     );
 
@@ -58,6 +94,21 @@ function politeia_bookshelf_register_google_books_settings() {
         'politeia_bookshelf_render_google_books_api_key_field',
         'politeia_bookshelf_google_books',
         'politeia_bookshelf_google_books_section'
+    );
+
+    add_settings_section(
+        'politeia_bookshelf_test_section',
+        __( 'Test Settings', 'politeia-bookshelf' ),
+        'politeia_bookshelf_render_test_section_intro',
+        'politeia_bookshelf_test_settings'
+    );
+
+    add_settings_field(
+        'politeia_bookshelf_force_http_covers_field',
+        __( 'Force HTTP covers on single book page', 'politeia-bookshelf' ),
+        'politeia_bookshelf_render_force_http_covers_field',
+        'politeia_bookshelf_test_settings',
+        'politeia_bookshelf_test_section'
     );
 }
 add_action( 'admin_init', 'politeia_bookshelf_register_google_books_settings' );
@@ -107,6 +158,26 @@ function politeia_bookshelf_render_google_books_api_key_field() {
 }
 
 /**
+ * Output the description for the Test settings section.
+ */
+function politeia_bookshelf_render_test_section_intro() {
+    echo '<p>' . esc_html__( 'Use these options for local development only. Leave them disabled on production.', 'politeia-bookshelf' ) . '</p>';
+}
+
+/**
+ * Render the force HTTP covers toggle.
+ */
+function politeia_bookshelf_render_force_http_covers_field() {
+    $enabled = politeia_bookshelf_force_http_covers();
+    printf(
+        '<label><input type="checkbox" name="%1$s" value="1" %2$s /> %3$s</label>',
+        esc_attr( POLITEIA_BOOKSHELF_FORCE_HTTP_COVERS_OPTION ),
+        checked( $enabled, true, false ),
+        esc_html__( 'Force HTTP image URLs on single book template (local only)', 'politeia-bookshelf' )
+    );
+}
+
+/**
  * Render the Politeia Bookshelf admin page with navigation tabs.
  */
 function politeia_bookshelf_render_admin_page() {
@@ -124,6 +195,7 @@ function politeia_bookshelf_render_admin_page() {
     $tabs = array(
         'overview'     => __( 'Overview', 'politeia-bookshelf' ),
         'google-books' => __( 'Google Books API', 'politeia-bookshelf' ),
+        'test-settings' => __( 'Test Settings', 'politeia-bookshelf' ),
     );
 
     if ( ! array_key_exists( $current_tab, $tabs ) ) {
@@ -133,6 +205,7 @@ function politeia_bookshelf_render_admin_page() {
     $base_url      = admin_url( 'admin.php?page=politeia-bookshelf' );
     $overview_url  = $base_url;
     $google_url    = add_query_arg( 'tab', 'google-books', $base_url );
+    $test_url      = add_query_arg( 'tab', 'test-settings', $base_url );
     ?>
     <div class="wrap">
         <h1><?php esc_html_e( 'Politeia Bookshelf', 'politeia-bookshelf' ); ?></h1>
@@ -140,6 +213,7 @@ function politeia_bookshelf_render_admin_page() {
         <h2 class="nav-tab-wrapper">
             <a href="<?php echo esc_url( $overview_url ); ?>" class="nav-tab <?php echo 'overview' === $current_tab ? 'nav-tab-active' : ''; ?>"><?php echo esc_html( $tabs['overview'] ); ?></a>
             <a href="<?php echo esc_url( $google_url ); ?>" class="nav-tab <?php echo 'google-books' === $current_tab ? 'nav-tab-active' : ''; ?>"><?php echo esc_html( $tabs['google-books'] ); ?></a>
+            <a href="<?php echo esc_url( $test_url ); ?>" class="nav-tab <?php echo 'test-settings' === $current_tab ? 'nav-tab-active' : ''; ?>"><?php echo esc_html( $tabs['test-settings'] ); ?></a>
         </h2>
 
         <?php if ( 'google-books' === $current_tab ) : ?>
@@ -148,6 +222,15 @@ function politeia_bookshelf_render_admin_page() {
                 <?php
                 settings_fields( 'politeia_bookshelf_google_books' );
                 do_settings_sections( 'politeia_bookshelf_google_books' );
+                submit_button();
+                ?>
+            </form>
+        <?php elseif ( 'test-settings' === $current_tab ) : ?>
+            <?php settings_errors( 'politeia_bookshelf_test_settings' ); ?>
+            <form action="<?php echo esc_url( admin_url( 'options.php' ) ); ?>" method="post">
+                <?php
+                settings_fields( 'politeia_bookshelf_test_settings' );
+                do_settings_sections( 'politeia_bookshelf_test_settings' );
                 submit_button();
                 ?>
             </form>

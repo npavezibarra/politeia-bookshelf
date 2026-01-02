@@ -149,6 +149,8 @@ $book_cover_source  = $book_cover_source ? esc_url_raw( $book_cover_source ) : '
 $cover_url          = '';
 $cover_source       = '';
 $final_cover_id     = 0;
+$force_http_covers  = function_exists( 'politeia_bookshelf_force_http_covers' ) ? politeia_bookshelf_force_http_covers() : false;
+$cover_scheme       = $force_http_covers ? 'http' : ( is_ssl() ? 'https' : 'http' );
 
 if ( $user_cover_url ) {
         $cover_url     = $user_cover_url;
@@ -200,8 +202,9 @@ wp_localize_script(
                 'type_book'     => (string) $current_type,
                 'title'         => (string) $book->title,
                 'authors'       => $book_authors,
-                'cover_url'     => $cover_url,
-                'cover_nonce'   => $cover_actions_nonce,
+		'cover_url'     => $cover_url,
+		'force_http_covers' => $force_http_covers ? 1 : 0,
+		'cover_nonce'   => $cover_actions_nonce,
                 'user_id'       => (int) $user_id,
                 'language'      => isset( $book->language ) ? (string) $book->language : '',
                 'cover_source'  => $cover_source,
@@ -573,24 +576,37 @@ wp_add_inline_script(
                 <?php if ( $has_image ) : ?>
                         <?php
                         if ( $final_cover_id ) {
-                                $cover_image_src = wp_get_attachment_image_src( $final_cover_id, 'large' );
-                                if ( $cover_image_src ) {
-                                        $cover_alt = trim( (string) get_post_meta( $final_cover_id, '_wp_attachment_image_alt', true ) );
-                                        if ( ! $cover_alt && ! empty( $book->title ) ) {
-                                                $cover_alt = $book->title;
-                                        }
-                                        if ( ! $cover_alt ) {
-                                                $cover_alt = __( 'Book cover', 'politeia-reading' );
-                                        }
+                                $cover_alt = trim( (string) get_post_meta( $final_cover_id, '_wp_attachment_image_alt', true ) );
+                                if ( ! $cover_alt && ! empty( $book->title ) ) {
+                                        $cover_alt = $book->title;
+                                }
+                                if ( ! $cover_alt ) {
+                                        $cover_alt = __( 'Book cover', 'politeia-reading' );
+                                }
 
+                                $cover_img_src = wp_get_attachment_image_src( $final_cover_id, 'large' );
+                                $cover_img_url = $cover_img_src ? set_url_scheme( $cover_img_src[0], $cover_scheme ) : '';
+                                if ( ! $cover_img_url ) {
+                                        $fallback_src = wp_get_attachment_url( $final_cover_id );
+                                        $cover_img_url = $fallback_src ? set_url_scheme( $fallback_src, $cover_scheme ) : '';
+                                }
+                                if ( $force_http_covers && $cover_img_url ) {
+                                        $cover_img_url = preg_replace( '#^https:#', 'http:', $cover_img_url );
+                                }
+
+                                if ( $cover_img_url ) {
                                         printf(
                                                 '<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
-                                                esc_url( $cover_image_src[0] ),
+                                                esc_url( $cover_img_url ),
                                                 esc_attr( $cover_alt )
                                         );
                                 }
                         } elseif ( $cover_url ) {
                                 $fallback_alt = ! empty( $book->title ) ? $book->title : __( 'Book cover', 'politeia-reading' );
+                                $cover_url = set_url_scheme( $cover_url, $cover_scheme );
+                                if ( $force_http_covers && $cover_url ) {
+                                        $cover_url = preg_replace( '#^https:#', 'http:', $cover_url );
+                                }
                                 printf(
                                         '<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
                                         esc_url( $cover_url ),

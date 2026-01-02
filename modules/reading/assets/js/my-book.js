@@ -845,7 +845,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     if (!url || typeof url !== "string") return "";
 
     let normalized = url.replace(/\\\//g, "/").trim();
-    normalized = normalized.replace(/^http:\/\//i, "https://");
+    const forceHttp = window.PRS_BOOK && String(window.PRS_BOOK.force_http_covers) === "1";
+    if (forceHttp) {
+      normalized = normalized.replace(/^https:\/\//i, "http://");
+    } else {
+      normalized = normalized.replace(/^http:\/\//i, "https://");
+    }
 
     try {
       const parsed = new URL(normalized);
