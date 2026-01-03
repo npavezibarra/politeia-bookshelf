@@ -27,9 +27,21 @@ class Politeia_Reading_Routes {
 
 	public static function template_router( $template ) {
 		if ( get_query_var( 'prs_my_books_archive' ) ) {
+			if ( function_exists( 'politeia_bookshelf_get_selected_template_file' ) ) {
+				$custom = politeia_bookshelf_get_selected_template_file( 'my-books' );
+				if ( $custom ) {
+					return $custom;
+				}
+			}
 			return POLITEIA_READING_PATH . 'templates/archive-my-books.php';
 		}
 		if ( get_query_var( 'prs_book_slug' ) ) {
+			if ( function_exists( 'politeia_bookshelf_get_selected_template_file' ) ) {
+				$custom = politeia_bookshelf_get_selected_template_file( 'single-book' );
+				if ( $custom ) {
+					return $custom;
+				}
+			}
 			return POLITEIA_READING_PATH . 'templates/my-book-single.php';
 		}
 		return $template;
