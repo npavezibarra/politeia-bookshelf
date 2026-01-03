@@ -176,6 +176,7 @@ div#prs-note-panel {
 
 .prs-note-header .prs-pages {
         font-size: 13px;
+        margin-top: 10px;
 }
 
 #prs-note-panel .note-limit-warning {

@@ -91,6 +91,11 @@ January 1st, 2026, 22:08 UTC
 2. Introduced canonical identity matching (normalized title + author hashes + optional year, with ISBN override) to detect duplicates even when not selecting canonical suggestions.
 3. Displayed an inline “Already in your library” warning under Title and disabled submit when triggered.
 
+January 3, 2026, 14:31 UTC
+1. Documented the Reading Session Notes flow in a new report.
+2. Added per-session Add Note/Read Note buttons in the reading sessions table and wired label updates after saving.
+3. Adjusted table note behavior to open note-only mode (hide recorder header/flash styling) and added spacing for the page range.
+
 ------
 
 TO DO:

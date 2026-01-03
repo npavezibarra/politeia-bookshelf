@@ -910,14 +910,16 @@ wp_add_inline_script(
                                                 <?php
                                                 $note_button = '—';
                                                 $note_value  = isset( $s->note ) ? trim( (string) $s->note ) : '';
-                                                if ( '' !== $note_value && ! empty( $s->id ) && $current_user_id ) {
-                                                        $note_label  = esc_html__( 'Read Note', 'politeia-reading' );
-                                                        $start_attr  = ( null !== $start_page && $start_page >= 0 ) ? (string) $start_page : '';
-                                                        $end_attr    = ( null !== $end_page && $end_page >= 0 ) ? (string) $end_page : '';
-                                                        $chapter_attr = isset( $s->chapter_name ) ? trim( (string) $s->chapter_name ) : '';
+                                                if ( ! empty( $s->id ) && $current_user_id ) {
+                                                        $note_label_read = esc_html__( 'Read Note', 'politeia-reading' );
+                                                        $note_label_add  = esc_html__( 'Add Note', 'politeia-reading' );
+                                                        $note_label      = '' !== $note_value ? $note_label_read : $note_label_add;
+                                                        $start_attr      = ( null !== $start_page && $start_page >= 0 ) ? (string) $start_page : '';
+                                                        $end_attr        = ( null !== $end_page && $end_page >= 0 ) ? (string) $end_page : '';
+                                                        $chapter_attr    = isset( $s->chapter_name ) ? trim( (string) $s->chapter_name ) : '';
                                                         $book_title_attr = isset( $book->title ) ? trim( (string) $book->title ) : '';
-                                                        $note_button = sprintf(
-                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s" data-start-page="%6$s" data-end-page="%7$s" data-chapter="%8$s" data-book-title="%9$s">%5$s</button>',
+                                                        $note_button     = sprintf(
+                                                                '<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s" data-start-page="%6$s" data-end-page="%7$s" data-chapter="%8$s" data-book-title="%9$s" data-note-label-read="%10$s" data-note-label-add="%11$s">%5$s</button>',
                                                                 (int) $s->id,
                                                                 (int) $s->book_id,
                                                                 (int) $current_user_id,
@@ -926,7 +928,9 @@ wp_add_inline_script(
                                                                 esc_attr( $start_attr ),
                                                                 esc_attr( $end_attr ),
                                                                 esc_attr( $chapter_attr ),
-                                                                esc_attr( $book_title_attr )
+                                                                esc_attr( $book_title_attr ),
+                                                                esc_attr( $note_label_read ),
+                                                                esc_attr( $note_label_add )
                                                         );
                                                 }
                                                 ?>

@@ -518,7 +518,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       document.dispatchEvent(new CustomEvent(name, { detail: detail || {} }));
     };
 
-    const isNoteOnlyMode = mode => mode === "edit" || mode === "read";
+    const isNoteOnlyMode = mode => mode === "edit" || mode === "read" || mode === "table";
 
     const applyNoteOnlyMode = mode => {
       const noteOnly = isNoteOnlyMode(mode);
@@ -705,6 +705,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
                 qsa('.prs-sr-read-note-btn').forEach(btn => {
                   if (String(btn.dataset.sessionId || "") === currentSessionId) {
                     btn.dataset.note = encodeNoteDataAttr(noteContent);
+                    const readLabel = btn.dataset.noteLabelRead;
+                    if (readLabel) {
+                      btn.textContent = readLabel;
+                    }
                   }
                 });
               }
@@ -812,7 +816,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         },
       }));
 
-      assignDataset({ sessionId, bookId, userId, mode: "edit", startPage, endPage, chapter, bookTitle });
+      const noteMode = "table";
+      assignDataset({ sessionId, bookId, userId, mode: noteMode, startPage, endPage, chapter, bookTitle });
 
       document.dispatchEvent(new CustomEvent("prs-sr-flash:showNoteForSession", {
         detail: {
@@ -821,7 +826,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           userId,
           note: noteHtml,
           focus: true,
-          mode: "edit",
+          mode: noteMode,
           startPage,
           endPage,
           chapter,
