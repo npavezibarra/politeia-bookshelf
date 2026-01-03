@@ -87,59 +87,54 @@ add_shortcode(
         			aria-labelledby="<?php echo esc_attr( $success ? 'prs-add-book-success-title' : 'prs-add-book-form-title' ); ?>"
         			onclick="this.style.display='none'">
         			<div class="prs-add-book__modal-content<?php echo $success ? ' prs-add-book__modal-content--success' : ''; ?>" onclick="event.stopPropagation();">
-        				<button type="button"
-        					class="prs-add-book__close"
-        					aria-label="<?php echo esc_attr__( 'Close dialog', 'politeia-reading' ); ?>"
-        					onclick="document.getElementById('prs-add-book-modal').style.display='none'">
-        					&times;
-        				</button>
                                         <div id="prs-add-book-success" class="prs-add-book__success"<?php echo $success ? '' : ' hidden'; ?>>
-                                                <?php if ( $success_cover_url ) : ?>
-        						<?php
-        						$success_cover_alt = $success_title
-        							? sprintf(
-        								/* translators: %s: book title. */
-        								__( 'Cover image for %s', 'politeia-reading' ),
-        								$success_title
-        							)
-        							: __( 'Uploaded book cover image', 'politeia-reading' );
-        						?>
-        						<div class="prs-add-book__success-cover">
-        							<img src="<?php echo esc_url( $success_cover_url ); ?>"
-        								alt="<?php echo esc_attr( $success_cover_alt ); ?>"
-        								loading="lazy"
-        								decoding="async" />
+        					<button type="button"
+        						class="prs-add-book__close prs-add-book__close--success"
+        						aria-label="<?php echo esc_attr__( 'Close dialog', 'politeia-reading' ); ?>"
+        						onclick="document.getElementById('prs-add-book-modal').style.display='none'">
+        						&times;
+        					</button>
+        					<div class="prs-add-book__success-headline">
+        						<span class="prs-add-book__success-emoji" aria-hidden="true">&#x1F389;</span>
+        						<h2 id="prs-add-book-success-title" class="prs-add-book__success-heading">
+        							<?php echo esc_html__( 'Book Added Successfully!', 'politeia-reading' ); ?>
+        						</h2>
+        					</div>
+        					<hr class="prs-add-book__success-rule" />
+        					<?php if ( $success_title ) : ?>
+        						<div class="prs-add-book__success-title"><?php echo esc_html( $success_title ); ?></div>
+        					<?php endif; ?>
+        					<?php if ( $success_author ) : ?>
+        						<div class="prs-add-book__success-author">
+        							<?php
+        							printf(
+        								/* translators: %s: author name. */
+        								esc_html__( 'by %s', 'politeia-reading' ),
+        								esc_html( $success_author )
+        							);
+        							?>
         						</div>
         					<?php endif; ?>
-        					<h2 id="prs-add-book-success-title" class="prs-add-book__success-heading">
-        						<?php echo esc_html__( 'Book Added Successfully', 'politeia-reading' ); ?>
-        					</h2>
-        					<ul class="prs-add-book__success-details">
-        						<?php if ( $success_title ) : ?>
-        							<li class="prs-add-book__success-item">
-        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Title', 'politeia-reading' ); ?></span>
-        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_title ); ?></span>
-        							</li>
-        						<?php endif; ?>
-        						<?php if ( $success_author ) : ?>
-        							<li class="prs-add-book__success-item">
-        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Author', 'politeia-reading' ); ?></span>
-        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_author ); ?></span>
-        							</li>
-        						<?php endif; ?>
-        						<?php if ( null !== $success_year ) : ?>
-        							<li class="prs-add-book__success-item">
-        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></span>
-        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_year ); ?></span>
-        							</li>
-        						<?php endif; ?>
-        						<?php if ( null !== $success_pages ) : ?>
-        							<li class="prs-add-book__success-item">
-        								<span class="prs-add-book__success-label"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></span>
-        								<span class="prs-add-book__success-value"><?php echo esc_html( $success_pages ); ?></span>
-        							</li>
-        						<?php endif; ?>
-        					</ul>
+        					<?php if ( null !== $success_year || null !== $success_pages ) : ?>
+        						<hr class="prs-add-book__success-rule" />
+        						<div class="prs-add-book__success-meta">
+        							<?php if ( null !== $success_year ) : ?>
+        								<div class="prs-add-book__success-meta-item">
+        									<div class="prs-add-book__success-meta-label"><?php esc_html_e( 'Year', 'politeia-reading' ); ?></div>
+        									<div class="prs-add-book__success-meta-value"><?php echo esc_html( $success_year ); ?></div>
+        								</div>
+        							<?php endif; ?>
+        							<?php if ( null !== $success_year && null !== $success_pages ) : ?>
+        								<div class="prs-add-book__success-meta-divider" aria-hidden="true"></div>
+        							<?php endif; ?>
+        							<?php if ( null !== $success_pages ) : ?>
+        								<div class="prs-add-book__success-meta-item">
+        									<div class="prs-add-book__success-meta-label"><?php esc_html_e( 'Pages', 'politeia-reading' ); ?></div>
+        									<div class="prs-add-book__success-meta-value"><?php echo esc_html( $success_pages ); ?></div>
+        								</div>
+        							<?php endif; ?>
+        						</div>
+        					<?php endif; ?>
         				</div>
                                         <div id="prs-add-book-mode-switch" class="prs-add-book__mode-switch"<?php echo $success ? ' hidden' : ''; ?>>
                                                 <button type="button"
