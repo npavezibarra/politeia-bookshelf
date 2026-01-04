@@ -77,11 +77,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 		top: -25px;
 		left: 50%;
 		transform: translateX(-50%);
-		background: var(--pure-black);
-		color: white;
+		background: transparent;
+		color: var(--pure-black);
 		font-size: 10px;
-		padding: 2px 6px;
-		border-radius: 4px;
+		padding: 0;
+		border-radius: 0;
 		white-space: nowrap;
 	}
 
@@ -181,6 +181,136 @@ if ( ! defined( 'ABSPATH' ) ) {
 	}
 </style>
 
+<?php
+$avg_session_minutes = null;
+$avg_pages_per_hour = null;
+$session_duration_total = 0;
+$session_duration_count = 0;
+$session_pages_total = 0;
+$session_pages_count = 0;
+$session_rate_duration_total = 0;
+$session_rate_pages_total = 0;
+$weekly_pages = array_fill( 0, 7, 0 );
+$weekly_date_range = '';
+$monthly_pages = array();
+$monthly_date_range = '';
+$month_last_day = 0;
+
+if ( ! empty( $sessions ) ) {
+	foreach ( $sessions as $session ) {
+		if ( empty( $session->start_time ) || empty( $session->end_time ) ) {
+			continue;
+		}
+		$start_timestamp = strtotime( $session->start_time );
+		$end_timestamp   = strtotime( $session->end_time );
+		if ( ! $start_timestamp || ! $end_timestamp ) {
+			continue;
+		}
+		$duration = $end_timestamp - $start_timestamp;
+		if ( $duration < 0 ) {
+			$duration = 0;
+		}
+		$session_duration_total += $duration;
+		$session_duration_count++;
+		$start_page = isset( $session->start_page ) ? (int) $session->start_page : null;
+		$end_page   = isset( $session->end_page ) ? (int) $session->end_page : null;
+		if ( null !== $start_page && null !== $end_page ) {
+			$page_delta = $end_page - $start_page;
+			if ( $page_delta < 0 ) {
+				$page_delta = 0;
+			}
+			$session_pages_total += $page_delta;
+			$session_pages_count++;
+			if ( $duration > 0 ) {
+				$session_rate_pages_total += $page_delta;
+				$session_rate_duration_total += $duration;
+			}
+		}
+	}
+}
+
+if ( $session_duration_count > 0 ) {
+	$avg_session_minutes = (int) round( ( $session_duration_total / $session_duration_count ) / 60 );
+}
+if ( $session_rate_duration_total > 0 ) {
+	$avg_pages_per_hour = (int) round( ( $session_rate_pages_total / $session_rate_duration_total ) * 3600 );
+}
+
+$week_start_ts = strtotime( 'monday this week', current_time( 'timestamp' ) );
+$week_end_ts   = $week_start_ts + ( 6 * DAY_IN_SECONDS );
+$weekly_date_range = date_i18n( 'M j', $week_start_ts ) . ' - ' . date_i18n( 'M j, Y', $week_end_ts );
+
+if ( ! empty( $sessions ) && $week_start_ts ) {
+	foreach ( $sessions as $session ) {
+		if ( empty( $session->start_time ) ) {
+			continue;
+		}
+		$start_timestamp = strtotime( $session->start_time );
+		if ( ! $start_timestamp ) {
+			continue;
+		}
+		$session_day_ts = strtotime( date( 'Y-m-d', $start_timestamp ) );
+		if ( $session_day_ts < $week_start_ts || $session_day_ts > $week_end_ts ) {
+			continue;
+		}
+		$day_index = (int) floor( ( $session_day_ts - $week_start_ts ) / DAY_IN_SECONDS );
+		if ( $day_index < 0 || $day_index > 6 ) {
+			continue;
+		}
+		$start_page = isset( $session->start_page ) ? (int) $session->start_page : null;
+		$end_page   = isset( $session->end_page ) ? (int) $session->end_page : null;
+		if ( null === $start_page || null === $end_page ) {
+			continue;
+		}
+		$page_delta = $end_page - $start_page;
+		if ( $page_delta < 0 ) {
+			$page_delta = 0;
+		}
+		$weekly_pages[ $day_index ] += $page_delta;
+	}
+}
+
+$weekly_max = max( $weekly_pages );
+
+$month_start_ts = strtotime( date_i18n( 'Y-m-01', current_time( 'timestamp' ) ) );
+$month_last_day = (int) date_i18n( 't', $month_start_ts );
+$month_end_ts   = strtotime( date_i18n( 'Y-m-t', $month_start_ts ) );
+$monthly_date_range = date_i18n( 'M 1', $month_start_ts ) . ' - ' . date_i18n( 'M j, Y', $month_end_ts );
+$monthly_pages = array_fill( 0, $month_last_day, 0 );
+
+if ( ! empty( $sessions ) && $month_start_ts ) {
+	foreach ( $sessions as $session ) {
+		if ( empty( $session->start_time ) ) {
+			continue;
+		}
+		$start_timestamp = strtotime( $session->start_time );
+		if ( ! $start_timestamp ) {
+			continue;
+		}
+		$session_day_ts = strtotime( date( 'Y-m-d', $start_timestamp ) );
+		if ( $session_day_ts < $month_start_ts || $session_day_ts > $month_end_ts ) {
+			continue;
+		}
+		$day_index = (int) date( 'j', $session_day_ts ) - 1;
+		if ( $day_index < 0 || $day_index >= $month_last_day ) {
+			continue;
+		}
+		$start_page = isset( $session->start_page ) ? (int) $session->start_page : null;
+		$end_page   = isset( $session->end_page ) ? (int) $session->end_page : null;
+		if ( null === $start_page || null === $end_page ) {
+			continue;
+		}
+		$page_delta = $end_page - $start_page;
+		if ( $page_delta < 0 ) {
+			$page_delta = 0;
+		}
+		$monthly_pages[ $day_index ] += $page_delta;
+	}
+}
+
+$monthly_max = max( $monthly_pages );
+?>
+
 <section class="prs-book-stats">
 	<div class="prs-book-stats__container">
 		<!-- 2x2 Grid -->
@@ -196,7 +326,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</div>
 					<div>
 						<p class="prs-book-stats__label subtitle">Average Session Time</p>
-						<h2 class="prs-book-stats__metric headline">30min</h2>
+						<h2 class="prs-book-stats__metric headline">
+							<?php echo null !== $avg_session_minutes ? esc_html( $avg_session_minutes . 'min' ) : '—'; ?>
+						</h2>
 					</div>
 				</div>
 			</div>
@@ -211,7 +343,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 					</div>
 					<div>
 						<p class="prs-book-stats__label subtitle">Average Page per Hour</p>
-						<h2 class="prs-book-stats__metric headline">6</h2>
+						<h2 class="prs-book-stats__metric headline">
+							<?php echo null !== $avg_pages_per_hour ? esc_html( (string) $avg_pages_per_hour ) : '—'; ?>
+						</h2>
 					</div>
 				</div>
 			</div>
@@ -220,10 +354,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<div id="weekly-chart" class="card">
 				<div class="prs-book-stats__section">
 					<h3 class="prs-book-stats__section-title headline">Pages This Week</h3>
-					<p class="prs-book-stats__section-subtitle subtitle" id="weekly-date-range">date of this week</p>
+					<p class="prs-book-stats__section-subtitle subtitle" id="weekly-date-range"><?php echo esc_html( $weekly_date_range ); ?></p>
 				</div>
 				<div class="chart-container" id="week-bars">
-					<!-- Weekly bars will be injected here -->
+					<?php
+					foreach ( $weekly_pages as $value ) :
+						$height_percent = $weekly_max > 0 ? ( $value / $weekly_max ) * 90 : 0;
+						?>
+						<div class="bar" data-value="<?php echo esc_attr( $value ); ?>" style="height: <?php echo esc_attr( number_format( $height_percent, 2, '.', '' ) ); ?>%;"></div>
+					<?php endforeach; ?>
 				</div>
 				<div class="prs-book-stats__labels subtitle">
 					<span>Mon</span>
@@ -240,15 +379,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<div id="monthly-chart" class="card">
 				<div class="prs-book-stats__section">
 					<h3 class="prs-book-stats__section-title headline" id="monthly-title">Pages This Month</h3>
-					<p class="prs-book-stats__section-subtitle subtitle" id="monthly-date-range">date of this month</p>
+					<p class="prs-book-stats__section-subtitle subtitle" id="monthly-date-range"><?php echo esc_html( $monthly_date_range ); ?></p>
 				</div>
 				<div class="chart-container prs-book-stats__chart--month" id="month-bars">
-					<!-- Dynamic number of bars injected here -->
+					<?php
+					foreach ( $monthly_pages as $value ) :
+						$height_percent = $monthly_max > 0 ? ( $value / $monthly_max ) * 90 : 0;
+						?>
+						<div class="bar" data-value="<?php echo esc_attr( $value ); ?>" style="height: <?php echo esc_attr( number_format( $height_percent, 2, '.', '' ) ); ?>%;"></div>
+					<?php endforeach; ?>
 				</div>
 				<div class="prs-book-stats__month-scale subtitle">
 					<span>1</span>
 					<span>15</span>
-					<span id="month-last-day">30</span>
+					<span id="month-last-day"><?php echo esc_html( (string) $month_last_day ); ?></span>
 				</div>
 			</div>
 
@@ -261,50 +405,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 	const now = new Date();
 	const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-	// Update Monthly Title
-	document.getElementById('monthly-title').textContent = `Pages ${monthNames[now.getMonth()]}`;
-
-	/**
-	 * -------------------------------------------------------------------------
-	 * DATA INTEGRATION POINT: WEEKLY CHART
-	 * Replace the 'weeklyData' array with values from your database.
-	 * -------------------------------------------------------------------------
-	 */
-	const weeklyData = [45, 78, 56, 90, 65, 30, 42]; // Dummy weekly data
-
-	const weekContainer = document.getElementById('week-bars');
-	weeklyData.forEach(val => {
-		const bar = document.createElement('div');
-		bar.className = 'bar';
-		bar.style.height = `${val}%`;
-		bar.setAttribute('data-value', val);
-		weekContainer.appendChild(bar);
-	});
-
-
 	/**
 	 * -------------------------------------------------------------------------
 	 * DATA INTEGRATION POINT: MONTHLY CHART
-	 * This section dynamically calculates days in the month and renders bars.
-	 * Replace random generation with real data array matching daysInMonth.
+	 * Data is rendered server-side based on this month's sessions.
 	 * -------------------------------------------------------------------------
 	 */
-	const monthContainer = document.getElementById('month-bars');
-
-	// Calculate days in the current month
-	const year = now.getFullYear();
-	const month = now.getMonth();
-	const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-	// Update the '30' label to the actual last day
-	document.getElementById('month-last-day').textContent = daysInMonth;
-
-	for (let i = 0; i < daysInMonth; i++) {
-		const val = Math.floor(Math.random() * 80) + 20; // Dummy data generation
-		const bar = document.createElement('div');
-		bar.className = 'bar';
-		bar.style.height = `${val}%`;
-		bar.setAttribute('data-value', val);
-		monthContainer.appendChild(bar);
-	}
+	document.getElementById('monthly-title').textContent = `Pages ${monthNames[now.getMonth()]}`;
 </script>

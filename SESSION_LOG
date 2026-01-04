@@ -111,6 +111,11 @@ January 4, 2026, 10:32 UTC
 2. Scoped Book Stats styles to the section and adjusted card styling, KPI spacing, and responsive padding to match the updated design.
 3. Kept dummy weekly/monthly data hooks and comments in place for future database integration.
 
+January 4, 2026, 11:15 UTC
+1. Wired Book Stats KPIs to real session data: average session duration and pages-per-hour calculations.
+2. Rendered weekly and monthly charts from session page deltas, scaled bars relative to max values, and added date ranges/last-day labels.
+3. Removed dummy JS bar generation and updated hover tooltip styling to plain black text.
+
 ------
 
 TO DO:
