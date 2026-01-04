@@ -257,8 +257,7 @@ wp_add_inline_script(
 		gap: 24px;
 	}
 
-	.sidebar,
-	.content {
+	.sidebar {
 		background: #fff;
 		border-radius: 12px;
 		box-shadow: 0 8px 24px rgba(0,0,0,0.06);
@@ -288,10 +287,19 @@ wp_add_inline_script(
 	}
 
 	.content {
-		padding: 24px;
+		background: transparent;
+		border-radius: 0;
+		box-shadow: none;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 20px;
+	}
+
+	.prs-content-card {
+		background: #fff;
+		border-radius: 12px;
+		box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+		padding: 24px;
 	}
 
 	.cover-frame {
@@ -901,10 +909,11 @@ wp_add_inline_script(
 			$reading_disabled_attr  = $reading_disabled ? ' disabled="disabled"' : '';
 			$reading_disabled_class = $reading_disabled ? ' is-disabled' : '';
 			?>
-			<div class="header">
-				<div id="book-identity">
-					<div id="book-title-row">
-						<h1><?php echo esc_html( $book->title ); ?></h1>
+			<div id="prs-book-header" class="prs-content-card">
+				<div class="header">
+					<div id="book-identity">
+						<div id="book-title-row">
+							<h1><?php echo esc_html( $book->title ); ?></h1>
 						<span role="button" tabindex="0" id="prs-session-recorder-open" class="prs-session-recorder-trigger material-symbols-outlined" aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>" aria-controls="prs-session-modal" aria-expanded="false">play_circle</span>
 					</div>
 					<p><?php echo $book_authors ? esc_html( $book_authors ) : esc_html( $placeholder_author ); ?></p>
@@ -943,8 +952,8 @@ wp_add_inline_script(
 							<span id="reading-status-status" class="prs-help" aria-live="polite"></span>
 						</div>
 					</div>
-				</div>
-				<div id="owning-status-summary">
+					</div>
+					<div id="owning-status-summary">
 					<?php
 					$is_digital = ( 'd' === $current_type );
 					$show_return_btn = in_array( $ub->owning_status, array( 'borrowed', 'borrowing' ), true );
@@ -994,40 +1003,43 @@ wp_add_inline_script(
 							<span id="derived-location-text"><?php echo empty( $ub->owning_status ) ? esc_html__( 'In Shelf', 'politeia-reading' ) : esc_html__( 'Not In Shelf', 'politeia-reading' ); ?></span>
 						</p>
 					</div>
+					</div>
 				</div>
 			</div>
 
-			<div class="tabs" role="tablist" aria-label="<?php esc_attr_e( 'Book sections', 'politeia-reading' ); ?>">
-				<button class="tab active" type="button" data-tab="reading-sessions" role="tab" aria-selected="true"><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></button>
-				<button class="tab" type="button" data-tab="book-stats" role="tab" aria-selected="false"><?php esc_html_e( 'Book Stats', 'politeia-reading' ); ?></button>
-				<button class="tab" type="button" data-tab="notes-feed" role="tab" aria-selected="false"><?php esc_html_e( 'Notes Feed', 'politeia-reading' ); ?></button>
-			</div>
+			<div id="prs-book-content" class="prs-content-card">
+				<div class="tabs" role="tablist" aria-label="<?php esc_attr_e( 'Book sections', 'politeia-reading' ); ?>">
+					<button class="tab active" type="button" data-tab="reading-sessions" role="tab" aria-selected="true"><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></button>
+					<button class="tab" type="button" data-tab="book-stats" role="tab" aria-selected="false"><?php esc_html_e( 'Book Stats', 'politeia-reading' ); ?></button>
+					<button class="tab" type="button" data-tab="notes-feed" role="tab" aria-selected="false"><?php esc_html_e( 'Notes Feed', 'politeia-reading' ); ?></button>
+				</div>
 
-			<div class="prs-tab-content is-active" data-tab="reading-sessions">
-				<?php
-				$reading_template = trailingslashit( __DIR__ ) . 'my-book-single-ver-2/reading-sessions.php';
-				if ( file_exists( $reading_template ) ) {
-					include $reading_template;
-				}
-				?>
-			</div>
+				<div class="prs-tab-content is-active" data-tab="reading-sessions">
+					<?php
+					$reading_template = trailingslashit( __DIR__ ) . 'my-book-single-ver-2/reading-sessions.php';
+					if ( file_exists( $reading_template ) ) {
+						include $reading_template;
+					}
+					?>
+				</div>
 
-			<div class="prs-tab-content" data-tab="book-stats">
-				<?php
-				$stats_template = trailingslashit( __DIR__ ) . 'my-book-single-ver-2/book-stats.php';
-				if ( file_exists( $stats_template ) ) {
-					include $stats_template;
-				}
-				?>
-			</div>
+				<div class="prs-tab-content" data-tab="book-stats">
+					<?php
+					$stats_template = trailingslashit( __DIR__ ) . 'my-book-single-ver-2/book-stats.php';
+					if ( file_exists( $stats_template ) ) {
+						include $stats_template;
+					}
+					?>
+				</div>
 
-			<div class="prs-tab-content" data-tab="notes-feed">
-				<?php
-				$notes_template = trailingslashit( __DIR__ ) . 'my-book-single-ver-2/notes-feed.php';
-				if ( file_exists( $notes_template ) ) {
-					include $notes_template;
-				}
-				?>
+				<div class="prs-tab-content" data-tab="notes-feed">
+					<?php
+					$notes_template = trailingslashit( __DIR__ ) . 'my-book-single-ver-2/notes-feed.php';
+					if ( file_exists( $notes_template ) ) {
+						include $notes_template;
+					}
+					?>
+				</div>
 			</div>
 		</section>
 	</div>

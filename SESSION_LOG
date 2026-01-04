@@ -116,6 +116,11 @@ January 4, 2026, 11:15 UTC
 2. Rendered weekly and monthly charts from session page deltas, scaled bars relative to max values, and added date ranges/last-day labels.
 3. Removed dummy JS bar generation and updated hover tooltip styling to plain black text.
 
+January 4, 2026, 15:15 UTC
+1. Split header and tabs into separate content cards and removed shared background on the content wrapper.
+2. Rebuilt Notes Feed layout/styles to the new simplified design, including sidebar tweaks and spacing updates.
+3. Wired Notes Feed to real session notes with an empty-state message for books without notes.
+
 ------
 
 TO DO:
@@ -123,3 +128,4 @@ TO DO:
 December 31st
 1. Add detailed session entries as new development tasks are completed.
 2. Add a user-facing button to export personal book records to a standardized CSV download.
+3. Build a Public Notes Feed to share user-approved notes with the community (design: https://chatgpt.com/c/695a51e0-07e8-8331-adde-1210b29dc91c).
