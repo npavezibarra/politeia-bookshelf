@@ -284,7 +284,7 @@ add_shortcode(
 				class="prs-btn"
 				disabled
 				>
-				▶ <?php esc_html_e( 'Start Reading', 'politeia-reading' ); ?>
+				<span aria-hidden="true" class="material-symbols-outlined prs-play-icon">play_circle</span> <?php esc_html_e( 'Start Reading', 'politeia-reading' ); ?>
 				</button>
 				<button type="button" id="prs-sr-stop" class="prs-btn" style="display:none;">
 				■ <?php esc_html_e( 'Stop Reading', 'politeia-reading' ); ?>

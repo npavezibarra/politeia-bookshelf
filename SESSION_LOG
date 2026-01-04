@@ -101,6 +101,11 @@ January 3, 2026, 23:22 UTC
 2. Added template selection support with a new Templates admin tab and wired routing to selected templates.
 3. Split Book Stats and Notes Feed into dedicated ver-2 partials and added tab switching with scoped styles.
 
+January 4, 2026, 01:01 UTC
+1. Refined the ver-2 template layout: sidebar split into two cards, updated tabs styling, and reordered Book Details with new Published Date row and dividers.
+2. Adjusted session UI/controls: moved recorder icon into the title, swapped play icon to Material Symbols, and updated button/icon styling.
+3. Tweaked reading sessions table and cover block styling, plus moved Other Readers into Notes Feed.
+
 ------
 
 TO DO:

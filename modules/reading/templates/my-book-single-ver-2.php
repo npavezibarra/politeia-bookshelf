@@ -192,6 +192,12 @@ wp_enqueue_style(
 	array( 'politeia-reading' ),
 	POLITEIA_READING_VERSION
 );
+wp_enqueue_style(
+	'politeia-material-symbols',
+	'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=play_circle',
+	array(),
+	null
+);
 wp_enqueue_script( 'politeia-my-book' );
 
 /** Data for main JS */
@@ -259,10 +265,26 @@ wp_add_inline_script(
 	}
 
 	.sidebar {
-		padding: 16px;
+		background: transparent;
+		border-radius: 0;
+		box-shadow: none;
+		padding: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 16px;
+		gap: 20px;
+	}
+
+	.prs-sidebar-block {
+		background: #fff;
+		border-radius: 12px;
+		box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+		padding: 16px;
+	}
+
+	#prs-cover-progress {
+		display: flex;
+		flex-direction: column;
+		gap: 20px;
 	}
 
 	.content {
@@ -361,6 +383,24 @@ wp_add_inline_script(
 
 	.prs-details li strong { font-weight: 600; }
 
+	#book-details-section h4 {
+		font-size: 18px;
+		color: #000;
+	}
+
+	.prs-detail-divider {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+	}
+
+	.prs-detail-divider hr {
+		border: none;
+		border-top: 1px solid #e5e7eb;
+		height: 1px;
+		margin: 0;
+	}
+
 	.header {
 		display: flex;
 		gap: 20px;
@@ -418,23 +458,28 @@ wp_add_inline_script(
 
 	.tabs {
 		display: flex;
-		gap: 16px;
 		border-bottom: 1px solid #e5e7eb;
+		overflow-x: auto;
 	}
 
 	.tab {
-		padding: 8px 4px;
+		flex: 1 1 0;
+		padding: 14px 16px;
 		cursor: pointer;
-		font-weight: 500;
+		font-weight: 600;
+		font-size: 13px;
 		color: #6b7280;
 		border-bottom: 2px solid transparent;
-		background: none;
+		background: transparent;
 		border: none;
+		border-radius: 0;
+		transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
 	}
 
 	.tab.active {
-		color: #111827;
-		border-color: #111827;
+		color: #3b82f6;
+		border-color: #3b82f6;
+		background: #eff6ff;
 	}
 
 	.prs-tab-content {
@@ -443,6 +488,35 @@ wp_add_inline_script(
 
 	.prs-tab-content.is-active {
 		display: block;
+	}
+
+	.prs-play-icon {
+		font-size: 28px;
+		vertical-align: middle;
+		line-height: 1;
+		margin-right: 4px;
+		font-variation-settings: "FILL" 1, "wght" 600, "opsz" 24;
+	}
+
+	.prs-btn:not(.prs-btn--ghost) {
+		background-color: #000000;
+		color: #fff;
+		border-radius: 6px;
+		font-size: 16px;
+		max-width: 250px;
+		margin: auto;
+	}
+
+	.prs-sr-table #prs-sr-row-timer,
+	.prs-sr-table #prs-sr-row-actions {
+		border: none;
+	}
+
+	.prs-sr-table #prs-sr-row-timer td,
+	.prs-sr-table #prs-sr-row-actions td {
+		border: none !important;
+		background: transparent;
+		box-shadow: none;
 	}
 
 	.prs-book-stats-grid {
@@ -487,14 +561,16 @@ wp_add_inline_script(
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		width: 32px;
-		height: 32px;
-		border-radius: 6px;
-		border: none;
-		background: #111827;
-		color: #fff;
 		cursor: pointer;
-		margin-left: auto;
+		color: #111827;
+		font-size: 26px;
+		line-height: 1;
+		font-variation-settings: "FILL" 1, "wght" 600, "opsz" 24;
+	}
+	#book-title-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
 	}
 
 	.prs-session-modal {
@@ -530,6 +606,13 @@ wp_add_inline_script(
 		font-size: 20px;
 		line-height: 1;
 		padding: 4px;
+	}
+	.prs-session-modal__close:hover,
+	.prs-session-modal__close:focus,
+	.prs-session-modal__close:focus-visible,
+	.prs-session-modal__close:active {
+		background: none;
+		box-shadow: none;
 	}
 
 	.prs-search-cover-overlay {
@@ -620,111 +703,120 @@ wp_add_inline_script(
 		.header { flex-direction: column; }
 		.prs-book-stats-grid { grid-template-columns: 1fr; }
 	}
+
+	@media (min-width: 950px) {
+		#prs-cover-frame {
+			width: 100% !important;
+			height: auto !important;
+		}
+	}
 </style>
 
 <div class="prs-page-wrap">
 	<div class="page">
 		<aside class="sidebar">
-			<section id="book-cover-section">
-				<div
-					id="prs-cover-frame"
-					class="cover-frame <?php echo $has_image ? 'has-image' : ''; ?>"
-					data-cover-state="<?php echo $has_image ? 'image' : 'empty'; ?>"
-					data-placeholder-title="<?php echo esc_attr( $placeholder_title ); ?>"
-					data-placeholder-author="<?php echo esc_attr( $placeholder_author ); ?>"
-					data-placeholder-label="<?php echo esc_attr( $placeholder_label ); ?>"
-					data-search-label="<?php echo esc_attr( $search_cover_label ); ?>"
-					data-remove-label="<?php echo esc_attr( $remove_cover_label ); ?>"
-					data-remove-confirm="<?php echo esc_attr( $remove_cover_confirm ); ?>"
-				>
-					<figure class="prs-book-cover">
-						<?php if ( $has_image ) : ?>
-							<?php
-							if ( $final_cover_id ) {
-								$cover_alt = trim( (string) get_post_meta( $final_cover_id, '_wp_attachment_image_alt', true ) );
-								if ( ! $cover_alt && ! empty( $book->title ) ) {
-									$cover_alt = $book->title;
-								}
-								if ( ! $cover_alt ) {
-									$cover_alt = __( 'Book cover', 'politeia-reading' );
-								}
+			<section id="prs-cover-progress" class="prs-sidebar-block">
+				<section id="book-cover-section">
+					<div
+						id="prs-cover-frame"
+						class="cover-frame <?php echo $has_image ? 'has-image' : ''; ?>"
+						data-cover-state="<?php echo $has_image ? 'image' : 'empty'; ?>"
+						data-placeholder-title="<?php echo esc_attr( $placeholder_title ); ?>"
+						data-placeholder-author="<?php echo esc_attr( $placeholder_author ); ?>"
+						data-placeholder-label="<?php echo esc_attr( $placeholder_label ); ?>"
+						data-search-label="<?php echo esc_attr( $search_cover_label ); ?>"
+						data-remove-label="<?php echo esc_attr( $remove_cover_label ); ?>"
+						data-remove-confirm="<?php echo esc_attr( $remove_cover_confirm ); ?>"
+					>
+						<figure class="prs-book-cover">
+							<?php if ( $has_image ) : ?>
+								<?php
+								if ( $final_cover_id ) {
+									$cover_alt = trim( (string) get_post_meta( $final_cover_id, '_wp_attachment_image_alt', true ) );
+									if ( ! $cover_alt && ! empty( $book->title ) ) {
+										$cover_alt = $book->title;
+									}
+									if ( ! $cover_alt ) {
+										$cover_alt = __( 'Book cover', 'politeia-reading' );
+									}
 
-								$cover_img_src = wp_get_attachment_image_src( $final_cover_id, 'large' );
-								$cover_img_url = $cover_img_src ? set_url_scheme( $cover_img_src[0], $cover_scheme ) : '';
-								if ( ! $cover_img_url ) {
-									$fallback_src = wp_get_attachment_url( $final_cover_id );
-									$cover_img_url = $fallback_src ? set_url_scheme( $fallback_src, $cover_scheme ) : '';
-								}
-								if ( $force_http_covers && $cover_img_url ) {
-									$cover_img_url = preg_replace( '#^https:#', 'http:', $cover_img_url );
-								}
+									$cover_img_src = wp_get_attachment_image_src( $final_cover_id, 'large' );
+									$cover_img_url = $cover_img_src ? set_url_scheme( $cover_img_src[0], $cover_scheme ) : '';
+									if ( ! $cover_img_url ) {
+										$fallback_src = wp_get_attachment_url( $final_cover_id );
+										$cover_img_url = $fallback_src ? set_url_scheme( $fallback_src, $cover_scheme ) : '';
+									}
+									if ( $force_http_covers && $cover_img_url ) {
+										$cover_img_url = preg_replace( '#^https:#', 'http:', $cover_img_url );
+									}
 
-								if ( $cover_img_url ) {
+									if ( $cover_img_url ) {
+										printf(
+											'<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
+											esc_url( $cover_img_url ),
+											esc_attr( $cover_alt )
+										);
+									}
+								} elseif ( $cover_url ) {
+									$fallback_alt = ! empty( $book->title ) ? $book->title : __( 'Book cover', 'politeia-reading' );
+									$cover_url = set_url_scheme( $cover_url, $cover_scheme );
+									if ( $force_http_covers && $cover_url ) {
+										$cover_url = preg_replace( '#^https:#', 'http:', $cover_url );
+									}
 									printf(
 										'<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
-										esc_url( $cover_img_url ),
-										esc_attr( $cover_alt )
+										esc_url( $cover_url ),
+										esc_attr( $fallback_alt )
 									);
 								}
-							} elseif ( $cover_url ) {
-								$fallback_alt = ! empty( $book->title ) ? $book->title : __( 'Book cover', 'politeia-reading' );
-								$cover_url = set_url_scheme( $cover_url, $cover_scheme );
-								if ( $force_http_covers && $cover_url ) {
-									$cover_url = preg_replace( '#^https:#', 'http:', $cover_url );
-								}
-								printf(
-									'<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
-									esc_url( $cover_url ),
-									esc_attr( $fallback_alt )
-								);
-							}
-							?>
-						<?php else : ?>
-							<div
-								id="prs-cover-placeholder"
-								class="prs-cover-placeholder"
-								role="img"
-								aria-label="<?php echo esc_attr( $placeholder_label ); ?>">
-								<h3 id="prs-book-title-placeholder" class="prs-cover-title"><?php echo esc_html( $placeholder_title ); ?></h3>
-								<span id="prs-book-author-placeholder" class="prs-cover-author"><?php echo esc_html( $placeholder_author ); ?></span>
-								<?php echo do_shortcode( '[prs_cover_button]' ); ?>
+								?>
+							<?php else : ?>
+								<div
+									id="prs-cover-placeholder"
+									class="prs-cover-placeholder"
+									role="img"
+									aria-label="<?php echo esc_attr( $placeholder_label ); ?>">
+									<h3 id="prs-book-title-placeholder" class="prs-cover-title"><?php echo esc_html( $placeholder_title ); ?></h3>
+									<span id="prs-book-author-placeholder" class="prs-cover-author"><?php echo esc_html( $placeholder_author ); ?></span>
+									<?php echo do_shortcode( '[prs_cover_button]' ); ?>
+								</div>
+							<?php endif; ?>
+						</figure>
+						<?php if ( $has_image ) : ?>
+							<div class="prs-cover-overlay">
+								<?php echo do_shortcode( '[prs_cover_button show_search="true"]' ); ?>
 							</div>
 						<?php endif; ?>
-					</figure>
-					<?php if ( $has_image ) : ?>
-						<div class="prs-cover-overlay">
-							<?php echo do_shortcode( '[prs_cover_button show_search="true"]' ); ?>
-						</div>
-					<?php endif; ?>
-				</div>
-				<?php if ( $cover_source ) : ?>
-					<figcaption class="prs-book-cover__caption">
-						<a
-							class="prs-book-cover__link"
-							href="<?php echo esc_url( $cover_source ); ?>"
-							target="_blank"
-							rel="noopener noreferrer"
-						>
-							<?php esc_html_e( 'View on Google Books', 'politeia-reading' ); ?>
-						</a>
-					</figcaption>
-				<?php endif; ?>
-			</section>
-
-			<section id="progress-section">
-				<div class="progress">
-					<div class="progress-bar">
-						<span style="width: <?php echo (int) $progress_percent; ?>%;"></span>
 					</div>
-					<small class="prs-progress-text"><?php echo esc_html( sprintf( __( '%d%% completed', 'politeia-reading' ), (int) $progress_percent ) ); ?></small>
-				</div>
+					<?php if ( $cover_source ) : ?>
+						<figcaption class="prs-book-cover__caption">
+							<a
+								class="prs-book-cover__link"
+								href="<?php echo esc_url( $cover_source ); ?>"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<?php esc_html_e( 'View on Google Books', 'politeia-reading' ); ?>
+							</a>
+						</figcaption>
+					<?php endif; ?>
+				</section>
+
+				<section id="progress-section">
+					<div class="progress">
+						<div class="progress-bar">
+							<span style="width: <?php echo (int) $progress_percent; ?>%;"></span>
+						</div>
+						<small class="prs-progress-text"><?php echo esc_html( sprintf( __( '%d%% completed', 'politeia-reading' ), (int) $progress_percent ) ); ?></small>
+					</div>
+				</section>
+
 			</section>
 
-			<hr id="progress-details-divider" />
-
-			<section id="book-details-section">
-				<h4 style="margin: 0 0 8px; font-size: 14px; color: #6b7280;"><?php esc_html_e( 'Book Details', 'politeia-reading' ); ?></h4>
+			<section id="book-details-section" class="prs-sidebar-block">
+				<h4 style="margin: 0 0 8px; font-size: 18px; color: #000;"><?php esc_html_e( 'Book Details', 'politeia-reading' ); ?></h4>
 				<ul class="prs-details">
+					<li class="prs-detail-divider" aria-hidden="true"><hr /></li>
 					<li id="fld-pages" class="prs-field">
 						<strong><?php esc_html_e( 'Pages:', 'politeia-reading' ); ?></strong>
 						<span id="pages-view"><?php echo $ub->pages ? (int) $ub->pages : '—'; ?></span>
@@ -738,8 +830,22 @@ wp_add_inline_script(
 						<strong><?php esc_html_e( 'ISBN:', 'politeia-reading' ); ?></strong>
 						<?php echo $book_isbn ? esc_html( $book_isbn ) : '—'; ?>
 					</li>
+					<li>
+						<strong><?php esc_html_e( 'Published Date:', 'politeia-reading' ); ?></strong>
+						<?php echo $book->year ? esc_html( (string) $book->year ) : '—'; ?>
+					</li>
+					<li>
+						<label for="prs-type-book" style="font-weight: 600; margin-right: 4px; font-size: 13px;"><?php esc_html_e( 'Format:', 'politeia-reading' ); ?></label>
+						<select id="prs-type-book" class="prs-type-book__select">
+							<option value="" <?php selected( $current_type, '' ); ?>><?php esc_html_e( 'Not specified', 'politeia-reading' ); ?></option>
+							<option value="d" <?php selected( $current_type, 'd' ); ?>><?php esc_html_e( 'Digital', 'politeia-reading' ); ?></option>
+							<option value="p" <?php selected( $current_type, 'p' ); ?>><?php esc_html_e( 'Printed', 'politeia-reading' ); ?></option>
+						</select>
+						<span id="type-book-status" class="prs-help" aria-live="polite"></span>
+					</li>
+					<li class="prs-detail-divider" aria-hidden="true"><hr /></li>
 					<li id="fld-purchase-date" class="prs-field">
-						<strong><?php esc_html_e( 'Purchase Date:', 'politeia-reading' ); ?></strong>
+						<strong><?php esc_html_e( 'Purchase Date:', 'politeia-reading' ); ?></strong><br />
 						<span id="purchase-date-view"><?php echo $ub->purchase_date ? esc_html( $ub->purchase_date ) : '—'; ?></span>
 						<a href="#" id="purchase-date-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
 						<span id="purchase-date-form" style="display:none;" class="prs-inline-actions">
@@ -750,7 +856,7 @@ wp_add_inline_script(
 						</span>
 					</li>
 					<li id="fld-purchase-channel" class="prs-field">
-						<strong><?php esc_html_e( 'Purchase Channel:', 'politeia-reading' ); ?></strong>
+						<strong><?php esc_html_e( 'Purchase Channel:', 'politeia-reading' ); ?></strong><br />
 						<span id="purchase-channel-view">
 							<?php
 							$label = '—';
@@ -782,29 +888,9 @@ wp_add_inline_script(
 							<span id="purchase-channel-status" class="prs-help"></span>
 						</span>
 					</li>
-					<li>
-						<label for="prs-type-book" style="font-weight: 600; margin-right: 4px;"><?php esc_html_e( 'Format:', 'politeia-reading' ); ?></label>
-						<select id="prs-type-book" class="prs-type-book__select">
-							<option value="" <?php selected( $current_type, '' ); ?>><?php esc_html_e( 'Not specified', 'politeia-reading' ); ?></option>
-							<option value="d" <?php selected( $current_type, 'd' ); ?>><?php esc_html_e( 'Digital', 'politeia-reading' ); ?></option>
-							<option value="p" <?php selected( $current_type, 'p' ); ?>><?php esc_html_e( 'Printed', 'politeia-reading' ); ?></option>
-						</select>
-						<span id="type-book-status" class="prs-help" aria-live="polite"></span>
-					</li>
 				</ul>
 			</section>
 
-			<section id="other-readers-section">
-				<h4 style="margin: 0 0 8px; font-size: 14px; color: #6b7280;"><?php esc_html_e( 'Other Readers', 'politeia-reading' ); ?></h4>
-				<div class="prs-other-readers">
-					<div class="prs-other-reader-avatar"></div>
-					<div class="prs-other-reader-avatar"></div>
-					<div class="prs-other-reader-avatar"></div>
-					<div class="prs-other-reader-avatar"></div>
-					<div class="prs-other-reader-avatar"></div>
-					<div class="prs-other-reader-avatar"></div>
-				</div>
-			</section>
 		</aside>
 
 		<section class="content">
@@ -817,7 +903,10 @@ wp_add_inline_script(
 			?>
 			<div class="header">
 				<div id="book-identity">
-					<h1><?php echo esc_html( $book->title ); ?></h1>
+					<div id="book-title-row">
+						<h1><?php echo esc_html( $book->title ); ?></h1>
+						<span role="button" tabindex="0" id="prs-session-recorder-open" class="prs-session-recorder-trigger material-symbols-outlined" aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>" aria-controls="prs-session-modal" aria-expanded="false">play_circle</span>
+					</div>
 					<p><?php echo $book_authors ? esc_html( $book_authors ) : esc_html( $placeholder_author ); ?></p>
 					<div id="fld-user-rating" class="prs-field">
 						<div class="prs-stars" id="prs-user-rating" role="radiogroup" aria-label="<?php esc_attr_e( 'Your rating', 'politeia-reading' ); ?>">
@@ -912,10 +1001,6 @@ wp_add_inline_script(
 				<button class="tab active" type="button" data-tab="reading-sessions" role="tab" aria-selected="true"><?php esc_html_e( 'Reading Sessions', 'politeia-reading' ); ?></button>
 				<button class="tab" type="button" data-tab="book-stats" role="tab" aria-selected="false"><?php esc_html_e( 'Book Stats', 'politeia-reading' ); ?></button>
 				<button class="tab" type="button" data-tab="notes-feed" role="tab" aria-selected="false"><?php esc_html_e( 'Notes Feed', 'politeia-reading' ); ?></button>
-				<button type="button" id="prs-session-recorder-open" class="prs-session-recorder-trigger" aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>" aria-controls="prs-session-modal" aria-expanded="false">
-					<span aria-hidden="true">▶</span>
-					<span class="screen-reader-text"><?php esc_html_e( 'Open session recorder', 'politeia-reading' ); ?></span>
-				</button>
 			</div>
 
 			<div class="prs-tab-content is-active" data-tab="reading-sessions">
@@ -929,9 +1014,9 @@ wp_add_inline_script(
 								<th><?php esc_html_e( 'Start Time', 'politeia-reading' ); ?></th>
 								<th><?php esc_html_e( 'End Time', 'politeia-reading' ); ?></th>
 								<th><?php esc_html_e( 'Note', 'politeia-reading' ); ?></th>
+								<th><?php esc_html_e( 'Initial Page', 'politeia-reading' ); ?></th>
 								<th><?php esc_html_e( 'End Page', 'politeia-reading' ); ?></th>
 								<th><?php esc_html_e( 'Total Pages', 'politeia-reading' ); ?></th>
-								<th><?php esc_html_e( 'Chapter', 'politeia-reading' ); ?></th>
 								<th><?php esc_html_e( 'Duration', 'politeia-reading' ); ?></th>
 							</tr>
 						</thead>
@@ -975,7 +1060,6 @@ wp_add_inline_script(
 								if ( null !== $start_page && null !== $end_page ) {
 									$total_pages = $end_page - $start_page;
 								}
-								$chapter_label = $s->chapter_name ? $s->chapter_name : '—';
 
 								$note_button = '—';
 								$note_value  = isset( $s->note ) ? trim( (string) $s->note ) : '';
@@ -1008,9 +1092,9 @@ wp_add_inline_script(
 									<td><?php echo wp_kses_post( $start_display ); ?></td>
 									<td><?php echo wp_kses_post( $end_display ); ?></td>
 									<td><?php echo wp_kses_post( $note_button ); ?></td>
+									<td><?php echo esc_html( ( null !== $start_page && $start_page >= 0 ) ? $start_page : '—' ); ?></td>
 									<td><?php echo esc_html( ( null !== $end_page && $end_page >= 0 ) ? $end_page : '—' ); ?></td>
 									<td><?php echo esc_html( ( null !== $total_pages && $total_pages > 0 ) ? $total_pages : '—' ); ?></td>
-									<td><?php echo esc_html( $chapter_label ); ?></td>
 									<td><?php echo esc_html( $duration_str ); ?></td>
 								</tr>
 							<?php endforeach; ?>

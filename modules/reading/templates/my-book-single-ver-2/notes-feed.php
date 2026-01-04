@@ -4,5 +4,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 ?>
 <section class="prs-notes-feed">
-	<p><?php esc_html_e( 'Notes feed coming soon.', 'politeia-reading' ); ?></p>
+	<section id="other-readers-section">
+		<h4 style="margin: 0 0 8px; font-size: 14px; color: #6b7280;"><?php esc_html_e( 'Other Readers', 'politeia-reading' ); ?></h4>
+		<div class="prs-other-readers">
+			<div class="prs-other-reader-avatar"></div>
+			<div class="prs-other-reader-avatar"></div>
+			<div class="prs-other-reader-avatar"></div>
+			<div class="prs-other-reader-avatar"></div>
+			<div class="prs-other-reader-avatar"></div>
+			<div class="prs-other-reader-avatar"></div>
+		</div>
+	</section>
 </section>
