@@ -9,4 +9,12 @@ if ( ! defined( 'POLITEIA_READING_PLAN_DB_VERSION' ) ) {
 	define( 'POLITEIA_READING_PLAN_DB_VERSION', '1.0.0' );
 }
 
+if ( ! defined( 'POLITEIA_READING_PLAN_PATH' ) ) {
+	define( 'POLITEIA_READING_PLAN_PATH', __DIR__ . '/' );
+}
+
+if ( ! defined( 'POLITEIA_READING_PLAN_URL' ) ) {
+	define( 'POLITEIA_READING_PLAN_URL', plugin_dir_url( __FILE__ ) );
+}
+
 add_action( 'plugins_loaded', array( '\\Politeia\\ReadingPlanner\\Upgrader', 'maybe_upgrade' ) );
