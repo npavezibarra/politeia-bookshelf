@@ -126,6 +126,11 @@ January 5, 2026, 15:01 UTC
 2. Rendered Notes Feed entries from live notes, added session/page header, and embedded emotional composition bars per note.
 3. Synced ver-2 progress bar with density gaps and gold color scale; updated tab styles and stats totals.
 
+January 5, 2026, 16:06 UTC
+1. Created Reading Planner module scaffolding with activation + upgrade hooks and DB versioning.
+2. Added dbDelta schemas for plans, plan goals, plan subjects, plan participants, and planned sessions tables.
+3. Persisted Reading Plan schema version after install and fixed module loading.
+
 ------
 
 TO DO:

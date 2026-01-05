@@ -20,6 +20,11 @@ require_once __DIR__ . '/admin/google-books-settings.php';
 // Inicializar módulos.
 Politeia\Reading\Init::register();
 Politeia\ChatGPT\Init::register();
+require_once __DIR__ . '/modules/reading-planner/init.php';
+require_once __DIR__ . '/modules/reading-planner/reading-planner.php';
+Politeia\ReadingPlanner\Init::register();
+
+register_activation_hook( __FILE__, array( '\\Politeia\\ReadingPlanner\\Activator', 'activate' ) );
 
 /**
  * Register Politeia Bookshelf admin menu.
