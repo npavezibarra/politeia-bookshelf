@@ -179,8 +179,32 @@ $book_isbn            = isset( $book->isbn ) ? trim( (string) $book->isbn ) : ''
 
 $total_pages = ( isset( $ub->pages ) && $ub->pages ) ? (int) $ub->pages : 0;
 $progress_percent = 0;
-if ( $total_pages > 0 && class_exists( 'Politeia_Reading_Sessions' ) ) {
-	$progress_percent = (int) Politeia_Reading_Sessions::calculate_progress_percent( $user_id, (int) $book->id, $total_pages );
+$density_sessions = array();
+if ( $total_pages > 0 && ! empty( $sessions ) ) {
+	$max_page = 0;
+	foreach ( $sessions as $session ) {
+		if ( ! isset( $session->start_page, $session->end_page ) ) {
+			continue;
+		}
+		$start = (int) $session->start_page;
+		$end   = (int) $session->end_page;
+		if ( $end < $start ) {
+			continue;
+		}
+		$end = min( $total_pages, $end );
+		if ( $end > $max_page ) {
+			$max_page = $end;
+		}
+
+		$density_sessions[] = array(
+			'start_page' => (int) $session->start_page,
+			'end_page'   => (int) $session->end_page,
+		);
+	}
+
+	if ( $max_page > 0 ) {
+		$progress_percent = (int) round( ( $max_page / $total_pages ) * 100 );
+	}
 }
 $progress_percent = max( 0, min( 100, $progress_percent ) );
 
@@ -357,11 +381,10 @@ wp_add_inline_script(
 		margin-bottom: 6px;
 	}
 
-	.progress-bar span {
+	.progress-bar canvas {
 		display: block;
+		width: 100%;
 		height: 100%;
-		background: #ef4444;
-		width: 0%;
 	}
 
 	.prs-progress-text { font-size: 12px; color: #6b7280; }
@@ -485,9 +508,15 @@ wp_add_inline_script(
 	}
 
 	.tab.active {
-		color: #3b82f6;
-		border-color: #3b82f6;
-		background: #eff6ff;
+		color: #f7f0da;
+		border-color: #C79F32;
+		background: #000000;
+	}
+
+	.tab:hover {
+		color: #000000;
+		border-color: #C79F32;
+		background: #f7f0da;
 	}
 
 	.prs-tab-content {
@@ -813,7 +842,13 @@ wp_add_inline_script(
 				<section id="progress-section">
 					<div class="progress">
 						<div class="progress-bar">
-							<span style="width: <?php echo (int) $progress_percent; ?>%;"></span>
+							<?php if ( $total_pages > 0 && ! empty( $density_sessions ) ) : ?>
+								<canvas
+									id="prs-reading-density-canvas"
+									data-total-pages="<?php echo esc_attr( $total_pages ); ?>"
+									data-sessions='<?php echo esc_attr( wp_json_encode( $density_sessions ) ); ?>'
+								></canvas>
+							<?php endif; ?>
 						</div>
 						<small class="prs-progress-text"><?php echo esc_html( sprintf( __( '%d%% completed', 'politeia-reading' ), (int) $progress_percent ) ); ?></small>
 					</div>

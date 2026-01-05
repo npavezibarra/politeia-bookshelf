@@ -8,6 +8,7 @@ class Politeia_Reading_Ajax_Handler {
         public static function init() {
                 add_action( 'wp_ajax_politeia_save_session_note', array( __CLASS__, 'save_session_note' ) );
                 add_action( 'wp_ajax_politeia_get_session_note', array( __CLASS__, 'get_session_note' ) );
+                add_action( 'wp_ajax_politeia_save_note_emotions', array( __CLASS__, 'save_note_emotions' ) );
         }
 
         public static function save_session_note() {
@@ -164,6 +165,89 @@ class Politeia_Reading_Ajax_Handler {
                                 'note'       => $note,
                                 'updated_at' => $updated_at,
                                 'has_note'   => (bool) $note_row,
+                        )
+                );
+        }
+
+        public static function save_note_emotions() {
+                if ( ! is_user_logged_in() ) {
+                        wp_send_json_error( 'Not allowed.', 401 );
+                }
+
+                $nonce_valid = check_ajax_referer( 'prs_reading_nonce', 'nonce', false );
+                if ( ! $nonce_valid ) {
+                        wp_send_json_error( 'Invalid nonce.', 403 );
+                }
+
+                global $wpdb;
+
+                $table_notes = $wpdb->prefix . 'politeia_read_ses_notes';
+                $user_id     = get_current_user_id();
+                $note_id     = isset( $_POST['note_id'] ) ? absint( $_POST['note_id'] ) : 0;
+                $raw_emotions = isset( $_POST['emotions'] ) ? wp_unslash( $_POST['emotions'] ) : '';
+
+                if ( ! $note_id || ! $user_id ) {
+                        wp_send_json_error( 'Missing required fields.', 400 );
+                }
+
+                $note_row = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT id FROM {$table_notes} WHERE id = %d AND user_id = %d LIMIT 1",
+                                $note_id,
+                                $user_id
+                        )
+                );
+
+                if ( ! $note_row ) {
+                        wp_send_json_error( 'Invalid note.', 404 );
+                }
+
+                $decoded = json_decode( (string) $raw_emotions, true );
+                if ( ! is_array( $decoded ) ) {
+                        wp_send_json_error( 'Invalid emotions payload.', 400 );
+                }
+
+                $allowed_keys = array( 'joy', 'sorrow', 'fear', 'fascination', 'anger', 'serenity', 'enlightenment' );
+                $sanitized    = array();
+                foreach ( $allowed_keys as $key ) {
+                        if ( ! array_key_exists( $key, $decoded ) ) {
+                                $sanitized[ $key ] = 0;
+                                continue;
+                        }
+                        $value = (int) $decoded[ $key ];
+                        if ( $value < 0 ) {
+                                $value = 0;
+                        } elseif ( $value > 5 ) {
+                                $value = 5;
+                        }
+                        $sanitized[ $key ] = $value;
+                }
+
+                $emotions_json = wp_json_encode( $sanitized );
+                if ( false === $emotions_json ) {
+                        wp_send_json_error( 'Failed to encode emotions.', 500 );
+                }
+
+                $updated = $wpdb->update(
+                        $table_notes,
+                        array(
+                                'emotions'   => $emotions_json,
+                                'updated_at' => current_time( 'mysql' ),
+                        ),
+                        array( 'id' => (int) $note_id ),
+                        array( '%s', '%s' ),
+                        array( '%d' )
+                );
+
+                if ( false === $updated ) {
+                        $error = $wpdb->last_error ? $wpdb->last_error : 'DB update failed.';
+                        wp_send_json_error( $error, 500 );
+                }
+
+                wp_send_json_success(
+                        array(
+                                'note_id'  => (int) $note_id,
+                                'emotions' => $sanitized,
                         )
                 );
         }

@@ -121,6 +121,11 @@ January 4, 2026, 15:15 UTC
 2. Rebuilt Notes Feed layout/styles to the new simplified design, including sidebar tweaks and spacing updates.
 3. Wired Notes Feed to real session notes with an empty-state message for books without notes.
 
+January 5, 2026, 15:01 UTC
+1. Added emotions JSON column to session notes via schema update and migration, then wired rating UI + AJAX save handler.
+2. Rendered Notes Feed entries from live notes, added session/page header, and embedded emotional composition bars per note.
+3. Synced ver-2 progress bar with density gaps and gold color scale; updated tab styles and stats totals.
+
 ------
 
 TO DO:

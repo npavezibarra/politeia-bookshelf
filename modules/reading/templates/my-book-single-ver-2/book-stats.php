@@ -25,7 +25,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 	@media (min-width: 768px) {
 		.prs-book-stats {
-			padding: 20px 0px;
+			padding: 20px 0px 0px;
 		}
 	}
 
@@ -138,6 +138,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 		margin: 0 0 6px;
 	}
 
+	.prs-book-stats__total {
+		margin-left: 6px;
+	}
+
 	.prs-book-stats__section-subtitle {
 		font-size: 10px;
 		margin: 0;
@@ -195,6 +199,8 @@ $weekly_date_range = '';
 $monthly_pages = array();
 $monthly_date_range = '';
 $month_last_day = 0;
+$weekly_total = 0;
+$monthly_total = 0;
 
 if ( ! empty( $sessions ) ) {
 	foreach ( $sessions as $session ) {
@@ -271,6 +277,7 @@ if ( ! empty( $sessions ) && $week_start_ts ) {
 }
 
 $weekly_max = max( $weekly_pages );
+$weekly_total = array_sum( $weekly_pages );
 
 $month_start_ts = strtotime( date_i18n( 'Y-m-01', current_time( 'timestamp' ) ) );
 $month_last_day = (int) date_i18n( 't', $month_start_ts );
@@ -309,6 +316,7 @@ if ( ! empty( $sessions ) && $month_start_ts ) {
 }
 
 $monthly_max = max( $monthly_pages );
+$monthly_total = array_sum( $monthly_pages );
 ?>
 
 <section class="prs-book-stats">
@@ -336,7 +344,7 @@ $monthly_max = max( $monthly_pages );
 			<!-- Div 2: Pages per Hour -->
 			<div id="pages-per-hour" class="card prs-book-stats__kpi">
 				<div class="prs-book-stats__kpi-row">
-					<div class="prs-book-stats__icon" style="color: var(--accent-orange);">
+					<div class="prs-book-stats__icon" style="color: #c79f32;">
 						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
 						</svg>
@@ -353,7 +361,7 @@ $monthly_max = max( $monthly_pages );
 			<!-- Div 3: Weekly Chart -->
 			<div id="weekly-chart" class="card">
 				<div class="prs-book-stats__section">
-					<h3 class="prs-book-stats__section-title headline">Pages This Week</h3>
+					<h3 class="prs-book-stats__section-title headline">Pages This Week <?php echo esc_html( (string) $weekly_total ); ?></h3>
 					<p class="prs-book-stats__section-subtitle subtitle" id="weekly-date-range"><?php echo esc_html( $weekly_date_range ); ?></p>
 				</div>
 				<div class="chart-container" id="week-bars">
@@ -378,7 +386,10 @@ $monthly_max = max( $monthly_pages );
 			<!-- Div 4: Monthly Chart -->
 			<div id="monthly-chart" class="card">
 				<div class="prs-book-stats__section">
-					<h3 class="prs-book-stats__section-title headline" id="monthly-title">Pages This Month</h3>
+					<h3 class="prs-book-stats__section-title headline" id="monthly-title">
+						<span id="monthly-title-text">Pages This Month</span>
+						<span class="prs-book-stats__total"><?php echo esc_html( (string) $monthly_total ); ?></span>
+					</h3>
 					<p class="prs-book-stats__section-subtitle subtitle" id="monthly-date-range"><?php echo esc_html( $monthly_date_range ); ?></p>
 				</div>
 				<div class="chart-container prs-book-stats__chart--month" id="month-bars">
@@ -411,5 +422,8 @@ $monthly_max = max( $monthly_pages );
 	 * Data is rendered server-side based on this month's sessions.
 	 * -------------------------------------------------------------------------
 	 */
-	document.getElementById('monthly-title').textContent = `Pages ${monthNames[now.getMonth()]}`;
+	const monthlyTitle = document.getElementById('monthly-title-text');
+	if (monthlyTitle) {
+		monthlyTitle.textContent = `Pages ${monthNames[now.getMonth()]}`;
+	}
 </script>

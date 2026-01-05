@@ -3661,8 +3661,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         }
 
         const clamped = Math.min(density, 5);
-        const lightness = 70 - (clamped - 1) * 10;
-        ctx.fillStyle = `hsl(210, 90%, ${lightness}%)`;
+        const lightness = 75 - (clamped - 1) * 10;
+        ctx.fillStyle = `hsl(44, 60%, ${lightness}%)`;
         ctx.fillRect(i * pageWidth, 0, pageWidth + 0.5, height);
       }
     }
