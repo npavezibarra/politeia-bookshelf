@@ -131,6 +131,11 @@ January 5, 2026, 16:06 UTC
 2. Added dbDelta schemas for plans, plan goals, plan subjects, plan participants, and planned sessions tables.
 3. Persisted Reading Plan schema version after install and fixed module loading.
 
+January 5, 2026, 16:40 UTC
+1. Added user baseline schemas with dbDelta execution and versioning scaffolding.
+2. Implemented baseline helpers for creation, fetching latest baseline, and baseline-aware comparisons.
+3. Added baseline metric computation helpers for current reading behavior.
+
 ------
 
 TO DO:

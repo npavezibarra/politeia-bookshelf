@@ -23,8 +23,12 @@ Politeia\ChatGPT\Init::register();
 require_once __DIR__ . '/modules/reading-planner/init.php';
 require_once __DIR__ . '/modules/reading-planner/reading-planner.php';
 Politeia\ReadingPlanner\Init::register();
+require_once __DIR__ . '/modules/user-baseline/init.php';
+require_once __DIR__ . '/modules/user-baseline/user-baseline.php';
+Politeia\UserBaseline\Init::register();
 
 register_activation_hook( __FILE__, array( '\\Politeia\\ReadingPlanner\\Activator', 'activate' ) );
+register_activation_hook( __FILE__, array( '\\Politeia\\UserBaseline\\Activator', 'activate' ) );
 
 /**
  * Register Politeia Bookshelf admin menu.
