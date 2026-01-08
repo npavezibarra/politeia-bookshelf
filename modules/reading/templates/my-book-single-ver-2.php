@@ -303,6 +303,8 @@ wp_add_inline_script(
 		padding: 16px;
 	}
 
+	.prs-book-identity-slot { display: none; }
+
 	#prs-cover-progress {
 		display: flex;
 		flex-direction: column;
@@ -779,13 +781,45 @@ wp_add_inline_script(
 	}
 
 	@media (max-width: 980px) {
-		.page { grid-template-columns: 1fr; }
+		.page { grid-template-columns: 1fr; width: 100%; }
+		.sidebar,
+		.prs-sidebar-block {
+			width: 100%;
+			min-width: 0;
+		}
+		.content,
+		.prs-content-card {
+			width: 100%;
+			max-width: 100%;
+			min-width: 0;
+		}
+		#book-cover-section {
+			display: flex;
+			align-items: flex-start;
+			gap: 16px;
+		}
+		.prs-cover-wrap {
+			flex: 0 0 140px;
+		}
+		#prs-cover-frame {
+			width: 140px;
+			height: auto;
+			aspect-ratio: 2 / 3;
+		}
+		#prs-cover-frame .prs-cover-img {
+			object-fit: contain;
+		}
+		.prs-book-identity-slot {
+			display: block;
+			flex: 1 1 auto;
+			min-width: 0;
+		}
 		#book-identity, #owning-status-summary { width: 100%; }
 		.header { flex-direction: column; }
 		.prs-book-stats-grid { grid-template-columns: 1fr; }
 	}
 
-	@media (min-width: 950px) {
+	@media (min-width: 980px) {
 		#prs-cover-frame {
 			width: 100% !important;
 			height: auto !important;
@@ -795,6 +829,13 @@ wp_add_inline_script(
 			height: 100%;
 		}
 	}
+
+	@media screen and (max-width: 950px) {
+		#prs-cover-frame,
+		.prs-book-cover {
+			height: auto !important;
+		}
+	}
 </style>
 
 <div class="prs-page-wrap">
@@ -802,92 +843,95 @@ wp_add_inline_script(
 		<aside class="sidebar">
 			<section id="prs-cover-progress" class="prs-sidebar-block">
 				<section id="book-cover-section">
-					<div
-						id="prs-cover-frame"
-						class="cover-frame <?php echo $has_image ? 'has-image' : ''; ?>"
-						data-cover-state="<?php echo $has_image ? 'image' : 'empty'; ?>"
-						data-placeholder-title="<?php echo esc_attr( $placeholder_title ); ?>"
-						data-placeholder-author="<?php echo esc_attr( $placeholder_author ); ?>"
-						data-placeholder-label="<?php echo esc_attr( $placeholder_label ); ?>"
-						data-search-label="<?php echo esc_attr( $search_cover_label ); ?>"
-						data-remove-label="<?php echo esc_attr( $remove_cover_label ); ?>"
-						data-remove-confirm="<?php echo esc_attr( $remove_cover_confirm ); ?>"
-					>
-						<figure class="prs-book-cover" id="prs-book-cover-figure">
-							<?php if ( $has_image ) : ?>
-								<?php
-								if ( $final_cover_id ) {
-									$cover_alt = trim( (string) get_post_meta( $final_cover_id, '_wp_attachment_image_alt', true ) );
-									if ( ! $cover_alt && ! empty( $book->title ) ) {
-										$cover_alt = $book->title;
-									}
-									if ( ! $cover_alt ) {
-										$cover_alt = __( 'Book cover', 'politeia-reading' );
-									}
+					<div class="prs-cover-wrap">
+						<div
+							id="prs-cover-frame"
+							class="cover-frame <?php echo $has_image ? 'has-image' : ''; ?>"
+							data-cover-state="<?php echo $has_image ? 'image' : 'empty'; ?>"
+							data-placeholder-title="<?php echo esc_attr( $placeholder_title ); ?>"
+							data-placeholder-author="<?php echo esc_attr( $placeholder_author ); ?>"
+							data-placeholder-label="<?php echo esc_attr( $placeholder_label ); ?>"
+							data-search-label="<?php echo esc_attr( $search_cover_label ); ?>"
+							data-remove-label="<?php echo esc_attr( $remove_cover_label ); ?>"
+							data-remove-confirm="<?php echo esc_attr( $remove_cover_confirm ); ?>"
+						>
+							<figure class="prs-book-cover" id="prs-book-cover-figure">
+								<?php if ( $has_image ) : ?>
+									<?php
+									if ( $final_cover_id ) {
+										$cover_alt = trim( (string) get_post_meta( $final_cover_id, '_wp_attachment_image_alt', true ) );
+										if ( ! $cover_alt && ! empty( $book->title ) ) {
+											$cover_alt = $book->title;
+										}
+										if ( ! $cover_alt ) {
+											$cover_alt = __( 'Book cover', 'politeia-reading' );
+										}
 
-									$cover_img_src = wp_get_attachment_image_src( $final_cover_id, 'large' );
-									$cover_img_url = $cover_img_src ? set_url_scheme( $cover_img_src[0], $cover_scheme ) : '';
-									if ( ! $cover_img_url ) {
-										$fallback_src = wp_get_attachment_url( $final_cover_id );
-										$cover_img_url = $fallback_src ? set_url_scheme( $fallback_src, $cover_scheme ) : '';
-									}
-									if ( $force_http_covers && $cover_img_url ) {
-										$cover_img_url = preg_replace( '#^https:#', 'http:', $cover_img_url );
-									}
+										$cover_img_src = wp_get_attachment_image_src( $final_cover_id, 'large' );
+										$cover_img_url = $cover_img_src ? set_url_scheme( $cover_img_src[0], $cover_scheme ) : '';
+										if ( ! $cover_img_url ) {
+											$fallback_src = wp_get_attachment_url( $final_cover_id );
+											$cover_img_url = $fallback_src ? set_url_scheme( $fallback_src, $cover_scheme ) : '';
+										}
+										if ( $force_http_covers && $cover_img_url ) {
+											$cover_img_url = preg_replace( '#^https:#', 'http:', $cover_img_url );
+										}
 
-									if ( $cover_img_url ) {
+										if ( $cover_img_url ) {
+											printf(
+												'<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
+												esc_url( $cover_img_url ),
+												esc_attr( $cover_alt )
+											);
+										}
+									} elseif ( $cover_url ) {
+										$fallback_alt = ! empty( $book->title ) ? $book->title : __( 'Book cover', 'politeia-reading' );
+										$cover_url = set_url_scheme( $cover_url, $cover_scheme );
+										if ( $force_http_covers && $cover_url ) {
+											$cover_url = preg_replace( '#^https:#', 'http:', $cover_url );
+										}
 										printf(
 											'<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
-											esc_url( $cover_img_url ),
-											esc_attr( $cover_alt )
+											esc_url( $cover_url ),
+											esc_attr( $fallback_alt )
 										);
 									}
-								} elseif ( $cover_url ) {
-									$fallback_alt = ! empty( $book->title ) ? $book->title : __( 'Book cover', 'politeia-reading' );
-									$cover_url = set_url_scheme( $cover_url, $cover_scheme );
-									if ( $force_http_covers && $cover_url ) {
-										$cover_url = preg_replace( '#^https:#', 'http:', $cover_url );
-									}
-									printf(
-										'<img src="%1$s" class="prs-cover-img" id="prs-cover-img" alt="%2$s" />',
-										esc_url( $cover_url ),
-										esc_attr( $fallback_alt )
-									);
-								}
-								?>
-							<?php else : ?>
-								<div
-									id="prs-cover-placeholder"
-									class="prs-cover-placeholder"
-									role="img"
-									aria-label="<?php echo esc_attr( $placeholder_label ); ?>">
-									<h3 id="prs-book-title-placeholder" class="prs-cover-title"><?php echo esc_html( $placeholder_title ); ?></h3>
-									<span id="prs-book-author-placeholder" class="prs-cover-author"><?php echo esc_html( $placeholder_author ); ?></span>
-									<?php echo do_shortcode( '[prs_cover_button]' ); ?>
+									?>
+								<?php else : ?>
+									<div
+										id="prs-cover-placeholder"
+										class="prs-cover-placeholder"
+										role="img"
+										aria-label="<?php echo esc_attr( $placeholder_label ); ?>">
+										<h3 id="prs-book-title-placeholder" class="prs-cover-title"><?php echo esc_html( $placeholder_title ); ?></h3>
+										<span id="prs-book-author-placeholder" class="prs-cover-author"><?php echo esc_html( $placeholder_author ); ?></span>
+										<?php echo do_shortcode( '[prs_cover_button]' ); ?>
+									</div>
+								<?php endif; ?>
+							</figure>
+							<?php if ( $has_image ) : ?>
+								<div class="prs-cover-overlay">
+									<?php echo do_shortcode( '[prs_cover_button show_search="true"]' ); ?>
 								</div>
 							<?php endif; ?>
-						</figure>
-						<?php if ( $has_image ) : ?>
-							<div class="prs-cover-overlay">
-								<?php echo do_shortcode( '[prs_cover_button show_search="true"]' ); ?>
-							</div>
-						<?php endif; ?>
-					</div>
-					<figcaption
-						id="prs-cover-attribution-wrap"
-						class="prs-book-cover__caption <?php echo $cover_source ? '' : 'is-hidden'; ?>"
-						aria-hidden="<?php echo $cover_source ? 'false' : 'true'; ?>"
-					>
-						<a
-							id="prs-cover-attribution"
-							class="prs-book-cover__link <?php echo $cover_source ? '' : 'is-hidden'; ?>"
-							<?php echo $cover_source ? 'href="' . esc_url( $cover_source ) . '"' : ''; ?>
-							target="_blank"
-							rel="noopener noreferrer"
+						</div>
+						<figcaption
+							id="prs-cover-attribution-wrap"
+							class="prs-book-cover__caption <?php echo $cover_source ? '' : 'is-hidden'; ?>"
+							aria-hidden="<?php echo $cover_source ? 'false' : 'true'; ?>"
 						>
-							<?php esc_html_e( 'View on Google Books', 'politeia-reading' ); ?>
-						</a>
-					</figcaption>
+							<a
+								id="prs-cover-attribution"
+								class="prs-book-cover__link <?php echo $cover_source ? '' : 'is-hidden'; ?>"
+								<?php echo $cover_source ? 'href="' . esc_url( $cover_source ) . '"' : ''; ?>
+								target="_blank"
+								rel="noopener noreferrer"
+							>
+								<?php esc_html_e( 'View on Google Books', 'politeia-reading' ); ?>
+							</a>
+						</figcaption>
+					</div>
+					<div id="prs-book-identity-slot" class="prs-book-identity-slot"></div>
 				</section>
 
 				<section id="progress-section">
@@ -1157,6 +1201,29 @@ wp_add_inline_script(
 		var params = new URLSearchParams(window.location.search || '');
 		if (params.get('prs_start_session') === '1') {
 			document.dispatchEvent(new CustomEvent('prs-session-modal:open', { detail: { focusClose: true } }));
+		}
+
+		var identity = document.getElementById("book-identity");
+		var header = document.querySelector("#prs-book-header .header");
+		var slot = document.getElementById("prs-book-identity-slot");
+		if (identity && header && slot) {
+			var mediaQuery = window.matchMedia("(max-width: 980px)");
+			var syncIdentityPlacement = function () {
+				if (mediaQuery.matches) {
+					if (!slot.contains(identity)) {
+						slot.appendChild(identity);
+					}
+				} else if (!header.contains(identity)) {
+					header.insertBefore(identity, header.firstElementChild);
+				}
+			};
+
+			syncIdentityPlacement();
+			if (mediaQuery.addEventListener) {
+				mediaQuery.addEventListener("change", syncIdentityPlacement);
+			} else if (mediaQuery.addListener) {
+				mediaQuery.addListener(syncIdentityPlacement);
+			}
 		}
 	});
 </script>

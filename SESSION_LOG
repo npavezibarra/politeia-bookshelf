@@ -141,6 +141,11 @@ January 8, 2026, 15:03 UTC
 2. Removed the "My Library" header label from the library page.
 3. Updated the book count to show total books by default and filtered/total when filters or search are active.
 
+January 8, 2026, 16:10 UTC
+1. Tuned ver-2 single book responsive layout (sidebar/content width fixes and 980px breakpoint adjustments).
+2. Moved the book identity block next to the cover on small screens via a responsive slot + JS reparenting.
+3. Adjusted small-screen cover sizing to reduce cropping and added a max-950px height override for the cover frame.
+
 ------
 
 TO DO:
