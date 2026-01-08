@@ -10,7 +10,15 @@ export default defineConfig({
 			input: {
 				'reading-plan-entry': 'assets/js/reading-plan-entry.jsx',
 			},
+			external: [
+				'react',
+				'react-dom',
+				'react-dom/client',
+				'react/jsx-runtime',
+				'@wordpress/element',
+			],
 			output: {
+				format: 'iife',
 				entryFileNames: 'js/reading-plan-entry.js',
 				chunkFileNames: 'js/[name].js',
 				assetFileNames: (assetInfo) => {
@@ -18,6 +26,13 @@ export default defineConfig({
 						return 'css/reading-plan-app.css';
 					}
 					return 'assets/[name][extname]';
+				},
+				globals: {
+					react: 'wp.element',
+					'react-dom': 'wp.element',
+					'react-dom/client': 'wp.element',
+					'react/jsx-runtime': 'wp.element',
+					'@wordpress/element': 'wp.element',
 				},
 			},
 		},

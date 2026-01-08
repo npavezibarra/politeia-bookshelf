@@ -1693,11 +1693,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
   // ---------- Type of book ----------
   function setupTypeBook() {
-    const wrap = qs("#fld-user-rating");
-    if (!wrap || !window.PRS_BOOK) return;
+    if (!window.PRS_BOOK) return;
 
-    const select = qs("#prs-type-book", wrap);
-    const status = qs("#type-book-status", wrap);
+    const select = qs("#prs-type-book");
+    const status = qs("#type-book-status");
 
     if (!select) return;
 
@@ -2656,18 +2655,26 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       return;
     }
 
-    const owningSelect = qs("#prs-filter-owning-status", dashboard);
-    const readingSelect = qs("#prs-filter-reading-status", dashboard);
+    const owningToggle = qs("#prs-filter-owning-toggle", dashboard);
+    const readingToggle = qs("#prs-filter-reading-toggle", dashboard);
+    const owningPanel = qs("#prs-filter-owning-panel", dashboard);
+    const readingPanel = qs("#prs-filter-reading-panel", dashboard);
+    const owningChecks = owningPanel ? qsa('input[type="checkbox"][data-group="owning"]', owningPanel) : [];
+    const readingChecks = readingPanel ? qsa('input[type="checkbox"][data-group="reading"]', readingPanel) : [];
     const progressMinInput = qs("#prs-filter-progress-min", dashboard);
     const progressMaxInput = qs("#prs-filter-progress-max", dashboard);
+    const progressTrack = qs("#prs-filter-progress-track", dashboard);
+    const progressFill = qs("#prs-filter-progress-fill", dashboard);
+    const progressThumbMin = qs("#prs-filter-progress-thumb-min", dashboard);
+    const progressThumbMax = qs("#prs-filter-progress-thumb-max", dashboard);
+    let draggingThumb = null;
     const orderSelect = qs("#prs-filter-order", dashboard);
     const resetBtn = qs("#prs-filter-reset", dashboard);
-    const closeBtn = qs("#prs-filter-close", dashboard);
 
     const storageKey = "PRS_LIBRARY_FILTERS";
     const defaultState = {
-      owning: "",
-      reading: "",
+      owning: [],
+      reading: [],
       min: 0,
       max: 100,
       order: "title_asc",
@@ -2687,6 +2694,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       if (lower === "lent_out" || lower === "borrowing") {
         return "borrowing";
       }
+      if (lower === "in_shelf") {
+        return "";
+      }
       return lower;
     }
 
@@ -2697,8 +2707,18 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     function normalizeState(raw) {
       const normalized = Object.assign({}, defaultState);
       if (raw && typeof raw === "object") {
-        if (typeof raw.owning === "string") normalized.owning = normalizeOwningOption(raw.owning);
-        if (typeof raw.reading === "string") normalized.reading = raw.reading;
+        if (Array.isArray(raw.owning)) {
+          normalized.owning = raw.owning.map(normalizeOwningOption).filter(Boolean);
+        } else if (typeof raw.owning === "string") {
+          normalized.owning = raw.owning ? [normalizeOwningOption(raw.owning)] : [];
+        }
+
+        if (Array.isArray(raw.reading)) {
+          normalized.reading = raw.reading.filter(Boolean);
+        } else if (typeof raw.reading === "string") {
+          normalized.reading = raw.reading ? [raw.reading] : [];
+        }
+
         if (typeof raw.order === "string") normalized.order = raw.order;
         normalized.min = clampProgress(raw.min, defaultState.min);
         normalized.max = clampProgress(raw.max, defaultState.max);
@@ -2710,7 +2730,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         normalized.max = swap;
       }
 
-      normalized.owning = normalizeOwningOption(normalized.owning);
+      normalized.owning = normalized.owning.map(normalizeOwningOption).filter(Boolean);
 
       return normalized;
     }
@@ -2718,21 +2738,119 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     function updateRangeDisplay(input) {
       if (!input) return;
       const span = dashboard.querySelector('[data-display-for="' + input.id + '"]');
+      const minValue = input.id === "prs-filter-progress-max" ? 100 : 0;
+      const value = clampProgress(input.value, minValue);
       if (span) {
-        span.textContent = clampProgress(input.value, input.id === "prs-filter-progress-max" ? 100 : 0) + "%";
+        span.textContent = value + "%";
       }
     }
 
-    function setSelectValue(select, value, normalizer) {
+    function setRangePositions(minVal, maxVal) {
+      if (!progressTrack || !progressFill || !progressThumbMin || !progressThumbMax) return;
+      progressThumbMin.style.left = `${minVal}%`;
+      progressThumbMax.style.left = `${maxVal}%`;
+      progressFill.style.left = `${minVal}%`;
+      progressFill.style.right = `${100 - maxVal}%`;
+      progressThumbMin.setAttribute("aria-valuenow", String(minVal));
+      progressThumbMax.setAttribute("aria-valuenow", String(maxVal));
+    }
+
+    function syncRangeUI() {
+      const minVal = clampProgress(progressMinInput ? progressMinInput.value : 0, 0);
+      const maxVal = clampProgress(progressMaxInput ? progressMaxInput.value : 100, 100);
+      if (progressMinInput) updateRangeDisplay(progressMinInput);
+      if (progressMaxInput) updateRangeDisplay(progressMaxInput);
+      setRangePositions(minVal, maxVal);
+    }
+
+    function setDragState(target) {
+      draggingThumb = target;
+      if (progressThumbMin) progressThumbMin.classList.toggle("is-active", draggingThumb === "min");
+      if (progressThumbMax) progressThumbMax.classList.toggle("is-active", draggingThumb === "max");
+    }
+
+    function handleTrackDrag(event) {
+      if (!draggingThumb || !progressTrack) return;
+      const rect = progressTrack.getBoundingClientRect();
+      const percentage = Math.min(Math.max(0, ((event.clientX - rect.left) / rect.width) * 100), 100);
+      const newValue = Math.round(percentage);
+
+      const minVal = clampProgress(progressMinInput ? progressMinInput.value : 0, 0);
+      const maxVal = clampProgress(progressMaxInput ? progressMaxInput.value : 100, 100);
+
+      if (draggingThumb === "min") {
+        const nextMin = Math.min(newValue, maxVal - 1);
+        if (progressMinInput) {
+          progressMinInput.value = String(nextMin);
+        }
+      } else {
+        const nextMax = Math.max(newValue, minVal + 1);
+        if (progressMaxInput) {
+          progressMaxInput.value = String(nextMax);
+        }
+      }
+
+      syncRangeUI();
+    }
+
+    function handleMouseUp() {
+      setDragState(null);
+      document.removeEventListener("mousemove", handleTrackDrag);
+      document.removeEventListener("mouseup", handleMouseUp);
+    }
+
+    function attachThumbHandlers(thumb, type) {
+      if (!thumb || !progressTrack) return;
+      thumb.addEventListener("mousedown", (event) => {
+        event.preventDefault();
+        setDragState(type);
+        document.addEventListener("mousemove", handleTrackDrag);
+        document.addEventListener("mouseup", handleMouseUp);
+      });
+    }
+
+    function setSelectValue(select, value) {
       if (!select) return;
-      const normalizedValue = typeof normalizer === "function" ? normalizer(value) : value;
       const values = Array.prototype.map.call(select.options, option => option.value);
-      select.value = values.indexOf(normalizedValue) !== -1 ? normalizedValue : "";
+      select.value = values.indexOf(value) !== -1 ? value : "";
+    }
+
+    function setCheckedValues(checkboxes, values) {
+      if (!checkboxes || !checkboxes.length) return;
+      const selected = new Set((values || []).filter(Boolean));
+      checkboxes.forEach((checkbox) => {
+        checkbox.checked = selected.has(checkbox.value);
+      });
+    }
+
+    function getCheckedValues(checkboxes) {
+      if (!checkboxes || !checkboxes.length) return [];
+      return checkboxes.filter((checkbox) => checkbox.checked).map((checkbox) => checkbox.value);
+    }
+
+    function updateMultiLabel(toggle, checkboxes) {
+      if (!toggle) return;
+      const defaultLabel = toggle.getAttribute("data-default-label") || "All";
+      const checked = getCheckedValues(checkboxes);
+      if (!checked.length) {
+        toggle.textContent = defaultLabel;
+        return;
+      }
+
+      const labels = checked.map((value) => {
+        const input = (checkboxes || []).find((checkbox) => checkbox.value === value);
+        const label = input && input.parentElement ? input.parentElement.textContent : value;
+        return (label || value).trim();
+      });
+
+      toggle.textContent = labels.length <= 2 ? labels.join(", ") : `${labels.length} selected`;
     }
 
     function applyInputs(state) {
-      setSelectValue(owningSelect, state.owning, normalizeOwningOption);
-      setSelectValue(readingSelect, state.reading);
+      setCheckedValues(owningChecks, state.owning);
+      setCheckedValues(readingChecks, state.reading);
+      updateMultiLabel(owningToggle, owningChecks);
+      updateMultiLabel(readingToggle, readingChecks);
       setSelectValue(orderSelect, state.order);
       if (progressMinInput) {
         progressMinInput.value = String(state.min);
@@ -2746,8 +2864,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     function getStateFromInputs() {
       return {
-        owning: owningSelect ? normalizeOwningOption(owningSelect.value) : "",
-        reading: readingSelect ? readingSelect.value : "",
+        owning: getCheckedValues(owningChecks).map(normalizeOwningOption).filter(Boolean),
+        reading: getCheckedValues(readingChecks).filter(Boolean),
         min: progressMinInput ? num(progressMinInput.value, defaultState.min) : defaultState.min,
         max: progressMaxInput ? num(progressMaxInput.value, defaultState.max) : defaultState.max,
         order: orderSelect ? orderSelect.value : defaultState.order,
@@ -2804,18 +2922,49 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
 
       const sortedRows = reorderRows(rows, normalized.order);
-      const owningValue = toOwningComparisonValue(normalized.owning);
-      const readingValue = (normalized.reading || "").toLocaleLowerCase();
+      const owningValues = normalized.owning.map(toOwningComparisonValue);
+      const readingValues = normalized.reading.map((value) => (value || "").toLocaleLowerCase());
 
+      let visibleCount = 0;
       sortedRows.forEach(row => {
         const owning = toOwningComparisonValue(row.getAttribute("data-owning-status"));
         const reading = (row.getAttribute("data-reading-status") || "").toLocaleLowerCase();
         const progress = clampProgress(row.getAttribute("data-progress"), 0);
-        const owningMatches = !owningValue || owning === owningValue;
-        const readingMatches = !readingValue || reading === readingValue;
+        const owningMatches = owningValues.length === 0 || owningValues.includes(owning);
+        const readingMatches = readingValues.length === 0 || readingValues.includes(reading);
         const progressMatches = progress >= normalized.min && progress <= normalized.max;
-        row.style.display = (owningMatches && readingMatches && progressMatches) ? "" : "none";
+        const isVisible = owningMatches && readingMatches && progressMatches;
+        row.style.display = isVisible ? "" : "none";
+        if (isVisible) {
+          visibleCount += 1;
+        }
       });
+
+      let emptyRow = tbody.querySelector("#prs-library-empty");
+      if (visibleCount === 0) {
+        if (!emptyRow) {
+          emptyRow = document.createElement("tr");
+          emptyRow.id = "prs-library-empty";
+          emptyRow.setAttribute("data-empty", "1");
+          emptyRow.innerHTML = '<td colspan="100%"><div class="prs-library__empty">Zero books meet this criteria.</div></td>';
+          tbody.appendChild(emptyRow);
+        }
+        emptyRow.style.display = "";
+      } else if (emptyRow) {
+        emptyRow.remove();
+      }
+
+      const filterActive = normalized.owning.length > 0
+        || normalized.reading.length > 0
+        || normalized.min > 0
+        || normalized.max < 100;
+
+      if (typeof window.updateBookCount === "function") {
+        window.updateBookCount({
+          filterActive: filterActive,
+          filteredCount: visibleCount,
+        });
+      }
 
       return normalized;
     }
@@ -2879,6 +3028,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       filterBtn.setAttribute("aria-expanded", "false");
       document.body.classList.remove("prs-filter-open");
       document.removeEventListener("keydown", handleKeydown);
+      if (owningPanel) togglePanel(owningToggle, owningPanel, false);
+      if (readingPanel) togglePanel(readingToggle, readingPanel, false);
       if (lastFocused && typeof lastFocused.focus === "function") {
         setTimeout(() => lastFocused.focus(), 0);
       }
@@ -2887,10 +3038,18 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     function applyAndSave(state, shouldClose) {
       const normalized = normalizeState(state);
       applyInputs(normalized);
-      applyFilters(normalized);
-      saveState(normalized);
-      if (shouldClose) {
-        closeDashboard();
+      const applyNow = () => {
+        applyFilters(normalized);
+        saveState(normalized);
+        if (shouldClose) {
+          closeDashboard();
+        }
+      };
+
+      if (typeof window.loadLibraryPage === "function") {
+        Promise.resolve(window.loadLibraryPage(1)).then(applyNow).catch(applyNow);
+      } else {
+        applyNow();
       }
     }
 
@@ -2899,15 +3058,68 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       openDashboard();
     });
 
-    if (closeBtn) {
-      closeBtn.addEventListener("click", (event) => {
+    function togglePanel(toggle, panel, shouldOpen) {
+      if (!toggle || !panel) return;
+      const isOpen = typeof shouldOpen === "boolean" ? shouldOpen : panel.hasAttribute("hidden");
+      if (isOpen) {
+        panel.removeAttribute("hidden");
+        panel.classList.add("is-open");
+        toggle.setAttribute("aria-expanded", "true");
+      } else {
+        panel.setAttribute("hidden", "hidden");
+        panel.classList.remove("is-open");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+    }
+
+    if (owningToggle && owningPanel) {
+      owningToggle.addEventListener("click", (event) => {
         event.preventDefault();
-        closeDashboard();
+        const shouldOpen = owningPanel.hasAttribute("hidden");
+        togglePanel(owningToggle, owningPanel, shouldOpen);
+        if (shouldOpen && readingPanel) {
+          togglePanel(readingToggle, readingPanel, false);
+        }
       });
     }
 
+    if (readingToggle && readingPanel) {
+      readingToggle.addEventListener("click", (event) => {
+        event.preventDefault();
+        const shouldOpen = readingPanel.hasAttribute("hidden");
+        togglePanel(readingToggle, readingPanel, shouldOpen);
+        if (shouldOpen && owningPanel) {
+          togglePanel(owningToggle, owningPanel, false);
+        }
+      });
+    }
+
+    [...owningChecks, ...readingChecks].forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        updateMultiLabel(owningToggle, owningChecks);
+        updateMultiLabel(readingToggle, readingChecks);
+      });
+    });
+
     overlay.addEventListener("click", () => {
       closeDashboard();
+    });
+
+    dashboard.addEventListener("click", (event) => {
+      if (event.target === dashboard) {
+        closeDashboard();
+      }
+    });
+
+    document.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!dashboard.contains(target) && target !== filterBtn) {
+        if (owningPanel) togglePanel(owningToggle, owningPanel, false);
+        if (readingPanel) togglePanel(readingToggle, readingPanel, false);
+        if (dashboard.classList.contains("is-active")) {
+          closeDashboard();
+        }
+      }
     });
 
     form.addEventListener("submit", (event) => {
@@ -2926,8 +3138,41 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     [progressMinInput, progressMaxInput].forEach((input) => {
       if (!input) return;
-      input.addEventListener("input", () => updateRangeDisplay(input));
+      input.addEventListener("input", () => {
+        const minVal = clampProgress(progressMinInput ? progressMinInput.value : 0, 0);
+        const maxVal = clampProgress(progressMaxInput ? progressMaxInput.value : 100, 100);
+        if (progressMinInput && progressMaxInput) {
+          if (minVal > maxVal) {
+            if (input === progressMinInput) {
+              progressMaxInput.value = String(minVal);
+            } else {
+              progressMinInput.value = String(maxVal);
+            }
+          }
+        }
+        syncRangeUI();
+      });
     });
+
+    attachThumbHandlers(progressThumbMin, "min");
+    attachThumbHandlers(progressThumbMax, "max");
+
+    if (progressTrack) {
+      progressTrack.addEventListener("mousedown", (event) => {
+        if (!progressMinInput || !progressMaxInput) return;
+        const rect = progressTrack.getBoundingClientRect();
+        const percentage = Math.min(Math.max(0, ((event.clientX - rect.left) / rect.width) * 100), 100);
+        const minVal = clampProgress(progressMinInput.value, 0);
+        const maxVal = clampProgress(progressMaxInput.value, 100);
+        const distanceToMin = Math.abs(percentage - minVal);
+        const distanceToMax = Math.abs(percentage - maxVal);
+        const target = distanceToMin <= distanceToMax ? "min" : "max";
+        setDragState(target);
+        handleTrackDrag(event);
+        document.addEventListener("mousemove", handleTrackDrag);
+        document.addEventListener("mouseup", handleMouseUp);
+      });
+    }
 
     const savedState = loadState();
     if (savedState) {
@@ -2937,6 +3182,8 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       applyInputs(defaultState);
       applyFilters(defaultState);
     }
+
+    syncRangeUI();
   }
 
 

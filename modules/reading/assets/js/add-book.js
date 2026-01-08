@@ -2,9 +2,11 @@
         var modal = document.getElementById('prs-add-book-modal');
         var modalContent = modal ? modal.querySelector('.prs-add-book__modal-content') : null;
         var form = document.getElementById('prs-add-book-form');
+        var submitButton = form ? form.querySelector('.prs-add-book__submit') : null;
         var formHeading = document.getElementById('prs-add-book-form-title');
         var successContainer = document.getElementById('prs-add-book-success');
         var successHeading = successContainer ? successContainer.querySelector('.prs-add-book__success-heading') : null;
+        var successAction = successContainer ? successContainer.querySelector('.prs-add-book__success-action') : null;
         var closeButton = modal ? modal.querySelector('.prs-add-book__close') : null;
         var modeSwitch = document.getElementById('prs-add-book-mode-switch');
         var modeButtons = modeSwitch ? modeSwitch.querySelectorAll('.prs-add-book__mode-button') : null;
@@ -31,7 +33,7 @@
                         var currentUrl = new window.URL(window.location.href);
                         var params = currentUrl.searchParams;
                         var removed = false;
-                        var keys = ['prs_added', 'prs_added_title', 'prs_added_author', 'prs_added_year', 'prs_added_pages', 'prs_added_cover'];
+                        var keys = ['prs_added', 'prs_added_title', 'prs_added_author', 'prs_added_year', 'prs_added_pages', 'prs_added_cover', 'prs_added_slug'];
 
                         for (var i = 0; i < keys.length; i++) {
                                 if (params.has(keys[i])) {
@@ -223,6 +225,14 @@
                 });
         }
 
+        if (form && submitButton) {
+                form.addEventListener('submit', function () {
+                        submitButton.classList.add('is-loading');
+                        submitButton.setAttribute('aria-busy', 'true');
+                        submitButton.disabled = true;
+                });
+        }
+
         var openButtons = document.querySelectorAll('[aria-controls="prs-add-book-modal"]');
         if (openButtons && openButtons.length) {
                 for (var i = 0; i < openButtons.length; i++) {
@@ -233,6 +243,21 @@
         }
 
         activateSuccess();
+
+        if (successAction) {
+                var revealAction = function () {
+                        successAction.classList.add('is-ready');
+                };
+
+                if (document.fonts && typeof document.fonts.load === 'function') {
+                        Promise.race([
+                                document.fonts.load('24px "Material Symbols Outlined"'),
+                                new Promise(function (resolve) { setTimeout(resolve, 1200); })
+                        ]).then(revealAction).catch(revealAction);
+                } else {
+                        setTimeout(revealAction, 300);
+                }
+        }
 
         var authorContainer = document.getElementById('prs_author_fields');
         var authorInputField = document.getElementById('prs_author_input');

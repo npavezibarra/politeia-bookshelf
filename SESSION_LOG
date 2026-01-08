@@ -136,6 +136,11 @@ January 5, 2026, 16:40 UTC
 2. Implemented baseline helpers for creation, fetching latest baseline, and baseline-aware comparisons.
 3. Added baseline metric computation helpers for current reading behavior.
 
+January 8, 2026, 15:03 UTC
+1. Adjusted filter slider padding in the filter modal.
+2. Removed the "My Library" header label from the library page.
+3. Updated the book count to show total books by default and filtered/total when filters or search are active.
+
 ------
 
 TO DO:

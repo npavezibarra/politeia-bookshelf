@@ -138,7 +138,6 @@ add_shortcode(
         <div class="prs-library">
                <div class="prs-library__header">
                        <div class="prs-library__header-inner">
-                               <span class="prs-library__header-title"><?php esc_html_e( 'My Library', 'politeia-reading' ); ?></span>
 
                                <div class="prs-library__header-center">
                                        <input
@@ -148,7 +147,18 @@ add_shortcode(
                                                placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
                                                onkeyup="filterLibrary()"
                                        />
-                                       <span id="prs-book-count" class="prs-book-count">15 books</span>
+                                       <span
+                                               id="prs-book-count"
+                                               class="prs-book-count"
+                                               data-total="<?php echo esc_attr( $total ); ?>"
+                                               data-filter-active="0"
+                                       >
+                                               <?php
+                                               echo esc_html(
+                                                       $total . ' ' . ( $total === 1 ? 'book' : 'books' )
+                                               );
+                                               ?>
+                                       </span>
                                </div>
 
                                <div class="prs-library__header-actions">
@@ -208,40 +218,79 @@ add_shortcode(
                 <div class="prs-filter-dashboard__panel" role="document">
                         <h2 id="prs-filter-title" class="prs-filter-dashboard__title"><?php esc_html_e( 'Filter Library', 'politeia-reading' ); ?></h2>
                         <form id="prs-filter-form" class="prs-filter-dashboard__form">
-                                <div class="prs-filter-dashboard__group">
-                                        <label for="prs-filter-owning-status" class="prs-filter-dashboard__label"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-                                        <select id="prs-filter-owning-status" name="owning_status" class="prs-filter-dashboard__select">
-                                                <option value=""><?php esc_html_e( 'All owning statuses', 'politeia-reading' ); ?></option>
-                                                <option value="in_shelf"><?php esc_html_e( 'In Shelf', 'politeia-reading' ); ?></option>
-                                                <option value="lost"><?php esc_html_e( 'Lost', 'politeia-reading' ); ?></option>
-                                                <option value="lent_out"><?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?></option>
-                                                <option value="sold"><?php esc_html_e( 'Sold', 'politeia-reading' ); ?></option>
-                                        </select>
-                                </div>
-                                <div class="prs-filter-dashboard__group">
-                                        <label for="prs-filter-reading-status" class="prs-filter-dashboard__label"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
-                                        <select id="prs-filter-reading-status" class="prs-filter-dashboard__select">
-                                                <option value=""><?php esc_html_e( 'All reading statuses', 'politeia-reading' ); ?></option>
-                                                <option value="not_started"><?php esc_html_e( 'Not Started', 'politeia-reading' ); ?></option>
-                                                <option value="started"><?php esc_html_e( 'Started', 'politeia-reading' ); ?></option>
-                                                <option value="finished"><?php esc_html_e( 'Finished', 'politeia-reading' ); ?></option>
-                                        </select>
-                                </div>
-                                <div class="prs-filter-dashboard__group">
-                                        <label for="prs-filter-progress-min" class="prs-filter-dashboard__label"><?php esc_html_e( 'Minimum Progress', 'politeia-reading' ); ?></label>
-                                        <div class="prs-filter-range">
-                                                <input id="prs-filter-progress-min" class="prs-filter-range__input" type="range" min="0" max="100" step="1" value="0" />
-                                                <span class="prs-filter-range__value" data-display-for="prs-filter-progress-min">0%</span>
+                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--owning">
+                                        <label class="prs-filter-dashboard__label"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
+                                        <div class="prs-filter-multi" data-filter="owning">
+                                                <button type="button" id="prs-filter-owning-toggle" class="prs-filter-multi__toggle" data-default-label="<?php esc_attr_e( 'All owning statuses', 'politeia-reading' ); ?>" aria-expanded="false" aria-controls="prs-filter-owning-panel">
+                                                        <?php esc_html_e( 'All owning statuses', 'politeia-reading' ); ?>
+                                                </button>
+                                                <div id="prs-filter-owning-panel" class="prs-filter-multi__panel" hidden>
+                                                        <label class="prs-filter-multi__option">
+                                                                <input type="checkbox" value="in_shelf" data-group="owning" />
+                                                                <?php esc_html_e( 'In Shelf', 'politeia-reading' ); ?>
+                                                        </label>
+                                                        <label class="prs-filter-multi__option">
+                                                                <input type="checkbox" value="lost" data-group="owning" />
+                                                                <?php esc_html_e( 'Lost', 'politeia-reading' ); ?>
+                                                        </label>
+                                                        <label class="prs-filter-multi__option">
+                                                                <input type="checkbox" value="lent_out" data-group="owning" />
+                                                                <?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?>
+                                                        </label>
+                                                        <label class="prs-filter-multi__option">
+                                                                <input type="checkbox" value="sold" data-group="owning" />
+                                                                <?php esc_html_e( 'Sold', 'politeia-reading' ); ?>
+                                                        </label>
+                                                </div>
                                         </div>
                                 </div>
-                                <div class="prs-filter-dashboard__group">
-                                        <label for="prs-filter-progress-max" class="prs-filter-dashboard__label"><?php esc_html_e( 'Maximum Progress', 'politeia-reading' ); ?></label>
-                                        <div class="prs-filter-range">
-                                                <input id="prs-filter-progress-max" class="prs-filter-range__input" type="range" min="0" max="100" step="1" value="100" />
-                                                <span class="prs-filter-range__value" data-display-for="prs-filter-progress-max">100%</span>
+                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--reading">
+                                        <label class="prs-filter-dashboard__label"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
+                                        <div class="prs-filter-multi" data-filter="reading">
+                                                <button type="button" id="prs-filter-reading-toggle" class="prs-filter-multi__toggle" data-default-label="<?php esc_attr_e( 'All reading statuses', 'politeia-reading' ); ?>" aria-expanded="false" aria-controls="prs-filter-reading-panel">
+                                                        <?php esc_html_e( 'All reading statuses', 'politeia-reading' ); ?>
+                                                </button>
+                                                <div id="prs-filter-reading-panel" class="prs-filter-multi__panel" hidden>
+                                                        <label class="prs-filter-multi__option">
+                                                                <input type="checkbox" value="not_started" data-group="reading" />
+                                                                <?php esc_html_e( 'Not Started', 'politeia-reading' ); ?>
+                                                        </label>
+                                                        <label class="prs-filter-multi__option">
+                                                                <input type="checkbox" value="started" data-group="reading" />
+                                                                <?php esc_html_e( 'Started', 'politeia-reading' ); ?>
+                                                        </label>
+                                                        <label class="prs-filter-multi__option">
+                                                                <input type="checkbox" value="finished" data-group="reading" />
+                                                                <?php esc_html_e( 'Finished', 'politeia-reading' ); ?>
+                                                        </label>
+                                                </div>
                                         </div>
                                 </div>
-                                <div class="prs-filter-dashboard__group">
+                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--progress">
+                                        <label for="prs-filter-progress-min" class="prs-filter-dashboard__label"><?php esc_html_e( 'Progress Range', 'politeia-reading' ); ?></label>
+                                        <div class="prs-filter-range prs-filter-range--custom" data-min="0" data-max="100">
+                                                <div class="prs-filter-range__track" id="prs-filter-progress-track">
+                                                        <span class="prs-filter-range__edge prs-filter-range__edge--left" aria-hidden="true"></span>
+                                                        <span class="prs-filter-range__edge prs-filter-range__edge--right" aria-hidden="true"></span>
+                                                        <span class="prs-filter-range__fill" id="prs-filter-progress-fill" aria-hidden="true"></span>
+                                                        <div class="prs-filter-range__thumb" id="prs-filter-progress-thumb-min" data-thumb="min" role="slider" aria-label="<?php esc_attr_e( 'Minimum progress', 'politeia-reading' ); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+                                                                <span class="prs-filter-range__label">
+                                                                        <span class="prs-filter-range__tick" aria-hidden="true"></span>
+                                                                        <span class="prs-filter-range__value" data-display-for="prs-filter-progress-min">0%</span>
+                                                                </span>
+                                                        </div>
+                                                        <div class="prs-filter-range__thumb" id="prs-filter-progress-thumb-max" data-thumb="max" role="slider" aria-label="<?php esc_attr_e( 'Maximum progress', 'politeia-reading' ); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" tabindex="0">
+                                                                <span class="prs-filter-range__label">
+                                                                        <span class="prs-filter-range__tick" aria-hidden="true"></span>
+                                                                        <span class="prs-filter-range__value" data-display-for="prs-filter-progress-max">100%</span>
+                                                                </span>
+                                                        </div>
+                                                </div>
+                                                <input id="prs-filter-progress-min" class="prs-filter-range__input" type="hidden" value="0" />
+                                                <input id="prs-filter-progress-max" class="prs-filter-range__input" type="hidden" value="100" />
+                                        </div>
+                                </div>
+                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--order">
                                         <label for="prs-filter-order" class="prs-filter-dashboard__label"><?php esc_html_e( 'Order By', 'politeia-reading' ); ?></label>
                                         <select id="prs-filter-order" class="prs-filter-dashboard__select">
                                                 <option value="title_asc"><?php esc_html_e( 'Title (A → Z)', 'politeia-reading' ); ?></option>
@@ -255,7 +304,6 @@ add_shortcode(
                                 <div class="prs-filter-dashboard__actions">
                                         <button type="submit" id="prs-filter-apply" class="button button-primary"><?php esc_html_e( 'Apply', 'politeia-reading' ); ?></button>
                                         <button type="button" id="prs-filter-reset" class="button button-secondary"><?php esc_html_e( 'Reset Filters', 'politeia-reading' ); ?></button>
-                                        <button type="button" id="prs-filter-close" class="button prs-filter-dashboard__close"><?php esc_html_e( 'Close', 'politeia-reading' ); ?></button>
                                 </div>
                         </form>
                 </div>
@@ -274,28 +322,53 @@ add_shortcode(
                         return '';
                 }
 
-                function updateBookCount() {
+                function updateBookCount(options) {
                         var table = document.querySelector('#prs-library tbody');
-                        if (!table) {
+                        var counter = document.getElementById('prs-book-count');
+                        if (!table || !counter) {
                                 return;
                         }
 
-                        var rows = table.querySelectorAll('tr');
-                        var count = 0;
+                        options = options || {};
 
-                        rows.forEach(function(row) {
-                                if (row.style.display === 'none' || row.hidden) {
+                        var total = parseInt(counter.getAttribute('data-total') || '', 10);
+                        var filterActive = typeof options.filterActive === 'boolean'
+                                ? options.filterActive
+                                : counter.getAttribute('data-filter-active') === '1';
+                        var filteredCount = typeof options.filteredCount === 'number'
+                                ? options.filteredCount
+                                : parseInt(counter.getAttribute('data-filtered-count') || '', 10);
+
+                        if (!filterActive) {
+                                counter.setAttribute('data-filter-active', '0');
+                                counter.removeAttribute('data-filtered-count');
+                                if (!Number.isNaN(total)) {
+                                        counter.textContent = total + ' ' + (total === 1 ? 'book' : 'books');
                                         return;
                                 }
-
-                                count++;
-                        });
-
-                        var counter = document.getElementById('prs-book-count');
-
-                        if (counter) {
-                                counter.textContent = count + ' ' + (count === 1 ? 'book' : 'books');
                         }
+
+                        if (Number.isNaN(filteredCount)) {
+                                var rows = table.querySelectorAll('tr');
+                                var count = 0;
+                                rows.forEach(function(row) {
+                                        if (row.style.display === 'none' || row.hidden || row.getAttribute('data-empty') === '1') {
+                                                return;
+                                        }
+                                        count++;
+                                });
+                                filteredCount = count;
+                        }
+
+                        counter.setAttribute('data-filter-active', filterActive ? '1' : '0');
+                        counter.setAttribute('data-filtered-count', String(filteredCount));
+
+                        if (!Number.isNaN(total)) {
+                                counter.textContent = filteredCount + '/' + total + ' ' + (total === 1 ? 'book' : 'books');
+                                return;
+                        }
+
+                        counter.textContent = filteredCount + ' ' + (filteredCount === 1 ? 'book' : 'books');
                 }
 
                 async function loadLibraryPage(page) {
@@ -329,8 +402,12 @@ add_shortcode(
                         var counter = document.getElementById('prs-book-count');
 
                         if (query === '') {
+                                if (counter) {
+                                        counter.setAttribute('data-filter-active', '0');
+                                        counter.removeAttribute('data-filtered-count');
+                                }
                                 await loadLibraryPage(1);
-                                updateBookCount();
+                                updateBookCount({ filterActive: false });
                                 return;
                         }
 
@@ -355,7 +432,7 @@ add_shortcode(
                                         });
                                 }
 
-                                updateBookCount();
+                                updateBookCount({ filterActive: true });
                         } catch (err) {
                                 console.error('Error fetching all books:', err);
                                 if (counter) {

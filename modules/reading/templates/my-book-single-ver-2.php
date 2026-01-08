@@ -181,7 +181,7 @@ $total_pages = ( isset( $ub->pages ) && $ub->pages ) ? (int) $ub->pages : 0;
 $progress_percent = 0;
 $density_sessions = array();
 if ( $total_pages > 0 && ! empty( $sessions ) ) {
-	$max_page = 0;
+	$pages_read_total = 0;
 	foreach ( $sessions as $session ) {
 		if ( ! isset( $session->start_page, $session->end_page ) ) {
 			continue;
@@ -192,9 +192,8 @@ if ( $total_pages > 0 && ! empty( $sessions ) ) {
 			continue;
 		}
 		$end = min( $total_pages, $end );
-		if ( $end > $max_page ) {
-			$max_page = $end;
-		}
+		$start = min( $total_pages, $start );
+		$pages_read_total += max( 0, $end - $start );
 
 		$density_sessions[] = array(
 			'start_page' => (int) $session->start_page,
@@ -202,8 +201,8 @@ if ( $total_pages > 0 && ! empty( $sessions ) ) {
 		);
 	}
 
-	if ( $max_page > 0 ) {
-		$progress_percent = (int) round( ( $max_page / $total_pages ) * 100 );
+	if ( $pages_read_total > 0 ) {
+		$progress_percent = (int) round( ( $pages_read_total / $total_pages ) * 100 );
 	}
 }
 $progress_percent = max( 0, min( 100, $progress_percent ) );
@@ -354,6 +353,11 @@ wp_add_inline_script(
 		padding: 16px;
 		text-align: center;
 	}
+	.prs-cover-author {
+		font-size: 12px;
+		color: #000000;
+		line-height: 1.2;
+	}
 
 	.prs-cover-overlay {
 		position: absolute;
@@ -361,16 +365,26 @@ wp_add_inline_script(
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0,0,0,0.25);
+		background: rgba(0, 0, 0, 0.4);
 		opacity: 0;
 		pointer-events: none;
 		transition: opacity 0.2s ease;
+	}
+	.prs-cover-overlay .prs-cover-actions {
+		opacity: 1;
+		transform: none;
+	}
+	.prs-cover-overlay .prs-cover-actions .prs-cover-btn {
+		margin-top: 0;
 	}
 
 	.cover-frame:hover .prs-cover-overlay,
 	.cover-frame:focus-within .prs-cover-overlay {
 		opacity: 1;
 		pointer-events: auto;
+	}
+	.cover-frame[data-cover-state="image"] .prs-cover-remove {
+		display: inline-block;
 	}
 
 	.progress-bar {
@@ -448,7 +462,7 @@ wp_add_inline_script(
 		font-size: 14px;
 	}
 
-	.header h1 { margin: 0; font-size: 28px; }
+	#book-title-row h1 { margin: 0; font-size: 28px; line-height: 1; }
 	.header p { margin: 4px 0 0; color: #6b7280; }
 
 	.prs-stars {
@@ -733,6 +747,36 @@ wp_add_inline_script(
 		color: #fff;
 	}
 	.prs-cancel-cover-button:hover { background-color: #222; }
+	#purchase-date-form,
+	#purchase-channel-form {
+		display: block;
+	}
+	#purchase-date-form input[type="date"],
+	#purchase-channel-form select,
+	#purchase-channel-form input[type="text"] {
+		width: 100%;
+		padding: 8px 10px;
+		font-size: 13px;
+		line-height: 1.2;
+		border-radius: 6px;
+		margin-bottom: 8px;
+	}
+	#purchase-date-form .prs-btn,
+	#purchase-channel-form .prs-btn {
+		width: 100%;
+		margin-top: 8px;
+		padding: 8px 12px;
+		font-size: 12px;
+		background: #000;
+		color: #fff;
+	}
+	#purchase-date-form .prs-btn:hover,
+	#purchase-date-form .prs-btn:focus-visible,
+	#purchase-channel-form .prs-btn:hover,
+	#purchase-channel-form .prs-btn:focus-visible {
+		background: #C79F32;
+		color: #fff;
+	}
 
 	@media (max-width: 980px) {
 		.page { grid-template-columns: 1fr; }
@@ -745,6 +789,10 @@ wp_add_inline_script(
 		#prs-cover-frame {
 			width: 100% !important;
 			height: auto !important;
+		}
+		#prs-cover-frame:not(.has-image)[data-cover-state="empty"] > #prs-book-cover-figure,
+		#prs-cover-frame:not(.has-image):not([data-cover-state]) > #prs-book-cover-figure {
+			height: 100%;
 		}
 	}
 </style>
@@ -765,7 +813,7 @@ wp_add_inline_script(
 						data-remove-label="<?php echo esc_attr( $remove_cover_label ); ?>"
 						data-remove-confirm="<?php echo esc_attr( $remove_cover_confirm ); ?>"
 					>
-						<figure class="prs-book-cover">
+						<figure class="prs-book-cover" id="prs-book-cover-figure">
 							<?php if ( $has_image ) : ?>
 								<?php
 								if ( $final_cover_id ) {
@@ -825,18 +873,21 @@ wp_add_inline_script(
 							</div>
 						<?php endif; ?>
 					</div>
-					<?php if ( $cover_source ) : ?>
-						<figcaption class="prs-book-cover__caption">
-							<a
-								class="prs-book-cover__link"
-								href="<?php echo esc_url( $cover_source ); ?>"
-								target="_blank"
-								rel="noopener noreferrer"
-							>
-								<?php esc_html_e( 'View on Google Books', 'politeia-reading' ); ?>
-							</a>
-						</figcaption>
-					<?php endif; ?>
+					<figcaption
+						id="prs-cover-attribution-wrap"
+						class="prs-book-cover__caption <?php echo $cover_source ? '' : 'is-hidden'; ?>"
+						aria-hidden="<?php echo $cover_source ? 'false' : 'true'; ?>"
+					>
+						<a
+							id="prs-cover-attribution"
+							class="prs-book-cover__link <?php echo $cover_source ? '' : 'is-hidden'; ?>"
+							<?php echo $cover_source ? 'href="' . esc_url( $cover_source ) . '"' : ''; ?>
+							target="_blank"
+							rel="noopener noreferrer"
+						>
+							<?php esc_html_e( 'View on Google Books', 'politeia-reading' ); ?>
+						</a>
+					</figcaption>
 				</section>
 
 				<section id="progress-section">
@@ -1102,6 +1153,11 @@ wp_add_inline_script(
 				activateTab(tab.getAttribute("data-tab"));
 			});
 		});
+
+		var params = new URLSearchParams(window.location.search || '');
+		if (params.get('prs_start_session') === '1') {
+			document.dispatchEvent(new CustomEvent('prs-session-modal:open', { detail: { focusClose: true } }));
+		}
 	});
 </script>
 

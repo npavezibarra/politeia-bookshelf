@@ -13,6 +13,12 @@ add_shortcode(
 
 		wp_enqueue_style( 'politeia-reading' );
                 wp_enqueue_script( 'politeia-add-book' );
+		wp_enqueue_style(
+			'politeia-material-symbols',
+			'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=play_circle',
+			array(),
+			null
+		);
                 wp_localize_script(
                         'politeia-add-book',
                         'PRS_ADD_BOOK_AUTOCOMPLETE',
@@ -28,6 +34,8 @@ add_shortcode(
                 $success_year           = null;
                 $success_pages          = null;
                 $success_cover_url      = '';
+                $success_slug           = '';
+                $success_start_url      = '';
                 $duplicate_message      = '';
                 $multiple_mode_content  = '';
                 $multiple_shortcode_tag = 'politeia_chatgpt_input';
@@ -66,6 +74,16 @@ add_shortcode(
 					if ( $cover_url ) {
 						$success_cover_url = $cover_url;
 					}
+				}
+			}
+			if ( isset( $_GET['prs_added_slug'] ) && '' !== $_GET['prs_added_slug'] ) {
+				$success_slug = sanitize_title( wp_unslash( $_GET['prs_added_slug'] ) );
+				if ( $success_slug ) {
+					$success_start_url = add_query_arg(
+						'prs_start_session',
+						'1',
+						home_url( '/my-books/my-book-' . $success_slug . '/' )
+					);
 				}
 			}
 		}
@@ -115,6 +133,12 @@ add_shortcode(
         							?>
         						</div>
         					<?php endif; ?>
+					<?php if ( $success_start_url ) : ?>
+						<a class="prs-add-book__success-action" href="<?php echo esc_url( $success_start_url ); ?>">
+							<span class="material-symbols-outlined prs-add-book__success-action-icon" aria-hidden="true">play_circle</span>
+							<?php esc_html_e( 'START READING', 'politeia-reading' ); ?>
+						</a>
+					<?php endif; ?>
         					<?php if ( null !== $success_year || null !== $success_pages ) : ?>
         						<hr class="prs-add-book__success-rule" />
         						<div class="prs-add-book__success-meta">
@@ -357,7 +381,10 @@ add_shortcode(
         							</tr>
         							<tr class="prs-form__actions">
         								<td colspan="2">
-        									<button class="prs-btn" type="submit"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></button>
+        									<button class="prs-btn prs-add-book__submit" type="submit">
+        										<span class="prs-add-book__submit-text"><?php esc_html_e( 'Save to My Library', 'politeia-reading' ); ?></span>
+        										<span class="prs-add-book__submit-spinner" aria-hidden="true"></span>
+        									</button>
         								</td>
         							</tr>
                                                         </tbody>
@@ -982,6 +1009,16 @@ function prs_add_book_submit_handler() {
 	if ( $attachment_id ) {
 		$query_args['prs_added_cover'] = (int) $attachment_id;
 	}
+        $book_slug = '';
+        if ( $book_id ) {
+                $book_slug = function_exists( 'prs_get_primary_slug_for_book' ) ? prs_get_primary_slug_for_book( (int) $book_id ) : '';
+        }
+        if ( ! $book_slug && $slug ) {
+                $book_slug = $slug;
+        }
+        if ( $book_slug ) {
+                $query_args['prs_added_slug'] = $book_slug;
+        }
 
 	$url = add_query_arg( $query_args, $redirect_url );
 	wp_safe_redirect( $url );

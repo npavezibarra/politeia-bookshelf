@@ -361,7 +361,7 @@ $monthly_total = array_sum( $monthly_pages );
 			<!-- Div 3: Weekly Chart -->
 			<div id="weekly-chart" class="card">
 				<div class="prs-book-stats__section">
-					<h3 class="prs-book-stats__section-title headline">Pages This Week <?php echo esc_html( (string) $weekly_total ); ?></h3>
+					<h3 class="prs-book-stats__section-title headline">Pages This Week: <?php echo esc_html( (string) $weekly_total ); ?></h3>
 					<p class="prs-book-stats__section-subtitle subtitle" id="weekly-date-range"><?php echo esc_html( $weekly_date_range ); ?></p>
 				</div>
 				<div class="chart-container" id="week-bars">
@@ -387,7 +387,7 @@ $monthly_total = array_sum( $monthly_pages );
 			<div id="monthly-chart" class="card">
 				<div class="prs-book-stats__section">
 					<h3 class="prs-book-stats__section-title headline" id="monthly-title">
-						<span id="monthly-title-text">Pages This Month</span>
+						<span id="monthly-title-text">Pages This Month:</span>
 						<span class="prs-book-stats__total"><?php echo esc_html( (string) $monthly_total ); ?></span>
 					</h3>
 					<p class="prs-book-stats__section-subtitle subtitle" id="monthly-date-range"><?php echo esc_html( $monthly_date_range ); ?></p>
@@ -424,6 +424,6 @@ $monthly_total = array_sum( $monthly_pages );
 	 */
 	const monthlyTitle = document.getElementById('monthly-title-text');
 	if (monthlyTitle) {
-		monthlyTitle.textContent = `Pages ${monthNames[now.getMonth()]}`;
+		monthlyTitle.textContent = `Pages ${monthNames[now.getMonth()]}:`;
 	}
 </script>

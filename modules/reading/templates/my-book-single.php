@@ -176,10 +176,16 @@ $book_authors            = isset( $book->authors ) ? trim( (string) $book->autho
 /** Encolar assets */
 wp_enqueue_style( 'politeia-reading' );
 wp_enqueue_style(
-        'politeia-reading-layout',
-        POLITEIA_READING_URL . 'assets/css/politeia-reading.css',
-        array( 'politeia-reading' ),
-        POLITEIA_READING_VERSION
+	'politeia-reading-layout',
+	POLITEIA_READING_URL . 'assets/css/politeia-reading.css',
+	array( 'politeia-reading' ),
+	POLITEIA_READING_VERSION
+);
+wp_enqueue_style(
+	'politeia-material-symbols',
+	'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=play_circle',
+	array(),
+	null
 );
 wp_enqueue_script( 'politeia-my-book' ); // asegúrate de registrar este JS en tu plugin/tema
 
@@ -988,6 +994,15 @@ wp_add_inline_script(
                 </div>
         </div>
 </div>
+
+<script>
+	document.addEventListener('DOMContentLoaded', function () {
+		var params = new URLSearchParams(window.location.search || '');
+		if (params.get('prs_start_session') === '1') {
+			document.dispatchEvent(new CustomEvent('prs-session-modal:open', { detail: { focusClose: true } }));
+		}
+	});
+</script>
 
 <?php prs_render_owning_overlay( array( 'heading' => $label_borrowing ) ); ?>
 

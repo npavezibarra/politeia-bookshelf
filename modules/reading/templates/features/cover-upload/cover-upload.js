@@ -528,7 +528,6 @@
 
     let newWidth = right - left;
     let newHeight = bottom - top;
-
     newWidth = Math.max(minWidth, Math.min(newWidth, imageBounds.width));
     newHeight = Math.max(minHeight, Math.min(newHeight, imageBounds.height));
 

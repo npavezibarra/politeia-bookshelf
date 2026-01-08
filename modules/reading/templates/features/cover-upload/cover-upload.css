@@ -40,6 +40,35 @@
         font-size:12px;
         cursor:pointer;
         transition:background 0.2s ease-in-out;
+        display:inline-flex;
+        align-items:center;
+        gap:8px;
+}
+.prs-cover-actions .prs-cover-upload-button,
+.prs-cover-actions .prs-cover-search-button{
+        background:#000000;
+        color:#fff;
+        font-size:12px !important;
+}
+.prs-cover-actions .prs-cover-upload-button:hover,
+.prs-cover-actions .prs-cover-upload-button:focus-visible,
+.prs-cover-actions .prs-cover-search-button:hover,
+.prs-cover-actions .prs-cover-search-button:focus-visible{
+        background:#C79F32 !important;
+        color:#fff !important;
+}
+.prs-cover-actions #prs-cover-open,
+.prs-cover-actions #prs-cover-search{
+        font-size:12px !important;
+}
+.prs-cover-actions #prs-cover-open:hover,
+.prs-cover-actions #prs-cover-open:focus-visible{
+        background:#C79F32 !important;
+        color:#fff !important;
+}
+.prs-cover-actions .prs-cover-upload-button,
+.prs-cover-actions .prs-cover-search-button{
+        font-size:12px;
 }
 .prs-cover-actions .prs-cover-search-button{
         display:inline-flex;
@@ -66,7 +95,7 @@
         pointer-events:none;
 }
 .prs-cover-btn:hover,
-.prs-cover-btn:focus-visible{ background:#2a2a2a; }
+.prs-cover-btn:focus-visible{ background:#C79F32; }
 
 /* Botón base ya usado en tu tema */
 /* Modal de búsqueda de portadas */
