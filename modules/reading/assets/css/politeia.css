@@ -34,9 +34,16 @@
 
 /* My Library redesign */
 #prs-library {
-        width: 100%;
-        border-collapse: collapse;
-        background: #fff;
+	width: 100%;
+	border-collapse: collapse;
+	background: #fff;
+	margin-top: 15px;
+}
+
+@media (max-width: 767px) {
+	#prs-library {
+		margin-top: 86px;
+	}
 }
 
 #prs-library tr {
@@ -102,7 +109,63 @@
 }
 
 .prs-library {
-        padding-top: 80px;
+	padding-top: 80px;
+	padding-bottom: 96px;
+}
+
+.prs-pagination-sheet {
+	position: fixed;
+	left: auto;
+	right: max(16px, calc((100vw - 1200px) / 2 + 16px));
+	bottom: 0;
+	width: fit-content;
+	background: #fff;
+	border-top: 1px solid #eceff3;
+	border-radius: 18px 18px 0 0;
+	box-shadow: 0 -6px 18px rgba(0, 0, 0, 0.08);
+	z-index: 1001;
+}
+
+.prs-pagination-sheet__inner {
+	padding: 16px;
+}
+
+.prs-pagination-sheet__numbers {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: 6px;
+	width: fit-content;
+}
+
+.prs-pagination-sheet__page {
+	width: 28px;
+	height: 28px;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	border-radius: 6px;
+	font-size: 12px;
+	font-weight: 700;
+	text-decoration: none;
+	background: #f7f7f7;
+	color: #4b5563;
+	border: 1px solid #eef0f3;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.prs-pagination-sheet__page:hover,
+.prs-pagination-sheet__page:focus {
+	background: #ededed;
+	color: #111827;
+	border-color: #d7dbe2;
+}
+
+.prs-pagination-sheet__page.is-current {
+	background: #111;
+	color: #fff;
+	border-color: #111;
+	box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
 .prs-library__header-fixed {
@@ -147,10 +210,14 @@
 }
 
 .prs-library .prs-library__header-actions {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	flex-wrap: wrap;
+}
+
+.prs-library__header-add-book {
+	margin-top: -1px;
 }
 
 .prs-library__filter-btn {
@@ -202,45 +269,74 @@
 }
 
 @media (max-width: 767px) {
-        .prs-library .prs-library__header-title {
-                display: none;
-        }
+	.prs-library .prs-library__header-title {
+		display: none;
+	}
 
-        .prs-library__header-inner {
-                flex-direction: column;
-                align-items: stretch;
-                gap: 12px;
-                padding: 16px;
-        }
+	.prs-library__header-inner {
+		flex-direction: column;
+		align-items: stretch;
+		gap: 12px;
+		padding: 10px 22px;
+	}
 
-        .prs-library__header-center {
-                width: 100%;
-                flex-direction: column;
-                align-items: stretch;
-                gap: 8px;
-        }
+	.prs-library__header-center {
+		width: 100%;
+		flex-direction: column;
+		align-items: stretch;
+		gap: 0;
+	}
 
-        .prs-library .prs-library__search {
-                width: 100%;
-        }
+	.prs-library .prs-library__search {
+		font-size: 16px;
+		width: 280px;
+	}
 
-        .prs-library__header-actions {
-                display: flex;
-                justify-content: flex-start;
-                align-items: center;
-                gap: 12px;
-        }
+	.prs-library__header-actions {
+		display: flex;
+		justify-content: flex-start;
+		align-items: center;
+		gap: 12px;
+	}
 
-        #prs-book-count {
-                order: -1;
-                font-size: 14px;
-        }
+	#prs-book-count {
+		order: -1;
+		font-size: 10px;
+	}
 
-        .prs-library__filter-btn,
-        .prs-add-book button {
-                padding: 6px 14px;
-                font-size: 14px;
-        }
+	.prs-library__filter-btn,
+	.prs-add-book button {
+		padding: 6px 14px;
+		font-size: 14px;
+	}
+
+	.prs-library__filter-btn {
+		font-size: 0;
+		line-height: 0;
+		gap: 0;
+		padding: 4px 8px;
+	}
+
+	.prs-library__filter-btn::before {
+		margin: 0;
+	}
+
+	.prs-library__header-actions {
+		flex-wrap: nowrap;
+	}
+
+	.prs-library .prs-library__header-actions .button:not(.prs-library__filter-btn),
+	.prs-library .prs-library__header-actions .prs-btn {
+		background: #fff;
+		padding: 5px 8px;
+		color: #000;
+	}
+
+	button.prs-btn {
+		padding: 5px 8px !important;
+		font-size: 12px !important;
+		border-radius: 3px !important;
+	}
 }
 
 #prs-library .prs-library__info {
@@ -1452,12 +1548,14 @@ table.prs-form__table {
 
 #prs-library select.prs-reading-status,
 #prs-library select.prs-owning-status {
-        min-width: 170px;
-        padding: 8px 12px;
-        border: 1px solid #dcdcdc;
-        border-radius: 8px;
-        background-color: #fff;
-        color: #333;
+	min-width: 170px;
+	padding: 8px 12px;
+	border: 1px solid #dcdcdc;
+	border-radius: 8px;
+	background-color: #fff;
+	color: #333;
+	height: 32px;
+	font-size: 12px;
 }
 
 #prs-library .prs-owning-status-details {
@@ -1620,9 +1718,9 @@ select.is-disabled {
 }
 
 @media (max-width: 640px) {
-        #prs-library thead {
-                display: table-header-group;
-                width: 100%;
+	#prs-library thead {
+		display: table-header-group;
+		width: 100%;
         }
 
         #prs-library thead th {
@@ -1649,15 +1747,58 @@ select.is-disabled {
                 flex: 1 1 100%;
         }
 
-        #prs-library .prs-library__extras {
-                width: 100%;
-                justify-content: space-between;
-        }
+	#prs-library .prs-library__extras {
+		width: 100%;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
 
-        #prs-library .prs-library__remove {
-                width: 100%;
-                justify-content: center;
-        }
+	#prs-library .prs-library__progress {
+		width: 100%;
+	}
+
+	#prs-library .prs-library__progress-field {
+		width: 100%;
+		min-width: 0;
+	}
+
+	#prs-library .prs-library__progress-track {
+		width: 100%;
+	}
+
+	#prs-library .prs-library__remove {
+		width: auto;
+		margin-top: 0;
+		justify-content: flex-start;
+	}
+}
+
+@media (max-width: 767px) {
+	#prs-library .prs-library__extras {
+		width: 100%;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
+
+	#prs-library .prs-library__progress {
+		width: 100%;
+	}
+
+	#prs-library .prs-library__progress-field {
+		width: 100%;
+		min-width: 0;
+	}
+
+	#prs-library .prs-library__progress-track {
+		width: 100%;
+	}
+
+	#prs-library .prs-library__remove {
+		margin-top: 0;
+		align-self: flex-start;
+	}
 }
 button,
 input[type="button"],

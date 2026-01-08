@@ -115,19 +115,19 @@ add_shortcode(
 
 		// Helper de enlaces de paginación
 		$base_url = remove_query_arg( 'prs_page' );
-               $paginate = paginate_links(
-                       array(
-                               'base'      => add_query_arg( 'prs_page', '%#%', $base_url ),
-                               'format'    => '',
-                               'current'   => $paged,
-                               'total'     => $max_pages,
-                               'mid_size'  => 2,
-                               'end_size'  => 1,
-                               'prev_text' => '«',
-                               'next_text' => '»',
-                               'type'      => 'plain',
-                       )
-               );
+		$pagination_links = paginate_links(
+			array(
+				'base'      => add_query_arg( 'prs_page', '%#%', $base_url ),
+				'format'    => '',
+				'current'   => $paged,
+				'total'     => $max_pages,
+				'mid_size'  => 2,
+				'end_size'  => 1,
+				'prev_text' => '',
+				'next_text' => '',
+				'type'      => 'array',
+			)
+		);
 
 		$add_book_shortcode = '';
 		if ( shortcode_exists( 'politeia_add_book' ) ) {
@@ -179,12 +179,6 @@ add_shortcode(
                                </div>
                        </div>
                </div>
-               <?php if ( ! empty( $paginate ) ) : ?>
-               <div class="prs-pagination prs-pagination--top" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
-                       <?php echo $paginate; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-               </div>
-               <?php endif; ?>
-
 		<table id="prs-library" class="prs-table">
                 <tbody>
                         <?php
@@ -205,6 +199,39 @@ add_shortcode(
 
                 <?php wp_nonce_field( 'prs_update_user_book', 'prs_update_user_book_nonce' ); ?>
         </div>
+	<?php if ( ! empty( $pagination_links ) ) : ?>
+		<nav class="prs-pagination-sheet" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
+			<div class="prs-pagination-sheet__inner">
+				<div class="prs-pagination-sheet__numbers">
+					<?php
+					foreach ( (array) $pagination_links as $link ) {
+						$label = trim( wp_strip_all_tags( $link ) );
+						if ( ! is_numeric( $label ) ) {
+							continue;
+						}
+
+						$is_current = strpos( $link, 'current' ) !== false;
+						if ( $is_current ) {
+							printf(
+								'<span class="prs-pagination-sheet__page is-current">%1$s</span>',
+								esc_html( $label )
+							);
+							continue;
+						}
+
+						if ( preg_match( '/href="([^"]+)"/', $link, $matches ) ) {
+							printf(
+								'<a class="prs-pagination-sheet__page" href="%1$s">%2$s</a>',
+								esc_url( $matches[1] ),
+								esc_html( $label )
+							);
+						}
+					}
+					?>
+				</div>
+			</div>
+		</nav>
+	<?php endif; ?>
         <div id="prs-filter-overlay" class="prs-filter-overlay" hidden></div>
         <div
                 id="prs-filter-dashboard"

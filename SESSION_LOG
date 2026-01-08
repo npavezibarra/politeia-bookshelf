@@ -146,6 +146,11 @@ January 8, 2026, 16:10 UTC
 2. Moved the book identity block next to the cover on small screens via a responsive slot + JS reparenting.
 3. Adjusted small-screen cover sizing to reduce cropping and added a max-950px height override for the cover frame.
 
+January 8, 2026, 20:04 UTC
+1. Rebuilt My Books pagination into a fixed bottom sheet with numeric links and right-aligned sizing.
+2. Tweaked My Books header + search + filter controls for 767px and below, including icon-only filter button and button sizing.
+3. Updated My Books table spacing and small-screen layout (progress bar width, remove button placement, select sizing, header add-book offset).
+
 ------
 
 TO DO:
