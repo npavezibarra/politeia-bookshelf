@@ -151,6 +151,11 @@ January 8, 2026, 20:04 UTC
 2. Tweaked My Books header + search + filter controls for 767px and below, including icon-only filter button and button sizing.
 3. Updated My Books table spacing and small-screen layout (progress bar width, remove button placement, select sizing, header add-book offset).
 
+January 9, 2026, 19:31 UTC
+1. Refined ver-2 Book Stats cards with responsive two-column layout at <= 767px and mobile spacing/typography tweaks.
+2. Notes Feed: added Edit/Save toggle with AJAX save, fixed nonce usage, made session numbering earliest-first, and wired Other Readers avatars to member profiles.
+3. Reading Sessions: earliest-first numbering in the table and added a 690px mobile card layout with centered times and condensed styling.
+
 ------
 
 TO DO:

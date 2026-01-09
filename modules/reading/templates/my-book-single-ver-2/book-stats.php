@@ -29,6 +29,15 @@ if ( ! defined( 'ABSPATH' ) ) {
 		}
 	}
 
+	@media (max-width: 767px) {
+		.prs-book-stats {
+			font-family: 'Inter', sans-serif;
+			background-color: var(--off-white);
+			color: var(--deep-gray);
+			padding: 24px 0px;
+		}
+	}
+
 	.prs-book-stats__container {
 		max-width: 72rem;
 		margin: 0 auto;
@@ -49,6 +58,32 @@ if ( ! defined( 'ABSPATH' ) ) {
 	@media (min-width: 1200px) {
 		.prs-book-stats__grid {
 			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+
+	@media (max-width: 767px) {
+		.prs-book-stats__grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+			gap: 16px;
+		}
+
+		.prs-book-stats__metric-card {
+			padding: 14px;
+		}
+
+		.prs-book-stats__metric-icon {
+			width: 44px;
+			height: 44px;
+			margin-bottom: 12px;
+		}
+
+		.prs-book-stats__metric-value {
+			font-size: 1.35rem;
+		}
+
+		.prs-book-stats__metric-label {
+			font-size: 0.55rem;
+			letter-spacing: 0.12em;
 		}
 	}
 

@@ -76,24 +76,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		background: #fafafa;
 		width: 100%;
 		resize: vertical;
-		display: none;
-	}
-
-	.prs-note__text-display {
-		min-height: 120px;
-		padding: 12px;
-		border: 1px solid var(--prs-notes-border);
-		border-radius: 6px;
-		background: #fafafa;
-		white-space: pre-wrap;
-	}
-
-	.prs-note__text.is-editable {
-		display: block;
-	}
-
-	.prs-note__text-display.is-hidden {
-		display: none;
+		overflow: hidden;
 	}
 
 	.prs-note__footer {
@@ -349,6 +332,28 @@ if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
 	);
 }
 
+$note_index_map = array();
+if ( ! empty( $notes ) ) {
+	$ordered_notes = $notes;
+	usort(
+		$ordered_notes,
+		static function ( $a, $b ) {
+			$a_time = ! empty( $a->created_at ) ? strtotime( (string) $a->created_at ) : 0;
+			$b_time = ! empty( $b->created_at ) ? strtotime( (string) $b->created_at ) : 0;
+			if ( $a_time === $b_time ) {
+				return (int) $a->id <=> (int) $b->id;
+			}
+			return $a_time <=> $b_time;
+		}
+	);
+
+	$index = 1;
+	foreach ( $ordered_notes as $ordered_note ) {
+		$note_index_map[ (int) $ordered_note->id ] = $index;
+		$index++;
+	}
+}
+
 $other_readers = $wpdb->get_results(
 	$wpdb->prepare(
 		"SELECT DISTINCT user_id
@@ -389,13 +394,14 @@ $other_readers = $wpdb->get_results(
 						$total_emotion += $value;
 					}
 					?>
-					<article class="prs-note" data-note-id="<?php echo esc_attr( (string) $note->id ); ?>">
+					<article class="prs-note" data-note-id="<?php echo esc_attr( (string) $note->id ); ?>" data-rs-id="<?php echo esc_attr( (string) $note->rs_id ); ?>">
 					<?php
 					$session_start_page = isset( $note->start_page ) ? (int) $note->start_page : 0;
 					$session_end_page   = isset( $note->end_page ) ? (int) $note->end_page : 0;
-					$session_label      = $note->rs_id ? sprintf( 'Session #%d', (int) $note->rs_id ) : __( 'Session', 'politeia-reading' );
+					$note_index = isset( $note_index_map[ (int) $note->id ] ) ? (int) $note_index_map[ (int) $note->id ] : 0;
+					$session_label      = $note_index ? sprintf( 'Session #%d', $note_index ) : __( 'Session', 'politeia-reading' );
 					$page_range         = ( $session_start_page || $session_end_page )
-						? sprintf( '%s - %s', $session_start_page ?: '—', $session_end_page ?: '—' )
+						? sprintf( 'pages %s - %s', $session_start_page ?: '—', $session_end_page ?: '—' )
 						: '';
 					?>
 					<header class="prs-note__header">
@@ -412,7 +418,6 @@ $other_readers = $wpdb->get_results(
 						</time>
 					</header>
 						<div class="prs-note__body">
-							<div class="prs-note__text-display"><?php echo esc_html( (string) $note->note ); ?></div>
 							<textarea class="prs-note__text" readonly="readonly"><?php echo esc_textarea( (string) $note->note ); ?></textarea>
 						</div>
 						<footer class="prs-note__footer">
@@ -426,11 +431,7 @@ $other_readers = $wpdb->get_results(
 								<?php endif; ?>
 							</div>
 							<div class="prs-note__actions">
-								<button
-									class="prs-note__edit-button"
-									type="button"
-									data-note-id="<?php echo esc_attr( (string) $note->id ); ?>"
-								>
+								<button class="prs-note__edit-button" type="button">
 									<?php esc_html_e( 'Edit', 'politeia-reading' ); ?>
 								</button>
 								<button
@@ -660,13 +661,66 @@ $other_readers = $wpdb->get_results(
 				const note = button.closest(".prs-note");
 				if (!note) return;
 				const textarea = note.querySelector(".prs-note__text");
-				const display = note.querySelector(".prs-note__text-display");
-				if (!textarea || !display) return;
-				display.classList.add("is-hidden");
-				textarea.classList.add("is-editable");
-				textarea.removeAttribute("readonly");
-				textarea.focus();
-				textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+				if (!textarea) return;
+				const isEditing = button.dataset.state === "editing";
+				if (!isEditing) {
+					button.dataset.state = "editing";
+					button.textContent = "Save";
+					textarea.removeAttribute("readonly");
+					textarea.style.height = "auto";
+					textarea.style.height = `${textarea.scrollHeight}px`;
+					textarea.focus();
+					textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+					if (!textarea.dataset.autosize) {
+						textarea.dataset.autosize = "1";
+						textarea.addEventListener("input", () => {
+							textarea.style.height = "auto";
+							textarea.style.height = `${textarea.scrollHeight}px`;
+						});
+					}
+					return;
+				}
+
+				const noteText = textarea.value.trim();
+				if (!noteText) {
+					window.alert("Please enter a note before saving.");
+					textarea.focus();
+					return;
+				}
+
+				const rsId = note.dataset.rsId;
+				const bookId = window.PRS_BOOK && window.PRS_BOOK.book_id ? window.PRS_BOOK.book_id : null;
+				const nonce = window.PRS_BOOK && window.PRS_BOOK.reading_nonce ? window.PRS_BOOK.reading_nonce : null;
+				const ajaxUrl = window.PRS_BOOK && window.PRS_BOOK.ajax_url ? window.PRS_BOOK.ajax_url : null;
+				if (!rsId || !bookId || !nonce || !ajaxUrl) {
+					window.alert("Unable to save note right now.");
+					return;
+				}
+
+				const payload = new FormData();
+				payload.append("action", "politeia_save_session_note");
+				payload.append("nonce", nonce);
+				payload.append("rs_id", String(rsId));
+				payload.append("book_id", String(bookId));
+				payload.append("note", textarea.value);
+
+				button.disabled = true;
+				fetch(ajaxUrl, { method: "POST", body: payload, credentials: "same-origin" })
+					.then((resp) => resp.json())
+					.then((data) => {
+						if (!data || !data.success) {
+							throw new Error(data && data.data ? data.data : "Save failed.");
+						}
+						textarea.setAttribute("readonly", "readonly");
+						button.dataset.state = "";
+						button.textContent = "Edit";
+					})
+					.catch((err) => {
+						window.alert(err && err.message ? err.message : "Save failed.");
+					})
+					.finally(() => {
+						button.disabled = false;
+					});
 			});
 		});
 
@@ -711,6 +765,11 @@ $other_readers = $wpdb->get_results(
 			} catch (e) {
 				// Keep modal open on failure.
 			}
+		});
+		const noteTextareas = document.querySelectorAll(".prs-note__text");
+		noteTextareas.forEach((textarea) => {
+			textarea.style.height = "auto";
+			textarea.style.height = `${textarea.scrollHeight}px`;
 		});
 	})();
 </script>

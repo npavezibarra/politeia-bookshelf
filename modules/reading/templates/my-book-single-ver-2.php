@@ -227,12 +227,14 @@ wp_enqueue_script( 'politeia-my-book' );
 $owning_nonce        = wp_create_nonce( 'save_owning_contact' );
 $meta_update_nonce   = wp_create_nonce( 'prs_update_user_book_meta' );
 $cover_actions_nonce = wp_create_nonce( 'politeia_bookshelf_cover_actions' );
+$reading_nonce       = wp_create_nonce( 'prs_reading_nonce' );
 wp_localize_script(
 	'politeia-my-book',
 	'PRS_BOOK',
 	array(
 		'ajax_url'          => admin_url( 'admin-ajax.php' ),
 		'nonce'             => $meta_update_nonce,
+		'reading_nonce'     => $reading_nonce,
 		'owning_nonce'      => $owning_nonce,
 		'user_book_id'      => (int) $ub->id,
 		'book_id'           => (int) $book->id,
@@ -295,6 +297,7 @@ wp_add_inline_script(
 		flex-direction: column;
 		gap: 20px;
 	}
+
 
 	.prs-sidebar-block {
 		background: #fff;
@@ -499,6 +502,13 @@ wp_add_inline_script(
 		font-weight: 600;
 	}
 
+	#fld-reading-status label {
+		color: var(--bb-headings-color);
+		margin-bottom: .25rem;
+		font-size: 15px;
+		line-height: 1;
+	}
+
 	.prs-reading-status-row select {
 		min-height: 32px;
 	}
@@ -507,6 +517,63 @@ wp_add_inline_script(
 		display: flex;
 		border-bottom: 1px solid #e5e7eb;
 		overflow-x: auto;
+	}
+
+	.prs-sessions-mobile {
+		display: none;
+	}
+
+	.prs-sessions-mobile__card {
+		background: #fff;
+		border: 1px solid #d1d5db;
+		border-radius: 6px;
+		padding: 16px;
+		text-align: center;
+	}
+
+	.prs-sessions-mobile__card + .prs-sessions-mobile__card {
+		margin-top: 16px;
+	}
+
+	.prs-sessions-mobile__title {
+		margin: 0 0 8px;
+		font-size: 18px;
+		font-weight: 600;
+	}
+
+	h4.prs-sessions-mobile__title {
+		margin-bottom: 0;
+	}
+
+	.prs-sessions-mobile__date {
+		font-size: 10px;
+		color: #6b7280;
+		margin-bottom: 8px;
+	}
+
+	.prs-sessions-mobile__times {
+		display: flex;
+		justify-content: center;
+		gap: 40px;
+		padding: 8px 0;
+		border-top: 1px solid #e5e7eb;
+		border-bottom: 1px solid #e5e7eb;
+		font-weight: 600;
+	}
+
+	.prs-sessions-mobile__pages {
+		padding: 8px 0;
+		border-bottom: 1px solid #e5e7eb;
+		color: #111827;
+	}
+
+	.prs-sessions-mobile__pages div {
+		margin: 4px 0;
+	}
+
+	.prs-sessions-mobile__duration {
+		padding-top: 8px;
+		font-weight: 600;
 	}
 
 	.tab {
@@ -832,6 +899,24 @@ wp_add_inline_script(
 		#book-identity, #owning-status-summary { width: 100%; }
 		.header { flex-direction: column; }
 		.prs-book-stats-grid { grid-template-columns: 1fr; }
+	}
+
+	@media (max-width: 690px) {
+		.prs-sessions-table thead {
+			display: none;
+		}
+
+		.prs-sessions-table {
+			display: none;
+		}
+
+		.prs-sessions-mobile {
+			display: block;
+		}
+	}
+
+	.prs-layout-placeholder {
+		display: none;
 	}
 
 	@media (min-width: 980px) {
@@ -1238,6 +1323,53 @@ wp_add_inline_script(
 				mediaQuery.addEventListener("change", syncIdentityPlacement);
 			} else if (mediaQuery.addListener) {
 				mediaQuery.addListener(syncIdentityPlacement);
+			}
+		}
+
+		var content = document.querySelector(".content");
+		var sidebar = document.querySelector(".sidebar");
+		var bookContent = document.getElementById("prs-book-content");
+		var bookHeader = document.getElementById("prs-book-header");
+		var bookDetails = document.getElementById("book-details-section");
+		if (content && sidebar && bookContent && bookHeader && bookDetails) {
+			var contentMarker = document.getElementById("prs-book-content-placeholder");
+			if (!contentMarker) {
+				contentMarker = document.createElement("div");
+				contentMarker.id = "prs-book-content-placeholder";
+				contentMarker.className = "prs-layout-placeholder";
+				bookContent.parentNode.insertBefore(contentMarker, bookContent);
+			}
+
+			var detailsMarker = document.getElementById("prs-book-details-placeholder");
+			if (!detailsMarker) {
+				detailsMarker = document.createElement("div");
+				detailsMarker.id = "prs-book-details-placeholder";
+				detailsMarker.className = "prs-layout-placeholder";
+				bookDetails.parentNode.insertBefore(detailsMarker, bookDetails);
+			}
+
+			var layoutQuery = window.matchMedia("(max-width: 980px)");
+			var syncMobileLayout = function () {
+				if (layoutQuery.matches) {
+					if (bookHeader.parentNode) {
+						bookHeader.parentNode.insertBefore(bookContent, bookHeader);
+						bookHeader.insertAdjacentElement("afterend", bookDetails);
+					}
+				} else {
+					if (contentMarker.parentNode) {
+						contentMarker.parentNode.insertBefore(bookContent, contentMarker.nextSibling);
+					}
+					if (detailsMarker.parentNode) {
+						detailsMarker.parentNode.insertBefore(bookDetails, detailsMarker.nextSibling);
+					}
+				}
+			};
+
+			syncMobileLayout();
+			if (layoutQuery.addEventListener) {
+				layoutQuery.addEventListener("change", syncMobileLayout);
+			} else if (layoutQuery.addListener) {
+				layoutQuery.addListener(syncMobileLayout);
 			}
 		}
 	});

@@ -6,6 +6,29 @@ if ( ! defined( 'ABSPATH' ) ) {
 <section id="prs-reading-sessions" class="prs-book-sessions prs-reading-sessions">
 	<?php if ( $sessions ) : ?>
 		<?php $current_user_id = get_current_user_id(); ?>
+		<?php
+		$session_index_map = array();
+		if ( ! empty( $sessions ) ) {
+			$ordered_sessions = $sessions;
+			usort(
+				$ordered_sessions,
+				static function ( $a, $b ) {
+					$a_time = ! empty( $a->start_time ) ? strtotime( (string) $a->start_time ) : 0;
+					$b_time = ! empty( $b->start_time ) ? strtotime( (string) $b->start_time ) : 0;
+					if ( $a_time === $b_time ) {
+						return (int) $a->id <=> (int) $b->id;
+					}
+					return $a_time <=> $b_time;
+				}
+			);
+
+			$index = 1;
+			foreach ( $ordered_sessions as $ordered_session ) {
+				$session_index_map[ (int) $ordered_session->id ] = $index;
+				$index++;
+			}
+		}
+		?>
 		<table class="prs-table prs-sessions-table">
 			<thead>
 				<tr>
@@ -87,7 +110,10 @@ if ( ! defined( 'ABSPATH' ) ) {
 					}
 					?>
 					<tr>
-						<td><?php echo esc_html( $i + 1 ); ?></td>
+						<?php
+						$session_index = isset( $session_index_map[ (int) $s->id ] ) ? (int) $session_index_map[ (int) $s->id ] : ( $i + 1 );
+						?>
+						<td><?php echo esc_html( $session_index ); ?></td>
 						<td><?php echo wp_kses_post( $start_display ); ?></td>
 						<td><?php echo wp_kses_post( $end_display ); ?></td>
 						<td><?php echo wp_kses_post( $note_button ); ?></td>
@@ -99,6 +125,47 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php endforeach; ?>
 			</tbody>
 		</table>
+		<div class="prs-sessions-mobile">
+			<?php foreach ( $sessions as $i => $s ) :
+				$session_index = isset( $session_index_map[ (int) $s->id ] ) ? (int) $session_index_map[ (int) $s->id ] : ( $i + 1 );
+				$start_time = $s->start_time ? strtotime( $s->start_time ) : 0;
+				$end_time = $s->end_time ? strtotime( $s->end_time ) : 0;
+				$start_time_label = $start_time ? date_i18n( 'g:i a', $start_time ) : '—';
+				$end_time_label = $end_time ? date_i18n( 'g:i a', $end_time ) : '—';
+				$date_label = $start_time ? date_i18n( 'F j, Y', $start_time ) : esc_html__( 'date', 'politeia-reading' );
+				$start_page  = isset( $s->start_page ) ? (int) $s->start_page : null;
+				$end_page    = isset( $s->end_page ) ? (int) $s->end_page : null;
+				$total_pages = null;
+				if ( null !== $start_page && null !== $end_page ) {
+					$total_pages = $end_page - $start_page;
+				}
+				$duration_str  = '—';
+				if ( $s->start_time && $s->end_time ) {
+					$duration = strtotime( $s->end_time ) - strtotime( $s->start_time );
+					if ( $duration < 0 ) {
+						$duration = 0;
+					}
+					$minutes = floor( $duration / 60 );
+					$seconds = $duration % 60;
+					$duration_str = sprintf( _x( '%1$d min %2$02d sec', 'reading session duration', 'politeia-reading' ), $minutes, $seconds );
+				}
+				?>
+				<div class="prs-sessions-mobile__card">
+					<h4 class="prs-sessions-mobile__title"><?php echo esc_html( sprintf( __( 'Session %d', 'politeia-reading' ), $session_index ) ); ?></h4>
+					<div class="prs-sessions-mobile__date"><?php echo esc_html( $date_label ); ?></div>
+					<div class="prs-sessions-mobile__times">
+						<span><?php echo esc_html( $start_time_label ); ?></span>
+						<span><?php echo esc_html( $end_time_label ); ?></span>
+					</div>
+					<div class="prs-sessions-mobile__pages">
+						<div><?php esc_html_e( 'Initial Page:', 'politeia-reading' ); ?> <strong><?php echo esc_html( ( null !== $start_page && $start_page >= 0 ) ? $start_page : '—' ); ?></strong></div>
+						<div><?php esc_html_e( 'End Page:', 'politeia-reading' ); ?> <strong><?php echo esc_html( ( null !== $end_page && $end_page >= 0 ) ? $end_page : '—' ); ?></strong></div>
+						<div><?php esc_html_e( 'Total Pages:', 'politeia-reading' ); ?> <strong><?php echo esc_html( ( null !== $total_pages && $total_pages > 0 ) ? $total_pages : '—' ); ?></strong></div>
+					</div>
+					<div class="prs-sessions-mobile__duration"><?php echo esc_html( $duration_str ); ?></div>
+				</div>
+			<?php endforeach; ?>
+		</div>
 	<?php else : ?>
 		<p class="prs-no-sessions"><?php esc_html_e( 'No sessions recorded for this book yet.', 'politeia-reading' ); ?></p>
 	<?php endif; ?>
