@@ -46,6 +46,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 		}
 	}
 
+	@media (min-width: 1200px) {
+		.prs-book-stats__grid {
+			grid-template-columns: repeat(4, minmax(0, 1fr));
+		}
+	}
+
+	.prs-book-stats__charts-grid {
+		display: grid;
+		grid-template-columns: 1fr;
+		gap: 24px;
+		margin-top: 24px;
+	}
+
+	@media (min-width: 768px) {
+		.prs-book-stats__charts-grid {
+			grid-template-columns: repeat(2, minmax(0, 1fr));
+		}
+	}
+
 	.chart-container {
 		display: flex;
 		align-items: flex-end;
@@ -133,6 +152,70 @@ if ( ! defined( 'ABSPATH' ) ) {
 		margin-bottom: 0;
 	}
 
+	.headline {
+		color: var(--pure-black);
+		font-weight: 700;
+	}
+
+	.subtitle {
+		color: var(--deep-gray);
+		font-weight: 500;
+	}
+
+	.prs-book-stats__metric-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		text-align: center;
+		padding: 18px;
+		border-radius: 16px;
+		border: 1px solid #e2e8f0;
+		background: #ffffff;
+		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+		transition: box-shadow 0.2s ease, transform 0.2s ease;
+	}
+
+	.prs-book-stats__metric-card:hover {
+		box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
+		transform: translateY(-2px);
+	}
+
+	.prs-book-stats__metric-icon {
+		width: 56px;
+		height: 56px;
+		border-radius: 999px;
+		background: #000000;
+		color: var(--metallic-gold);
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		margin-bottom: 20px;
+		transition: transform 0.3s ease, background-color 0.3s ease, color 0.3s ease;
+	}
+
+	.prs-book-stats__metric-card:hover .prs-book-stats__metric-icon {
+		transform: scale(1.1);
+		background: var(--metallic-gold);
+		color: #ffffff;
+	}
+
+	.prs-book-stats__metric-value {
+		font-size: 1.875rem;
+		font-weight: 700;
+		color: var(--pure-black);
+		margin: 0 0 8px;
+	}
+
+	.prs-book-stats__metric-label {
+		font-size: 0.65rem;
+		font-weight: 700;
+		letter-spacing: 0.18em;
+		text-transform: uppercase;
+		color: var(--deep-gray);
+		margin: 0;
+		line-height: 1.4;
+	}
+
 	.prs-book-stats__section-title {
 		font-size: 1.125rem;
 		margin: 0 0 6px;
@@ -174,14 +257,23 @@ if ( ! defined( 'ABSPATH' ) ) {
 		letter-spacing: 0.08em;
 	}
 
-	.headline {
-		color: var(--pure-black);
-		font-weight: 700;
-	}
-
-	.subtitle {
-		color: var(--deep-gray);
-		font-weight: 500;
+	.prs-book-stats .material-symbols-outlined {
+		font-family: 'Material Symbols Outlined';
+		font-weight: normal;
+		font-style: normal;
+		line-height: 1;
+		text-transform: none;
+		display: inline-block;
+		white-space: nowrap;
+		word-wrap: normal;
+		direction: ltr;
+		-webkit-font-feature-settings: 'liga';
+		-webkit-font-smoothing: antialiased;
+		font-variation-settings:
+			'FILL' 0,
+			'wght' 400,
+			'GRAD' 0,
+			'opsz' 24;
 	}
 </style>
 
@@ -240,6 +332,11 @@ if ( $session_duration_count > 0 ) {
 }
 if ( $session_rate_duration_total > 0 ) {
 	$avg_pages_per_hour = (int) round( ( $session_rate_pages_total / $session_rate_duration_total ) * 3600 );
+}
+if ( $session_duration_total > 0 ) {
+	$total_session_minutes = (int) round( $session_duration_total / 60 );
+} else {
+	$total_session_minutes = 0;
 }
 
 $week_start_ts = strtotime( 'monday this week', current_time( 'timestamp' ) );
@@ -321,43 +418,57 @@ $monthly_total = array_sum( $monthly_pages );
 
 <section class="prs-book-stats">
 	<div class="prs-book-stats__container">
-		<!-- 2x2 Grid -->
+		<!-- 4-up Metrics Grid -->
 		<div class="prs-book-stats__grid">
 
-			<!-- Div 1: Session Time -->
-			<div id="session-time" class="card prs-book-stats__kpi">
-				<div class="prs-book-stats__kpi-row">
-					<div class="prs-book-stats__icon" style="color: var(--metallic-gold);">
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-						</svg>
-					</div>
-					<div>
-						<p class="prs-book-stats__label subtitle">Average Session Time</p>
-						<h2 class="prs-book-stats__metric headline">
-							<?php echo null !== $avg_session_minutes ? esc_html( $avg_session_minutes . 'min' ) : '—'; ?>
-						</h2>
-					</div>
+			<!-- Card 1: Average Session Time -->
+			<div class="prs-book-stats__metric-card">
+				<div class="prs-book-stats__metric-icon">
+					<span class="material-symbols-outlined">timer</span>
 				</div>
+				<p class="prs-book-stats__metric-value">
+					<?php echo null !== $avg_session_minutes ? esc_html( $avg_session_minutes . ' min' ) : '—'; ?>
+				</p>
+				<p class="prs-book-stats__metric-label">Avg Session Time</p>
 			</div>
 
-			<!-- Div 2: Pages per Hour -->
-			<div id="pages-per-hour" class="card prs-book-stats__kpi">
-				<div class="prs-book-stats__kpi-row">
-					<div class="prs-book-stats__icon" style="color: #c79f32;">
-						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
-							<path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-						</svg>
-					</div>
-					<div>
-						<p class="prs-book-stats__label subtitle">Average Page per Hour</p>
-						<h2 class="prs-book-stats__metric headline">
-							<?php echo null !== $avg_pages_per_hour ? esc_html( (string) $avg_pages_per_hour ) : '—'; ?>
-						</h2>
-					</div>
+			<!-- Card 2: Total Session Time -->
+			<div class="prs-book-stats__metric-card">
+				<div class="prs-book-stats__metric-icon">
+					<span class="material-symbols-outlined">history</span>
 				</div>
+				<p class="prs-book-stats__metric-value">
+					<?php echo $total_session_minutes > 0 ? esc_html( $total_session_minutes . ' min' ) : '—'; ?>
+				</p>
+				<p class="prs-book-stats__metric-label">Total Session Time</p>
 			</div>
 
+			<!-- Card 3: Pages per Hour -->
+			<div class="prs-book-stats__metric-card">
+				<div class="prs-book-stats__metric-icon">
+					<span class="material-symbols-outlined">overview</span>
+				</div>
+				<p class="prs-book-stats__metric-value">
+					<?php echo null !== $avg_pages_per_hour ? esc_html( (string) $avg_pages_per_hour ) : '—'; ?>
+				</p>
+				<p class="prs-book-stats__metric-label">Pages per Hour</p>
+			</div>
+
+			<!-- Card 4: Total Pages Read -->
+			<div class="prs-book-stats__metric-card">
+				<div class="prs-book-stats__metric-icon">
+					<span class="material-symbols-outlined">menu_book</span>
+				</div>
+				<p class="prs-book-stats__metric-value">
+			<?php echo $session_pages_total > 0 ? esc_html( (string) $session_pages_total ) : '—'; ?>
+				</p>
+				<p class="prs-book-stats__metric-label">Total Pages Read</p>
+			</div>
+
+		</div>
+
+		<!-- Charts Row -->
+		<div class="prs-book-stats__charts-grid">
 			<!-- Div 3: Weekly Chart -->
 			<div id="weekly-chart" class="card">
 				<div class="prs-book-stats__section">
@@ -406,7 +517,6 @@ $monthly_total = array_sum( $monthly_pages );
 					<span id="month-last-day"><?php echo esc_html( (string) $month_last_day ); ?></span>
 				</div>
 			</div>
-
 		</div>
 	</div>
 </section>

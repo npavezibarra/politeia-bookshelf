@@ -217,7 +217,7 @@ wp_enqueue_style(
 );
 wp_enqueue_style(
 	'politeia-material-symbols',
-	'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=play_circle',
+	'https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200',
 	array(),
 	null
 );
@@ -610,13 +610,28 @@ wp_add_inline_script(
 	.prs-pagination ul.page-numbers { display: flex; gap: 6px; list-style: none; justify-content: flex-end; padding: 0; margin: 16px 0 0; }
 	.prs-pagination .page-numbers { padding: 6px 10px; background: #f1f5f9; border-radius: 6px; text-decoration: none; }
 
+	.material-symbols-outlined {
+		font-family: 'Material Symbols Outlined';
+		font-weight: normal;
+		font-style: normal;
+		line-height: 1;
+		text-transform: none;
+		display: inline-block;
+		white-space: nowrap;
+		word-wrap: normal;
+		direction: ltr;
+		font-feature-settings: 'liga';
+		-webkit-font-feature-settings: 'liga';
+		-webkit-font-smoothing: antialiased;
+	}
+
 	.prs-session-recorder-trigger {
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
 		color: #111827;
-		font-size: 26px;
+		font-size: 35px;
 		line-height: 1;
 		font-variation-settings: "FILL" 1, "wght" 600, "opsz" 24;
 	}

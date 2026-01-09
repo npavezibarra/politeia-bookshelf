@@ -74,6 +74,26 @@ if ( ! defined( 'ABSPATH' ) ) {
 		border: 1px solid var(--prs-notes-border);
 		border-radius: 6px;
 		background: #fafafa;
+		width: 100%;
+		resize: vertical;
+		display: none;
+	}
+
+	.prs-note__text-display {
+		min-height: 120px;
+		padding: 12px;
+		border: 1px solid var(--prs-notes-border);
+		border-radius: 6px;
+		background: #fafafa;
+		white-space: pre-wrap;
+	}
+
+	.prs-note__text.is-editable {
+		display: block;
+	}
+
+	.prs-note__text-display.is-hidden {
+		display: none;
 	}
 
 	.prs-note__footer {
@@ -86,7 +106,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 		color: var(--prs-notes-muted);
 	}
 
-	.prs-note__rate-button {
+	.prs-note__actions {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+	}
+
+	.prs-note__rate-button,
+	.prs-note__edit-button {
 		font-size: 0.75rem;
 		padding: 4px 8px;
 		border-radius: 999px;
@@ -266,6 +293,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 		border-radius: 50%;
 		background: #d1d5db;
 		justify-self: center;
+		overflow: hidden;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		text-decoration: none;
+	}
+
+	.prs-notes-feed__reader-avatar img {
+		width: 100%;
+		height: 100%;
+		object-fit: cover;
+		display: block;
 	}
 
 	@media (max-width: 900px) {
@@ -288,6 +327,7 @@ if ( empty( $tbl_session_notes ) ) {
 if ( empty( $tbl_sessions ) ) {
 	$tbl_sessions = $wpdb->prefix . 'politeia_reading_sessions';
 }
+$tbl_ub = $wpdb->prefix . 'politeia_user_books';
 
 $notes = array();
 if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
@@ -308,6 +348,20 @@ if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
 		)
 	);
 }
+
+$other_readers = $wpdb->get_results(
+	$wpdb->prepare(
+		"SELECT DISTINCT user_id
+		 FROM {$tbl_ub}
+		 WHERE book_id = %d
+		 AND deleted_at IS NULL
+		 AND user_id <> %d
+		 ORDER BY user_id ASC
+		 LIMIT 8",
+		(int) $book->id,
+		(int) $user_id
+	)
+);
 ?>
 
 <section class="prs-notes-feed">
@@ -358,7 +412,8 @@ if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
 						</time>
 					</header>
 						<div class="prs-note__body">
-							<div class="prs-note__text"><?php echo esc_html( (string) $note->note ); ?></div>
+							<div class="prs-note__text-display"><?php echo esc_html( (string) $note->note ); ?></div>
+							<textarea class="prs-note__text" readonly="readonly"><?php echo esc_textarea( (string) $note->note ); ?></textarea>
 						</div>
 						<footer class="prs-note__footer">
 							<div class="prs-note__composition<?php echo $total_emotion > 0 ? '' : ' is-empty'; ?>" aria-label="<?php esc_attr_e( 'Emotional composition', 'politeia-reading' ); ?>">
@@ -370,14 +425,23 @@ if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
 									<?php endforeach; ?>
 								<?php endif; ?>
 							</div>
-							<button
-								class="prs-note__rate-button"
-								type="button"
-								data-note-id="<?php echo esc_attr( (string) $note->id ); ?>"
-								data-emotions="<?php echo esc_attr( $note->emotions ? (string) $note->emotions : '' ); ?>"
-							>
-								<?php esc_html_e( 'Rate', 'politeia-reading' ); ?>
-							</button>
+							<div class="prs-note__actions">
+								<button
+									class="prs-note__edit-button"
+									type="button"
+									data-note-id="<?php echo esc_attr( (string) $note->id ); ?>"
+								>
+									<?php esc_html_e( 'Edit', 'politeia-reading' ); ?>
+								</button>
+								<button
+									class="prs-note__rate-button"
+									type="button"
+									data-note-id="<?php echo esc_attr( (string) $note->id ); ?>"
+									data-emotions="<?php echo esc_attr( $note->emotions ? (string) $note->emotions : '' ); ?>"
+								>
+									<?php esc_html_e( 'Rate', 'politeia-reading' ); ?>
+								</button>
+							</div>
 						</footer>
 					</article>
 				<?php endforeach; ?>
@@ -389,10 +453,18 @@ if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
 			<aside class="prs-notes-feed__sidebar">
 				<h2><?php esc_html_e( 'Other Readers', 'politeia-reading' ); ?></h2>
 				<div class="prs-notes-feed__readers">
-					<span class="prs-notes-feed__reader-avatar"></span>
-					<span class="prs-notes-feed__reader-avatar"></span>
-					<span class="prs-notes-feed__reader-avatar"></span>
-					<span class="prs-notes-feed__reader-avatar"></span>
+					<?php foreach ( $other_readers as $reader ) : ?>
+						<?php
+						$avatar_url = get_avatar_url( (int) $reader->user_id, array( 'size' => 48 ) );
+						$reader_user = get_userdata( (int) $reader->user_id );
+						$profile_url = $reader_user ? home_url( '/members/' . $reader_user->user_login . '/' ) : '';
+						?>
+						<?php if ( $avatar_url && $profile_url ) : ?>
+							<a class="prs-notes-feed__reader-avatar" href="<?php echo esc_url( $profile_url ); ?>">
+								<img src="<?php echo esc_url( $avatar_url ); ?>" alt="<?php esc_attr_e( 'Reader avatar', 'politeia-reading' ); ?>">
+							</a>
+						<?php endif; ?>
+					<?php endforeach; ?>
 				</div>
 			</aside>
 		</main>
@@ -417,6 +489,7 @@ if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
 		const resetBtn = document.getElementById("prs-note-reset");
 		const saveBtn = document.getElementById("prs-note-save");
 		const noteButtons = document.querySelectorAll(".prs-note__rate-button");
+		const editButtons = document.querySelectorAll(".prs-note__edit-button");
 		if (!modal || !rowsWrap || !resetBtn || !saveBtn || !noteButtons.length) return;
 
 		const EMOTIONS = [
@@ -579,6 +652,21 @@ if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
 				const noteId = button.dataset.noteId;
 				if (!noteId) return;
 				openModal(noteId, button.dataset.emotions || "");
+			});
+		});
+
+		editButtons.forEach((button) => {
+			button.addEventListener("click", () => {
+				const note = button.closest(".prs-note");
+				if (!note) return;
+				const textarea = note.querySelector(".prs-note__text");
+				const display = note.querySelector(".prs-note__text-display");
+				if (!textarea || !display) return;
+				display.classList.add("is-hidden");
+				textarea.classList.add("is-editable");
+				textarea.removeAttribute("readonly");
+				textarea.focus();
+				textarea.setSelectionRange(textarea.value.length, textarea.value.length);
 			});
 		});
 
