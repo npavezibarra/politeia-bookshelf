@@ -156,6 +156,11 @@ January 9, 2026, 19:31 UTC
 2. Notes Feed: added Edit/Save toggle with AJAX save, fixed nonce usage, made session numbering earliest-first, and wired Other Readers avatars to member profiles.
 3. Reading Sessions: earliest-first numbering in the table and added a 690px mobile card layout with centered times and condensed styling.
 
+January 10, 2026, 01:27 UTC
+1. Fixed canonical autocomplete author lookup to use `display_name` so author lines render in dropdown results.
+2. Added a canonical marker dot in title suggestions and tightened author/year typography to 10px.
+3. Normalized autocomplete suggestion button corners to square on all states.
+
 ------
 
 TO DO:

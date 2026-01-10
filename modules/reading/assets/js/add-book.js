@@ -880,7 +880,13 @@
 
                         var titleLine = document.createElement('span');
                         titleLine.className = 'prs-add-book__suggestion-title';
-                        titleLine.textContent = item.title || '';
+                        if (item.source === 'canonical') {
+                                var canonicalDot = document.createElement('span');
+                                canonicalDot.className = 'prs-add-book__suggestion-dot';
+                                canonicalDot.setAttribute('aria-hidden', 'true');
+                                titleLine.appendChild(canonicalDot);
+                        }
+                        titleLine.appendChild(document.createTextNode(item.title || ''));
                         button.appendChild(titleLine);
 
                         var authorsLabel = item.authors && item.authors.length ? item.authors.join(', ') : (item.author || '');

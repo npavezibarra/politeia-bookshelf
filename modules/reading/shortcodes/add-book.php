@@ -555,7 +555,7 @@ function prs_canonical_title_search_handler() {
                         $placeholders = implode( ',', array_fill( 0, count( $book_ids ), '%d' ) );
                         $author_rows  = $wpdb->get_results(
                                 $wpdb->prepare(
-                                        "SELECT ba.book_id, a.name FROM {$book_authors_table} ba INNER JOIN {$authors_table} a ON a.id = ba.author_id WHERE ba.book_id IN ({$placeholders}) ORDER BY a.name ASC",
+                                        "SELECT ba.book_id, a.display_name AS name FROM {$book_authors_table} ba INNER JOIN {$authors_table} a ON a.id = ba.author_id WHERE ba.book_id IN ({$placeholders}) ORDER BY a.display_name ASC",
                                         $book_ids
                                 ),
                                 ARRAY_A

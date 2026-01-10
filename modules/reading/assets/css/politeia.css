@@ -1424,15 +1424,33 @@ table.prs-form__table {
         border-bottom: none;
 }
 
+.prs-add-book__suggestion,
+.prs-add-book__suggestion:hover,
+.prs-add-book__suggestion:focus {
+        border-radius: 0;
+}
+
 .prs-add-book__suggestion-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
         font-size: 1rem;
         font-weight: 600;
         color: #111827;
 }
 
+.prs-add-book__suggestion-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 999px;
+        background: #facc15;
+        box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.25);
+        flex: 0 0 auto;
+}
+
 .prs-add-book__suggestion-author,
 .prs-add-book__suggestion-year {
-        font-size: 0.9rem;
+        font-size: 10px;
         color: #4b5563;
 }
 
