@@ -501,9 +501,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         setText(pageRangeEl, rangeText || defaultPageRange);
       }
 
+      const sessionNumberRaw = normalizeValue(detail?.sessionNumber);
       const sessionIdRaw = normalizeValue(detail?.sessionId);
       const prefix = labelPrefix || "SESSION";
-      const sessionText = sessionIdRaw ? `${prefix} ${sessionIdRaw}` : defaultSessionLabel;
+      const sessionValue = sessionNumberRaw || sessionIdRaw;
+      const sessionText = sessionValue ? `${prefix} ${sessionValue}` : defaultSessionLabel;
 
       if (sessionLabelEl) {
         setText(sessionLabelEl, sessionText || defaultSessionLabel);
@@ -760,6 +762,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         flash.dataset.userId = String(detail.userId);
       }
       flash.dataset.sessionId = detail.sessionId ? String(detail.sessionId) : "";
+      if (typeof detail.sessionNumber !== "undefined" && detail.sessionNumber !== null && detail.sessionNumber !== "") {
+        flash.dataset.sessionNumber = String(detail.sessionNumber);
+      } else {
+        delete flash.dataset.sessionNumber;
+      }
       if (typeof detail.bookTitle === "string") {
         flash.dataset.bookTitle = detail.bookTitle;
       }
@@ -793,6 +800,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
       const getDataValue = value => (typeof value === "string" ? value.trim() : "");
       const sessionId = btn.dataset.sessionId ? String(btn.dataset.sessionId) : "";
+      const sessionNumber = btn.dataset.sessionNumber ? String(btn.dataset.sessionNumber) : "";
       const bookId = btn.dataset.bookId ? String(btn.dataset.bookId) : (flash.dataset?.bookId || "");
       const userId = btn.dataset.userId ? String(btn.dataset.userId) : (flash.dataset?.userId || "");
       const noteRaw = typeof btn.dataset.note === "string" ? btn.dataset.note : "";
@@ -817,11 +825,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }));
 
       const noteMode = "table";
-      assignDataset({ sessionId, bookId, userId, mode: noteMode, startPage, endPage, chapter, bookTitle });
+      assignDataset({ sessionId, sessionNumber, bookId, userId, mode: noteMode, startPage, endPage, chapter, bookTitle });
 
       document.dispatchEvent(new CustomEvent("prs-sr-flash:showNoteForSession", {
         detail: {
           sessionId,
+          sessionNumber,
           bookId,
           userId,
           note: noteHtml,
@@ -1533,6 +1542,108 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       if (!input) return;
       const wrap = wrapFor(input);
       clearError(wrap);
+    });
+  }
+
+  function setupLibraryReadingStatus() {
+    const table = qs("#prs-library");
+    if (!table) return;
+
+    const nonceField = qs("#prs_update_user_book_nonce");
+    const ajaxUrl = (window.PRS_LIBRARY && PRS_LIBRARY.ajax_url)
+      || (window.PRS_BOOK && PRS_BOOK.ajax_url)
+      || (typeof window.ajaxurl === "string" ? window.ajaxurl : "");
+
+    const normalizeProgress = (value, fallback) => {
+      const parsed = parseInt(String(value), 10);
+      if (!Number.isFinite(parsed)) {
+        return fallback;
+      }
+      return Math.max(0, Math.min(100, parsed));
+    };
+
+    const setProgress = (row, value) => {
+      if (!row) return;
+      const progress = normalizeProgress(value, 0);
+      row.setAttribute("data-progress", String(progress));
+      const track = row.querySelector(".prs-library__progress-track");
+      const fill = row.querySelector(".prs-library__progress-fill");
+      const label = row.querySelector(".prs-library__progress-value");
+      if (fill) {
+        fill.style.width = `${progress}%`;
+      }
+      if (label) {
+        label.textContent = `${progress}%`;
+      }
+      if (track) {
+        track.setAttribute("aria-valuenow", String(progress));
+        track.setAttribute("aria-valuetext", `${progress}% complete`);
+      }
+    };
+
+    const getBaseProgress = row => {
+      if (!row) return 0;
+      const baseAttr = row.getAttribute("data-progress-base");
+      const existing = row.dataset.progressBase || baseAttr;
+      if (typeof row.dataset.progressBase === "undefined" || row.dataset.progressBase === "") {
+        row.dataset.progressBase = existing || row.getAttribute("data-progress") || "0";
+      }
+      return normalizeProgress(row.dataset.progressBase, 0);
+    };
+
+    const applyProgressForStatus = (row, status) => {
+      const normalized = (status || "").trim().toLowerCase();
+      const baseProgress = getBaseProgress(row);
+      if (normalized === "finished") {
+        setProgress(row, 100);
+      } else {
+        setProgress(row, baseProgress);
+      }
+    };
+
+    table.addEventListener("change", (event) => {
+      const select = event.target.closest(".reading-status-select");
+      if (!select || !table.contains(select)) {
+        return;
+      }
+
+      const row = select.closest("tr[data-user-book-id]");
+      if (!row) {
+        return;
+      }
+
+      const previousStatus = (select.dataset.currentValue || row.getAttribute("data-reading-status") || "").trim();
+      const nextStatus = (select.value || "not_started").trim();
+
+      applyProgressForStatus(row, nextStatus);
+      row.setAttribute("data-reading-status", nextStatus);
+      select.dataset.currentValue = nextStatus;
+
+      if (!ajaxUrl || !nonceField || !nonceField.value) {
+        return;
+      }
+
+      const userBookId = row.getAttribute("data-user-book-id");
+      if (!userBookId) {
+        return;
+      }
+
+      const fd = new FormData();
+      fd.append("action", "prs_update_user_book_meta");
+      fd.append("user_book_id", String(userBookId));
+      fd.append("reading_status", nextStatus);
+      fd.append("prs_update_user_book_nonce", nonceField.value);
+
+      ajaxPost(ajaxUrl, fd)
+        .then(json => {
+          if (!json || !json.success) throw json;
+        })
+        .catch(() => {
+          select.value = previousStatus || "not_started";
+          row.setAttribute("data-reading-status", previousStatus);
+          select.dataset.currentValue = previousStatus;
+          applyProgressForStatus(row, previousStatus);
+        });
     });
   }
 
@@ -4668,6 +4779,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     setupCoverPlaceholder();
     setupPages();
     setupLibraryPagesInlineEdit();
+    setupLibraryReadingStatus();
     setupPurchaseDate();
     setupPurchaseChannel();
     setupRating();

@@ -191,6 +191,48 @@ add_shortcode(
         						<tbody>
         							<tr>
         								<th scope="row">
+        									<label class="prs-form__label" for="prs_cover">
+        										<span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?>:</span>
+        										<span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
+        									</label>
+        								</th>
+        								<td>
+        									<div class="prs-form__file-control">
+        										<input
+        											type="file"
+        											id="prs_cover"
+        											name="prs_cover"
+        											accept=".jpg,.jpeg,.png,.webp"
+        											class="prs-form__file-input"
+        										/>
+        										<button
+        											type="button"
+        											id="prs_cover_trigger"
+        											class="prs-form__file-trigger"
+        											data-default-label="<?php echo esc_attr__( 'Upload Book Cover', 'politeia-reading' ); ?>"
+        											data-change-label="<?php echo esc_attr__( 'Change Book Cover', 'politeia-reading' ); ?>"
+        											onclick="document.getElementById('prs_cover').click();"
+        										>
+        											<span class="prs-form__file-icon" aria-hidden="true"></span>
+        											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
+        										</button>
+        										<?php
+        										$prs_cover_placeholder = plugins_url(
+        											'modules/reading/assets/img/icon-book-cover.png',
+        											dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
+        										);
+        										?>
+        										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
+        											<img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
+        												decoding="async"
+        												alt="<?php echo esc_attr( 'Selected book cover preview' ); ?>"
+        												data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
+        										</div>
+        									</div>
+        								</td>
+        							</tr>
+        							<tr>
+        								<th scope="row">
         									<label for="prs_title">
         										<?php esc_html_e( 'Title', 'politeia-reading' ); ?>
         										<span class="prs-form__required" aria-hidden="true">*</span>
@@ -337,48 +379,6 @@ add_shortcode(
                                                                         </div>
 								</td>
 							</tr>
-        							<tr>
-        								<th scope="row">
-        									<label class="prs-form__label" for="prs_cover">
-        										<span class="prs-form__label-text"><?php esc_html_e( 'Cover', 'politeia-reading' ); ?>:</span>
-        										<span class="prs-form__label-note"><?php esc_html_e( '(jpg/png/webp)', 'politeia-reading' ); ?></span>
-        									</label>
-        								</th>
-        								<td>
-        									<div class="prs-form__file-control">
-        										<input
-        											type="file"
-        											id="prs_cover"
-        											name="prs_cover"
-        											accept=".jpg,.jpeg,.png,.webp"
-        											class="prs-form__file-input"
-        										/>
-        										<button
-        											type="button"
-        											id="prs_cover_trigger"
-        											class="prs-form__file-trigger"
-        											data-default-label="<?php echo esc_attr__( 'Upload Book Cover', 'politeia-reading' ); ?>"
-        											data-change-label="<?php echo esc_attr__( 'Change Book Cover', 'politeia-reading' ); ?>"
-        											onclick="document.getElementById('prs_cover').click();"
-        										>
-        											<span class="prs-form__file-icon" aria-hidden="true"></span>
-        											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
-        										</button>
-        										<?php
-        										$prs_cover_placeholder = plugins_url(
-        											'modules/reading/assets/img/icon-book-cover.png',
-        											dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
-        										);
-        										?>
-        										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
-        											<img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
-        												decoding="async"
-        												alt="<?php echo esc_attr( 'Selected book cover preview' ); ?>"
-        												data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
-        										</div>
-        									</div>
-        								</td>
-        							</tr>
         							<tr class="prs-form__actions">
         								<td colspan="2">
         									<button class="prs-btn prs-add-book__submit" type="submit">

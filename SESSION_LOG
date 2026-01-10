@@ -161,6 +161,11 @@ January 10, 2026, 01:27 UTC
 2. Added a canonical marker dot in title suggestions and tightened author/year typography to 10px.
 3. Normalized autocomplete suggestion button corners to square on all states.
 
+January 10, 2026, 19:37 UTC
+1. Replaced the reading planner overlay markup with the new multi-step form and updated the vanilla JS flow (calendar + list views).
+2. Scoped the reading planner CSS to the modal shell, styled the launch button, and adjusted modal sizing to remove the extra panel.
+3. Removed Tailwind to prevent global style bleed and replaced required utilities with scoped CSS-only equivalents.
+
 ------
 
 TO DO:
@@ -169,3 +174,5 @@ December 31st
 1. Add detailed session entries as new development tasks are completed.
 2. Add a user-facing button to export personal book records to a standardized CSV download.
 3. Build a Public Notes Feed to share user-approved notes with the community (design: https://chatgpt.com/c/695a51e0-07e8-8331-adde-1210b29dc91c).
+4. Enhance Add Book autocomplete suggestion input field (see Reports/add-book-autocomplete-suggestions.md).
+5. Develop mechanism to add books we've been borrowed from either a person or a Public Library.

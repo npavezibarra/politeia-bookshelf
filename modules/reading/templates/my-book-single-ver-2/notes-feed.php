@@ -58,6 +58,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 		margin-bottom: 12px;
 	}
 
+	.prs-note__session {
+		font-weight: 700;
+		font-size: 12px;
+	}
+
 	.prs-note__date {
 		font-size: 0.75rem;
 		color: var(--prs-notes-muted);

@@ -1491,6 +1491,10 @@ function prs_render_book_row( $book, $context = array() ) {
         if ( class_exists( 'Politeia_Reading_Sessions' ) && $effective_pages > 0 ) {
                 $progress = Politeia_Reading_Sessions::calculate_progress_percent( $user_id, (int) $book->book_id, $effective_pages );
         }
+        $progress_base = $progress;
+        if ( 'finished' === $reading_status ) {
+                $progress = 100;
+        }
 
         $reading_id  = 'reading-status-' . (int) $book->user_book_id;
         $owning_id   = 'owning-status-' . (int) $book->user_book_id;
@@ -1619,6 +1623,7 @@ function prs_render_book_row( $book, $context = array() ) {
                 data-owning-status="<?php echo esc_attr( $row_owning_attr ); ?>"
                 data-reading-status="<?php echo esc_attr( $reading_status ); ?>"
                 data-progress="<?php echo esc_attr( (int) $progress ); ?>"
+                data-progress-base="<?php echo esc_attr( (int) $progress_base ); ?>"
                 data-author="<?php echo esc_attr( $author_value ); ?>"
                 data-title="<?php echo esc_attr( $title_value ); ?>"
         >

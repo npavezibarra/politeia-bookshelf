@@ -1,13 +1,3 @@
-:root {
-  --pure-black: #000000;
-  --deep-gray: #333333;
-  --metallic-gold: #c79f32;
-  --accent-orange: #ff8c00;
-  --light-gray: #a8a8a8;
-  --subtle-gray: #f5f5f5;
-  --off-white: #fefeff;
-}
-
 #politeia-reading-plan-overlay {
   position: fixed;
   inset: 0;
@@ -15,199 +5,318 @@
   display: grid;
   place-items: center;
   z-index: 99999;
+  overflow: auto;
+  padding: 24px 16px;
 }
 
 [hidden] {
   display: none !important;
 }
 
-.politeia-modal {
-  background: var(--off-white);
-  width: 100%;
-  max-width: 760px;
-  border-radius: 26px;
-  padding: 2.5rem;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-  position: relative;
-  color: var(--deep-gray);
+#politeia-open-reading-plan {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 20px;
+  border-radius: 12px;
+  border: 1px solid var(--color-black, #000);
+  background: var(--color-black, #000);
+  color: var(--color-gold, #c79f32);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, color 0.2s ease;
 }
 
-.politeia-modal h2 {
-  margin: 0 0 10px;
-  color: var(--pure-black);
-  font-size: 22px;
-  font-weight: 700;
+#politeia-open-reading-plan:hover {
+  background: #1a1a1a;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+  transform: translateY(-1px);
 }
+
+#politeia-open-reading-plan:focus-visible {
+  outline: 3px solid rgba(199, 159, 50, 0.45);
+  outline-offset: 2px;
+}
+
+#politeia-open-reading-plan:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+.politeia-reading-plan-shell {
+  position: relative;
+  width: min(36rem, 92vw);
+  max-height: 92vh;
+  overflow: auto;
+  border-radius: 26px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
+  background: #fefeff;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 500;
+  color: #333333;
+  --color-black: #000000;
+  --color-deep-gray: #333333;
+  --color-gold: #c79f32;
+  --color-orange: #ff8c00;
+  --color-light-gray: #a8a8a8;
+  --color-subtle-gray: #f5f5f5;
+  --color-off-white: #fefeff;
+}
+
 
 .politeia-modal-close {
   position: absolute;
   top: 16px;
   right: 16px;
-  border: 1px solid var(--light-gray);
+  border: 1px solid var(--color-light-gray);
   background: #fff;
-  color: var(--deep-gray);
+  color: var(--color-deep-gray);
   font-size: 20px;
   border-radius: 10px;
   width: 36px;
   height: 36px;
   cursor: pointer;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
+  z-index: 5;
 }
 
 .politeia-modal-close:hover {
-  background: var(--metallic-gold);
-  color: var(--pure-black);
-  border-color: var(--metallic-gold);
+  background: var(--color-gold);
+  color: var(--color-black);
+  border-color: var(--color-gold);
 }
 
-.politeia-nav {
-  margin-top: 1.5rem;
-  display: flex;
-  gap: 0.75rem;
-  justify-content: flex-end;
+.politeia-reading-plan-shell .rounded-custom { border-radius: 6px !important; }
+.politeia-reading-plan-shell .text-deep-gray { color: var(--color-deep-gray); }
+
+.politeia-reading-plan-shell .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.politeia-reading-plan-shell .custom-scrollbar::-webkit-scrollbar-track { background: var(--color-subtle-gray); }
+.politeia-reading-plan-shell .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--color-light-gray); border-radius: 6px; }
+
+.politeia-reading-plan-shell .calendar-card { background-color: var(--color-subtle-gray); border: 1px solid var(--color-light-gray); }
+.politeia-reading-plan-shell .day-cell { background-color: var(--color-off-white); border: 1px solid var(--color-light-gray); transition: all 0.2s ease; }
+.politeia-reading-plan-shell .drag-over { background-color: #fffaf0; border: 2px dashed var(--color-orange) !important; }
+.politeia-reading-plan-shell .selected-mark { background-color: var(--color-gold); cursor: grab; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+
+.politeia-reading-plan-shell .btn-primary { background-color: var(--color-black); color: var(--color-gold); border: 1px solid var(--color-black); transition: all 0.3s ease; }
+.politeia-reading-plan-shell .btn-primary:hover:not(:disabled) { background-color: #1a1a1a; transform: translateY(-1px); }
+
+.politeia-reading-plan-shell .toggle-container { height: 24px; background-color: #e5e5e5; padding: 2px; border-radius: 6px; display: flex; align-items: center; }
+.politeia-reading-plan-shell .toggle-btn { height: 20px; padding: 0 8px; border-radius: 4px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s ease; }
+.politeia-reading-plan-shell .toggle-btn.active { background-color: var(--color-black); color: var(--color-gold); }
+
+.politeia-reading-plan-shell .view-transition { transition: opacity 0.4s ease, transform 0.4s ease; width: 100%; }
+.politeia-reading-plan-shell .view-hidden { opacity: 0; transform: translateY(10px); pointer-events: none; position: absolute; top: 0; left: 0; }
+.politeia-reading-plan-shell .view-visible { opacity: 1; transform: translateY(0); pointer-events: auto; position: relative; }
+
+.politeia-reading-plan-shell .nav-btn-circ { width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--color-light-gray); display: flex; align-items: center; justify-content: center; color: var(--color-black); transition: all 0.2s ease; cursor: pointer; }
+.politeia-reading-plan-shell .nav-btn-circ:hover:not(.disabled) { background-color: var(--color-black); border-color: var(--color-black); color: var(--color-gold); }
+.politeia-reading-plan-shell .nav-btn-circ.disabled { opacity: 0.15; cursor: not-allowed; }
+
+.politeia-reading-plan-shell .pagination-btn { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-light-gray); border-radius: 4px; transition: all 0.2s ease; cursor: pointer; background: white; }
+.politeia-reading-plan-shell .pagination-btn:hover:not(.disabled) { border-color: var(--color-black); color: var(--color-gold); background: var(--color-black); }
+.politeia-reading-plan-shell .pagination-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+
+.politeia-reading-plan-shell .step-transition { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.politeia-reading-plan-shell input[type="number"]::-webkit-inner-spin-button,
+.politeia-reading-plan-shell input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
-.politeia-nav button {
-  border: 1px solid var(--metallic-gold);
-  background: var(--metallic-gold);
-  color: var(--pure-black);
-  padding: 0.75rem 1.25rem;
-  border-radius: 12px;
-  cursor: pointer;
-  font-weight: 700;
-  transition: background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.2s;
+@media (max-width: 768px) {
+  .politeia-reading-plan-shell {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: 22px;
+  }
 }
 
-.politeia-nav button:hover {
-  box-shadow: 0 8px 24px rgba(199, 159, 50, 0.35);
-}
+/* Scoped utility replacements for reading planner (Tailwind-free). */
+.politeia-reading-plan-shell .hidden { display: none !important; }
+.politeia-reading-plan-shell .block { display: block; }
+.politeia-reading-plan-shell .flex { display: flex; }
+.politeia-reading-plan-shell .flex-1 { flex: 1 1 0%; }
+.politeia-reading-plan-shell .flex-col { flex-direction: column; }
+.politeia-reading-plan-shell .flex-wrap { flex-wrap: wrap; }
+.politeia-reading-plan-shell .items-center { align-items: center; }
+.politeia-reading-plan-shell .items-end { align-items: flex-end; }
+.politeia-reading-plan-shell .items-start { align-items: flex-start; }
+.politeia-reading-plan-shell .justify-between { justify-content: space-between; }
+.politeia-reading-plan-shell .justify-center { justify-content: center; }
+.politeia-reading-plan-shell .justify-end { justify-content: flex-end; }
+.politeia-reading-plan-shell .grid { display: grid; }
+.politeia-reading-plan-shell .grid-cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+.politeia-reading-plan-shell .grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.politeia-reading-plan-shell .grid-cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.politeia-reading-plan-shell .grid-cols-7 { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+.politeia-reading-plan-shell .relative { position: relative; }
+.politeia-reading-plan-shell .absolute { position: absolute; }
+.politeia-reading-plan-shell .top-1 { top: 0.25rem; }
+.politeia-reading-plan-shell .left-1 { left: 0.25rem; }
+.politeia-reading-plan-shell .aspect-square { aspect-ratio: 1 / 1; }
+.politeia-reading-plan-shell .w-full { width: 100%; }
+.politeia-reading-plan-shell .w-2\.5 { width: 0.625rem; }
+.politeia-reading-plan-shell .w-3 { width: 0.75rem; }
+.politeia-reading-plan-shell .w-3\.5 { width: 0.875rem; }
+.politeia-reading-plan-shell .w-4 { width: 1rem; }
+.politeia-reading-plan-shell .w-5 { width: 1.25rem; }
+.politeia-reading-plan-shell .w-6 { width: 1.5rem; }
+.politeia-reading-plan-shell .w-8 { width: 2rem; }
+.politeia-reading-plan-shell .w-20 { width: 5rem; }
+.politeia-reading-plan-shell .w-36 { width: 9rem; }
+.politeia-reading-plan-shell .h-1\.5 { height: 0.375rem; }
+.politeia-reading-plan-shell .h-2\.5 { height: 0.625rem; }
+.politeia-reading-plan-shell .h-3 { height: 0.75rem; }
+.politeia-reading-plan-shell .h-3\.5 { height: 0.875rem; }
+.politeia-reading-plan-shell .h-4 { height: 1rem; }
+.politeia-reading-plan-shell .h-5 { height: 1.25rem; }
+.politeia-reading-plan-shell .h-6 { height: 1.5rem; }
+.politeia-reading-plan-shell .h-8 { height: 2rem; }
+.politeia-reading-plan-shell .h-14 { height: 3.5rem; }
+.politeia-reading-plan-shell .h-\[1px\] { height: 1px; }
+.politeia-reading-plan-shell .min-h-\[400px\] { min-height: 400px; }
+.politeia-reading-plan-shell .max-h-32 { max-height: 8rem; }
+.politeia-reading-plan-shell .max-h-\[360px\] { max-height: 360px; }
+.politeia-reading-plan-shell .max-w-xl { max-width: 36rem; }
+.politeia-reading-plan-shell .max-w-xs { max-width: 20rem; }
+.politeia-reading-plan-shell .mx-auto { margin-left: auto; margin-right: auto; }
+.politeia-reading-plan-shell .p-10 { padding: 2.5rem; }
+.politeia-reading-plan-shell .p-6 { padding: 1.5rem; }
+.politeia-reading-plan-shell .p-5 { padding: 1.25rem; }
+.politeia-reading-plan-shell .p-4 { padding: 1rem; }
+.politeia-reading-plan-shell .p-3 { padding: 0.75rem; }
+.politeia-reading-plan-shell .p-2 { padding: 0.5rem; }
+.politeia-reading-plan-shell .px-12 { padding-left: 3rem; padding-right: 3rem; }
+.politeia-reading-plan-shell .px-3 { padding-left: 0.75rem; padding-right: 0.75rem; }
+.politeia-reading-plan-shell .px-2 { padding-left: 0.5rem; padding-right: 0.5rem; }
+.politeia-reading-plan-shell .py-8 { padding-top: 2rem; padding-bottom: 2rem; }
+.politeia-reading-plan-shell .py-5 { padding-top: 1.25rem; padding-bottom: 1.25rem; }
+.politeia-reading-plan-shell .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
+.politeia-reading-plan-shell .py-3 { padding-top: 0.75rem; padding-bottom: 0.75rem; }
+.politeia-reading-plan-shell .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+.politeia-reading-plan-shell .py-1 { padding-top: 0.25rem; padding-bottom: 0.25rem; }
+.politeia-reading-plan-shell .pr-2 { padding-right: 0.5rem; }
+.politeia-reading-plan-shell .pt-2 { padding-top: 0.5rem; }
+.politeia-reading-plan-shell .mt-0\.5 { margin-top: 0.125rem; }
+.politeia-reading-plan-shell .mt-1 { margin-top: 0.25rem; }
+.politeia-reading-plan-shell .mt-2 { margin-top: 0.5rem; }
+.politeia-reading-plan-shell .mt-3 { margin-top: 0.75rem; }
+.politeia-reading-plan-shell .mt-4 { margin-top: 1rem; }
+.politeia-reading-plan-shell .mt-6 { margin-top: 1.5rem; }
+.politeia-reading-plan-shell .mt-8 { margin-top: 2rem; }
+.politeia-reading-plan-shell .mt-10 { margin-top: 2.5rem; }
+.politeia-reading-plan-shell .mt-12 { margin-top: 3rem; }
+.politeia-reading-plan-shell .mb-1 { margin-bottom: 0.25rem; }
+.politeia-reading-plan-shell .mb-2 { margin-bottom: 0.5rem; }
+.politeia-reading-plan-shell .mb-3 { margin-bottom: 0.75rem; }
+.politeia-reading-plan-shell .mb-4 { margin-bottom: 1rem; }
+.politeia-reading-plan-shell .mb-6 { margin-bottom: 1.5rem; }
+.politeia-reading-plan-shell .mb-8 { margin-bottom: 2rem; }
+.politeia-reading-plan-shell .mb-10 { margin-bottom: 2.5rem; }
+.politeia-reading-plan-shell .gap-1 { gap: 0.25rem; }
+.politeia-reading-plan-shell .gap-1\.5 { gap: 0.375rem; }
+.politeia-reading-plan-shell .gap-2 { gap: 0.5rem; }
+.politeia-reading-plan-shell .gap-3 { gap: 0.75rem; }
+.politeia-reading-plan-shell .gap-4 { gap: 1rem; }
+.politeia-reading-plan-shell .space-x-1 > :not([hidden]) ~ :not([hidden]) { margin-left: 0.25rem; }
+.politeia-reading-plan-shell .space-x-2 > :not([hidden]) ~ :not([hidden]) { margin-left: 0.5rem; }
+.politeia-reading-plan-shell .space-x-3 > :not([hidden]) ~ :not([hidden]) { margin-left: 0.75rem; }
+.politeia-reading-plan-shell .space-y-1 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.25rem; }
+.politeia-reading-plan-shell .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.5rem; }
+.politeia-reading-plan-shell .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: 1rem; }
+.politeia-reading-plan-shell .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: 1.5rem; }
+.politeia-reading-plan-shell .space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: 2rem; }
+.politeia-reading-plan-shell .text-left { text-align: left; }
+.politeia-reading-plan-shell .text-center { text-align: center; }
+.politeia-reading-plan-shell .text-\[8px\] { font-size: 8px; }
+.politeia-reading-plan-shell .text-\[9px\] { font-size: 9px; }
+.politeia-reading-plan-shell .text-\[10px\] { font-size: 10px; }
+.politeia-reading-plan-shell .text-\[11px\] { font-size: 11px; }
+.politeia-reading-plan-shell .text-xs { font-size: 0.75rem; }
+.politeia-reading-plan-shell .text-sm { font-size: 0.875rem; }
+.politeia-reading-plan-shell .text-lg { font-size: 1.125rem; }
+.politeia-reading-plan-shell .text-xl { font-size: 1.25rem; }
+.politeia-reading-plan-shell .text-2xl { font-size: 1.5rem; }
+.politeia-reading-plan-shell .text-4xl { font-size: 2.25rem; }
+.politeia-reading-plan-shell .font-medium { font-weight: 500; }
+.politeia-reading-plan-shell .font-bold { font-weight: 700; }
+.politeia-reading-plan-shell .font-black { font-weight: 900; }
+.politeia-reading-plan-shell .uppercase { text-transform: uppercase; }
+.politeia-reading-plan-shell .italic { font-style: italic; }
+.politeia-reading-plan-shell .leading-tight { line-height: 1.25; }
+.politeia-reading-plan-shell .leading-relaxed { line-height: 1.625; }
+.politeia-reading-plan-shell .tracking-tight { letter-spacing: -0.02em; }
+.politeia-reading-plan-shell .tracking-tighter { letter-spacing: -0.05em; }
+.politeia-reading-plan-shell .tracking-wide { letter-spacing: 0.025em; }
+.politeia-reading-plan-shell .tracking-wider { letter-spacing: 0.05em; }
+.politeia-reading-plan-shell .tracking-widest { letter-spacing: 0.1em; }
+.politeia-reading-plan-shell .tracking-\[0\.2em\] { letter-spacing: 0.2em; }
+.politeia-reading-plan-shell .tracking-\[0\.25em\] { letter-spacing: 0.25em; }
+.politeia-reading-plan-shell .text-black { color: #000000; }
+.politeia-reading-plan-shell .text-\[\#000000\] { color: #000000; }
+.politeia-reading-plan-shell .text-\[\#A8A8A8\] { color: #A8A8A8; }
+.politeia-reading-plan-shell .text-\[\#C79F32\] { color: #C79F32; }
+.politeia-reading-plan-shell .text-\[\#FF8C00\] { color: #FF8C00; }
+.politeia-reading-plan-shell .text-black\/40 { color: rgba(0, 0, 0, 0.4); }
+.politeia-reading-plan-shell .text-black\/50 { color: rgba(0, 0, 0, 0.5); }
+.politeia-reading-plan-shell .text-black\/60 { color: rgba(0, 0, 0, 0.6); }
+.politeia-reading-plan-shell .opacity-30 { opacity: 0.3; }
+.politeia-reading-plan-shell .opacity-40 { opacity: 0.4; }
+.politeia-reading-plan-shell .opacity-50 { opacity: 0.5; }
+.politeia-reading-plan-shell .opacity-60 { opacity: 0.6; }
+.politeia-reading-plan-shell .opacity-80 { opacity: 0.8; }
+.politeia-reading-plan-shell .opacity-0 { opacity: 0; }
+.politeia-reading-plan-shell .opacity-10 { opacity: 0.1; }
+.politeia-reading-plan-shell .bg-white { background-color: #ffffff; }
+.politeia-reading-plan-shell .bg-\[\#FEFEFF\] { background-color: #FEFEFF; }
+.politeia-reading-plan-shell .bg-\[\#F5F5F5\] { background-color: #F5F5F5; }
+.politeia-reading-plan-shell .bg-\[\#C79F32\] { background-color: #C79F32; }
+.politeia-reading-plan-shell .bg-\[\#A8A8A8\] { background-color: #A8A8A8; }
+.politeia-reading-plan-shell .bg-\[\#C79F32\]\/10 { background-color: rgba(199, 159, 50, 0.1); }
+.politeia-reading-plan-shell .bg-gray-50 { background-color: #f9fafb; }
+.politeia-reading-plan-shell .border { border-width: 1px; border-style: solid; }
+.politeia-reading-plan-shell .border-2 { border-width: 2px; border-style: solid; }
+.politeia-reading-plan-shell .border-b { border-bottom-width: 1px; border-bottom-style: solid; }
+.politeia-reading-plan-shell .border-\[\#A8A8A8\] { border-color: #A8A8A8; }
+.politeia-reading-plan-shell .border-\[\#C79F32\] { border-color: #C79F32; }
+.politeia-reading-plan-shell .border-black\/5 { border-color: rgba(0, 0, 0, 0.05); }
+.politeia-reading-plan-shell .rounded { border-radius: 0.25rem; }
+.politeia-reading-plan-shell .rounded-full { border-radius: 9999px; }
+.politeia-reading-plan-shell .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); }
+.politeia-reading-plan-shell .shadow-lg { box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); }
+.politeia-reading-plan-shell .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
+.politeia-reading-plan-shell .shadow-\[\#C79F32\]\/20 { box-shadow: 0 20px 40px rgba(199, 159, 50, 0.2); }
+.politeia-reading-plan-shell .group {}
+.politeia-reading-plan-shell .ring-2 { box-shadow: 0 0 0 2px var(--ring-color, #C79F32); }
+.politeia-reading-plan-shell .ring-\[\#C79F32\] { --ring-color: #C79F32; }
+.politeia-reading-plan-shell .transition-all { transition-property: all; }
+.politeia-reading-plan-shell .transition-colors { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; }
+.politeia-reading-plan-shell .transition-\[height\] { transition-property: height; }
+.politeia-reading-plan-shell .duration-700 { transition-duration: 700ms; }
+.politeia-reading-plan-shell .duration-500 { transition-duration: 500ms; }
+.politeia-reading-plan-shell .ease-in-out { transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); }
+.politeia-reading-plan-shell .overflow-hidden { overflow: hidden; }
+.politeia-reading-plan-shell .overflow-y-auto { overflow-y: auto; }
+.politeia-reading-plan-shell .outline-none { outline: none; }
+.politeia-reading-plan-shell .hover\:opacity-90:hover { opacity: 0.9; }
+.politeia-reading-plan-shell .hover\:bg-\[\#F5F5F5\]:hover { background-color: #F5F5F5; }
+.politeia-reading-plan-shell .hover\:text-\[\#000000\]:hover { color: #000000; }
+.politeia-reading-plan-shell .hover\:text-black:hover { color: #000000; }
+.politeia-reading-plan-shell .hover\:border-\[\#C79F32\]:hover { border-color: #C79F32; }
+.politeia-reading-plan-shell .focus\:border-\[\#C79F32\]:focus { border-color: #C79F32; }
+.politeia-reading-plan-shell .disabled\:opacity-30:disabled { opacity: 0.3; }
+.politeia-reading-plan-shell .disabled\:grayscale:disabled { filter: grayscale(1); }
+.politeia-reading-plan-shell .md\:w-auto { width: 100%; }
 
-.politeia-nav button[disabled] {
-  opacity: 0.5;
-  cursor: not-allowed;
-  box-shadow: none;
-}
-
-.politeia-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 14px;
-}
-
-.politeia-card {
-  border: 1px solid var(--light-gray);
-  border-radius: 16px;
-  padding: 14px;
-  text-align: left;
-  background: #fff;
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, background 0.2s, color 0.2s;
-  color: var(--deep-gray);
-}
-
-.politeia-card .politeia-card-title {
-  font-weight: 700;
-  color: var(--pure-black);
-}
-
-.politeia-card .politeia-card-desc {
-  color: var(--deep-gray);
-  margin-top: 6px;
-  font-size: 14px;
-}
-
-.politeia-card.is-active {
-  border-color: var(--metallic-gold);
-  background: var(--subtle-gray);
-  box-shadow: 0 10px 30px rgba(199, 159, 50, 0.2);
-  color: var(--pure-black);
-}
-
-.politeia-pill {
-  display: inline-block;
-  padding: 10px 12px;
-  border-radius: 12px;
-  border: 1px solid var(--light-gray);
-  background: var(--off-white);
-  cursor: pointer;
-  transition: all 0.2s;
-  color: var(--deep-gray);
-}
-
-.politeia-pill.is-active {
-  border-color: var(--metallic-gold);
-  background: #fff6da;
-  color: var(--pure-black);
-  box-shadow: 0 8px 20px rgba(199, 159, 50, 0.25);
-}
-
-.politeia-inline-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.politeia-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.politeia-input-row {
-  display: flex;
-  gap: 10px;
-}
-
-.politeia-input-row input[type="text"],
-.politeia-input-row input[type="number"] {
-  flex: 1;
-}
-
-.politeia-input-row button {
-  white-space: nowrap;
-}
-
-.politeia-field {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--light-gray);
-  border-radius: 12px;
-  outline: none;
-  color: var(--deep-gray);
-}
-
-.politeia-field:focus {
-  border-color: var(--metallic-gold);
-  box-shadow: 0 0 0 3px rgba(199, 159, 50, 0.25);
-}
-
-.politeia-chip-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-
-.politeia-chip {
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid var(--light-gray);
-  background: var(--subtle-gray);
-  font-size: 12px;
-  color: var(--deep-gray);
-}
-
-.politeia-empty {
-  font-size: 14px;
-  color: var(--deep-gray);
-  background: var(--subtle-gray);
-  border: 1px dashed var(--light-gray);
-  border-radius: 12px;
-  padding: 12px;
-  text-align: center;
-}
-
-.politeia-help {
-  margin-top: 8px;
-  color: var(--deep-gray);
-  font-size: 14px;
+@media (min-width: 768px) {
+  .politeia-reading-plan-shell .md\:w-auto { width: auto; }
 }

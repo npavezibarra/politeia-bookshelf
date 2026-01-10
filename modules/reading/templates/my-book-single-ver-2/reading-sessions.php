@@ -93,8 +93,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 						$end_attr        = ( null !== $end_page && $end_page >= 0 ) ? (string) $end_page : '';
 						$chapter_attr    = isset( $s->chapter_name ) ? trim( (string) $s->chapter_name ) : '';
 						$book_title_attr = isset( $book->title ) ? trim( (string) $book->title ) : '';
+						$session_index   = isset( $session_index_map[ (int) $s->id ] ) ? (int) $session_index_map[ (int) $s->id ] : ( $i + 1 );
 						$note_button     = sprintf(
-							'<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s" data-start-page="%6$s" data-end-page="%7$s" data-chapter="%8$s" data-book-title="%9$s" data-note-label-read="%10$s" data-note-label-add="%11$s">%5$s</button>',
+							'<button type="button" class="prs-sr-read-note-btn" data-session-id="%1$d" data-session-number="%12$d" data-book-id="%2$d" data-user-id="%3$d" data-note="%4$s" data-start-page="%6$s" data-end-page="%7$s" data-chapter="%8$s" data-book-title="%9$s" data-note-label-read="%10$s" data-note-label-add="%11$s">%5$s</button>',
 							(int) $s->id,
 							(int) $s->book_id,
 							(int) $current_user_id,
@@ -105,14 +106,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 							esc_attr( $chapter_attr ),
 							esc_attr( $book_title_attr ),
 							esc_attr( $note_label_read ),
-							esc_attr( $note_label_add )
+							esc_attr( $note_label_add ),
+							(int) $session_index
 						);
 					}
 					?>
 					<tr>
-						<?php
-						$session_index = isset( $session_index_map[ (int) $s->id ] ) ? (int) $session_index_map[ (int) $s->id ] : ( $i + 1 );
-						?>
 						<td><?php echo esc_html( $session_index ); ?></td>
 						<td><?php echo wp_kses_post( $start_display ); ?></td>
 						<td><?php echo wp_kses_post( $end_display ); ?></td>

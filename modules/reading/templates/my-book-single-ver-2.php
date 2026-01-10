@@ -460,7 +460,7 @@ wp_add_inline_script(
 	#book-identity { width: 60%; }
 	#owning-status-summary {
 		width: 40%;
-		background: #e5e7eb;
+		background: #f3f3f3;
 		border-radius: 8px;
 		padding: 12px;
 		color: #374151;
@@ -468,6 +468,7 @@ wp_add_inline_script(
 	}
 
 	#book-title-row h1 { margin: 0; font-size: 28px; line-height: 1; }
+	#book-author { margin-bottom: 5px; }
 	.header p { margin: 4px 0 0; color: #6b7280; }
 
 	.prs-stars {
@@ -1146,7 +1147,7 @@ wp_add_inline_script(
 							<h1><?php echo esc_html( $book->title ); ?></h1>
 						<span role="button" tabindex="0" id="prs-session-recorder-open" class="prs-session-recorder-trigger material-symbols-outlined" aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>" aria-controls="prs-session-modal" aria-expanded="false">play_circle</span>
 					</div>
-					<p><?php echo $book_authors ? esc_html( $book_authors ) : esc_html( $placeholder_author ); ?></p>
+					<p id="book-author"><?php echo $book_authors ? esc_html( $book_authors ) : esc_html( $placeholder_author ); ?></p>
 					<div id="fld-user-rating" class="prs-field">
 						<div class="prs-stars" id="prs-user-rating" role="radiogroup" aria-label="<?php esc_attr_e( 'Your rating', 'politeia-reading' ); ?>">
 							<?php
