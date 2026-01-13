@@ -99,7 +99,7 @@ function politeia_normalize_books_array( $decoded ) {
 /** POST a /v1/chat/completions y devuelve el content del primer choice (JSON string). */
 function politeia_chatgpt_post_payload( array $payload ) {
 	$api_token = politeia_chatgpt_get_api_token();
-	if ( empty($api_token) ) return 'Error: No se ha configurado el token de API.';
+	if ( empty($api_token) ) return 'Error: API token is not configured.';
 
 	$api_url = 'https://api.openai.com/v1/chat/completions';
 	$args = [
@@ -113,17 +113,17 @@ function politeia_chatgpt_post_payload( array $payload ) {
 	];
 
 	$response = wp_remote_post($api_url, $args);
-	if ( is_wp_error($response) )  return 'Error al conectar con la API: ' . $response->get_error_message();
+	if ( is_wp_error($response) )  return 'Error connecting to the API: ' . $response->get_error_message();
 
 	$body = wp_remote_retrieve_body($response);
 	$data = json_decode($body, true);
 
-	if ( isset($data['error']) ) return 'Error de la API: ' . $data['error']['message'];
+	if ( isset($data['error']) ) return 'API error: ' . $data['error']['message'];
 
 	if ( isset($data['choices'][0]['message']['content']) )
 		return $data['choices'][0]['message']['content'];
 
-	return 'No se pudo obtener una respuesta válida de la API.';
+	return 'Could not obtain a valid response from the API.';
 }
 
 /** Envía PROMPT de texto: debe devolver JSON {books:[...]}. */
@@ -142,10 +142,10 @@ function politeia_chatgpt_send_query( $prompt ) {
 /** Envía IMAGEN (dataURL o URL) + instrucción: devuelve JSON {books:[...]}. */
 function politeia_chatgpt_process_image( $base64_image, $instruction = '' ) {
 	$prompt = $instruction ?: (
-		"Analiza esta imagen de una estantería de libros. " .
-		"Extrae los libros visibles y devuelve EXCLUSIVAMENTE un JSON con esta forma exacta:\n" .
+		"Analyze this image of a bookshelf. " .
+		"Extract the visible books and return ONLY a JSON with this exact shape:\n" .
 		"{ \"books\": [ { \"title\": \"...\", \"author\": \"...\" } ] }\n" .
-		"No incluyas comentarios, ni markdown, ni texto adicional."
+		"Do not include comments, markdown, or any additional text."
 	);
 
 	$messages = [[
@@ -292,8 +292,8 @@ if ( ! function_exists('politeia_process_input_ajax') ) {
 				if (empty($_POST['prompt'])) wp_send_json_error(['message'=>'empty_text'], 400);
 				// Instrucción por defecto (puedes sustituirla por una opción de admin)
 				$user_text = sanitize_textarea_field($_POST['prompt']);
-				$prompt = 'A partir del siguiente texto, extrae los libros y devuelve SOLO un JSON con la forma { "books": [ { "title": "...", "author": "..."} ] }.' .
-						  "\n\nTexto:\n\"{$user_text}\"";
+				$prompt = 'From the following text, extract the books and return ONLY a JSON with the form { "books": [ { "title": "...", "author": "..."} ] }.' .
+						  "\n\nText:\n\"{$user_text}\"";
 				$raw_from_api = politeia_chatgpt_send_query($prompt);
 			} elseif ($type === 'audio') {
 				// (Opcional) Implementar transcripción si lo deseas

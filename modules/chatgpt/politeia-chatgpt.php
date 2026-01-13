@@ -123,13 +123,13 @@ if ( ! function_exists('politeia_chatgpt_load_book_detection') ) {
 }
 
 /* -------------------------------------------------------------------------
- * Ajustes (Settings API) — envueltos en function_exists para evitar colisión
- * con archivos admin externos que puedan definir lo mismo.
+ * Settings (Settings API) — wrapped in function_exists to avoid collisions
+ * with external admin files that might define the same functions.
  * ------------------------------------------------------------------------- */
 if ( ! function_exists('politeia_chatgpt_add_admin_menu') ) {
     function politeia_chatgpt_add_admin_menu() {
         add_options_page(
-            'Ajustes de Politeia ChatGPT',
+            'Politeia ChatGPT Settings',
             'Politeia ChatGPT',
             'manage_options',
             'politeia-chatgpt-settings',
@@ -151,7 +151,7 @@ if ( ! function_exists('politeia_chatgpt_settings_page_html') ) {
                 <?php
                 settings_fields('politeia_chatgpt_settings');
                 do_settings_sections('politeia-chatgpt-settings');
-                submit_button( __('Guardar Token', 'politeia-chatgpt') );
+                submit_button( __('Save Token', 'politeia-chatgpt') );
                 ?>
             </form>
         </div>
@@ -173,14 +173,14 @@ if ( ! function_exists('politeia_chatgpt_register_settings') ) {
 
         add_settings_section(
             'politeia_chatgpt_settings_section',
-            __('Configuración del Token de API', 'politeia-chatgpt'),
+            __('API Token Settings', 'politeia-chatgpt'),
             'politeia_chatgpt_settings_section_callback',
             'politeia-chatgpt-settings'
         );
 
         add_settings_field(
             'politeia_chatgpt_api_token_field',
-            __('Token de API de OpenAI', 'politeia-chatgpt'),
+            __('OpenAI API Token', 'politeia-chatgpt'),
             'politeia_chatgpt_api_token_field_callback',
             'politeia-chatgpt-settings',
             'politeia_chatgpt_settings_section'
@@ -191,7 +191,7 @@ add_action('admin_init', 'politeia_chatgpt_register_settings');
 
 if ( ! function_exists('politeia_chatgpt_settings_section_callback') ) {
     function politeia_chatgpt_settings_section_callback() {
-        echo '<p>' . esc_html__( 'Introduce tu token de API de OpenAI para que el plugin pueda comunicarse con la API de ChatGPT.', 'politeia-chatgpt' ) . '</p>';
+        echo '<p>' . esc_html__( 'Enter your OpenAI API token so the plugin can communicate with the ChatGPT API.', 'politeia-chatgpt' ) . '</p>';
     }
 }
 
@@ -203,8 +203,8 @@ if ( ! function_exists('politeia_chatgpt_api_token_field_callback') ) {
         <p class="description">
             <?php echo wp_kses_post( sprintf(
                 /* translators: %s: OpenAI API keys url */
-                __( 'Puedes encontrar tu token en la página de %s.', 'politeia-chatgpt' ),
-                '<a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">'.esc_html__('llaves de API de OpenAI', 'politeia-chatgpt').'</a>'
+                __( 'You can find your token on the %s page.', 'politeia-chatgpt' ),
+                '<a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer">'.esc_html__('OpenAI API keys', 'politeia-chatgpt').'</a>'
             ) ); ?>
         </p>
         <?php

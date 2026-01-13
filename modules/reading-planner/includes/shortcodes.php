@@ -61,8 +61,8 @@ function render_reading_plan_shortcode(): string {
 				</div>
 				<div id="summary-container" class="calendar-card rounded-custom shadow-2xl p-6 max-w-xl w-full hidden">
 					<div class="mb-6 text-center">
-						<h2 id="propuesta-tipo-label" class="text-[10px] font-medium text-black tracking-[0.25em] uppercase mb-1 opacity-80">PROPUESTA DE LECTURA REALISTA</h2>
-						<h3 id="propuesta-plan-titulo" class="text-sm font-medium text-black uppercase mb-3 tracking-wide">Título del Plan</h3>
+						<h2 id="propuesta-tipo-label" class="text-[10px] font-medium text-black tracking-[0.25em] uppercase mb-1 opacity-80">REALISTIC READING PLAN</h2>
+						<h3 id="propuesta-plan-titulo" class="text-sm font-medium text-black uppercase mb-3 tracking-wide">Plan Title</h3>
 						<div class="w-full h-[1px] bg-[#A8A8A8] opacity-30"></div>
 					</div>
 					<header class="flex justify-between items-start mb-4">
@@ -70,27 +70,27 @@ function render_reading_plan_shortcode(): string {
 							<div class="flex items-center space-x-3">
 								<h1 id="propuesta-mes-label" class="text-2xl font-medium text-black tracking-tight uppercase leading-tight">---</h1>
 								<div id="calendar-nav-controls" class="flex space-x-1">
-									<button id="calendar-prev-month" class="nav-btn-circ" title="Mes Anterior">
+									<button id="calendar-prev-month" class="nav-btn-circ" title="Previous Month">
 										<i data-lucide="chevron-left" class="w-4 h-4"></i>
 									</button>
-									<button id="calendar-next-month" class="nav-btn-circ" title="Mes Siguiente">
+									<button id="calendar-next-month" class="nav-btn-circ" title="Next Month">
 										<i data-lucide="chevron-right" class="w-4 h-4"></i>
 									</button>
 								</div>
 							</div>
-							<p id="propuesta-sub-label" class="text-[10px] text-deep-gray font-medium uppercase tracking-widest mt-0.5">Planificación Mensual</p>
+							<p id="propuesta-sub-label" class="text-[10px] text-deep-gray font-medium uppercase tracking-widest mt-0.5">Monthly Plan</p>
 							<div id="propuesta-meta-info" class="mt-4 space-y-1">
-								<div id="propuesta-carga" class="text-[11px] font-medium text-[#C79F32] uppercase tracking-wide">Carga: -- PÁGINAS / SESIÓN</div>
-								<div id="propuesta-duracion" class="text-[10px] font-medium text-black/60 uppercase tracking-wider">Estimado: -- SEMANAS</div>
+								<div id="propuesta-carga" class="text-[11px] font-medium text-[#C79F32] uppercase tracking-wide">Load: -- PAGES / SESSION</div>
+								<div id="propuesta-duracion" class="text-[10px] font-medium text-black/60 uppercase tracking-wider">Estimated: -- WEEKS</div>
 							</div>
 						</div>
 						<div class="flex flex-col items-end">
 							<div class="flex flex-col items-end">
 								<div class="flex items-center space-x-2">
 									<span class="w-2.5 h-2.5 rounded-full bg-[#C79F32]"></span>
-									<span class="text-[10px] font-medium text-black uppercase tracking-wider">SESIONES</span>
+									<span class="text-[10px] font-medium text-black uppercase tracking-wider">SESSIONS</span>
 								</div>
-								<p class="text-[8px] text-deep-gray font-medium opacity-60 mt-0.5 tracking-tight">arrastra a otra fecha para ajustar</p>
+								<p class="text-[8px] text-deep-gray font-medium opacity-60 mt-0.5 tracking-tight">drag to another date to adjust</p>
 							</div>
 							<div class="toggle-container mt-3">
 								<div id="toggle-calendar" class="toggle-btn active"><i data-lucide="calendar" class="w-3.5 h-3.5"></i></div>
@@ -106,13 +106,13 @@ function render_reading_plan_shortcode(): string {
 					<div id="main-view-container" class="mt-4 relative overflow-hidden transition-[height] duration-500 ease-in-out">
 						<div id="calendar-view-wrapper" class="view-transition view-visible">
 						<div class="grid grid-cols-7 mb-2 border-b border-black/5">
-							<div class="text-center text-[10px] font-medium text-black py-2">LUN</div>
-							<div class="text-center text-[10px] font-medium text-black py-2">MAR</div>
-							<div class="text-center text-[10px] font-medium text-black py-2">MIÉ</div>
-							<div class="text-center text-[10px] font-medium text-black py-2">JUE</div>
-							<div class="text-center text-[10px] font-medium text-black py-2">VIE</div>
-							<div class="text-center text-[10px] font-medium text-black py-2">SÁB</div>
-							<div class="text-center text-[10px] font-medium text-black py-2">DOM</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">MON</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">TUE</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">WED</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">THU</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">FRI</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">SAT</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">SUN</div>
 						</div>
 							<div id="calendar-grid" class="grid grid-cols-7 gap-1.5 pt-2"></div>
 						</div>
@@ -122,10 +122,10 @@ function render_reading_plan_shortcode(): string {
 					</div>
 					<div class="mt-8 flex flex-col items-center space-y-4">
 						<button id="accept-button" class="btn-primary w-full py-4 rounded-custom font-medium uppercase tracking-widest text-sm shadow-lg">
-							Aceptar Propuesta
+							Accept Plan
 						</button>
 						<button id="adjust-btn" class="text-[10px] font-medium uppercase text-[#A8A8A8] hover:text-black transition-colors tracking-widest">
-							Ajustar Datos del Plan
+							Adjust Plan Details
 						</button>
 					</div>
 				</div>

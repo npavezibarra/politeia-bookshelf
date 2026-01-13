@@ -14,7 +14,7 @@ if (!defined('ABSPATH')) {
 function politeia_chatgpt_transcribe_audio($file_path, $original_name) {
     $api_token = get_option('politeia_chatgpt_api_token');
     if (empty($api_token)) {
-        return 'Error: No se ha configurado el token de API.';
+        return 'Error: API token is not configured.';
     }
 
     $api_url = 'https://api.openai.com/v1/audio/transcriptions';
@@ -45,18 +45,18 @@ function politeia_chatgpt_transcribe_audio($file_path, $original_name) {
     curl_close($ch);
 
     if ($curl_error) {
-        return 'Error de cURL al conectar con Whisper: ' . $curl_error;
+        return 'cURL error while connecting to Whisper: ' . $curl_error;
     }
     
     if ($http_code !== 200) {
-        return 'Error (' . $http_code . ') al conectar con la API de Whisper: ' . $response;
+        return 'Error (' . $http_code . ') while connecting to the Whisper API: ' . $response;
     }
 
     $data = json_decode($response, true);
 
     if (isset($data['error'])) {
-        return 'Error de la API de Whisper: ' . $data['error']['message'];
+        return 'Whisper API error: ' . $data['error']['message'];
     }
 
-    return $data['text'] ?? 'No se pudo obtener la transcripción del audio.';
+    return $data['text'] ?? 'Could not retrieve the audio transcription.';
 }

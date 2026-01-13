@@ -1,6 +1,6 @@
 {
   "name": "npavezibarra/politeia-bookshelf",
-  "description": "Unificación de Politeia Reading y Politeia ChatGPT en un solo plugin modular.",
+  "description": "Unifies Politeia Reading and Politeia ChatGPT into a single modular plugin.",
   "type": "wordpress-plugin",
   "license": "GPL-2.0-or-later",
   "version": "0.1.0",

@@ -10,33 +10,33 @@ import {
   ChevronLeft,
   CheckCircle2,
   Library,
-  BookMarked,
+  BookTueked,
   Hash,
 } from "lucide-react";
 
 const GOALS = [
   {
     id: "complete_books",
-    title: "Terminar uno o más libros",
-    description: "Finalizar obras específicas en un tiempo determinado.",
+    title: "Finish one or more books",
+    description: "Finish specific books within a set time frame.",
     icon: BookOpen,
   },
   {
     id: "more_pages",
-    title: "Leer más páginas por sesión",
-    description: "Aumentar tu velocidad o profundidad de lectura.",
+    title: "Read more pages per session",
+    description: "Increase your reading speed or depth.",
     icon: Library,
   },
   {
     id: "more_days",
-    title: "Aumentar días de lectura",
-    description: "Crear un hábito más frecuente durante la semana.",
+    title: "Increase reading days",
+    description: "Build a more frequent weekly habit.",
     icon: Calendar,
   },
   {
     id: "consistency",
-    title: "Leer de forma más constante",
-    description: "Mantener un ritmo estable durante un período largo.",
+    title: "Read more consistently",
+    description: "Maintain a steady pace over a longer period.",
     icon: Target,
   },
 ];
@@ -44,20 +44,20 @@ const GOALS = [
 const PAGE_RANGES = ["<100", "200~", "400~", "600~", "1000~"];
 
 const PERIODS = [
-  { id: "2w", label: "2 semanas", weeks: 2 },
-  { id: "1m", label: "1 mes", weeks: 4 },
-  { id: "3m", label: "3 meses", weeks: 12 },
-  { id: "custom", label: "Personalizado", weeks: 0 },
+  { id: "2w", label: "2 weeks", weeks: 2 },
+  { id: "1m", label: "1 month", weeks: 4 },
+  { id: "3m", label: "3 months", weeks: 12 },
+  { id: "custom", label: "Custom", weeks: 0 },
 ];
 
 const WEEK_DAYS = [
-  { id: 0, label: "Lun" },
-  { id: 1, label: "Mar" },
-  { id: 2, label: "Mié" },
-  { id: 3, label: "Jue" },
-  { id: 4, label: "Vie" },
-  { id: 5, label: "Sáb" },
-  { id: 6, label: "Dom" },
+  { id: 0, label: "Mon" },
+  { id: 1, label: "Tue" },
+  { id: 2, label: "Wed" },
+  { id: 3, label: "Thu" },
+  { id: 4, label: "Fri" },
+  { id: 5, label: "Sat" },
+  { id: 6, label: "Sun" },
 ];
 
 const parseFirstNumber = (value) => {
@@ -291,7 +291,7 @@ export default function ReadingPlanApp({ onClose }) {
       if (typeof onClose === "function") {
         onClose();
       }
-      window.alert("Tu plan de lectura ha comenzado");
+      window.alert("Your reading plan has started");
     } catch (err) {
       setError(err?.message || "Plan creation failed");
     } finally {
@@ -305,9 +305,9 @@ export default function ReadingPlanApp({ onClose }) {
         <div className="space-y-6 animate-in fade-in duration-500">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-slate-800">
-              ¿Qué aspectos de tu lectura te gustaría mejorar?
+              Which aspects of your reading would you like to improve?
             </h2>
-            <p className="text-slate-500">Puedes seleccionar varios objetivos</p>
+            <p className="text-slate-500">You can select multiple goals</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {GOALS.map((goal) => (
@@ -350,7 +350,7 @@ export default function ReadingPlanApp({ onClose }) {
                 {goalTitle}
               </span>
               <h2 className="text-2xl font-bold text-slate-800 mt-2">
-                ¿Cuántos libros finalizaste este último año?
+                How many books did you finish in the last year?
               </h2>
             </div>
             <div className="grid grid-cols-5 gap-3">
@@ -379,10 +379,10 @@ export default function ReadingPlanApp({ onClose }) {
           <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
             <div className="text-center">
               <h2 className="text-xl font-bold text-slate-800">
-                ¿Qué extensión tenían esos libros?
+                How long were those books?
               </h2>
               <p className="text-slate-500 text-sm">
-                Selecciona el rango de páginas para cada uno
+                Select the page range for each one
               </p>
             </div>
             <div className="space-y-4 max-h-[350px] overflow-y-auto pr-2">
@@ -392,7 +392,7 @@ export default function ReadingPlanApp({ onClose }) {
                   className="p-4 bg-slate-50 rounded-2xl border border-slate-100"
                 >
                   <p className="text-xs font-bold text-slate-400 uppercase mb-3">
-                    Libro #{i + 1}
+                    Book #{i + 1}
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {PAGE_RANGES.map((range) => (
@@ -418,15 +418,15 @@ export default function ReadingPlanApp({ onClose }) {
 
       const otherQuestions = {
         more_pages: {
-          q: "En una sesión típica, ¿cuántas páginas sueles leer?",
+          q: "In a typical session, how many pages do you usually read?",
           opts: ["<10", "10–20", "20–40", "40+"],
         },
         more_days: {
-          q: "¿Cuántos días a la semana lees actualmente?",
+          q: "How many days per week do you currently read?",
           opts: ["0–1", "2–3", "4–5", "6–7"],
         },
         consistency: {
-          q: "¿Cuántas semanas leíste al menos una vez el último mes?",
+          q: "How many weeks did you read at least once in the last month?",
           opts: ["0", "1", "2", "3", "4"],
         },
       };
@@ -466,17 +466,17 @@ export default function ReadingPlanApp({ onClose }) {
         <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
           <div className="text-center mb-6">
             <h2 className="text-2xl font-bold text-slate-800">
-              ¿Qué libros leerás?
+              Which books will you read?
             </h2>
             <p className="text-slate-500">
-              Agrega los títulos de tu biblioteca personal
+              Add the titles from your personal library
             </p>
           </div>
 
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3">
             <input
               type="text"
-              placeholder="Título del libro"
+              placeholder="Book title"
               className="w-full p-3 border rounded-xl focus:ring-2 ring-indigo-500 outline-none text-sm"
               value={newBook.title}
               onChange={(e) => setNewBook({ ...newBook, title: e.target.value })}
@@ -484,7 +484,7 @@ export default function ReadingPlanApp({ onClose }) {
             <div className="flex gap-2">
               <input
                 type="number"
-                placeholder="Páginas"
+                placeholder="Pages"
                 className="flex-1 p-3 border rounded-xl focus:ring-2 ring-indigo-500 outline-none text-sm"
                 value={newBook.pages}
                 onChange={(e) =>
@@ -495,7 +495,7 @@ export default function ReadingPlanApp({ onClose }) {
                 onClick={handleAddBook}
                 className="bg-indigo-600 text-white px-6 py-3 rounded-xl hover:bg-indigo-700 flex items-center justify-center gap-2 text-sm font-bold shadow-lg shadow-indigo-100"
               >
-                <Plus className="w-4 h-4" /> Agregar
+                <Plus className="w-4 h-4" /> Add
               </button>
             </div>
           </div>
@@ -508,14 +508,14 @@ export default function ReadingPlanApp({ onClose }) {
               >
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-indigo-50 rounded-lg flex items-center justify-center">
-                    <BookMarked className="text-indigo-500 w-4 h-4" />
+                    <BookTueked className="text-indigo-500 w-4 h-4" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-800">
                       {book.title}
                     </p>
                     <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
-                      {book.pages} páginas
+                      {book.pages} pages
                     </p>
                   </div>
                 </div>
@@ -537,16 +537,16 @@ export default function ReadingPlanApp({ onClose }) {
         <div className="space-y-8 animate-in slide-in-from-right-8 duration-300">
           <div className="text-center mb-4">
             <h2 className="text-2xl font-bold text-slate-800">
-              Tu disponibilidad
+              Your availability
             </h2>
             <p className="text-slate-500">
-              ¿Cuándo tienes espacio para sumergirte en la lectura?
+              When do you have time to immerse yourself in reading?
             </p>
           </div>
 
           <div className="space-y-4">
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
-              Días disponibles:
+              Available days:
             </label>
             <div className="flex justify-between gap-1">
               {WEEK_DAYS.map((day) => (
@@ -575,7 +575,7 @@ export default function ReadingPlanApp({ onClose }) {
 
           <div className="space-y-4">
             <label className="block text-xs font-black text-slate-400 uppercase tracking-widest">
-              Ritmo de sesión:
+              Session pace:
             </label>
             <div className="grid grid-cols-3 gap-3">
               {["short", "medium", "long"].map((type) => (
@@ -599,8 +599,8 @@ export default function ReadingPlanApp({ onClose }) {
                   {type === "short"
                     ? "Sprints"
                     : type === "medium"
-                    ? "Equilibrado"
-                    : "Inmersión"}
+                    ? "Balanced"
+                    : "Immersion"}
                 </button>
               ))}
             </div>
@@ -614,10 +614,10 @@ export default function ReadingPlanApp({ onClose }) {
         <div className="space-y-6 animate-in slide-in-from-right-8 duration-300">
           <div className="text-center mb-8">
             <h2 className="text-2xl font-bold text-slate-800">
-              Horizonte del plan
+              Plan horizon
             </h2>
             <p className="text-slate-500">
-              ¿En cuánto tiempo quieres alcanzar esta meta?
+              How long do you want to take to reach this goal?
             </p>
           </div>
 
@@ -644,7 +644,7 @@ export default function ReadingPlanApp({ onClose }) {
               <input
                 type="number"
                 className="w-full p-4 border rounded-2xl focus:ring-2 ring-indigo-500 outline-none text-center font-bold"
-                placeholder="Introduce número de semanas"
+                placeholder="Enter number of weeks"
                 value={formData.customWeeks}
                 onChange={(e) =>
                   setFormData({ ...formData, customWeeks: e.target.value })
@@ -691,9 +691,9 @@ export default function ReadingPlanApp({ onClose }) {
             <div className="absolute top-0 right-0 p-8 opacity-10">
               <CheckCircle2 className="w-48 h-48" />
             </div>
-            <h1 className="text-4xl font-black tracking-tight">Tu Hoja de Ruta</h1>
+            <h1 className="text-4xl font-black tracking-tight">Your Roadmap</h1>
             <p className="text-indigo-100 mt-2 text-lg font-medium">
-              Un plan diseñado a tu medida y ritmo actual.
+              A plan designed for your current pace.
             </p>
           </div>
 
@@ -701,35 +701,35 @@ export default function ReadingPlanApp({ onClose }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-6 bg-indigo-50 rounded-3xl text-center">
                 <span className="text-[10px] text-indigo-400 uppercase font-black tracking-widest">
-                  Carga Diaria
+                  Daily Load
                 </span>
                 <p className="text-3xl font-black text-slate-800 mt-2">
                   {proposal?.pagesPerSession}
                 </p>
                 <p className="text-[10px] font-bold text-indigo-300 uppercase">
-                  págs / sesión
+                  pages / session
                 </p>
               </div>
               <div className="p-6 bg-slate-50 rounded-3xl text-center">
                 <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                  Compromiso
+                  Commitment
                 </span>
                 <p className="text-3xl font-black text-slate-800 mt-2">
                   {formData.availability.days.length}
                 </p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">
-                  días / semana
+                  days / week
                 </p>
               </div>
               <div className="p-6 bg-slate-50 rounded-3xl text-center">
                 <span className="text-[10px] text-slate-400 uppercase font-black tracking-widest">
-                  Objetivo
+                  Goal
                 </span>
                 <p className="text-3xl font-black text-slate-800 mt-2">
                   {proposal?.totalPages}
                 </p>
                 <p className="text-[10px] font-bold text-slate-400 uppercase">
-                  págs totales
+                  total pages
                 </p>
               </div>
             </div>
@@ -737,17 +737,17 @@ export default function ReadingPlanApp({ onClose }) {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
               <div className="space-y-4">
                 <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
-                  <Clock className="w-4 h-4 text-indigo-500" /> Cronograma Final
+                  <Clock className="w-4 h-4 text-indigo-500" /> Final Schedule
                 </h3>
                 <div className="space-y-3 bg-slate-50 p-6 rounded-3xl">
                   <div className="flex justify-between items-center text-sm">
-                    <span className="text-slate-500 font-bold">Duración</span>
+                    <span className="text-slate-500 font-bold">Duration</span>
                     <span className="font-black text-slate-800">
-                      {proposal?.weeks} semanas
+                      {proposal?.weeks} weeks
                     </span>
                   </div>
                   <div className="flex justify-between items-center text-sm pt-2 border-t border-slate-200">
-                    <span>Sesiones totales</span>
+                    <span>Total sessions</span>
                     <span className="font-black text-slate-800">
                       {proposal?.totalSessions}
                     </span>
@@ -757,7 +757,7 @@ export default function ReadingPlanApp({ onClose }) {
 
               <div className="space-y-4">
                 <h3 className="font-black text-slate-800 flex items-center gap-2 uppercase text-xs tracking-widest">
-                  <Hash className="w-4 h-4 text-indigo-500" /> Tu punto de partida
+                  <Hash className="w-4 h-4 text-indigo-500" /> Your starting point
                 </h3>
                 <div className="space-y-2">
                   {selectedGoals.map((g) => (
@@ -786,14 +786,14 @@ export default function ReadingPlanApp({ onClose }) {
                 onClick={() => setShowSummary(false)}
                 className="flex-1 py-5 rounded-2xl border-2 border-slate-200 text-slate-500 font-black uppercase text-xs tracking-widest hover:bg-slate-50 transition-colors"
               >
-                Ajustar Datos
+                Adjust Details
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
                 className="flex-1 py-5 rounded-2xl bg-indigo-600 text-white font-black uppercase text-xs tracking-widest hover:bg-indigo-700 shadow-xl shadow-indigo-100 disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                {submitting ? "Creando plan…" : "Iniciar Mi Plan"}
+                {submitting ? "Creating plan…" : "Start My Plan"}
               </button>
             </div>
           </div>
@@ -819,14 +819,14 @@ export default function ReadingPlanApp({ onClose }) {
         <div className="p-10 flex-1 flex flex-col">
           <div className="flex justify-between items-center mb-10">
             <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-black uppercase tracking-[0.2em]">
-              Sección {mainStep} de 5
+              Section {mainStep} of 5
             </span>
             {(mainStep > 1 || (mainStep === 2 && (baselineIndex > 0 || subStep > 0))) && (
               <button
                 onClick={handleBack}
                 className="text-slate-400 hover:text-indigo-600 flex items-center gap-1 text-[10px] font-black uppercase tracking-widest transition-colors"
               >
-                <ChevronLeft className="w-3 h-3" /> Atrás
+                <ChevronLeft className="w-3 h-3" /> Back
               </button>
             )}
           </div>
@@ -839,7 +839,7 @@ export default function ReadingPlanApp({ onClose }) {
               onClick={handleNext}
               className="w-full md:w-auto bg-indigo-600 text-white px-12 py-5 rounded-2xl font-black flex items-center justify-center gap-3 hover:bg-indigo-700 transition-all disabled:opacity-20 disabled:grayscale shadow-2xl shadow-indigo-100 uppercase text-[10px] tracking-[0.2em]"
             >
-              {mainStep === 5 ? "Crear Mi Plan" : "Siguiente"}
+              {mainStep === 5 ? "Create My Plan" : "Next"}
               <ChevronRight className="w-4 h-4" />
             </button>
           </div>

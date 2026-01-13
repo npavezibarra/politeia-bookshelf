@@ -172,6 +172,12 @@ January 12, 2026
 3. Updated calendar behavior: Monday-first headers, real-time TODAY date, session numbering from 1, hover add/remove session controls, and PPS recalculation on session changes.
 4. Simplified flow by skipping past-reading baseline slides, redesigned exigencia slide layout, and added multiple CSS tweaks for buttons, headings, and modal controls.
 
+January 13, 2026, 02:17 UTC
+1. Translated all user-facing Spanish UI strings to English across ChatGPT UI, reading planner (vanilla + React entry), and session recorder flows, preserving behavior and selectors.
+2. Updated reading planner modal labels/days/months and intensity labels to English and aligned compiled entry script with source copy.
+3. Converted ChatGPT admin settings and plugin/composer descriptions to English.
+4. Ran PHPCS (`vendor/bin/phpcs --standard=modules/reading/phpcs.xml.dist`); it failed with many pre-existing style violations across the codebase.
+
 ------
 
 TO DO:

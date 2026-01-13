@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: Politeia Bookshelf
- * Description: Unifica Politeia Reading y Politeia ChatGPT en un solo plugin modular.
+ * Description: Unifies Politeia Reading and Politeia ChatGPT into a single modular plugin.
  * Version: 0.1.0
  * Author: Nicolás Pavez
  * License: GPL-2.0-or-later

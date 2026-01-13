@@ -380,11 +380,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Fancy texts
         const pages = Math.max(0, end - start);
-        const pagesTxt = (pages === 1) ? '1 página' : `${pages} páginas`;
+        const pagesTxt = (pages === 1) ? '1 page' : `${pages} pages`;
         const mins  = Math.round(durationSec / 60);
         const minsTxt = durationSec < 60
-          ? 'menos de un minuto'
-          : (mins === 1 ? '1 minuto' : `${mins} minutos`);
+          ? 'less than a minute'
+          : (mins === 1 ? '1 minute' : `${mins} minutes`);
 
         // Dejar UI lista y mostrar flash
         setIdle();

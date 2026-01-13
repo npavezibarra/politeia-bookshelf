@@ -177,9 +177,9 @@ add_shortcode(
         >
                 <div class="prs-sr-flash-inner">
                 <div id="prs-sr-summary">
-                        <h2>¡Muy bien!</h2>
-                        <h3>Leíste <span id="prs-sr-flash-pages">—</span> en <span id="prs-sr-flash-time">—</span>.</h3>
-                        <div class="prs-sr-flash-sub">Te espero pronto para seguir con este libro.</div>
+                        <h2>Great job!</h2>
+                        <h3>You read <span id="prs-sr-flash-pages">—</span> in <span id="prs-sr-flash-time">—</span>.</h3>
+                        <div class="prs-sr-flash-sub">See you soon to keep reading this book.</div>
                         <button type="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn" aria-controls="prs-note-panel" aria-expanded="false">
                                 <?php esc_html_e( 'Add Note', 'politeia-reading' ); ?>
                         </button>

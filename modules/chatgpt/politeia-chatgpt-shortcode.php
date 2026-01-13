@@ -36,7 +36,7 @@ add_action('wp_enqueue_scripts', 'politeia_chatgpt_enqueue_scripts');
 function politeia_chatgpt_shortcode_callback() {
 	// Requiere token para operar
 	if ( empty( get_option('politeia_chatgpt_api_token') ) ) {
-		return '<p>Error: La funcionalidad de IA no está configurada. Añade un token de API en PoliteiaGPT → General.</p>';
+		return '<p>Error: AI functionality is not configured. Add an API token in PoliteiaGPT → General.</p>';
 	}
 
 	ob_start();
@@ -68,17 +68,17 @@ function politeia_chatgpt_shortcode_callback() {
         <div class="politeia-chat-container">
                 <div class="politeia-chat-input-bar">
 			<input type="file" id="politeia-file-upload" accept="image/*" style="display:none;" />
-			<label for="politeia-file-upload" class="politeia-icon-button" title="Subir imagen de tus libros">
+			<label for="politeia-file-upload" class="politeia-icon-button" title="Upload an image of your books" aria-label="Upload an image of your books">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
 			</label>
 
-			<textarea id="politeia-chat-prompt" placeholder="Describe tus libros, graba tu voz o sube una foto..." rows="1"></textarea>
+			<textarea id="politeia-chat-prompt" placeholder="Describe your books, record your voice, or upload a photo..." rows="1"></textarea>
 
-			<button class="politeia-icon-button" id="politeia-mic-btn" title="Grabar tu voz narrando los libros">
+			<button class="politeia-icon-button" id="politeia-mic-btn" title="Record your voice describing the books">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
 			</button>
 
-			<button class="politeia-icon-button" id="politeia-submit-btn" title="Enviar texto">
+			<button class="politeia-icon-button" id="politeia-submit-btn" title="Send text">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
 			</button>
 		</div>

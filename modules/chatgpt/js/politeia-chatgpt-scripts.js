@@ -81,7 +81,7 @@
     if (!prompt || busy) return;
 
     setBusy(true);
-    setStatus('Procesando texto…');
+    setStatus('Processing text…');
 
     const fd = new FormData();
     fd.append('action','politeia_process_input');
@@ -94,18 +94,18 @@
       if (resp && resp.success){
         const n = countItemsFromResponse(resp);
         if (n > 0){
-          setStatus(`Listo. Candidatos encolados: ${n}`);
+          setStatus(`Done. Queued candidates: ${n}`);
           notifyQueueUpdated(n);
         } else {
-          setStatus('Listo. Resultados actualizados.');
+          setStatus('Done. Results updated.');
           notifyQueueUpdated(0);
         }
       } else {
-        setStatus('Error al procesar el texto.');
+        setStatus('Error processing the text.');
         console.warn('[Politeia ChatGPT] text error:', resp);
       }
     } catch(e){
-      setStatus('Error de red.');
+      setStatus('Network error.');
       console.error(e);
     } finally {
       setBusy(false);
@@ -143,9 +143,9 @@
   autoResizeTextarea();
 
   // ======================= AUDIO (placeholder) =======================
-  // Puedes implementar más adelante; por ahora mostramos aviso claro.
+  // You can implement later; for now show a clear notice.
   btnMic.addEventListener('click', () => {
-    setStatus('La grabación de audio aún no está habilitada.');
+    setStatus('Audio recording is not enabled yet.');
   });
 
   // ======================= IMAGEN =======================
@@ -164,7 +164,7 @@
 
     try{
       setBusy(true);
-      setStatus('Analizando imagen…');
+      setStatus('Analyzing image…');
       const dataUrl = await toDataURL(file);
 
       const fd = new FormData();
@@ -177,18 +177,18 @@
       if (resp && resp.success){
         const n = countItemsFromResponse(resp);
         if (n > 0){
-          setStatus(`Listo. Candidatos encolados: ${n}`);
+          setStatus(`Done. Queued candidates: ${n}`);
           notifyQueueUpdated(n);
         } else {
-          setStatus('Listo. Resultados actualizados.');
+          setStatus('Done. Results updated.');
           notifyQueueUpdated(0);
         }
       } else {
-        setStatus('Error al procesar la imagen.');
+        setStatus('Error processing the image.');
         console.warn('[Politeia ChatGPT] image error:', resp);
       }
     } catch(e){
-      setStatus('Error al leer/enviar la imagen.');
+      setStatus('Error reading/sending the image.');
       console.error(e);
     } finally {
       fileInput.value = '';

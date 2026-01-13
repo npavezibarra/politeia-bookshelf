@@ -7,7 +7,7 @@
       : (window.ajaxurl || '/wp-admin/admin-ajax.php');
     const NONCE = (window.politeia_chatgpt_vars && window.politeia_chatgpt_vars.nonce) || '';
   
-    // ---- Status UI (mensaje bajo el input) ----
+    // ---- Status UI (message below the input) ----
     const statusEl = (function ensureStatus(){
       let el = document.getElementById('pol-inline-status');
       if (!el) {
@@ -31,7 +31,7 @@
                           '#344055';
     }
   
-    // ---- Fetch helpers (con fallback a texto) ----
+    // ---- Fetch helpers (with text fallback) ----
     async function postFD(fd) {
       const res = await fetch(AJAX, { method: 'POST', body: fd });
       const rawText = await res.text(); // SIEMPRE leo texto primero
@@ -39,7 +39,7 @@
       try {
         parsed = JSON.parse(rawText);
       } catch (_e) {
-        // intenta extraer el primer bloque {...} grande
+        // try to extract the first large {...} block
         const m = rawText && rawText.match(/\{[\s\S]*\}/);
         if (m) {
           try { parsed = JSON.parse(m[0]); } catch (_e2) {}
@@ -49,24 +49,24 @@
     }
   
     function coercePayload(obj) {
-      // Acepta varias formas y devuelve {pending:[], in_shelf:[], message?, success?}
+      // Accepts multiple shapes and returns {pending:[], in_shelf:[], message?, success?}
       let p = obj || {};
       let success = (typeof p.success === 'boolean') ? p.success : undefined;
   
-      // Formas típicas de WP: {success:true|false, data:{...}}
+      // Typical WP shape: {success:true|false, data:{...}}
       if (p && p.data && (typeof p.data === 'object')) {
-        // a veces viene {success:false, data:{pending:[],in_shelf:[]}}
+        // sometimes comes as {success:false, data:{pending:[],in_shelf:[]}}
         if (Array.isArray(p.data.pending) || Array.isArray(p.data.in_shelf)) {
           p = p.data;
         } else if (p.data.data && (Array.isArray(p.data.data.pending) || Array.isArray(p.data.data.in_shelf))) {
           p = p.data.data;
         } else {
-          // si es {success:true, data:{queued,...}} lo usamos igual
+          // if it is {success:true, data:{queued,...}} use it anyway
           p = p.data;
         }
       }
   
-      // Si quedó plano {queued, pending, in_shelf}
+      // If it flattened to {queued, pending, in_shelf}
       const pending = Array.isArray(p.pending) ? p.pending : [];
       const in_shelf = Array.isArray(p.in_shelf) ? p.in_shelf : [];
       const message = p.message || obj?.data?.message || obj?.message || null;
@@ -82,7 +82,7 @@
   
     // ---- Input file trigger ----
     const trigger = document.querySelector('[data-pol-upload-trigger]') ||
-                    document.querySelector('[aria-label="Subir imagen de tus libros"]') ||
+                    document.querySelector('[aria-label="Upload an image of your books"]') ||
                     document.querySelector('[data-testid="paperclip-button"]') || // por si hay algún ícono
                     null;
     const hiddenFile = document.createElement('input');
@@ -110,13 +110,13 @@
       fd.append('file', file);
   
       try {
-        setStatus('Analizando imagen…', '');
+        setStatus('Analyzing image…', '');
         const { parsed, rawText } = await postFD(fd);
         console.debug('[politeia upload] raw:', rawText);
         console.debug('[politeia upload] parsed:', parsed);
   
         if (!parsed) {
-          setStatus('Respuesta desconocida del servidor (no JSON).', 'warn');
+          setStatus('Unknown server response (not JSON).', 'warn');
           return;
         }
   
@@ -125,28 +125,28 @@
   
         if (total > 0) {
           appendToTable(pending, in_shelf);
-          setStatus(`Listo. Candidatos encolados: ${total}`, 'ok');
+          setStatus(`Done. Queued candidates: ${total}`, 'ok');
         } else {
           if (message === 'upload_error') {
-            setStatus('Error al subir la imagen. Revisa el tamaño permitido.', 'err');
+            setStatus('Error uploading the image. Check the allowed size.', 'err');
           } else if (message === 'openai_error') {
-            setStatus('Hubo un problema al contactar OpenAI.', 'err');
+            setStatus('There was a problem contacting OpenAI.', 'err');
           } else if (message === 'no_books_detected' || success === false || success === true) {
             // Si success vino cualquiera pero no hay arrays, realmente no hubo libros
-            setStatus('No se detectaron libros.', 'warn');
+            setStatus('No books detected.', 'warn');
           } else {
-            setStatus('No se detectaron libros (respuesta no reconocida).', 'warn');
+            setStatus('No books detected (unrecognized response).', 'warn');
           }
         }
       } catch (e) {
         console.error('[politeia upload] exception', e);
-        setStatus('Error de red. Intenta nuevamente.', 'err');
+        setStatus('Network error. Please try again.', 'err');
       } finally {
         hiddenFile.value = '';
       }
     });
   
-    // ---- (Opcional) envío de texto libre ----
+    // ---- (Optional) free text submission ----
     const textForm = document.getElementById('pol-chatgpt-text-form');
     if (textForm) {
       textForm.addEventListener('submit', async (ev) => {
@@ -162,24 +162,24 @@
         fd.append('text', val);
   
         try {
-          setStatus('Procesando…', '');
+          setStatus('Processing…', '');
           const { parsed, rawText } = await postFD(fd);
           console.debug('[politeia text] raw:', rawText);
           console.debug('[politeia text] parsed:', parsed);
   
-          if (!parsed) { setStatus('Respuesta desconocida del servidor.', 'warn'); return; }
+          if (!parsed) { setStatus('Unknown server response.', 'warn'); return; }
           const { pending, in_shelf, message, success } = coercePayload(parsed);
           const total = pending.length + in_shelf.length;
   
           if (total > 0) {
             appendToTable(pending, in_shelf);
-            setStatus(`Listo. Candidatos encolados: ${total}`, 'ok');
+            setStatus(`Done. Queued candidates: ${total}`, 'ok');
           } else {
-            setStatus('No se detectaron libros.', 'warn');
+            setStatus('No books detected.', 'warn');
           }
         } catch (e) {
           console.error(e);
-          setStatus('Error de red. Intenta nuevamente.', 'err');
+          setStatus('Network error. Please try again.', 'err');
         }
       });
     }

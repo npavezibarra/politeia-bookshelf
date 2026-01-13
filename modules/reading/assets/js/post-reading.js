@@ -193,7 +193,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } catch (e) {
         console.error(e);
-        alert("Hubo un problema al registrar la lectura.");
+        alert("There was a problem recording the reading.");
       } finally {
         btn.disabled = false;
       }
