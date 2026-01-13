@@ -178,6 +178,16 @@ January 13, 2026, 02:17 UTC
 3. Converted ChatGPT admin settings and plugin/composer descriptions to English.
 4. Ran PHPCS (`vendor/bin/phpcs --standard=modules/reading/phpcs.xml.dist`); it failed with many pre-existing style violations across the codebase.
 
+January 13, 2026, 18:15 UTC
+1. Added new member-only routes for `/members/{username}/my-plans` and `/members/{username}/my-reading-stats` with access checks and templates.
+2. Built the My Plans layout with two cards per row, embedded the calendar/list UI, and wired per-card JS interactions.
+3. Added My Reading Stats template scaffold and updated reading planner translations for new UI strings.
+
+January 13, 2026, 18:22 UTC
+1. Removed unused reading planner React entry assets and build tooling from the plugin module.
+2. Deleted the reading planner `node_modules` directory to keep the module lean.
+3. Cleaned unused React bundle path variables from the reading planner shortcode enqueue.
+
 ------
 
 TO DO:

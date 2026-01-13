@@ -17,8 +17,6 @@ function render_reading_plan_shortcode(): string {
 
 	$script_handle = 'politeia-reading-plan-app';
 	$style_handle  = 'politeia-reading-plan-app';
-	$js_path       = POLITEIA_READING_PLAN_PATH . 'assets/js/reading-plan-entry.js';
-	$css_path      = POLITEIA_READING_PLAN_PATH . 'assets/css/reading-plan-app.css';
 	$js_url        = POLITEIA_READING_PLAN_URL . 'assets/js/reading-plan.js';
 	$css_url       = POLITEIA_READING_PLAN_URL . 'assets/css/reading-plan.css';
 	$js_version    = file_exists( POLITEIA_READING_PLAN_PATH . 'assets/js/reading-plan.js' ) ? filemtime( POLITEIA_READING_PLAN_PATH . 'assets/js/reading-plan.js' ) : null;
