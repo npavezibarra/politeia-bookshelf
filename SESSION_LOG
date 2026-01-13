@@ -166,6 +166,12 @@ January 10, 2026, 19:37 UTC
 2. Scoped the reading planner CSS to the modal shell, styled the launch button, and adjusted modal sizing to remove the extra panel.
 3. Removed Tailwind to prevent global style bleed and replaced required utilities with scoped CSS-only equivalents.
 
+January 12, 2026
+1. Rebuilt the reading planner book step with single-book cover preview, remove action, and canonical/autocomplete cover+pages support (including cover lookup from user books).
+2. Refined the proposal header, nav controls, and toggle styling to match the original design and adjusted typography/margins per spec.
+3. Updated calendar behavior: Monday-first headers, real-time TODAY date, session numbering from 1, hover add/remove session controls, and PPS recalculation on session changes.
+4. Simplified flow by skipping past-reading baseline slides, redesigned exigencia slide layout, and added multiple CSS tweaks for buttons, headings, and modal controls.
+
 ------
 
 TO DO:

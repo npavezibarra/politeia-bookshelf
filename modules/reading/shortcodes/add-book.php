@@ -512,6 +512,8 @@ function prs_canonical_title_search_handler() {
                 wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
         }
 
+        $user_id = get_current_user_id();
+
         $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
         if ( ! wp_verify_nonce( $nonce, 'prs_canonical_title_search' ) ) {
                 wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
@@ -530,13 +532,24 @@ function prs_canonical_title_search_handler() {
         }
 
         global $wpdb;
+        $user_books_table = $wpdb->prefix . 'politeia_user_books';
         $books_table = $wpdb->prefix . 'politeia_books';
         $book_authors_table = $wpdb->prefix . 'politeia_book_authors';
         $authors_table = $wpdb->prefix . 'politeia_authors';
         $like = $wpdb->esc_like( $query ) . '%';
+
+        $books_has_total_pages = (bool) $wpdb->get_var( $wpdb->prepare( "SHOW COLUMNS FROM {$books_table} LIKE %s", 'total_pages' ) );
+        $book_pages_select = $books_has_total_pages ? 'b.total_pages' : 'NULL';
+
         $rows = $wpdb->get_results(
                 $wpdb->prepare(
-                        "SELECT id, title, year, slug FROM {$books_table} WHERE normalized_title LIKE %s ORDER BY year DESC LIMIT 10",
+                        "SELECT b.id, b.title, b.year, b.slug, COALESCE(ub.pages, {$book_pages_select}) AS pages, ub.cover_reference, b.cover_attachment_id
+                        FROM {$books_table} b
+                        LEFT JOIN {$user_books_table} ub ON ub.book_id = b.id AND ub.user_id = %d AND ub.deleted_at IS NULL
+                        WHERE b.normalized_title LIKE %s
+                        ORDER BY b.year DESC
+                        LIMIT 10",
+                        $user_id,
                         $like
                 ),
                 ARRAY_A
@@ -581,11 +594,25 @@ function prs_canonical_title_search_handler() {
                 foreach ( $rows as $row ) {
                         $book_id = isset( $row['id'] ) ? (int) $row['id'] : 0;
                         $year = isset( $row['year'] ) ? (int) $row['year'] : 0;
+                        $cover_url = '';
+                        $user_cover_raw = isset( $row['cover_reference'] ) ? $row['cover_reference'] : '';
+                        if ( null !== $user_cover_raw && '' !== $user_cover_raw ) {
+                                if ( is_numeric( $user_cover_raw ) ) {
+                                        $cover_url = wp_get_attachment_image_url( (int) $user_cover_raw, 'medium' );
+                                } else {
+                                        $cover_url = esc_url_raw( $user_cover_raw );
+                                }
+                        }
+                        if ( ! $cover_url && ! empty( $row['cover_attachment_id'] ) ) {
+                                $cover_url = wp_get_attachment_image_url( (int) $row['cover_attachment_id'], 'medium' );
+                        }
                         $items[] = array(
                                 'id'      => $book_id,
                                 'title'   => isset( $row['title'] ) ? (string) $row['title'] : '',
                                 'year'    => $year > 0 ? $year : '',
                                 'slug'    => isset( $row['slug'] ) ? (string) $row['slug'] : '',
+                                'pages'   => isset( $row['pages'] ) ? (int) $row['pages'] : '',
+                                'cover'   => $cover_url ? $cover_url : '',
                                 'authors' => isset( $author_map[ $book_id ] ) ? array_values( $author_map[ $book_id ] ) : array(),
                         );
                 }

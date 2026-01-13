@@ -37,6 +37,10 @@ function render_reading_plan_shortcode(): string {
 			'restUrl' => rest_url( 'politeia/v1/reading-plan' ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'userId'  => get_current_user_id(),
+			'autocomplete' => array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'prs_canonical_title_search' ),
+			),
 		)
 	);
 
@@ -52,21 +56,7 @@ function render_reading_plan_shortcode(): string {
 						<div class="flex-1 transition-all duration-700"></div>
 					</div>
 					<div class="p-10 flex-1 flex flex-col">
-						<div class="flex justify-between items-center mb-10">
-							<span id="step-badge" class="px-3 py-1 bg-[#F5F5F5] text-[#C79F32] rounded-custom text-[10px] font-medium uppercase tracking-[0.2em] border border-[#A8A8A8]">
-								Sección 1 de 3
-							</span>
-							<button id="back-btn" class="text-[#A8A8A8] hover:text-[#000000] flex items-center gap-1 text-[10px] font-medium uppercase tracking-widest transition-colors hidden">
-								<i data-lucide="chevron-left" class="w-3 h-3"></i> Atrás
-							</button>
-						</div>
 						<div id="step-content" class="flex-1 min-h-[400px]"></div>
-						<div class="mt-12 flex justify-end">
-							<button id="next-btn" class="w-full md:w-auto bg-[#C79F32] text-[#000000] px-12 py-5 rounded-custom font-medium flex items-center justify-center gap-3 hover:opacity-90 transition-all disabled:opacity-30 disabled:grayscale shadow-2xl shadow-[#C79F32]/20 uppercase text-[10px] tracking-[0.2em]">
-								<span>Siguiente</span>
-								<i data-lucide="chevron-right" class="w-4 h-4"></i>
-							</button>
-						</div>
 					</div>
 				</div>
 				<div id="summary-container" class="calendar-card rounded-custom shadow-2xl p-6 max-w-xl w-full hidden">
@@ -115,15 +105,15 @@ function render_reading_plan_shortcode(): string {
 					</header>
 					<div id="main-view-container" class="mt-4 relative overflow-hidden transition-[height] duration-500 ease-in-out">
 						<div id="calendar-view-wrapper" class="view-transition view-visible">
-							<div class="grid grid-cols-7 mb-2 border-b border-black/5">
-								<div class="text-center text-[10px] font-medium text-black py-2">DOM</div>
-								<div class="text-center text-[10px] font-medium text-black py-2">LUN</div>
-								<div class="text-center text-[10px] font-medium text-black py-2">MAR</div>
-								<div class="text-center text-[10px] font-medium text-black py-2">MIÉ</div>
-								<div class="text-center text-[10px] font-medium text-black py-2">JUE</div>
-								<div class="text-center text-[10px] font-medium text-black py-2">VIE</div>
-								<div class="text-center text-[10px] font-medium text-black py-2">SÁB</div>
-							</div>
+						<div class="grid grid-cols-7 mb-2 border-b border-black/5">
+							<div class="text-center text-[10px] font-medium text-black py-2">LUN</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">MAR</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">MIÉ</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">JUE</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">VIE</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">SÁB</div>
+							<div class="text-center text-[10px] font-medium text-black py-2">DOM</div>
+						</div>
 							<div id="calendar-grid" class="grid grid-cols-7 gap-1.5 pt-2"></div>
 						</div>
 						<div id="list-view-wrapper" class="view-transition view-hidden">
