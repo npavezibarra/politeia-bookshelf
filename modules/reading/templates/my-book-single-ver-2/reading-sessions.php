@@ -131,7 +131,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 				$end_time = $s->end_time ? strtotime( $s->end_time ) : 0;
 				$start_time_label = $start_time ? date_i18n( 'g:i a', $start_time ) : '—';
 				$end_time_label = $end_time ? date_i18n( 'g:i a', $end_time ) : '—';
-				$date_label = $start_time ? date_i18n( 'F j, Y', $start_time ) : esc_html__( 'date', 'politeia-reading' );
+				$date_label = $start_time ? date_i18n( 'F j, Y', $start_time ) : esc_html__( 'Date', 'politeia-reading' );
 				$start_page  = isset( $s->start_page ) ? (int) $s->start_page : null;
 				$end_page    = isset( $s->end_page ) ? (int) $s->end_page : null;
 				$total_pages = null;

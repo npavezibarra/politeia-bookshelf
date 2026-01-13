@@ -223,10 +223,10 @@ add_shortcode(
         										);
         										?>
         										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
-        											<img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
-        												decoding="async"
-        												alt="<?php echo esc_attr( 'Selected book cover preview' ); ?>"
-        												data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
+											<img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
+												decoding="async"
+												alt="<?php echo esc_attr__( 'Selected book cover preview', 'politeia-reading' ); ?>"
+												data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
         										</div>
         									</div>
         								</td>
@@ -509,14 +509,14 @@ add_action( 'wp_ajax_prs_check_user_book_identity', 'prs_check_user_book_identit
 
 function prs_canonical_title_search_handler() {
         if ( ! is_user_logged_in() ) {
-                wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+                wp_send_json_error( array( 'message' => __( 'Login required.', 'politeia-reading' ) ), 403 );
         }
 
         $user_id = get_current_user_id();
 
         $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
         if ( ! wp_verify_nonce( $nonce, 'prs_canonical_title_search' ) ) {
-                wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+                wp_send_json_error( array( 'message' => __( 'Invalid nonce.', 'politeia-reading' ) ), 403 );
         }
 
         $query = isset( $_POST['query'] ) ? wp_unslash( $_POST['query'] ) : '';
@@ -628,12 +628,12 @@ function prs_canonical_title_search_handler() {
 
 function prs_check_user_book_status() {
         if ( ! is_user_logged_in() ) {
-                wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+                wp_send_json_error( array( 'message' => __( 'Login required.', 'politeia-reading' ) ), 403 );
         }
 
         $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
         if ( ! wp_verify_nonce( $nonce, 'prs_canonical_title_search' ) ) {
-                wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+                wp_send_json_error( array( 'message' => __( 'Invalid nonce.', 'politeia-reading' ) ), 403 );
         }
 
         $book_id = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
@@ -677,12 +677,12 @@ function prs_check_user_book_status() {
 
 function prs_check_user_book_identity() {
         if ( ! is_user_logged_in() ) {
-                wp_send_json_error( array( 'message' => 'Login required.' ), 403 );
+                wp_send_json_error( array( 'message' => __( 'Login required.', 'politeia-reading' ) ), 403 );
         }
 
         $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
         if ( ! wp_verify_nonce( $nonce, 'prs_canonical_title_search' ) ) {
-                wp_send_json_error( array( 'message' => 'Invalid nonce.' ), 403 );
+                wp_send_json_error( array( 'message' => __( 'Invalid nonce.', 'politeia-reading' ) ), 403 );
         }
 
         $title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
@@ -760,10 +760,10 @@ function prs_check_user_book_identity() {
 
 function prs_add_book_submit_handler() {
 	if ( ! is_user_logged_in() ) {
-		wp_die( 'Login required.' );
+		wp_die( esc_html__( 'Login required.', 'politeia-reading' ) );
 	}
 	if ( ! isset( $_POST['prs_nonce'] ) || ! wp_verify_nonce( $_POST['prs_nonce'], 'prs_add_book' ) ) {
-		wp_die( 'Invalid nonce.' );
+		wp_die( esc_html__( 'Invalid nonce.', 'politeia-reading' ) );
 	}
 
         global $wpdb;

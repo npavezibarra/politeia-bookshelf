@@ -462,9 +462,13 @@ $monthly_total = array_sum( $monthly_pages );
 					<span class="material-symbols-outlined">timer</span>
 				</div>
 				<p class="prs-book-stats__metric-value">
-					<?php echo null !== $avg_session_minutes ? esc_html( $avg_session_minutes . ' min' ) : '—'; ?>
+					<?php
+					echo null !== $avg_session_minutes
+						? esc_html( sprintf( __( '%d min', 'politeia-reading' ), $avg_session_minutes ) )
+						: '—';
+					?>
 				</p>
-				<p class="prs-book-stats__metric-label">Avg Session Time</p>
+				<p class="prs-book-stats__metric-label"><?php esc_html_e( 'Avg Session Time', 'politeia-reading' ); ?></p>
 			</div>
 
 			<!-- Card 2: Total Session Time -->
@@ -473,9 +477,13 @@ $monthly_total = array_sum( $monthly_pages );
 					<span class="material-symbols-outlined">history</span>
 				</div>
 				<p class="prs-book-stats__metric-value">
-					<?php echo $total_session_minutes > 0 ? esc_html( $total_session_minutes . ' min' ) : '—'; ?>
+					<?php
+					echo $total_session_minutes > 0
+						? esc_html( sprintf( __( '%d min', 'politeia-reading' ), $total_session_minutes ) )
+						: '—';
+					?>
 				</p>
-				<p class="prs-book-stats__metric-label">Total Session Time</p>
+				<p class="prs-book-stats__metric-label"><?php esc_html_e( 'Total Session Time', 'politeia-reading' ); ?></p>
 			</div>
 
 			<!-- Card 3: Pages per Hour -->
@@ -486,7 +494,7 @@ $monthly_total = array_sum( $monthly_pages );
 				<p class="prs-book-stats__metric-value">
 					<?php echo null !== $avg_pages_per_hour ? esc_html( (string) $avg_pages_per_hour ) : '—'; ?>
 				</p>
-				<p class="prs-book-stats__metric-label">Pages per Hour</p>
+				<p class="prs-book-stats__metric-label"><?php esc_html_e( 'Pages per Hour', 'politeia-reading' ); ?></p>
 			</div>
 
 			<!-- Card 4: Total Pages Read -->
@@ -497,7 +505,7 @@ $monthly_total = array_sum( $monthly_pages );
 				<p class="prs-book-stats__metric-value">
 			<?php echo $session_pages_total > 0 ? esc_html( (string) $session_pages_total ) : '—'; ?>
 				</p>
-				<p class="prs-book-stats__metric-label">Total Pages Read</p>
+				<p class="prs-book-stats__metric-label"><?php esc_html_e( 'Total Pages Read', 'politeia-reading' ); ?></p>
 			</div>
 
 		</div>
@@ -507,7 +515,15 @@ $monthly_total = array_sum( $monthly_pages );
 			<!-- Div 3: Weekly Chart -->
 			<div id="weekly-chart" class="card">
 				<div class="prs-book-stats__section">
-					<h3 class="prs-book-stats__section-title headline">Pages This Week: <?php echo esc_html( (string) $weekly_total ); ?></h3>
+					<h3 class="prs-book-stats__section-title headline">
+						<?php
+						printf(
+							/* translators: %s: total pages. */
+							esc_html__( 'Pages This Week: %s', 'politeia-reading' ),
+							esc_html( (string) $weekly_total )
+						);
+						?>
+					</h3>
 					<p class="prs-book-stats__section-subtitle subtitle" id="weekly-date-range"><?php echo esc_html( $weekly_date_range ); ?></p>
 				</div>
 				<div class="chart-container" id="week-bars">
@@ -519,13 +535,13 @@ $monthly_total = array_sum( $monthly_pages );
 					<?php endforeach; ?>
 				</div>
 				<div class="prs-book-stats__labels subtitle">
-					<span>Mon</span>
-					<span>Tue</span>
-					<span>Wed</span>
-					<span>Thu</span>
-					<span>Fri</span>
-					<span>Sat</span>
-					<span>Sun</span>
+					<span><?php esc_html_e( 'Mon', 'politeia-reading' ); ?></span>
+					<span><?php esc_html_e( 'Tue', 'politeia-reading' ); ?></span>
+					<span><?php esc_html_e( 'Wed', 'politeia-reading' ); ?></span>
+					<span><?php esc_html_e( 'Thu', 'politeia-reading' ); ?></span>
+					<span><?php esc_html_e( 'Fri', 'politeia-reading' ); ?></span>
+					<span><?php esc_html_e( 'Sat', 'politeia-reading' ); ?></span>
+					<span><?php esc_html_e( 'Sun', 'politeia-reading' ); ?></span>
 				</div>
 			</div>
 
@@ -533,7 +549,7 @@ $monthly_total = array_sum( $monthly_pages );
 			<div id="monthly-chart" class="card">
 				<div class="prs-book-stats__section">
 					<h3 class="prs-book-stats__section-title headline" id="monthly-title">
-						<span id="monthly-title-text">Pages This Month:</span>
+						<span id="monthly-title-text"><?php esc_html_e( 'Pages This Month:', 'politeia-reading' ); ?></span>
 						<span class="prs-book-stats__total"><?php echo esc_html( (string) $monthly_total ); ?></span>
 					</h3>
 					<p class="prs-book-stats__section-subtitle subtitle" id="monthly-date-range"><?php echo esc_html( $monthly_date_range ); ?></p>
@@ -559,7 +575,15 @@ $monthly_total = array_sum( $monthly_pages );
 <script>
 	// Setup dates for dynamic headers
 	const now = new Date();
-	const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+	const monthNames = <?php
+		$month_names = array();
+		for ( $m = 1; $m <= 12; $m++ ) {
+			$label = date_i18n( 'F', mktime( 0, 0, 0, $m, 1 ) );
+			$month_names[] = function_exists( 'mb_strtoupper' ) ? mb_strtoupper( $label ) : strtoupper( $label );
+		}
+		echo wp_json_encode( $month_names );
+	?>;
+	const monthlyLabelTemplate = <?php echo wp_json_encode( __( 'Pages %s:', 'politeia-reading' ) ); ?>;
 
 	/**
 	 * -------------------------------------------------------------------------
@@ -569,6 +593,7 @@ $monthly_total = array_sum( $monthly_pages );
 	 */
 	const monthlyTitle = document.getElementById('monthly-title-text');
 	if (monthlyTitle) {
-		monthlyTitle.textContent = `Pages ${monthNames[now.getMonth()]}:`;
+		const monthName = monthNames[now.getMonth()] || '';
+		monthlyTitle.textContent = monthlyLabelTemplate.replace('%s', monthName);
 	}
 </script>

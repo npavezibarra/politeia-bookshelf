@@ -8,6 +8,8 @@
 document.addEventListener("DOMContentLoaded", () => {
   const wrap = document.querySelector(".politeia-post-reading-wrap");
   if (!wrap || typeof politeiaPostReading === "undefined") return;
+  const STRINGS = politeiaPostReading.strings || {};
+  const text = (key, fallback) => (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
 
   // Limita cualquier manipulación al botón que vive dentro del wrapper del post.
   const btn = wrap.querySelector(".politeia-post-reading-btn");
@@ -148,12 +150,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const isStarted = politeiaPostReading.initial &&
                       politeiaPostReading.initial.status === "started";
     if (isStarted) {
-      btn.textContent = "Finish Reading";
+      btn.textContent = text("finish_reading", "Finish Reading");
       btn.classList.add("is-finished");
     } else {
       btn.textContent = politeiaPostReading.hasCompleted
-        ? "Start Reading Again"
-        : "Start Reading";
+        ? text("start_reading_again", "Start Reading Again")
+        : text("start_reading", "Start Reading");
       btn.classList.remove("is-finished");
     }
   }
@@ -179,10 +181,10 @@ document.addEventListener("DOMContentLoaded", () => {
         const data = await res.json();
 
         if (data.status === "started") {
-          btn.textContent = "Finish Reading";
+          btn.textContent = text("finish_reading", "Finish Reading");
           btn.classList.add("is-finished");
         } else if (data.status === "finished") {
-          btn.textContent = "Start Reading Again";
+          btn.textContent = text("start_reading_again", "Start Reading Again");
           btn.classList.remove("is-finished");
           politeiaPostReading.hasCompleted = true;
         }
@@ -193,7 +195,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } catch (e) {
         console.error(e);
-        alert("There was a problem recording the reading.");
+        alert(text("error_recording", "There was a problem recording the reading."));
       } finally {
         btn.disabled = false;
       }

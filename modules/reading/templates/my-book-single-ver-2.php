@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 get_header();
 
 if ( ! is_user_logged_in() ) {
-	echo '<div class="wrap"><p>You must be logged in.</p></div>';
+	echo '<div class="wrap"><p>' . esc_html__( 'You must be logged in.', 'politeia-reading' ) . '</p></div>';
 	get_footer();
 	exit;
 }
@@ -47,7 +47,7 @@ if ( $book_id ) {
 }
 if ( ! $book ) {
 	status_header( 404 );
-	echo '<div class="wrap"><h1>Not found</h1></div>';
+	echo '<div class="wrap"><h1>' . esc_html__( 'Not found', 'politeia-reading' ) . '</h1></div>';
 	get_footer();
 	exit;
 }
@@ -67,7 +67,7 @@ $ub = $wpdb->get_row(
 );
 if ( ! $ub ) {
 	status_header( 403 );
-	echo '<div class="wrap"><h1>No access</h1><p>This book is not in your library.</p></div>';
+	echo '<div class="wrap"><h1>' . esc_html__( 'No access', 'politeia-reading' ) . '</h1><p>' . esc_html__( 'This book is not in your library.', 'politeia-reading' ) . '</p></div>';
 	get_footer();
 	exit;
 }
@@ -250,6 +250,59 @@ wp_localize_script(
 		'user_id'           => (int) $user_id,
 		'language'          => isset( $book->language ) ? (string) $book->language : '',
 		'cover_source'      => $cover_source,
+		'purchase_channel_labels' => array(
+			'online' => __( 'Online', 'politeia-reading' ),
+			'store'  => __( 'Store', 'politeia-reading' ),
+		),
+		'strings'           => array(
+			'note_required'         => __( 'Please write a note before saving.', 'politeia-reading' ),
+			'note_missing_details'  => __( 'Missing session details. Please try again.', 'politeia-reading' ),
+			'note_unavailable'      => __( 'Unable to save the note right now. Please refresh the page and try again.', 'politeia-reading' ),
+			'note_missing_nonce'    => __( 'Unable to save the note because the session security token is missing. Please refresh the page and try again.', 'politeia-reading' ),
+			'note_saved'            => __( '✅ Note saved successfully!', 'politeia-reading' ),
+			'note_save_failed_prefix' => __( '⚠️ Failed to save note: %s', 'politeia-reading' ),
+			'note_ajax_failed'      => __( '❌ AJAX request failed — check console.', 'politeia-reading' ),
+			'note_missing_session_id' => __( 'Unable to load this session note because the session identifier is missing.', 'politeia-reading' ),
+			'unknown_error'         => __( 'Unknown error', 'politeia-reading' ),
+			'press_enter_to_save'   => __( 'Press Enter to save', 'politeia-reading' ),
+			'pages_error'           => __( 'Error saving pages.', 'politeia-reading' ),
+			'pages_too_small'       => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
+			'pages_saved'           => __( 'Saved!', 'politeia-reading' ),
+			'saved_short'           => __( 'Saved.', 'politeia-reading' ),
+			'status_saving'         => __( 'Saving...', 'politeia-reading' ),
+			'missing_contact'       => __( 'Please enter both name and email.', 'politeia-reading' ),
+			'borrower_buying_title' => __( 'Borrowed person is buying this book:', 'politeia-reading' ),
+			'borrower_buying_confirm' => __( 'Confirm that the borrower is purchasing or compensating for the book.', 'politeia-reading' ),
+			'error_saving_contact'  => __( 'Error saving contact.', 'politeia-reading' ),
+			'error_saving_date'     => __( 'Error saving date.', 'politeia-reading' ),
+			'error_saving_channel'  => __( 'Error saving channel.', 'politeia-reading' ),
+			'error_saving_rating'   => __( 'Error saving rating.', 'politeia-reading' ),
+			'error_saving_format'   => __( 'Error saving format.', 'politeia-reading' ),
+			'saved_successfully'    => __( 'Saved successfully.', 'politeia-reading' ),
+			'disabled_lost'         => __( 'Disabled while this book is lost.', 'politeia-reading' ),
+			'disabled_borrowed'     => __( 'Disabled while this book is being borrowed.', 'politeia-reading' ),
+			'filter_all'            => __( 'All', 'politeia-reading' ),
+			'selected_count'        => __( '%d selected', 'politeia-reading' ),
+			'channel_online'        => __( 'Online', 'politeia-reading' ),
+			'channel_store'         => __( 'Store', 'politeia-reading' ),
+			'remove_book_confirm'   => __( 'Are you sure you want to remove this book from your library?', 'politeia-reading' ),
+			'remove_book_removing'  => __( 'Removing...', 'politeia-reading' ),
+			'remove_book_error'     => __( 'Error removing book.', 'politeia-reading' ),
+			'images_from_google'    => __( 'Images from Google Books', 'politeia-reading' ),
+			'no_covers_found'       => __( 'No covers found.', 'politeia-reading' ),
+			'cover_save_failed'     => __( 'Unable to save cover.', 'politeia-reading' ),
+			'error_owning_status'   => __( 'Error updating owning status.', 'politeia-reading' ),
+			'label_borrowing'       => __( 'Borrowing to:', 'politeia-reading' ),
+			'label_borrowed'        => __( 'Borrowed from:', 'politeia-reading' ),
+			'label_sold'            => __( 'Sold to:', 'politeia-reading' ),
+			'label_lost'            => __( 'Last borrowed to:', 'politeia-reading' ),
+			'label_sold_on'         => __( 'Sold on:', 'politeia-reading' ),
+			'label_lost_date'       => __( 'Lost:', 'politeia-reading' ),
+			'label_location'        => __( 'Location', 'politeia-reading' ),
+			'label_in_shelf'        => __( 'In Shelf', 'politeia-reading' ),
+			'label_not_in_shelf'    => __( 'Not In Shelf', 'politeia-reading' ),
+			'label_unknown'         => __( 'Unknown', 'politeia-reading' ),
+		),
 	)
 );
 wp_add_inline_script(

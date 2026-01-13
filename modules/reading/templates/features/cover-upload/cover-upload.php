@@ -91,6 +91,71 @@ class PRS_Cover_Upload_Feature {
                         )
                 );
 
+                wp_localize_script(
+                        'prs-cover-upload',
+                        'PRS_COVER_I18N',
+                        array(
+                                'modal_title'        => __( 'Upload Book Cover', 'politeia-reading' ),
+                                'drop_here_title'    => __( 'Drop JPEG or PNG file here', 'politeia-reading' ),
+                                'drag_here'          => __( 'Drag JPEG or PNG here (220x350 Preview)', 'politeia-reading' ),
+                                'click_upload'       => __( 'or click upload', 'politeia-reading' ),
+                                'preview_alt'        => __( 'Book Cover Preview', 'politeia-reading' ),
+                                'choose_file'        => __( 'Choose File', 'politeia-reading' ),
+                                'crop_instructions'  => __( 'Drag or resize the selection on the image to crop.', 'politeia-reading' ),
+                                'status_awaiting'    => __( 'Awaiting file upload.', 'politeia-reading' ),
+                                'cancel'             => __( 'Cancel', 'politeia-reading' ),
+                                'save'               => __( 'Save', 'politeia-reading' ),
+                                'error_invalid_type' => __( 'Error: Only JPEG and PNG images are accepted.', 'politeia-reading' ),
+                                'error_render'       => __( 'Render error', 'politeia-reading' ),
+                                'status_saving'      => __( 'Saving…', 'politeia-reading' ),
+                                'status_saved'       => __( 'Saved', 'politeia-reading' ),
+                                'status_error'       => __( 'Error', 'politeia-reading' ),
+				'file_loaded'        => __( 'File loaded: %s', 'politeia-reading' ),
+				'choose_image'       => __( 'Choose an image', 'politeia-reading' ),
+				'adjust_crop'        => __( 'Adjust the crop area before saving.', 'politeia-reading' ),
+				'unknown_author'     => __( 'Unknown Author', 'politeia-reading' ),
+				'search_title'       => __( 'Select a Cover', 'politeia-reading' ),
+				'set_cover'          => __( 'Set Cover', 'politeia-reading' ),
+				'no_covers_found'    => __( 'No covers found. You can upload your own image instead.', 'politeia-reading' ),
+				'cover_for_title'    => __( 'Cover for %s', 'politeia-reading' ),
+				'cover_option_alt'   => __( 'Book cover option', 'politeia-reading' ),
+                                'view_on_google'     => __( 'View on Google Books', 'politeia-reading' ),
+                                'click_set_cover'    => __( 'Click “Set Cover” to use the selected image.', 'politeia-reading' ),
+                                'searching_covers'   => __( 'Searching for covers…', 'politeia-reading' ),
+                                'missing_title'      => __( 'No book title available. Add a title to search or upload a cover manually.', 'politeia-reading' ),
+                                'single_cover_found' => __( 'Only one cover found. Click “Set Cover” to confirm.', 'politeia-reading' ),
+                                'select_cover'       => __( 'Select a cover below and click “Set Cover”.', 'politeia-reading' ),
+                                'select_cover_language' => __( 'Select a cover below and click “Set Cover”. Showing %s results when possible.', 'politeia-reading' ),
+                                'missing_api_key'    => __( 'Google Books API key is missing. Add it in the plugin settings.', 'politeia-reading' ),
+                                'search_error'       => __( 'There was an error searching for covers. Please try again later.', 'politeia-reading' ),
+                                'remove_confirm'     => __( 'Remove this book cover?', 'politeia-reading' ),
+                                'remove_unavailable' => __( 'Unable to remove the book cover.', 'politeia-reading' ),
+				'remove_failed'      => __( 'Could not remove the cover. Please try again.', 'politeia-reading' ),
+				'saving_selected'    => __( 'Saving selected cover…', 'politeia-reading' ),
+				'save_selected_failed' => __( 'Could not save the selected cover. Please try again.', 'politeia-reading' ),
+				'server_error'       => __( 'Server error. Please try again later.', 'politeia-reading' ),
+				'error_auth'         => __( 'You must be logged in.', 'politeia-reading' ),
+				'error_bad_nonce'    => __( 'Your session expired. Please refresh and try again.', 'politeia-reading' ),
+				'error_invalid_payload' => __( 'Invalid data received.', 'politeia-reading' ),
+				'error_not_found'    => __( 'Record not found.', 'politeia-reading' ),
+				'error_db'           => __( 'Database error. Please try again.', 'politeia-reading' ),
+				'error_forbidden'    => __( 'Permission denied.', 'politeia-reading' ),
+				'error_decode'       => __( 'Unable to decode the image.', 'politeia-reading' ),
+				'error_missing_params' => __( 'Missing required data.', 'politeia-reading' ),
+				'error_bad_url'      => __( 'Invalid URL.', 'politeia-reading' ),
+				'error_unsupported_scheme' => __( 'Unsupported URL scheme.', 'politeia-reading' ),
+				'error_invalid_image_host' => __( 'Invalid image host.', 'politeia-reading' ),
+				'error_bad_source_url' => __( 'Invalid source URL.', 'politeia-reading' ),
+				'error_unsupported_source_scheme' => __( 'Invalid source URL scheme.', 'politeia-reading' ),
+				'error_invalid_source_host' => __( 'Source host not permitted.', 'politeia-reading' ),
+				'error_no_image_data' => __( 'No image data received.', 'politeia-reading' ),
+				'error_invalid_image_payload' => __( 'Invalid image payload.', 'politeia-reading' ),
+				'error_upload_dir'   => __( 'Upload directory unavailable.', 'politeia-reading' ),
+				'error_write_failed' => __( 'Failed to write image.', 'politeia-reading' ),
+				'error_attachment_failed' => __( 'Attachment creation failed.', 'politeia-reading' ),
+			)
+		);
+
                 $inline_config = sprintf(
                         "window.PRS_SAVE_URL = %s;\nwindow.PRS_NONCE = %s;\nwindow.PRS_COVER_CROP_NONCE = %s;\nwindow.PRS_POST_ID = %s;",
                         wp_json_encode( $ajax_url ),
@@ -632,12 +697,12 @@ class PRS_Cover_Upload_Feature {
         public static function ajax_save_cover_url() {
                 if ( ! is_user_logged_in() ) {
                         error_log( '[PRS_COVER] Unauthorized attempt to save Google cover.' );
-                        wp_send_json_error( 'User not logged in.', 401 );
+                        wp_send_json_error( __( 'User not logged in.', 'politeia-reading' ), 401 );
                 }
 
                 if ( ! isset( $_POST['nonce'] ) || ! wp_verify_nonce( $_POST['nonce'], 'prs_cover_nonce' ) ) {
                         error_log( sprintf( '[PRS_COVER] Invalid nonce for user %d.', get_current_user_id() ) );
-                        wp_send_json_error( 'Invalid nonce.', 403 );
+                        wp_send_json_error( __( 'Invalid nonce.', 'politeia-reading' ), 403 );
                 }
 
                 $user_id       = get_current_user_id();
@@ -647,42 +712,42 @@ class PRS_Cover_Upload_Feature {
 
                 if ( ! $book_id || '' === $cover_url ) {
                         error_log( sprintf( '[PRS_COVER] Invalid payload for user %d. book_id=%d cover_url=%s', $user_id, $book_id, $cover_url ) );
-                        wp_send_json_error( 'Invalid data.', 400 );
+                        wp_send_json_error( __( 'Invalid data.', 'politeia-reading' ), 400 );
                 }
 
                 if ( ! filter_var( $cover_url, FILTER_VALIDATE_URL ) ) {
                         error_log( sprintf( '[PRS_COVER] Invalid cover URL for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
-                        wp_send_json_error( 'Invalid cover URL.', 400 );
+                        wp_send_json_error( __( 'Invalid cover URL.', 'politeia-reading' ), 400 );
                 }
 
                 $scheme = wp_parse_url( $cover_url, PHP_URL_SCHEME );
                 if ( ! in_array( strtolower( (string) $scheme ), array( 'http', 'https' ), true ) ) {
                         error_log( sprintf( '[PRS_COVER] Invalid cover URL scheme for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
-                        wp_send_json_error( 'Invalid cover URL scheme.', 400 );
+                        wp_send_json_error( __( 'Invalid cover URL scheme.', 'politeia-reading' ), 400 );
                 }
 
                 $host = wp_parse_url( $cover_url, PHP_URL_HOST );
                 if ( ! $host || ! self::is_allowed_google_host( strtolower( (string) $host ), array( 'books.google', 'googleusercontent.com', 'ggpht.com' ) ) ) {
                         error_log( sprintf( '[PRS_COVER] Cover host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_url ) );
-                        wp_send_json_error( 'Cover host not permitted.', 400 );
+                        wp_send_json_error( __( 'Cover host not permitted.', 'politeia-reading' ), 400 );
                 }
 
                 if ( $cover_source ) {
                         if ( ! filter_var( $cover_source, FILTER_VALIDATE_URL ) ) {
                                 error_log( sprintf( '[PRS_COVER] Invalid source URL for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
-                                wp_send_json_error( 'Invalid source URL.', 400 );
+                                wp_send_json_error( __( 'Invalid source URL.', 'politeia-reading' ), 400 );
                         }
 
                         $source_scheme = wp_parse_url( $cover_source, PHP_URL_SCHEME );
                         if ( ! in_array( strtolower( (string) $source_scheme ), array( 'http', 'https' ), true ) ) {
                                 error_log( sprintf( '[PRS_COVER] Invalid source URL scheme for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
-                                wp_send_json_error( 'Invalid source URL scheme.', 400 );
+                                wp_send_json_error( __( 'Invalid source URL scheme.', 'politeia-reading' ), 400 );
                         }
 
                         $source_host = wp_parse_url( $cover_source, PHP_URL_HOST );
                         if ( ! $source_host || ! self::is_allowed_google_host( strtolower( (string) $source_host ), array( 'books.google', 'play.google' ) ) ) {
                                 error_log( sprintf( '[PRS_COVER] Source host not permitted for user %d, book %d: %s', $user_id, $book_id, $cover_source ) );
-                                wp_send_json_error( 'Source host not permitted.', 400 );
+                                wp_send_json_error( __( 'Source host not permitted.', 'politeia-reading' ), 400 );
                         }
                 }
 
@@ -700,14 +765,14 @@ class PRS_Cover_Upload_Feature {
 
                 if ( ! $row ) {
                         error_log( sprintf( '[PRS_COVER] Permission denied for user %d attempting to update book %d.', $user_id, $book_id ) );
-                        wp_send_json_error( 'Permission denied.', 403 );
+                        wp_send_json_error( __( 'Permission denied.', 'politeia-reading' ), 403 );
                 }
 
                 $result = self::persist_user_cover_choice( (int) $row->id, $user_id, $book_id, $cover_url, $cover_source );
 
                 if ( is_wp_error( $result ) ) {
                         error_log( sprintf( '[PRS_COVER] Database update failed for user %d, book %d: %s', $user_id, $book_id, $result->get_error_message() ) );
-                        wp_send_json_error( 'Database update failed.', 500 );
+                        wp_send_json_error( __( 'Database update failed.', 'politeia-reading' ), 500 );
                 }
 
                 if ( 'attachment' === $result['type'] && ! empty( $result['attachment_id'] ) ) {

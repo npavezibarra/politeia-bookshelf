@@ -11,6 +11,7 @@
   }
   const AJAX  = String(window.politeia_chatgpt_vars.ajaxurl || '');
   const NONCE = String(window.politeia_chatgpt_vars.nonce  || '');
+  const STRINGS = window.politeia_chatgpt_vars.strings || {};
 
   const txt       = document.getElementById('politeia-chat-prompt');
   const btnSend   = document.getElementById('politeia-submit-btn');
@@ -22,6 +23,13 @@
 
   let busy = false;
   function setStatus(msg) { statusEl.textContent = msg || ''; }
+  function text(key, fallback) {
+    return (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
+  }
+  function formatQueued(count) {
+    const template = text('done_queued', 'Done. Queued candidates: %d');
+    return template.replace('%d', String(count));
+  }
   function setBusy(on) {
     busy = !!on;
     [btnSend, btnMic, fileInput, txt].forEach(el => { if (el) el.disabled = busy; });
@@ -81,7 +89,7 @@
     if (!prompt || busy) return;
 
     setBusy(true);
-    setStatus('Processing text…');
+    setStatus(text('processing_text', 'Processing text…'));
 
     const fd = new FormData();
     fd.append('action','politeia_process_input');
@@ -94,18 +102,18 @@
       if (resp && resp.success){
         const n = countItemsFromResponse(resp);
         if (n > 0){
-          setStatus(`Done. Queued candidates: ${n}`);
+          setStatus(formatQueued(n));
           notifyQueueUpdated(n);
         } else {
-          setStatus('Done. Results updated.');
+          setStatus(text('done_updated', 'Done. Results updated.'));
           notifyQueueUpdated(0);
         }
       } else {
-        setStatus('Error processing the text.');
+        setStatus(text('error_text', 'Error processing the text.'));
         console.warn('[Politeia ChatGPT] text error:', resp);
       }
     } catch(e){
-      setStatus('Network error.');
+      setStatus(text('network_error', 'Network error.'));
       console.error(e);
     } finally {
       setBusy(false);
@@ -145,7 +153,7 @@
   // ======================= AUDIO (placeholder) =======================
   // You can implement later; for now show a clear notice.
   btnMic.addEventListener('click', () => {
-    setStatus('Audio recording is not enabled yet.');
+    setStatus(text('audio_disabled', 'Audio recording is not enabled yet.'));
   });
 
   // ======================= IMAGEN =======================
@@ -164,7 +172,7 @@
 
     try{
       setBusy(true);
-      setStatus('Analyzing image…');
+      setStatus(text('processing_image', 'Analyzing image…'));
       const dataUrl = await toDataURL(file);
 
       const fd = new FormData();
@@ -177,18 +185,18 @@
       if (resp && resp.success){
         const n = countItemsFromResponse(resp);
         if (n > 0){
-          setStatus(`Done. Queued candidates: ${n}`);
+          setStatus(formatQueued(n));
           notifyQueueUpdated(n);
         } else {
-          setStatus('Done. Results updated.');
+          setStatus(text('done_updated', 'Done. Results updated.'));
           notifyQueueUpdated(0);
         }
       } else {
-        setStatus('Error processing the image.');
+        setStatus(text('error_image', 'Error processing the image.'));
         console.warn('[Politeia ChatGPT] image error:', resp);
       }
     } catch(e){
-      setStatus('Error reading/sending the image.');
+      setStatus(text('error_read_image', 'Error reading/sending the image.'));
       console.error(e);
     } finally {
       fileInput.value = '';

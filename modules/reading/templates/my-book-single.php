@@ -5,7 +5,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 get_header();
 
 if ( ! is_user_logged_in() ) {
-	echo '<div class="wrap"><p>You must be logged in.</p></div>';
+	echo '<div class="wrap"><p>' . esc_html__( 'You must be logged in.', 'politeia-reading' ) . '</p></div>';
 	get_footer();
 	exit;
 }
@@ -46,7 +46,7 @@ if ( $book_id ) {
 }
 if ( ! $book ) {
 	status_header( 404 );
-	echo '<div class="wrap"><h1>Not found</h1></div>';
+	echo '<div class="wrap"><h1>' . esc_html__( 'Not found', 'politeia-reading' ) . '</h1></div>';
 	get_footer();
 	exit; }
 
@@ -65,7 +65,7 @@ $ub = $wpdb->get_row(
 );
 if ( ! $ub ) {
 	status_header( 403 );
-	echo '<div class="wrap"><h1>No access</h1><p>This book is not in your library.</p></div>';
+	echo '<div class="wrap"><h1>' . esc_html__( 'No access', 'politeia-reading' ) . '</h1><p>' . esc_html__( 'This book is not in your library.', 'politeia-reading' ) . '</p></div>';
 	get_footer();
 	exit; }
 
@@ -214,6 +214,49 @@ wp_localize_script(
                 'user_id'       => (int) $user_id,
                 'language'      => isset( $book->language ) ? (string) $book->language : '',
                 'cover_source'  => $cover_source,
+                'purchase_channel_labels' => array(
+                        'online' => __( 'Online', 'politeia-reading' ),
+                        'store'  => __( 'Store', 'politeia-reading' ),
+                ),
+		'strings'       => array(
+			'note_required'         => __( 'Please write a note before saving.', 'politeia-reading' ),
+			'note_missing_details'  => __( 'Missing session details. Please try again.', 'politeia-reading' ),
+			'note_unavailable'      => __( 'Unable to save the note right now. Please refresh the page and try again.', 'politeia-reading' ),
+			'note_missing_nonce'    => __( 'Unable to save the note because the session security token is missing. Please refresh the page and try again.', 'politeia-reading' ),
+			'note_saved'            => __( '✅ Note saved successfully!', 'politeia-reading' ),
+			'note_save_failed_prefix' => __( '⚠️ Failed to save note: %s', 'politeia-reading' ),
+			'note_ajax_failed'      => __( '❌ AJAX request failed — check console.', 'politeia-reading' ),
+			'note_missing_session_id' => __( 'Unable to load this session note because the session identifier is missing.', 'politeia-reading' ),
+			'unknown_error'         => __( 'Unknown error', 'politeia-reading' ),
+			'press_enter_to_save'   => __( 'Press Enter to save', 'politeia-reading' ),
+			'pages_error'           => __( 'Error saving pages.', 'politeia-reading' ),
+			'pages_too_small'       => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
+			'pages_saved'           => __( 'Saved!', 'politeia-reading' ),
+			'saved_short'           => __( 'Saved.', 'politeia-reading' ),
+			'status_saving'         => __( 'Saving...', 'politeia-reading' ),
+			'missing_contact'       => __( 'Please enter both name and email.', 'politeia-reading' ),
+			'borrower_buying_title' => __( 'Borrowed person is buying this book:', 'politeia-reading' ),
+			'borrower_buying_confirm' => __( 'Confirm that the borrower is purchasing or compensating for the book.', 'politeia-reading' ),
+			'error_saving_contact'  => __( 'Error saving contact.', 'politeia-reading' ),
+			'error_saving_date'     => __( 'Error saving date.', 'politeia-reading' ),
+			'error_saving_channel'  => __( 'Error saving channel.', 'politeia-reading' ),
+			'error_saving_rating'   => __( 'Error saving rating.', 'politeia-reading' ),
+			'error_saving_format'   => __( 'Error saving format.', 'politeia-reading' ),
+			'saved_successfully'    => __( 'Saved successfully.', 'politeia-reading' ),
+			'disabled_lost'         => __( 'Disabled while this book is lost.', 'politeia-reading' ),
+			'disabled_borrowed'     => __( 'Disabled while this book is being borrowed.', 'politeia-reading' ),
+			'filter_all'            => __( 'All', 'politeia-reading' ),
+			'selected_count'        => __( '%d selected', 'politeia-reading' ),
+			'channel_online'        => __( 'Online', 'politeia-reading' ),
+			'channel_store'         => __( 'Store', 'politeia-reading' ),
+			'remove_book_confirm'   => __( 'Are you sure you want to remove this book from your library?', 'politeia-reading' ),
+			'remove_book_removing'  => __( 'Removing...', 'politeia-reading' ),
+			'remove_book_error'     => __( 'Error removing book.', 'politeia-reading' ),
+			'images_from_google'    => __( 'Images from Google Books', 'politeia-reading' ),
+			'no_covers_found'       => __( 'No covers found.', 'politeia-reading' ),
+			'cover_save_failed'     => __( 'Unable to save cover.', 'politeia-reading' ),
+			'error_owning_status'   => __( 'Error updating owning status.', 'politeia-reading' ),
+		),
         )
 );
 wp_add_inline_script(
@@ -560,7 +603,7 @@ wp_add_inline_script(
 </style>
 
 <div class="wrap">
-        <p class="prs-back-link-wrap"><a class="prs-back-link" href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; Back to My Books</a></p>
+        <p class="prs-back-link-wrap"><a class="prs-back-link" href="<?php echo esc_url( home_url( '/my-books' ) ); ?>">&larr; <?php esc_html_e( 'Back to My Books', 'politeia-reading' ); ?></a></p>
 
         <div id="prs-single-grid" class="prs-single-grid">
 
@@ -745,8 +788,8 @@ wp_add_inline_script(
                                 <a href="#" id="purchase-date-edit" class="prs-inline-actions"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
                                 <span id="purchase-date-form" style="display:none;" class="prs-inline-actions">
                                         <input type="date" id="purchase-date-input" value="<?php echo $ub->purchase_date ? esc_attr( $ub->purchase_date ) : ''; ?>" />
-                                        <button type="button" id="purchase-date-save" class="prs-btn">Save</button>
-                                        <button type="button" id="purchase-date-cancel" class="prs-btn">Cancel</button>
+                                        <button type="button" id="purchase-date-save" class="prs-btn"><?php esc_html_e( 'Save', 'politeia-reading' ); ?></button>
+                                        <button type="button" id="purchase-date-cancel" class="prs-btn"><?php esc_html_e( 'Cancel', 'politeia-reading' ); ?></button>
                                         <span id="purchase-date-status" class="prs-help"></span>
                                 </span>
                         </div>
@@ -757,8 +800,14 @@ wp_add_inline_script(
                                 <span id="purchase-channel-view">
                                         <?php
                                         $label = '—';
+                                        $purchase_channel_labels = array(
+                                                'online' => __( 'Online', 'politeia-reading' ),
+                                                'store'  => __( 'Store', 'politeia-reading' ),
+                                        );
                                         if ( $ub->purchase_channel ) {
-                                                $label = ucfirst( $ub->purchase_channel );
+                                                $label = isset( $purchase_channel_labels[ $ub->purchase_channel ] )
+                                                        ? $purchase_channel_labels[ $ub->purchase_channel ]
+                                                        : ucfirst( $ub->purchase_channel );
                                                 if ( $ub->purchase_place ) {
                                                         $label .= ' — ' . $ub->purchase_place;
                                                 }
@@ -778,8 +827,8 @@ wp_add_inline_script(
                                                         value="<?php echo $ub->purchase_place ? esc_attr( $ub->purchase_place ) : ''; ?>"
                                                         style="display: <?php echo $ub->purchase_channel ? 'inline-block' : 'none'; ?>;" />
                                         </div>
-                                        <button type="button" id="purchase-channel-save" class="prs-btn">Save</button>
-                                        <button type="button" id="purchase-channel-cancel" class="prs-btn">Cancel</button>
+                                        <button type="button" id="purchase-channel-save" class="prs-btn"><?php esc_html_e( 'Save', 'politeia-reading' ); ?></button>
+                                        <button type="button" id="purchase-channel-cancel" class="prs-btn"><?php esc_html_e( 'Cancel', 'politeia-reading' ); ?></button>
                                         <span id="purchase-channel-status" class="prs-help"></span>
                                 </span>
                         </div>
@@ -862,13 +911,13 @@ wp_add_inline_script(
                                 <thead>
                                         <tr>
                                                 <th>#</th>
-                                                <th>Start Time</th>
-                                                <th>End Time</th>
+                                                <th><?php esc_html_e( 'Start Time', 'politeia-reading' ); ?></th>
+                                                <th><?php esc_html_e( 'End Time', 'politeia-reading' ); ?></th>
                                                 <th><?php esc_html_e( 'Note', 'politeia-reading' ); ?></th>
-                                                <th>End Page</th>
-                                                <th>Total Pages</th>
-                                                <th>Chapter</th>
-                                                <th>Duration</th>
+                                                <th><?php esc_html_e( 'End Page', 'politeia-reading' ); ?></th>
+                                                <th><?php esc_html_e( 'Total Pages', 'politeia-reading' ); ?></th>
+                                                <th><?php esc_html_e( 'Chapter', 'politeia-reading' ); ?></th>
+                                                <th><?php esc_html_e( 'Duration', 'politeia-reading' ); ?></th>
                                         </tr>
                                 </thead>
                                 <tbody>

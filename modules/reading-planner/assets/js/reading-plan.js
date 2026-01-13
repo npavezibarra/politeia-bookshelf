@@ -4,6 +4,20 @@
   if (!overlay || !openBtn) return;
 
   const qs = (selector) => overlay.querySelector(selector);
+  const RP = window.PoliteiaReadingPlan || {};
+  const STRINGS = RP.strings || {};
+  const t = (key, fallback) => (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
+  const format = (key, fallback, value, value2) => {
+    const text = t(key, fallback);
+    if (typeof value2 !== 'undefined') {
+      return text
+        .replace('%1$s', String(value))
+        .replace('%2$s', String(value2))
+        .replace('%1$d', String(value))
+        .replace('%2$d', String(value2));
+    }
+    return text.replace('%s', String(value)).replace('%d', String(value));
+  };
 
   const formContainer = qs('#form-container');
   const summaryContainer = qs('#summary-container');
@@ -104,29 +118,31 @@
   const EXIGENCIA_SESSIONS = { liviano: 2, mediano: 4, exigente: 6, intenso: 7 };
 
   const HABIT_INTENSITY_CONFIG = {
-    liviano: { time: 15, label: 'LIGHT', reason: 'It's the "magic number" for making progress without it feeling like a burden.' },
-    mediano: { time: 30, label: 'BALANCED', reason: 'It lets you finish a full chapter, creating a real sense of achievement.' },
-    intenso: { time: 60, label: 'INTENSE', reason: 'Ideal for those who want reading to be a central part of their identity.' },
+    liviano: { time: 15, label: t('intensity_light', 'LIGHT'), reason: t('intensity_light_reason', 'It\'s the "magic number" for making progress without it feeling like a burden.') },
+    mediano: { time: 30, label: t('intensity_balanced', 'BALANCED'), reason: t('intensity_balanced_reason', 'It lets you finish a full chapter, creating a real sense of achievement.') },
+    intenso: { time: 60, label: t('intensity_intense', 'INTENSE'), reason: t('intensity_intense_reason', 'Ideal for those who want reading to be a central part of their identity.') },
   };
 
-  const MONTH_NAMES = [
-    'JANUARY',
-    'FEBRUARY',
-    'MARCH',
-    'APRIL',
-    'MAY',
-    'JUNE',
-    'JULY',
-    'AUGUST',
-    'SEPTEMBER',
-    'OCTOBER',
-    'NOVEMBER',
-    'DECEMBER',
-  ];
+  const MONTH_NAMES = (STRINGS.month_names && STRINGS.month_names.length)
+    ? STRINGS.month_names
+    : [
+      'JANUARY',
+      'FEBRUARY',
+      'MARCH',
+      'APRIL',
+      'MAY',
+      'JUNE',
+      'JULY',
+      'AUGUST',
+      'SEPTEMBER',
+      'OCTOBER',
+      'NOVEMBER',
+      'DECEMBER',
+    ];
 
   const GOALS_DEF = [
-    { id: 'complete_books', title: 'Finish a book', description: 'Finish specific books within a set time frame.', icon: 'book-open' },
-    { id: 'form_habit', title: 'Build a habit', description: 'Increase the frequency and consistency of your reading.', icon: 'calendar' },
+    { id: 'complete_books', title: t('goal_complete_title', 'Finish a book'), description: t('goal_complete_desc', 'Finish specific books within a set time frame.'), icon: 'book-open' },
+    { id: 'form_habit', title: t('goal_habit_title', 'Build a habit'), description: t('goal_habit_desc', 'Increase the frequency and consistency of your reading.'), icon: 'calendar' },
   ];
 
   const getInitialState = () => ({
@@ -180,8 +196,8 @@
     stepContent.innerHTML = `
       <div class="space-y-6 step-transition">
         <div class="text-center mb-8">
-          <h2 class="text-2xl font-medium text-black uppercase tracking-tight">What goal do you want to achieve?</h2>
-          <p class="text-sm font-medium">Select your primary goal</p>
+          <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('goal_prompt', 'What goal do you want to achieve?')}</h2>
+          <p class="text-sm font-medium">${t('goal_subtitle', 'Select your primary goal')}</p>
         </div>
         <div class="grid grid-cols-1 gap-4 w-full">
           ${GOALS_DEF.map((goal) => {
@@ -219,8 +235,8 @@
       if (state.subStep === 0) {
         stepContent.innerHTML = `
           <div class="space-y-8 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">Baseline</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">How many books did you finish in the last year?</h2>
+            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('baseline_label', 'Baseline')}</span>
+            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('baseline_books_year', 'How many books did you finish in the last year?')}</h2>
             <div class="grid grid-cols-5 gap-3">
               ${['0', '1', '2', '3', '4+'].map((n) => `
                 <button type="button" id="baseline-${gid}-${toId(n)}" data-baseline="${n}" class="aspect-square rounded-custom border-2 font-medium text-xl transition-all ${
@@ -244,12 +260,12 @@
         stepContent.innerHTML = `
           <div class="space-y-6 step-transition">
             <div class="text-center">
-              <h2 class="text-xl font-medium text-black uppercase">How many pages did the book have?</h2>
+              <h2 class="text-xl font-medium text-black uppercase">${t('baseline_book_pages', 'How many pages did the book have?')}</h2>
             </div>
             <div class="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
               ${Array.from({ length: slots }).map((_, i) => `
                 <div class="p-5 bg-[#F5F5F5] rounded-custom border border-[#A8A8A8]">
-                  <p class="text-[10px] font-medium text-[#A8A8A8] mb-3 uppercase tracking-widest">Book #${i + 1}</p>
+                  <p class="text-[10px] font-medium text-[#A8A8A8] mb-3 uppercase tracking-widest">${format('book_number', 'Book #%d', i + 1)}</p>
                   <div class="flex flex-wrap gap-2">
                     ${Object.keys(PAGE_RANGES_MAP).map((r) => `
                       <button type="button" id="book-detail-${i}-${toId(r)}" data-book-detail="${r}" data-book-index="${i}" class="px-3 py-2 rounded-custom text-[10px] font-medium border-2 transition-all uppercase text-black ${
@@ -284,11 +300,11 @@
       if (state.subStep === 0) {
         stepContent.innerHTML = `
           <div class="space-y-8 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">Baseline Frequency</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">How many reading sessions did you have in the last month?</h2>
+            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('baseline_frequency', 'Baseline Frequency')}</span>
+            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('baseline_sessions_month', 'How many reading sessions did you have in the last month?')}</h2>
             <div class="max-w-xs mx-auto mt-10">
-              <input type="number" id="habit-sessions-input" value="${state.formData.baselines[gid]?.value || ''}" data-habit-sessions placeholder="e.g. 8" class="w-full text-center text-4xl font-bold p-6 bg-[#F5F5F5] border-2 border-[#A8A8A8] rounded-custom outline-none focus:border-[#C79F32] transition-colors" />
-              <button type="button" id="habit-confirm-freq" class="w-full mt-6 bg-[#C79F32] text-black py-4 rounded-custom font-bold uppercase text-[10px] tracking-widest ${state.formData.baselines[gid]?.value ? '' : 'opacity-30 pointer-events-none'}">Confirm and Continue</button>
+              <input type="number" id="habit-sessions-input" value="${state.formData.baselines[gid]?.value || ''}" data-habit-sessions placeholder="${t('example_sessions', 'e.g. 8')}" class="w-full text-center text-4xl font-bold p-6 bg-[#F5F5F5] border-2 border-[#A8A8A8] rounded-custom outline-none focus:border-[#C79F32] transition-colors" />
+              <button type="button" id="habit-confirm-freq" class="w-full mt-6 bg-[#C79F32] text-black py-4 rounded-custom font-bold uppercase text-[10px] tracking-widest ${state.formData.baselines[gid]?.value ? '' : 'opacity-30 pointer-events-none'}">${t('confirm_continue', 'Confirm and Continue')}</button>
             </div>
           </div>`;
 
@@ -311,23 +327,23 @@
         const currentTime = state.formData.baselines[gid]?.time || '';
         stepContent.innerHTML = `
           <div class="space-y-8 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">Minimum Session</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">On average, how much time did you spend per session?</h2>
+            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('minimum_session', 'Minimum Session')}</span>
+            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('average_session_time', 'On average, how much time did you spend per session?')}</h2>
             <div class="grid grid-cols-2 gap-3 mt-6">
               ${[15, 30, 45, 60].map((m) => `
                 <button type="button" id="habit-time-${m}" data-habit-time="${m}" class="p-5 border-2 rounded-custom transition-all ${
                   parseInt(currentTime, 10) === m
                     ? 'border-[#C79F32] bg-[#F5F5F5] text-[#C79F32]'
                     : 'border-[#A8A8A8] bg-white text-[#A8A8A8] hover:border-[#C79F32]'
-                }"><span class="block text-2xl font-bold">${m}</span><span class="text-[10px] font-medium uppercase tracking-widest">minutes</span></button>`).join('')}
+                }"><span class="block text-2xl font-bold">${m}</span><span class="text-[10px] font-medium uppercase tracking-widest">${t('minutes_label', 'minutes')}</span></button>`).join('')}
             </div>
             <div class="mt-6 flex flex-col items-center">
               <div class="flex items-center justify-center space-x-3">
-                <span class="text-[10px] font-bold text-[#A8A8A8] uppercase tracking-widest">or other:</span>
-                <input type="number" id="habit-time-custom" value="${![15, 30, 45, 60].includes(parseInt(currentTime, 10)) ? currentTime : ''}" data-habit-time-custom placeholder="20" class="w-20 text-center text-lg font-bold p-2 bg-[#F5F5F5] border-2 border-[#A8A8A8] rounded-custom outline-none focus:border-[#C79F32]" />
-                <span class="text-[10px] font-bold text-[#A8A8A8] uppercase tracking-widest">min</span>
+                <span class="text-[10px] font-bold text-[#A8A8A8] uppercase tracking-widest">${t('or_other', 'or other:')}</span>
+                <input type="number" id="habit-time-custom" value="${![15, 30, 45, 60].includes(parseInt(currentTime, 10)) ? currentTime : ''}" data-habit-time-custom placeholder="${t('minutes_placeholder', '20')}" class="w-20 text-center text-lg font-bold p-2 bg-[#F5F5F5] border-2 border-[#A8A8A8] rounded-custom outline-none focus:border-[#C79F32]" />
+                <span class="text-[10px] font-bold text-[#A8A8A8] uppercase tracking-widest">${t('minutes_short', 'min')}</span>
               </div>
-              <button type="button" id="habit-confirm-time" class="w-full mt-4 bg-[#C79F32] text-black py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest ${state.formData.baselines[gid]?.time ? '' : 'opacity-30 pointer-events-none'}">Confirm</button>
+              <button type="button" id="habit-confirm-time" class="w-full mt-4 bg-[#C79F32] text-black py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest ${state.formData.baselines[gid]?.time ? '' : 'opacity-30 pointer-events-none'}">${t('confirm', 'Confirm')}</button>
             </div>
           </div>`;
 
@@ -357,8 +373,8 @@
         const currentIntensity = state.formData.baselines[gid]?.intensity || '';
         stepContent.innerHTML = `
           <div class="space-y-6 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">Daily Ambition</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">How intense do you want this habit to be?</h2>
+            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('daily_ambition', 'Daily Ambition')}</span>
+            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('habit_intensity_prompt', 'How intense do you want this habit to be?')}</h2>
             <div class="grid grid-cols-1 gap-4 mt-6">
               ${Object.keys(HABIT_INTENSITY_CONFIG).map((key) => {
                 const config = HABIT_INTENSITY_CONFIG[key];
@@ -370,7 +386,7 @@
                   }">
                     <div class="flex justify-between items-center mb-1">
                       <h3 class="font-bold text-black uppercase text-sm">${config.label}</h3>
-                      <span class="text-[10px] font-black text-[#C79F32] bg-[#C79F32]/10 px-2 py-1 rounded">${config.time} MIN / DAY</span>
+                      <span class="text-[10px] font-black text-[#C79F32] bg-[#C79F32]/10 px-2 py-1 rounded">${format('minutes_per_day', '%s MIN / DAY', config.time)}</span>
                     </div>
                     <p class="text-[10px] text-black/50 font-medium leading-relaxed italic">${config.reason}</p>
                   </button>`;
@@ -394,7 +410,7 @@
     const hasBook = !!activeBook;
     stepContent.innerHTML = `
       <div class="space-y-6 step-transition">
-        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">Which book do you want to read now?</h2></div>
+        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('book_prompt', 'Which book do you want to read now?')}</h2></div>
         <div class="reading-plan-book-display">
           <div class="book-placeholder">
             <div id="book-display" class="book-inner text-[#A8A8A8] ${hasBook ? 'is-filled' : ''} ${activeBook?.cover ? 'has-cover' : ''}">
@@ -404,7 +420,7 @@
                   <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
                   <path d="M8 7h6"/><path d="M8 11h8"/>
                 </svg>
-                <span class="text-[10px] font-bold uppercase tracking-[0.2em]">Your Book</span>
+                <span class="text-[10px] font-bold uppercase tracking-[0.2em]">${t('your_book', 'Your Book')}</span>
               </div>
               <div id="filled-content" class="w-full h-full flex flex-col justify-center${hasBook ? '' : ' hidden'}">
                 <div id="display-title" class="book-title-display"></div>
@@ -414,7 +430,7 @@
             </div>
           </div>
           ${hasBook ? `
-            <button type="button" id="remove-book-current" class="book-remove" aria-label="Remove book">
+            <button type="button" id="remove-book-current" class="book-remove" aria-label="${t('remove_book', 'Remove book')}">
               <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M3 6h18"></path>
                 <path d="M8 6V4h8v2"></path>
@@ -430,7 +446,7 @@
         </div>
         ${hasBook ? `
           <button type="button" id="next-step" class="w-full bg-black text-[#C79F32] py-4 rounded-custom hover:opacity-90 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest">
-            Next
+            ${t('next', 'Next')}
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
               <path d="m9 18 6-6-6-6"/>
             </svg>
@@ -438,15 +454,15 @@
         ` : `
           <div class="bg-[#F5F5F5] p-6 rounded-custom border border-[#A8A8A8] space-y-4">
             <div class="relative">
-              <input id="new-book-title" type="text" placeholder="Book title" autocomplete="off" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+              <input id="new-book-title" type="text" placeholder="${t('book_title', 'Book title')}" autocomplete="off" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
               <div id="reading-plan-title-suggestions" class="prs-add-book__suggestions" aria-hidden="true"></div>
             </div>
             <div class="reading-plan-book-row">
               <div class="reading-plan-author">
-                <input id="new-book-author" type="text" placeholder="Author" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+                <input id="new-book-author" type="text" placeholder="${t('author', 'Author')}" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
               </div>
               <div class="reading-plan-pages">
-                <input id="new-book-pages" type="number" placeholder="Pages" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+                <input id="new-book-pages" type="number" placeholder="${t('pages', 'Pages')}" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
               </div>
             </div>
             <div class="space-y-3">
@@ -455,7 +471,7 @@
                   <path d="M5 12h14"></path>
                   <path d="M12 5v14"></path>
                 </svg>
-                Add book
+                ${t('add_book', 'Add book')}
               </button>
             </div>
           </div>
@@ -470,8 +486,8 @@
 
     if (hasBook && activeBook) {
       if (displayTitle) displayTitle.textContent = activeBook.title || '';
-      if (displayAuthor) displayAuthor.textContent = activeBook.author || 'Unknown author';
-      if (metaText) metaText.innerHTML = `${activeBook.title || ''} by ${activeBook.author || 'Unknown author'} <br> ${activeBook.pages || ''} pages`;
+      if (displayAuthor) displayAuthor.textContent = activeBook.author || t('unknown_author', 'Unknown author');
+      if (metaText) metaText.innerHTML = `${activeBook.title || ''} ${t('by_label', 'by')} ${activeBook.author || t('unknown_author', 'Unknown author')} <br> ${activeBook.pages || ''} ${t('pages_label', 'pages')}`;
       if (coverImage && activeBook.cover) {
         coverImage.src = activeBook.cover;
         coverImage.classList.remove('hidden');
@@ -727,20 +743,20 @@
       intenso: 'exigencia-dot--intenso',
     };
     const intensityLabels = {
-      mediano: 'Balanced',
-      exigente: 'Challenging',
-      intenso: 'Intense',
+      mediano: t('intensity_balanced_label', 'Balanced'),
+      exigente: t('intensity_challenging_label', 'Challenging'),
+      intenso: t('intensity_intense_label', 'Intense'),
     };
 
     stepContent.innerHTML = `
       <div class="exigencia-slide step-transition">
-        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">What intensity level do you want?</h2></div>
+        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('intensity_prompt', 'What intensity level do you want?')}</h2></div>
         <div class="exigencia-grid">
           ${['mediano', 'exigente', 'intenso'].map((k) => `
             <button type="button" id="exigencia-${k}" data-exigencia="${k}" class="exigencia-card ${state.formData.exigencia === k ? 'is-selected' : ''}">
               <div class="exigencia-dot ${intensityStyles[k]}"></div>
               <h3 class="exigencia-title">${intensityLabels[k] || k}</h3>
-              <p class="exigencia-meta">${EXIGENCIA_SESSIONS[k]} sessions<br>per week</p>
+              <p class="exigencia-meta">${format('sessions_per_week', '%d sessions<br>per week', EXIGENCIA_SESSIONS[k])}</p>
             </button>`).join('')}
         </div>
       </div>`;
@@ -811,11 +827,11 @@
       type: 'habit',
     };
 
-    qs('#propuesta-tipo-label').innerText = 'HABIT FORMATION PROPOSAL';
-    qs('#propuesta-plan-titulo').innerText = `HABIT OF ${dailyMinutes} MIN / DAY`;
-    qs('#propuesta-sub-label').innerText = 'CONSOLIDATION CYCLE (42 DAYS)';
-    qs('#propuesta-carga').innerText = `Estimated Load: ${pps} PAGES / SESSION`;
-    qs('#propuesta-duracion').innerText = 'Cycle duration: 6 WEEKS';
+    qs('#propuesta-tipo-label').innerText = t('habit_plan_title', 'HABIT FORMATION PROPOSAL');
+    qs('#propuesta-plan-titulo').innerText = format('habit_plan_of', 'HABIT OF %s MIN / DAY', dailyMinutes);
+    qs('#propuesta-sub-label').innerText = t('habit_cycle_label', 'CONSOLIDATION CYCLE (42 DAYS)');
+    qs('#propuesta-carga').innerText = format('estimated_load', 'Estimated Load: %s PAGES / SESSION', pps);
+    qs('#propuesta-duracion').innerText = format('cycle_duration_weeks', 'Cycle duration: %s WEEKS', Math.round(totalDays / 7));
 
     formContainer.classList.add('hidden');
     summaryContainer.classList.remove('hidden');
@@ -846,11 +862,11 @@
       totalPages: targetBook.pages,
     };
 
-    qs('#propuesta-tipo-label').innerText = 'REALISTIC READING PLAN';
+    qs('#propuesta-tipo-label').innerText = t('realistic_plan', 'REALISTIC READING PLAN');
     qs('#propuesta-plan-titulo').innerText = targetBook.title;
-    qs('#propuesta-sub-label').innerText = 'MONTHLY PLAN';
-    qs('#propuesta-carga').innerText = `Suggested Load: ${pps} PAGES / SESSION`;
-    qs('#propuesta-duracion').innerText = `Estimated duration: ${totalWeeks} weeks`;
+    qs('#propuesta-sub-label').innerText = t('monthly_plan', 'MONTHLY PLAN');
+    qs('#propuesta-carga').innerText = format('suggested_load', 'Suggested Load: %s PAGES / SESSION', pps);
+    qs('#propuesta-duracion').innerText = format('estimated_duration', 'Estimated duration: %s weeks', totalWeeks);
 
     formContainer.classList.add('hidden');
     summaryContainer.classList.remove('hidden');
@@ -904,9 +920,9 @@
 
   function updateCargaLabel() {
     if (state.calculatedPlan.type === 'ccl') {
-      qs('#propuesta-carga').innerText = `Suggested Load: ${state.calculatedPlan.pps} PAGES / SESSION`;
+      qs('#propuesta-carga').innerText = format('suggested_load', 'Suggested Load: %s PAGES / SESSION', state.calculatedPlan.pps);
     } else {
-      qs('#propuesta-carga').innerText = `Estimated Load: ${state.calculatedPlan.pps} PAGES / SESSION`;
+      qs('#propuesta-carga').innerText = format('estimated_load', 'Estimated Load: %s PAGES / SESSION', state.calculatedPlan.pps);
     }
   }
 
@@ -969,7 +985,7 @@
         const removeBtn = document.createElement('button');
         removeBtn.type = 'button';
         removeBtn.className = 'session-remove';
-        removeBtn.setAttribute('aria-label', 'Remove session');
+        removeBtn.setAttribute('aria-label', t('remove_session', 'Remove session'));
         removeBtn.innerText = '×';
         removeBtn.addEventListener('click', (event) => {
           event.stopPropagation();
@@ -1019,7 +1035,7 @@
               const addBtn = document.createElement('button');
               addBtn.type = 'button';
               addBtn.className = 'session-add';
-              addBtn.setAttribute('aria-label', 'Add session');
+              addBtn.setAttribute('aria-label', t('add_session', 'Add session'));
               addBtn.textContent = '+';
               addBtn.addEventListener('click', (event) => {
                 event.stopPropagation();
@@ -1053,14 +1069,14 @@
     const pagination = qs('#list-pagination');
 
     if (totalSessions === 0) {
-      listView.innerHTML = '<p class="text-center text-[10px] uppercase font-medium opacity-40 py-8 tracking-widest">No sessions</p>';
+      listView.innerHTML = `<p class="text-center text-[10px] uppercase font-medium opacity-40 py-8 tracking-widest">${t('no_sessions', 'No sessions')}</p>`;
       pagination.classList.add('hidden');
       return;
     }
 
     const totalPages = Math.ceil(totalSessions / SESSIONS_PER_PAGE);
     pagination.classList.remove('hidden');
-    qs('#list-page-info').innerText = `${state.listCurrentPage + 1} / ${totalPages}`;
+    qs('#list-page-info').innerText = format('list_page_label', '%1$s / %2$s', state.listCurrentPage + 1, totalPages);
     qs('#list-prev-page').classList.toggle('disabled', state.listCurrentPage <= 0);
     qs('#list-next-page').classList.toggle('disabled', state.listCurrentPage >= totalPages - 1);
 
@@ -1072,7 +1088,7 @@
         <div class="flex items-center justify-between p-3 bg-white border border-[#A8A8A8] rounded-custom shadow-sm mb-2 step-transition">
           <div class="flex items-center space-x-3">
             <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-black bg-[#C79F32]">${s.order}</div>
-            <span class="text-xs font-medium text-black uppercase tracking-tight">Reading Session</span>
+            <span class="text-xs font-medium text-black uppercase tracking-tight">${t('reading_session', 'Reading Session')}</span>
           </div>
           <span class="text-[10px] font-medium text-black opacity-60 uppercase tracking-tighter">${s.date.getDate()} ${monthName}</span>
         </div>`;

@@ -80,6 +80,12 @@ class Politeia_Post_Reading_Render {
 				'initial'      => $initial,          // { status: started|finished, row: {...}|null }
 				'hasCompleted' => (bool) $has_completed, // true si el usuario ya tiene alguna sesión cerrada
 				'loginUrl'     => wp_login_url( get_permalink( $post_id ) ),
+				'strings'      => array(
+					'start_reading'       => __( 'Start Reading', 'politeia-reading' ),
+					'finish_reading'      => __( 'Finish Reading', 'politeia-reading' ),
+					'start_reading_again' => __( 'Start Reading Again', 'politeia-reading' ),
+					'error_recording'     => __( 'There was a problem recording the reading.', 'politeia-reading' ),
+				),
 			)
 		);
 	}

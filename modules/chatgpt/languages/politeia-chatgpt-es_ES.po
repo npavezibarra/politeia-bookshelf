@@ -1,0 +1,139 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Politeia ChatGPT\n"
+"Language: es_ES\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "API Token Settings"
+msgstr "Ajustes del token de API"
+
+msgid "Action"
+msgstr "Acción"
+
+msgid "Analyzing image…"
+msgstr "Analizando imagen…"
+
+msgid "Audio recording is not enabled yet."
+msgstr "La grabación de audio aún no está habilitada."
+
+msgid "Author"
+msgstr "Autor"
+
+msgid "By "
+msgstr "Por "
+
+msgid "Confirm"
+msgstr "Confirmar"
+
+msgid "Confirm All"
+msgstr "Confirmar todo"
+
+msgid "Describe your books, record your voice, or upload a photo..."
+msgstr "Describe tus libros, graba tu voz o sube una foto..."
+
+msgid "Done. Queued candidates: %d"
+msgstr "Listo. Candidatos en cola: %d"
+
+msgid "Done. Results updated."
+msgstr "Listo. Resultados actualizados."
+
+msgid "Edit"
+msgstr "Editar"
+
+msgid "Edit author"
+msgstr "Editar autor"
+
+msgid "Edit title"
+msgstr "Editar título"
+
+msgid "Enter your OpenAI API token so the plugin can communicate with the ChatGPT API."
+msgstr "Introduce tu token de API de OpenAI para que el plugin pueda comunicarse con la API de ChatGPT."
+
+msgid "Error confirming all."
+msgstr "Error al confirmar todo."
+
+msgid "Error confirming."
+msgstr "Error al confirmar."
+
+msgid "Error processing the image."
+msgstr "Error al procesar la imagen."
+
+msgid "Error processing the text."
+msgstr "Error al procesar el texto."
+
+msgid "Error reading/sending the image."
+msgstr "Error al leer/enviar la imagen."
+
+msgid "Error saving change."
+msgstr "Error al guardar el cambio."
+
+msgid "Error uploading the image. Check the allowed size."
+msgstr "Error al subir la imagen. Revisa el tamaño permitido."
+
+msgid "Error: AI functionality is not configured. Add an API token in PoliteiaGPT → General."
+msgstr "Error: la funcionalidad de IA no está configurada. Agrega un token de API en PoliteiaGPT → General."
+
+msgid "In Shelf"
+msgstr "En estantería"
+
+msgid "Network error."
+msgstr "Error de red."
+
+msgid "Network error. Please try again."
+msgstr "Error de red. Inténtalo de nuevo."
+
+msgid "No books detected (unrecognized response)."
+msgstr "No se detectaron libros (respuesta no reconocida)."
+
+msgid "No books detected."
+msgstr "No se detectaron libros."
+
+msgid "No pending candidates."
+msgstr "No hay candidatos pendientes."
+
+msgid "OpenAI API Token"
+msgstr "Token de API de OpenAI"
+
+msgid "OpenAI API keys"
+msgstr "Claves de API de OpenAI"
+
+msgid "Processing text…"
+msgstr "Procesando texto…"
+
+msgid "Queued candidates:"
+msgstr "Candidatos en cola:"
+
+msgid "Record your voice describing the books"
+msgstr "Graba tu voz describiendo los libros"
+
+msgid "Save Token"
+msgstr "Guardar token"
+
+msgid "Send text"
+msgstr "Enviar texto"
+
+msgid "There was a problem contacting OpenAI."
+msgstr "Hubo un problema al contactar con OpenAI."
+
+msgid "Title"
+msgstr "Título"
+
+msgid "Unknown server response (not JSON)."
+msgstr "Respuesta del servidor desconocida (no es JSON)."
+
+msgid "Unknown server response."
+msgstr "Respuesta del servidor desconocida."
+
+msgid "Upload an image of your books"
+msgstr "Sube una imagen de tus libros"
+
+msgid "Year"
+msgstr "Año"
+
+msgid "You can find your token on the %s page."
+msgstr "Puedes encontrar tu token en la página %s."
+
+msgid "You must be logged in."
+msgstr "Debes iniciar sesión."

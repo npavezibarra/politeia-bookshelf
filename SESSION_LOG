@@ -188,3 +188,5 @@ December 31st
 3. Build a Public Notes Feed to share user-approved notes with the community (design: https://chatgpt.com/c/695a51e0-07e8-8331-adde-1210b29dc91c).
 4. Enhance Add Book autocomplete suggestion input field (see Reports/add-book-autocomplete-suggestions.md).
 5. Develop mechanism to add books we've been borrowed from either a person or a Public Library.
+6. Develop page for My Reading Stats: a dashboard of reading stats across all books (not just a single book).
+7. Develop a public page (Twitter-like feed) for user notes, comments, reading stats, ranking, and recommendations.

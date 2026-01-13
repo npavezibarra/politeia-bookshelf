@@ -29,6 +29,40 @@ add_shortcode(
                         'PRS_LIBRARY',
                         array(
                                 'ajax_url' => admin_url( 'admin-ajax.php' ),
+                                'strings'  => array(
+                                        'book_single'         => __( 'book', 'politeia-reading' ),
+                                        'book_plural'         => __( 'books', 'politeia-reading' ),
+                                        'error_loading_results' => __( 'Error loading results', 'politeia-reading' ),
+                                        'ajax_unavailable'    => __( 'Ajax URL not available for library search.', 'politeia-reading' ),
+                                        'press_enter_to_save' => __( 'Press Enter to save', 'politeia-reading' ),
+                                        'pages_error'         => __( 'Error saving pages.', 'politeia-reading' ),
+                                        'pages_too_small'     => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
+                                        'pages_saved'         => __( 'Saved!', 'politeia-reading' ),
+                                        'saved_short'         => __( 'Saved.', 'politeia-reading' ),
+                                        'status_saving'       => __( 'Saving...', 'politeia-reading' ),
+                                        'missing_contact'     => __( 'Please enter both name and email.', 'politeia-reading' ),
+                                        'borrower_buying_title' => __( 'Borrowed person is buying this book:', 'politeia-reading' ),
+                                        'borrower_buying_confirm' => __( 'Confirm that the borrower is purchasing or compensating for the book.', 'politeia-reading' ),
+                                        'error_saving_contact' => __( 'Error saving contact.', 'politeia-reading' ),
+                                        'error_saving_date'   => __( 'Error saving date.', 'politeia-reading' ),
+                                        'error_saving_channel' => __( 'Error saving channel.', 'politeia-reading' ),
+                                        'error_saving_rating' => __( 'Error saving rating.', 'politeia-reading' ),
+                                        'error_saving_format' => __( 'Error saving format.', 'politeia-reading' ),
+                                        'saved_successfully'  => __( 'Saved successfully.', 'politeia-reading' ),
+                                        'disabled_lost'       => __( 'Disabled while this book is lost.', 'politeia-reading' ),
+                                        'disabled_borrowed'   => __( 'Disabled while this book is being borrowed.', 'politeia-reading' ),
+                                        'filter_all'          => __( 'All', 'politeia-reading' ),
+                                        'selected_count'      => __( '%d selected', 'politeia-reading' ),
+                                        'channel_online'      => __( 'Online', 'politeia-reading' ),
+                                        'channel_store'       => __( 'Store', 'politeia-reading' ),
+                                        'remove_book_confirm' => __( 'Are you sure you want to remove this book from your library?', 'politeia-reading' ),
+                                        'remove_book_removing' => __( 'Removing...', 'politeia-reading' ),
+                                        'remove_book_error'   => __( 'Error removing book.', 'politeia-reading' ),
+                                        'images_from_google'  => __( 'Images from Google Books', 'politeia-reading' ),
+                                        'no_covers_found'     => __( 'No covers found.', 'politeia-reading' ),
+                                        'cover_save_failed'   => __( 'Unable to save cover.', 'politeia-reading' ),
+                                        'error_owning_status' => __( 'Error updating owning status.', 'politeia-reading' ),
+                                ),
                                 'messages' => array(
                                         'invalid'   => __( 'Please enter a valid number of pages.', 'politeia-reading' ),
                                         'too_small' => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
@@ -155,7 +189,11 @@ add_shortcode(
                                        >
                                                <?php
                                                echo esc_html(
-                                                       $total . ' ' . ( $total === 1 ? 'book' : 'books' )
+                                                       sprintf(
+                                                               /* translators: %d: number of books. */
+                                                               _n( '%d book', '%d books', $total, 'politeia-reading' ),
+                                                               $total
+                                                       )
                                                );
                                                ?>
                                        </span>
@@ -337,6 +375,17 @@ add_shortcode(
         </div>
         <script>
         (function() {
+                function getStrings() {
+                        return (window.PRS_LIBRARY && window.PRS_LIBRARY.strings) ? window.PRS_LIBRARY.strings : {};
+                }
+                function text(key, fallback) {
+                        var strings = getStrings();
+                        return strings && strings[key] ? strings[key] : fallback;
+                }
+                function bookLabel(count) {
+                        return count === 1 ? text('book_single', 'book') : text('book_plural', 'books');
+                }
+
                 function getAjaxUrl() {
                         if (typeof ajaxurl !== 'undefined') {
                                 return ajaxurl;
@@ -370,7 +419,7 @@ add_shortcode(
                                 counter.setAttribute('data-filter-active', '0');
                                 counter.removeAttribute('data-filtered-count');
                                 if (!Number.isNaN(total)) {
-                                        counter.textContent = total + ' ' + (total === 1 ? 'book' : 'books');
+                                        counter.textContent = total + ' ' + bookLabel(total);
                                         return;
                                 }
                         }
@@ -391,11 +440,11 @@ add_shortcode(
                         counter.setAttribute('data-filtered-count', String(filteredCount));
 
                         if (!Number.isNaN(total)) {
-                                counter.textContent = filteredCount + '/' + total + ' ' + (total === 1 ? 'book' : 'books');
+                                counter.textContent = filteredCount + '/' + total + ' ' + bookLabel(total);
                                 return;
                         }
 
-                        counter.textContent = filteredCount + ' ' + (filteredCount === 1 ? 'book' : 'books');
+                        counter.textContent = filteredCount + ' ' + bookLabel(filteredCount);
                 }
 
                 async function loadLibraryPage(page) {
@@ -440,7 +489,7 @@ add_shortcode(
 
                         var endpoint = getAjaxUrl();
                         if (!endpoint) {
-                                console.warn('Ajax URL not available for library search.');
+                                console.warn(text('ajax_unavailable', 'Ajax URL not available for library search.'));
                                 return;
                         }
 
@@ -463,7 +512,7 @@ add_shortcode(
                         } catch (err) {
                                 console.error('Error fetching all books:', err);
                                 if (counter) {
-                                        counter.textContent = 'Error loading results';
+                                        counter.textContent = text('error_loading_results', 'Error loading results');
                                 }
                         }
                 }

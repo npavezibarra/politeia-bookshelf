@@ -404,9 +404,11 @@ $other_readers = $wpdb->get_results(
 					$session_start_page = isset( $note->start_page ) ? (int) $note->start_page : 0;
 					$session_end_page   = isset( $note->end_page ) ? (int) $note->end_page : 0;
 					$note_index = isset( $note_index_map[ (int) $note->id ] ) ? (int) $note_index_map[ (int) $note->id ] : 0;
-					$session_label      = $note_index ? sprintf( 'Session #%d', $note_index ) : __( 'Session', 'politeia-reading' );
+					$session_label      = $note_index
+						? sprintf( __( 'Session #%d', 'politeia-reading' ), $note_index )
+						: __( 'Session', 'politeia-reading' );
 					$page_range         = ( $session_start_page || $session_end_page )
-						? sprintf( 'pages %s - %s', $session_start_page ?: '—', $session_end_page ?: '—' )
+						? sprintf( __( 'pages %1$s - %2$s', 'politeia-reading' ), $session_start_page ?: '—', $session_end_page ?: '—' )
 						: '';
 					?>
 					<header class="prs-note__header">
@@ -418,7 +420,7 @@ $other_readers = $wpdb->get_results(
 						<time class="prs-note__date">
 							<?php
 							$note_date = ! empty( $note->created_at ) ? strtotime( $note->created_at ) : 0;
-							echo $note_date ? esc_html( date_i18n( 'M j, Y', $note_date ) ) : esc_html__( 'date', 'politeia-reading' );
+							echo $note_date ? esc_html( date_i18n( 'M j, Y', $note_date ) ) : esc_html__( 'Date', 'politeia-reading' );
 							?>
 						</time>
 					</header>
@@ -490,6 +492,23 @@ $other_readers = $wpdb->get_results(
 <script>
 	(function () {
 		if (typeof window === "undefined") return;
+		const I18N = <?php echo wp_json_encode( array(
+			'emotion_joy'          => __( 'Joy', 'politeia-reading' ),
+			'emotion_sorrow'       => __( 'Sorrow', 'politeia-reading' ),
+			'emotion_fear'         => __( 'Fear', 'politeia-reading' ),
+			'emotion_fascination'  => __( 'Fascination', 'politeia-reading' ),
+			'emotion_anger'        => __( 'Anger', 'politeia-reading' ),
+			'emotion_serenity'     => __( 'Serenity', 'politeia-reading' ),
+			'emotion_enlightenment'=> __( 'Enlightenment', 'politeia-reading' ),
+			'logged_impression'    => __( 'Logged Impression', 'politeia-reading' ),
+			'save_rating'          => __( 'Save Emotional Rating', 'politeia-reading' ),
+			'save_label'           => __( 'Save', 'politeia-reading' ),
+			'edit_label'           => __( 'Edit', 'politeia-reading' ),
+			'note_required'        => __( 'Please enter a note before saving.', 'politeia-reading' ),
+			'note_unavailable'     => __( 'Unable to save note right now.', 'politeia-reading' ),
+			'save_failed'          => __( 'Save failed.', 'politeia-reading' ),
+		) ); ?>;
+		const t = (key, fallback) => (I18N && I18N[key]) ? I18N[key] : fallback;
 		const modal = document.getElementById("prs-note-modal");
 		const rowsWrap = document.getElementById("prs-note-rows");
 		const resetBtn = document.getElementById("prs-note-reset");
@@ -499,13 +518,13 @@ $other_readers = $wpdb->get_results(
 		if (!modal || !rowsWrap || !resetBtn || !saveBtn || !noteButtons.length) return;
 
 		const EMOTIONS = [
-			{ id: "joy", label: "Joy", emoji: "😄", color: "joy" },
-			{ id: "sorrow", label: "Sorrow", emoji: "😢", color: "sorrow" },
-			{ id: "fear", label: "Fear", emoji: "😱", color: "fear" },
-			{ id: "fascination", label: "Fascination", emoji: "🤯", color: "fascination" },
-			{ id: "anger", label: "Anger", emoji: "😡", color: "anger" },
-			{ id: "serenity", label: "Serenity", emoji: "😌", color: "serenity" },
-			{ id: "enlightenment", label: "Enlightenment", emoji: "✨", color: "enlightenment" },
+			{ id: "joy", label: t("emotion_joy", "Joy"), emoji: "😄", color: "joy" },
+			{ id: "sorrow", label: t("emotion_sorrow", "Sorrow"), emoji: "😢", color: "sorrow" },
+			{ id: "fear", label: t("emotion_fear", "Fear"), emoji: "😱", color: "fear" },
+			{ id: "fascination", label: t("emotion_fascination", "Fascination"), emoji: "🤯", color: "fascination" },
+			{ id: "anger", label: t("emotion_anger", "Anger"), emoji: "😡", color: "anger" },
+			{ id: "serenity", label: t("emotion_serenity", "Serenity"), emoji: "😌", color: "serenity" },
+			{ id: "enlightenment", label: t("emotion_enlightenment", "Enlightenment"), emoji: "✨", color: "enlightenment" },
 		];
 
 		let activeNoteId = null;
@@ -588,10 +607,10 @@ $other_readers = $wpdb->get_results(
 				saveBtn.classList.add("is-success");
 				saveBtn.classList.remove("is-disabled");
 				saveBtn.disabled = false;
-				saveBtn.textContent = "Logged Impression";
+				saveBtn.textContent = t("logged_impression", "Logged Impression");
 			} else {
 				saveBtn.classList.remove("is-success");
-				saveBtn.textContent = "Save Emotional Rating";
+				saveBtn.textContent = t("save_rating", "Save Emotional Rating");
 				if (total === 0) {
 					saveBtn.classList.add("is-disabled");
 					saveBtn.disabled = true;
@@ -670,7 +689,7 @@ $other_readers = $wpdb->get_results(
 				const isEditing = button.dataset.state === "editing";
 				if (!isEditing) {
 					button.dataset.state = "editing";
-					button.textContent = "Save";
+					button.textContent = t("save_label", "Save");
 					textarea.removeAttribute("readonly");
 					textarea.style.height = "auto";
 					textarea.style.height = `${textarea.scrollHeight}px`;
@@ -688,7 +707,7 @@ $other_readers = $wpdb->get_results(
 
 				const noteText = textarea.value.trim();
 				if (!noteText) {
-					window.alert("Please enter a note before saving.");
+					window.alert(t("note_required", "Please enter a note before saving."));
 					textarea.focus();
 					return;
 				}
@@ -698,7 +717,7 @@ $other_readers = $wpdb->get_results(
 				const nonce = window.PRS_BOOK && window.PRS_BOOK.reading_nonce ? window.PRS_BOOK.reading_nonce : null;
 				const ajaxUrl = window.PRS_BOOK && window.PRS_BOOK.ajax_url ? window.PRS_BOOK.ajax_url : null;
 				if (!rsId || !bookId || !nonce || !ajaxUrl) {
-					window.alert("Unable to save note right now.");
+					window.alert(t("note_unavailable", "Unable to save note right now."));
 					return;
 				}
 
@@ -714,14 +733,14 @@ $other_readers = $wpdb->get_results(
 					.then((resp) => resp.json())
 					.then((data) => {
 						if (!data || !data.success) {
-							throw new Error(data && data.data ? data.data : "Save failed.");
+							throw new Error(data && data.data ? data.data : t("save_failed", "Save failed."));
 						}
 						textarea.setAttribute("readonly", "readonly");
 						button.dataset.state = "";
-						button.textContent = "Edit";
+						button.textContent = t("edit_label", "Edit");
 					})
 					.catch((err) => {
-						window.alert(err && err.message ? err.message : "Save failed.");
+						window.alert(err && err.message ? err.message : t("save_failed", "Save failed."));
 					})
 					.finally(() => {
 						button.disabled = false;

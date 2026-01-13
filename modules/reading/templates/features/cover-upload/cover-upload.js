@@ -1,4 +1,45 @@
 (function () {
+  const I18N = window.PRS_COVER_I18N || {};
+  const text = (key, fallback) => (I18N && I18N[key]) ? I18N[key] : fallback;
+  const format = (key, fallback, value) => text(key, fallback).replace('%s', value);
+  const ERROR_MAP = {
+    auth: text('error_auth', 'You must be logged in.'),
+    bad_nonce: text('error_bad_nonce', 'Your session expired. Please refresh and try again.'),
+    invalid_payload: text('error_invalid_payload', 'Invalid data received.'),
+    not_found: text('error_not_found', 'Record not found.'),
+    db_error: text('error_db', 'Database error. Please try again.'),
+    forbidden: text('error_forbidden', 'Permission denied.'),
+    decode_fail: text('error_decode', 'Unable to decode the image.'),
+    missing_params: text('error_missing_params', 'Missing required data.'),
+    bad_url: text('error_bad_url', 'Invalid URL.'),
+    unsupported_scheme: text('error_unsupported_scheme', 'Unsupported URL scheme.'),
+    invalid_image_host: text('error_invalid_image_host', 'Invalid image host.'),
+    bad_source_url: text('error_bad_source_url', 'Invalid source URL.'),
+    unsupported_source_scheme: text('error_unsupported_source_scheme', 'Invalid source URL scheme.'),
+    invalid_source_host: text('error_invalid_source_host', 'Source host not permitted.'),
+    missing_title: text('missing_title', 'No book title available. Add a title to search or upload a cover manually.'),
+    no_results: text('no_covers_found', 'No covers found. You can upload your own image instead.'),
+    search_failed: text('search_error', 'There was an error searching for covers. Please try again later.'),
+    remove_failed: text('remove_failed', 'Could not remove the cover. Please try again.'),
+    api_error: text('search_error', 'There was an error searching for covers. Please try again later.'),
+    'Permission denied': text('error_forbidden', 'Permission denied.'),
+    'Permission denied.': text('error_forbidden', 'Permission denied.'),
+    'No image data received': text('error_no_image_data', 'No image data received.'),
+    'Invalid image payload': text('error_invalid_image_payload', 'Invalid image payload.'),
+    'Upload directory unavailable': text('error_upload_dir', 'Upload directory unavailable.'),
+    'Failed to write image': text('error_write_failed', 'Failed to write image.'),
+    'Attachment creation failed': text('error_attachment_failed', 'Attachment creation failed.'),
+    'Cover host not permitted.': text('error_invalid_image_host', 'Cover host not permitted.'),
+    'Invalid source URL.': text('error_bad_source_url', 'Invalid source URL.'),
+    'Invalid source URL scheme.': text('error_unsupported_source_scheme', 'Invalid source URL scheme.'),
+    'Source host not permitted.': text('error_invalid_source_host', 'Source host not permitted.'),
+    'Database update failed.': text('error_db', 'Database error. Please try again.'),
+  };
+  const resolveMessage = (message) => {
+    if (!message) return '';
+    const key = String(message).trim();
+    return ERROR_MAP[key] || message;
+  };
   // Helpers
   const el = (t, cls) => {
     const e = document.createElement(t);
@@ -108,21 +149,21 @@
     if (!panel) {
       panel = el('div', 'prs-cover-modal__content');
       panel.innerHTML = `
-        <div class="prs-cover-modal__title">Upload Book Cover</div>
+        <div class="prs-cover-modal__title">${text('modal_title', 'Upload Book Cover')}</div>
 
         <div class="prs-cover-modal__grid">
           <div class="prs-crop-wrap" id="drag-drop-area">
-            <div id="cropStage" class="prs-crop-stage" title="Drop JPEG or PNG file here">
+            <div id="cropStage" class="prs-crop-stage" title="${text('drop_here_title', 'Drop JPEG or PNG file here')}">
               <div id="cropPlaceholder" class="prs-crop-placeholder">
                 <svg class="prs-upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M4 14.9V8a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3.1" />
                   <path d="M16 16l-4-4-4 4" />
                   <path d="M12 12v9" />
                 </svg>
-                <p>Drag JPEG or PNG here (220x350 Preview)</p>
-                <span>or click upload</span>
+                <p>${text('drag_here', 'Drag JPEG or PNG here (220x350 Preview)')}</p>
+                <span>${text('click_upload', 'or click upload')}</span>
               </div>
-              <img id="previewImage" src="" alt="Book Cover Preview" style="display:none;">
+              <img id="previewImage" src="" alt="${text('preview_alt', 'Book Cover Preview')}" style="display:none;">
               <div id="cropArea" class="prs-crop-area" style="display:none;">
                 <div class="resize-handle corner nw"></div>
                 <div class="resize-handle corner ne"></div>
@@ -140,18 +181,18 @@
 
             <div class="prs-file-input">
               <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
-              <label for="fileInput" class="prs-btn prs-btn--ghost">Choose File</label>
+              <label for="fileInput" class="prs-btn prs-btn--ghost">${text('choose_file', 'Choose File')}</label>
             </div>
 
             <div class="prs-crop-controls">
-              <p class="prs-crop-instructions">Drag or resize the selection on the image to crop.</p>
+              <p class="prs-crop-instructions">${text('crop_instructions', 'Drag or resize the selection on the image to crop.')}</p>
             </div>
 
-            <span id="statusMessage" class="prs-cover-status">Awaiting file upload.</span>
+            <span id="statusMessage" class="prs-cover-status">${text('status_awaiting', 'Awaiting file upload.')}</span>
 
             <div class="prs-btn-group">
-              <button class="prs-btn prs-btn--ghost" type="button" id="prs-cover-cancel">Cancel</button>
-              <button class="prs-btn" type="button" id="prs-cover-save">Save</button>
+              <button class="prs-btn prs-btn--ghost" type="button" id="prs-cover-cancel">${text('cancel', 'Cancel')}</button>
+              <button class="prs-btn" type="button" id="prs-cover-save">${text('save', 'Save')}</button>
             </div>
           </div>
         </div>
@@ -179,7 +220,7 @@
     saveBtn.addEventListener('click', onSaveCrop);
 
     if (statusEl) {
-      setStatus(statusEl.textContent || 'Awaiting file upload.');
+      setStatus(statusEl.textContent || text('status_awaiting', 'Awaiting file upload.'));
     }
 
     document.dispatchEvent(new CustomEvent('prsCoverModal:ready', {
@@ -623,7 +664,7 @@
       if (stage) {
         stage.classList.add('error');
       }
-      setStatus('Error: Only JPEG and PNG images are accepted.', '#ef4444');
+      setStatus(text('error_invalid_type', 'Error: Only JPEG and PNG images are accepted.'), '#ef4444');
       if (imgEl) {
         imgEl.style.display = 'none';
         imgEl.removeAttribute('src');
@@ -647,7 +688,10 @@
       const dataUrl = event.target.result;
       loadIntoStage(dataUrl, () => {
         const sizeKb = (file.size / 1024).toFixed(1);
-        setStatus(`File loaded: ${file.name} (${sizeKb} KB)`, '#16a34a');
+      setStatus(
+        format('file_loaded', 'File loaded: %s', `${file.name} (${sizeKb} KB)`),
+        '#16a34a'
+      );
       });
     };
     reader.readAsDataURL(file);
@@ -871,7 +915,7 @@
 
     const details = getBookDetails();
     const defaultTitle = frame.getAttribute('data-placeholder-title') || 'Untitled Book';
-    const defaultAuthor = frame.getAttribute('data-placeholder-author') || 'Unknown Author';
+    const defaultAuthor = frame.getAttribute('data-placeholder-author') || text('unknown_author', 'Unknown Author');
 
     const titleEl = document.createElement('h2');
     titleEl.id = 'prs-book-title-placeholder';
@@ -1012,13 +1056,13 @@
 
   function onSaveCrop() {
     if (!imgEl || naturalW <= 0 || naturalH <= 0) {
-      setStatus('Choose an image', '#ef4444');
+      setStatus(text('choose_image', 'Choose an image'), '#ef4444');
       return;
     }
 
     const cropRect = getCropSourceRect();
     if (!cropRect) {
-      setStatus('Adjust the crop area before saving.', '#ef4444');
+      setStatus(text('adjust_crop', 'Adjust the crop area before saving.'), '#ef4444');
       return;
     }
 
@@ -1028,7 +1072,7 @@
 
     const ctx = canvas.getContext('2d');
     if (!ctx) {
-      setStatus('Render error', '#ef4444');
+      setStatus(text('error_render', 'Render error'), '#ef4444');
       return;
     }
 
@@ -1059,11 +1103,11 @@
         }
       } catch (encodingError) {
         console.error('[PRS] cover encode error', encodingError);
-        setStatus('Render error', '#ef4444');
+        setStatus(text('error_render', 'Render error'), '#ef4444');
         return;
       }
 
-      setStatus('Saving…');
+      setStatus(text('status_saving', 'Saving…'));
 
       try {
         const payload = await uploadCroppedCover({
@@ -1073,22 +1117,22 @@
 
         const coverUrl = (payload && (payload.url || payload.src)) || '';
         if (!coverUrl) {
-          setStatus('Error', '#ef4444');
+          setStatus(text('status_error', 'Error'), '#ef4444');
           return;
         }
 
-        setStatus('Saved', '#16a34a');
+        setStatus(text('status_saved', 'Saved'), '#16a34a');
         replaceCover(coverUrl, true, '');
         closeModal();
       } catch (error) {
-        const message = error?.message || 'Error';
+        const message = resolveMessage(error?.message || text('status_error', 'Error'));
         setStatus(message, '#ef4444');
         console.error('[PRS] cover save error', error);
       }
     };
 
     sourceImage.onerror = () => {
-      setStatus('Render error', '#ef4444');
+      setStatus(text('error_render', 'Render error'), '#ef4444');
     };
 
     sourceImage.src = imgEl.src;
@@ -1150,7 +1194,7 @@
 
     const title = el('h2', 'prs-cover-search-modal__title');
     title.id = 'prs-cover-search-modal-title';
-    title.textContent = 'Select a Cover';
+    title.textContent = text('search_title', 'Select a Cover');
 
     searchMessageEl = el('p', 'prs-cover-search-modal__message');
     searchMessageEl.textContent = '';
@@ -1161,10 +1205,10 @@
     const footer = el('div', 'prs-cover-search-modal__footer');
     const cancel = el('button', 'prs-btn prs-btn--ghost');
     cancel.type = 'button';
-    cancel.textContent = 'Cancel';
+    cancel.textContent = text('cancel', 'Cancel');
     searchSetBtn = el('button', 'prs-btn prs-cover-set');
     searchSetBtn.type = 'button';
-    searchSetBtn.textContent = 'Set Cover';
+    searchSetBtn.textContent = text('set_cover', 'Set Cover');
     searchSetBtn.disabled = true;
     const { book_id } = getContext();
     if (book_id) {
@@ -1248,12 +1292,12 @@
     selectedSearchOption = null;
     if (searchSetBtn) {
       searchSetBtn.disabled = true;
-      searchSetBtn.textContent = 'Set Cover';
+      searchSetBtn.textContent = text('set_cover', 'Set Cover');
     }
 
     if (!items.length) {
       const empty = el('div', 'prs-cover-search-modal__empty');
-      empty.textContent = 'No covers found. You can upload your own image instead.';
+      empty.textContent = text('no_covers_found', 'No covers found. You can upload your own image instead.');
       searchGridEl.appendChild(empty);
       return;
     }
@@ -1273,7 +1317,9 @@
       const frame = el('div', 'prs-cover-frame');
       const img = el('img');
       img.src = item.url;
-      img.alt = item.title ? `Cover for ${item.title}` : 'Book cover option';
+      img.alt = item.title
+        ? format('cover_for_title', 'Cover for %s', item.title)
+        : text('cover_option_alt', 'Book cover option');
       img.loading = 'lazy';
       frame.appendChild(img);
 
@@ -1294,10 +1340,10 @@
         link.href = item.source;
         link.target = '_blank';
         link.rel = 'noopener noreferrer';
-        link.textContent = 'View on Google Books';
+        link.textContent = text('view_on_google', 'View on Google Books');
         caption.appendChild(link);
       } else {
-        caption.textContent = 'View on Google Books';
+        caption.textContent = text('view_on_google', 'View on Google Books');
         caption.setAttribute('aria-hidden', 'true');
       }
       figure.appendChild(caption);
@@ -1367,7 +1413,7 @@
     if (searchSetBtn) {
       searchSetBtn.disabled = false;
     }
-    setSearchMessage('Click “Set Cover” to use the selected image.');
+    setSearchMessage(text('click_set_cover', 'Click “Set Cover” to use the selected image.'));
   }
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -1414,14 +1460,14 @@
   async function handleSearchClick() {
     openSearchModal();
     setSearchLoadingState(true);
-    setSearchMessage('Searching for covers…');
+    setSearchMessage(text('searching_covers', 'Searching for covers…'));
     renderSearchResults([]);
 
     const details = getBookDetails();
     const { title, author } = details;
     if (!title) {
       setSearchLoadingState(false);
-      setSearchMessage('No book title available. Add a title to search or upload a cover manually.');
+      setSearchMessage(text('missing_title', 'No book title available. Add a title to search or upload a cover manually.'));
       return;
     }
 
@@ -1430,27 +1476,27 @@
       const results = await fetchGoogleCovers(title, author, language);
       setSearchLoadingState(false);
       if (!results.length) {
-        setSearchMessage('No covers found. You can upload your own image instead.');
+        setSearchMessage(text('no_covers_found', 'No covers found. You can upload your own image instead.'));
         return;
       }
       renderSearchResults(results, language);
       if (results.length === 1) {
-        setSearchMessage('Only one cover found. Click “Set Cover” to confirm.');
+        setSearchMessage(text('single_cover_found', 'Only one cover found. Click “Set Cover” to confirm.'));
       } else if (language) {
-        setSearchMessage(`Select a cover below and click “Set Cover”. Showing ${language.toUpperCase()} results when possible.`);
+        setSearchMessage(format('select_cover_language', 'Select a cover below and click “Set Cover”. Showing %s results when possible.', language.toUpperCase()));
       } else {
-        setSearchMessage('Select a cover below and click “Set Cover”.');
+        setSearchMessage(text('select_cover', 'Select a cover below and click “Set Cover”.'));
       }
     } catch (error) {
       console.error('[PRS] cover search error', error);
       setSearchLoadingState(false);
       const msg = error?.code || error?.message;
       if (msg === 'missing_api_key') {
-        setSearchMessage('Google Books API key is missing. Add it in the plugin settings.');
+        setSearchMessage(text('missing_api_key', 'Google Books API key is missing. Add it in the plugin settings.'));
       } else if (msg === 'no_results') {
-        setSearchMessage('No covers found. You can upload your own image instead.');
+        setSearchMessage(text('no_covers_found', 'No covers found. You can upload your own image instead.'));
       } else {
-        setSearchMessage('There was an error searching for covers. Please try again later.');
+        setSearchMessage(resolveMessage(msg) || text('search_error', 'There was an error searching for covers. Please try again later.'));
       }
     }
   }
@@ -1462,7 +1508,7 @@
       if (!window.confirm(confirmMessage)) {
         return;
       }
-    } else if (!window.confirm('Remove this book cover?')) {
+    } else if (!window.confirm(text('remove_confirm', 'Remove this book cover?'))) {
       return;
     }
 
@@ -1473,7 +1519,7 @@
     const nonceValue = ajax.nonce || (window.PRS_COVER && window.PRS_COVER.saveNonce) || '';
 
     if (!ajax.ajaxUrl || !nonceValue || (!userBookId && !bookId)) {
-      window.alert('Unable to remove the book cover.');
+      window.alert(text('remove_unavailable', 'Unable to remove the book cover.'));
       return;
     }
 
@@ -1504,7 +1550,7 @@
       restoreCoverPlaceholder(actions || null);
     } catch (error) {
       console.error('[PRS] remove cover error', error);
-      window.alert('Could not remove the cover. Please try again.');
+      window.alert(text('remove_failed', 'Could not remove the cover. Please try again.'));
     } finally {
       link.classList.remove('is-disabled');
       link.removeAttribute('aria-busy');
@@ -1517,14 +1563,14 @@
 
     const originalText = searchSetBtn.textContent;
     searchSetBtn.disabled = true;
-    searchSetBtn.textContent = 'Saving…';
-    setSearchMessage('Saving selected cover…');
+    searchSetBtn.textContent = text('status_saving', 'Saving…');
+    setSearchMessage(text('saving_selected', 'Saving selected cover…'));
 
     const ajax = getAjaxConfig();
     const bookId = parseInt(searchSetBtn.dataset.bookId || getContext().book_id || 0, 10);
 
     if (!ajax.ajaxUrl || !bookId) {
-      setSearchMessage('Could not save the selected cover. Please try again.');
+      setSearchMessage(text('save_selected_failed', 'Could not save the selected cover. Please try again.'));
       searchSetBtn.disabled = false;
       searchSetBtn.textContent = originalText;
       return;
@@ -1543,7 +1589,7 @@
     if (!jq || typeof jq.ajax !== 'function') {
       searchSetBtn.disabled = false;
       searchSetBtn.textContent = originalText;
-      setSearchMessage('Could not save the selected cover. Please try again.');
+      setSearchMessage(text('save_selected_failed', 'Could not save the selected cover. Please try again.'));
       return;
     }
 
@@ -1561,7 +1607,7 @@
     }).done((res) => {
       console.log('AJAX response:', res);
       if (!res || !res.success) {
-        const errorMessage = res && res.data ? String(res.data) : 'Could not save the selected cover. Please try again.';
+        const errorMessage = res && res.data ? resolveMessage(String(res.data)) : text('save_selected_failed', 'Could not save the selected cover. Please try again.');
         setSearchMessage(errorMessage);
         searchSetBtn.disabled = false;
         searchSetBtn.textContent = originalText;
@@ -1588,8 +1634,8 @@
         console.error('Server Response:', responseText);
       }
       const responseJSON = xhr && xhr.responseJSON ? xhr.responseJSON : null;
-      const message = responseJSON && responseJSON.data ? responseJSON.data : (responseText || 'Server error. Please try again later.');
-      setSearchMessage(String(message));
+      const message = responseJSON && responseJSON.data ? responseJSON.data : (responseText || text('server_error', 'Server error. Please try again later.'));
+      setSearchMessage(resolveMessage(String(message)) || text('server_error', 'Server error. Please try again later.'));
       searchSetBtn.disabled = false;
       searchSetBtn.textContent = originalText;
     });

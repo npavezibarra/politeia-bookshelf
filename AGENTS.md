@@ -15,3 +15,4 @@ Do NOT change table schemas unless explicitly instructed.
 Do NOT delete legacy columns yet.
 Do NOT refactor UI unless instructed.
 Refactor flow first, cleanup later.
+All new frontend text must be translatable and added to the appropriate .po/.mo files.

@@ -6,6 +6,7 @@
       ? window.politeia_chatgpt_vars.ajaxurl
       : (window.ajaxurl || '/wp-admin/admin-ajax.php');
     const NONCE = (window.politeia_chatgpt_vars && window.politeia_chatgpt_vars.nonce) || '';
+    const STRINGS = (window.politeia_chatgpt_vars && window.politeia_chatgpt_vars.strings) || {};
   
     // ---- Status UI (message below the input) ----
     const statusEl = (function ensureStatus(){
@@ -29,6 +30,13 @@
         tone === 'warn' ? '#92400e' :
         tone === 'err'  ? '#b91c1c' :
                           '#344055';
+    }
+    function text(key, fallback) {
+      return (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
+    }
+    function formatQueued(count) {
+      const template = text('done_queued', 'Done. Queued candidates: %d');
+      return template.replace('%d', String(count));
     }
   
     // ---- Fetch helpers (with text fallback) ----
@@ -110,13 +118,13 @@
       fd.append('file', file);
   
       try {
-        setStatus('Analyzing image…', '');
+        setStatus(text('processing_image', 'Analyzing image…'), '');
         const { parsed, rawText } = await postFD(fd);
         console.debug('[politeia upload] raw:', rawText);
         console.debug('[politeia upload] parsed:', parsed);
   
         if (!parsed) {
-          setStatus('Unknown server response (not JSON).', 'warn');
+          setStatus(text('unknown_response_not_json', 'Unknown server response (not JSON).'), 'warn');
           return;
         }
   
@@ -125,22 +133,22 @@
   
         if (total > 0) {
           appendToTable(pending, in_shelf);
-          setStatus(`Done. Queued candidates: ${total}`, 'ok');
+          setStatus(formatQueued(total), 'ok');
         } else {
           if (message === 'upload_error') {
-            setStatus('Error uploading the image. Check the allowed size.', 'err');
+            setStatus(text('upload_error', 'Error uploading the image. Check the allowed size.'), 'err');
           } else if (message === 'openai_error') {
-            setStatus('There was a problem contacting OpenAI.', 'err');
+            setStatus(text('openai_error', 'There was a problem contacting OpenAI.'), 'err');
           } else if (message === 'no_books_detected' || success === false || success === true) {
             // Si success vino cualquiera pero no hay arrays, realmente no hubo libros
-            setStatus('No books detected.', 'warn');
+            setStatus(text('no_books_detected', 'No books detected.'), 'warn');
           } else {
-            setStatus('No books detected (unrecognized response).', 'warn');
+            setStatus(text('no_books_detected_unknown', 'No books detected (unrecognized response).'), 'warn');
           }
         }
       } catch (e) {
         console.error('[politeia upload] exception', e);
-        setStatus('Network error. Please try again.', 'err');
+        setStatus(text('network_error_retry', 'Network error. Please try again.'), 'err');
       } finally {
         hiddenFile.value = '';
       }
@@ -162,24 +170,24 @@
         fd.append('text', val);
   
         try {
-          setStatus('Processing…', '');
+          setStatus(text('processing_text', 'Processing…'), '');
           const { parsed, rawText } = await postFD(fd);
           console.debug('[politeia text] raw:', rawText);
           console.debug('[politeia text] parsed:', parsed);
   
-          if (!parsed) { setStatus('Unknown server response.', 'warn'); return; }
+          if (!parsed) { setStatus(text('unknown_response', 'Unknown server response.'), 'warn'); return; }
           const { pending, in_shelf, message, success } = coercePayload(parsed);
           const total = pending.length + in_shelf.length;
   
           if (total > 0) {
             appendToTable(pending, in_shelf);
-            setStatus(`Done. Queued candidates: ${total}`, 'ok');
+            setStatus(formatQueued(total), 'ok');
           } else {
-            setStatus('No books detected.', 'warn');
+            setStatus(text('no_books_detected', 'No books detected.'), 'warn');
           }
         } catch (e) {
           console.error(e);
-          setStatus('Network error. Please try again.', 'err');
+          setStatus(text('network_error_retry', 'Network error. Please try again.'), 'err');
         }
       });
     }

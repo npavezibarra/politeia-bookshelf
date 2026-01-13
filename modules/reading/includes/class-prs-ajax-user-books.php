@@ -14,7 +14,7 @@ class PRS_Ajax_User_Books {
 
         public static function handle_remove_user_book() {
                 if ( ! is_user_logged_in() ) {
-                        wp_send_json_error( 'Invalid request.' );
+                        wp_send_json_error( __( 'Invalid request.', 'politeia-reading' ) );
                 }
 
                 global $wpdb;
@@ -24,7 +24,7 @@ class PRS_Ajax_User_Books {
                 $nonce        = isset( $_POST['nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['nonce'] ) ) : '';
 
                 if ( ! $user_book_id || ! wp_verify_nonce( $nonce, 'remove_user_book_' . $user_book_id ) ) {
-                        wp_send_json_error( 'Invalid request.' );
+                        wp_send_json_error( __( 'Invalid request.', 'politeia-reading' ) );
                 }
 
                 $table_user_books = $wpdb->prefix . 'politeia_user_books';
@@ -37,11 +37,11 @@ class PRS_Ajax_User_Books {
                 );
 
                 if ( ! $user_book ) {
-                        wp_send_json_error( 'Invalid request.' );
+                        wp_send_json_error( __( 'Invalid request.', 'politeia-reading' ) );
                 }
 
                 if ( (int) $user_book->user_id !== (int) $user_id ) {
-                        wp_send_json_error( 'You are not allowed to remove this book.' );
+                        wp_send_json_error( __( 'You are not allowed to remove this book.', 'politeia-reading' ) );
                 }
 
                 $now = current_time( 'mysql' );
@@ -56,7 +56,7 @@ class PRS_Ajax_User_Books {
                 );
 
                 if ( false === $updated_book ) {
-                        wp_send_json_error( 'Error removing book.' );
+                        wp_send_json_error( __( 'Error removing book.', 'politeia-reading' ) );
                 }
 
                 $table_sessions = $wpdb->prefix . 'politeia_reading_sessions';
@@ -85,7 +85,7 @@ class PRS_Ajax_User_Books {
 
                 wp_send_json_success(
                         array(
-                                'message'    => 'Book removed from your library.',
+                                'message'    => __( 'Book removed from your library.', 'politeia-reading' ),
                                 'deleted_at' => $now,
                         )
                 );

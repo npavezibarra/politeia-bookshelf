@@ -2,6 +2,10 @@
 document.addEventListener('DOMContentLoaded', () => {
   if (typeof PRS_SR === 'undefined') return;
   const $ = (s) => document.querySelector(s);
+  const STRINGS = PRS_SR.strings || {};
+  const text = (key, fallback) => (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
+  const format = (key, fallback, value) =>
+    text(key, fallback).replace('%d', String(value));
 
   // Inputs / vistas
   const $startPage    = $('#prs-sr-start-page');
@@ -104,8 +108,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Mensajes de tooltip en Start
   function applyStartTitle() {
     let title = '';
-    if (!hasPages()) title = 'Set total Pages for this book before starting a session.';
-    else if (!canStartByStatus()) title = 'You cannot start a session: the book is not in your possession (Borrowed, Lost or Sold).';
+    if (!hasPages()) title = text('tooltip_pages_required', 'Set total Pages for this book before starting a session.');
+    else if (!canStartByStatus()) title = text('tooltip_not_owned', 'You cannot start a session: the book is not in your possession (Borrowed, Lost or Sold).');
     if ($startBtn) {
       if (title) $startBtn.title = title;
       else $startBtn.removeAttribute('title');
@@ -324,14 +328,14 @@ document.addEventListener('DOMContentLoaded', () => {
         setIdle();
         console.error('Start reading error', out);
         if (out?.message === 'pages_required' || out?.data?.message === 'pages_required') {
-          alert('You must set total Pages to start a session.');
+          alert(text('alert_pages_required', 'You must set total Pages to start a session.'));
         }
       }
     } catch (err) {
       console.error(err);
       stopTimer();
       setIdle();
-      alert('Network error while starting the session.');
+      alert(text('alert_start_network', 'Network error while starting the session.'));
     }
   });
 
@@ -380,11 +384,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Fancy texts
         const pages = Math.max(0, end - start);
-        const pagesTxt = (pages === 1) ? '1 page' : `${pages} pages`;
+        const pagesTxt = (pages === 1)
+          ? text('pages_single', '1 page')
+          : format('pages_multiple', '%d pages', pages);
         const mins  = Math.round(durationSec / 60);
         const minsTxt = durationSec < 60
-          ? 'less than a minute'
-          : (mins === 1 ? '1 minute' : `${mins} minutes`);
+          ? text('minutes_under_one', 'less than a minute')
+          : (mins === 1
+            ? text('minutes_single', '1 minute')
+            : format('minutes_multiple', '%d minutes', mins));
 
         // Dejar UI lista y mostrar flash
         setIdle();
@@ -392,12 +400,12 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         console.error('Save reading error', out);
         $saveBtn.disabled = false;
-        alert('Could not save the session.');
+        alert(text('alert_save_failed', 'Could not save the session.'));
       }
     } catch (err) {
       console.error(err);
       $saveBtn.disabled = false;
-      alert('Network error while saving the session.');
+      alert(text('alert_save_network', 'Network error while saving the session.'));
     }
   });
 

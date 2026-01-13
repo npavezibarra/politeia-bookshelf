@@ -16,7 +16,7 @@ if ( ! defined('ABSPATH') ) exit;
 
 function politeia_confirm_table_shortcode() {
 	if ( ! is_user_logged_in() ) {
-		return '<p>You must be logged in.</p>';
+		return '<p>' . esc_html__( 'You must be logged in.', 'politeia-chatgpt' ) . '</p>';
 	}
 
 	$user_id = get_current_user_id();
@@ -162,23 +162,43 @@ function politeia_confirm_table_shortcode() {
                 }
         }
 
-        if ( $confirmables === 0 ) {
-                delete_transient( $ephem_key );
-                return '';
-        }
+	if ( $confirmables === 0 ) {
+		delete_transient( $ephem_key );
+		return '';
+	}
 
-        ob_start();
-        $nonce = wp_create_nonce('politeia-chatgpt-nonce');
+	$i18n = array(
+		'queued_candidates'    => __( 'Queued candidates:', 'politeia-chatgpt' ),
+		'confirm_all'          => __( 'Confirm All', 'politeia-chatgpt' ),
+		'title'                => __( 'Title', 'politeia-chatgpt' ),
+		'author'               => __( 'Author', 'politeia-chatgpt' ),
+		'year'                 => __( 'Year', 'politeia-chatgpt' ),
+		'action'               => __( 'Action', 'politeia-chatgpt' ),
+		'no_pending'           => __( 'No pending candidates.', 'politeia-chatgpt' ),
+		'edit'                 => __( 'Edit', 'politeia-chatgpt' ),
+		'edit_title'           => __( 'Edit title', 'politeia-chatgpt' ),
+		'edit_author'          => __( 'Edit author', 'politeia-chatgpt' ),
+		'in_shelf'             => __( 'In Shelf', 'politeia-chatgpt' ),
+		'confirm'              => __( 'Confirm', 'politeia-chatgpt' ),
+		'error_saving'         => __( 'Error saving change.', 'politeia-chatgpt' ),
+		'error_confirming'     => __( 'Error confirming.', 'politeia-chatgpt' ),
+		'error_confirming_all' => __( 'Error confirming all.', 'politeia-chatgpt' ),
+		'network_error'        => __( 'Network error.', 'politeia-chatgpt' ),
+		'by_prefix'            => __( 'By ', 'politeia-chatgpt' ),
+	);
+
+	ob_start();
+	$nonce = wp_create_nonce('politeia-chatgpt-nonce');
 	?>
 	<div id="pol-confirm" class="pol-confirm" data-nonce="<?php echo esc_attr($nonce); ?>">
 		<div class="pol-card">
 			<div class="pol-card__header">
 				<h3 class="pol-title">
-					Queued candidates:
+					<?php echo esc_html( $i18n['queued_candidates'] ); ?>
 					<span id="pol-count"><?php echo (int) $total_rows; ?></span>
 				</h3>
 				<button class="pol-btn pol-btn-primary" id="pol-confirm-all" <?php disabled( $confirmables === 0 ); ?>>
-					Confirm All
+					<?php echo esc_html( $i18n['confirm_all'] ); ?>
 				</button>
 			</div>
 
@@ -186,27 +206,27 @@ function politeia_confirm_table_shortcode() {
 				<table class="pol-table" id="pol-table">
 					<thead>
 						<tr>
-							<th>Title</th>
-							<th>Author</th>
-							<th style="width:120px">Year</th>
-                                                        <th style="width:120px">Action</th>
+							<th><?php echo esc_html( $i18n['title'] ); ?></th>
+							<th><?php echo esc_html( $i18n['author'] ); ?></th>
+							<th style="width:120px"><?php echo esc_html( $i18n['year'] ); ?></th>
+                                                        <th style="width:120px"><?php echo esc_html( $i18n['action'] ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
 					<?php if ( empty($rows) ) : ?>
-						<tr class="pol-empty"><td colspan="4">No pending candidates.</td></tr>
+						<tr class="pol-empty"><td colspan="4"><?php echo esc_html( $i18n['no_pending'] ); ?></td></tr>
 					<?php else : foreach ( $rows as $r ) : ?>
 						<tr class="pol-row" data-id="<?php echo (int) ($r['id'] ?? 0); ?>">
 							<td class="pol-td">
 								<span class="pol-cell" data-field="title">
 									<span class="pol-text"><?php echo esc_html($r['title']); ?></span>
-									<button class="pol-edit" title="Edit" aria-label="Edit title">✎</button>
+									<button class="pol-edit" title="<?php echo esc_attr( $i18n['edit'] ); ?>" aria-label="<?php echo esc_attr( $i18n['edit_title'] ); ?>">✎</button>
 								</span>
 							</td>
 							<td class="pol-td">
 								<span class="pol-cell" data-field="author">
 									<span class="pol-text"><?php echo esc_html($r['author']); ?></span>
-									<button class="pol-edit" title="Edit" aria-label="Edit author">✎</button>
+									<button class="pol-edit" title="<?php echo esc_attr( $i18n['edit'] ); ?>" aria-label="<?php echo esc_attr( $i18n['edit_author'] ); ?>">✎</button>
 								</span>
 							</td>
 							<td class="pol-td pol-year">
@@ -227,13 +247,13 @@ function politeia_confirm_table_shortcode() {
 										if ( $href ) :
 									?>
 										<a class="pill pill-success link-shelf" href="<?php echo esc_url( $href ); ?>">
-											In Shelf
+											<?php echo esc_html( $i18n['in_shelf'] ); ?>
 										</a>
 									<?php else: ?>
-										<span class="pill">In Shelf</span>
+										<span class="pill"><?php echo esc_html( $i18n['in_shelf'] ); ?></span>
 									<?php endif; ?>
 								<?php else : ?>
-									<button class="pol-btn pol-btn-ghost pol-confirm-one">Confirm</button>
+									<button class="pol-btn pol-btn-ghost pol-confirm-one"><?php echo esc_html( $i18n['confirm'] ); ?></button>
 								<?php endif; ?>
 							</td>
 						</tr>
@@ -282,7 +302,7 @@ function politeia_confirm_table_shortcode() {
                         .pol-table tbody tr.pol-row .pol-cell .pol-text{display:block;}
                         .pol-table tbody tr.pol-row .pol-td:first-child .pol-text{font-weight:600;font-size:1.05rem;}
                         .pol-table tbody tr.pol-row .pol-td:nth-child(2) .pol-text{color:#4d4d4d;}
-                        .pol-table tbody tr.pol-row .pol-td:nth-child(2) .pol-text::before{content:'By ';font-weight:500;color:#4d4d4d;}
+                        .pol-table tbody tr.pol-row .pol-td:nth-child(2) .pol-text::before{content:'<?php echo esc_js( $i18n['by_prefix'] ); ?>';font-weight:500;color:#4d4d4d;}
                         .pol-table tbody tr.pol-row .pol-year-text{display:block;font-weight:500;color:#4d4d4d;}
                         .pol-table tbody tr.pol-row .pol-actions{margin-top:18px;}
                         .pol-table tbody tr.pol-row .pol-actions .pol-btn{width:100%;}
@@ -307,6 +327,7 @@ function politeia_confirm_table_shortcode() {
 	(function(){
 		const root  = document.getElementById('pol-confirm');
 		if (!root) return;
+		const I18N = <?php echo wp_json_encode( $i18n ); ?>;
 
 		const NONCE = root.dataset.nonce || '';
 		const AJAX  = (window.politeia_chatgpt_vars && window.politeia_chatgpt_vars.ajaxurl)
@@ -327,7 +348,7 @@ function politeia_confirm_table_shortcode() {
 			if (!anyRow && !emptyRow){
 				const tr = document.createElement('tr');
 				tr.className = 'pol-empty';
-				tr.innerHTML = '<td colspan="4">No pending candidates.</td>';
+				tr.innerHTML = `<td colspan="4">${I18N.no_pending}</td>`;
 				tbody.appendChild(tr);
 			}
 		}
@@ -437,11 +458,11 @@ function politeia_confirm_table_shortcode() {
 						// Relookup year para esta fila
 						await lookupYearsForVisible();
 					} else {
-						alert('Error saving change.');
+						alert(I18N.error_saving);
 						console.warn(resp);
 					}
 				} catch(e){
-					alert('Network error.');
+					alert(I18N.network_error);
 					console.error(e);
 				} finally {
 					tr.classList.remove('saving');
@@ -487,12 +508,12 @@ function politeia_confirm_table_shortcode() {
 					toggleConfirmAll();
 					ensureNoEmpty();
 				} else {
-					alert('Error confirming.');
+					alert(I18N.error_confirming);
 					btn.disabled = false;
 					console.warn(resp);
 				}
 			} catch(e){
-				alert('Network error.');
+				alert(I18N.network_error);
 				btn.disabled = false;
 				console.error(e);
 			}
@@ -524,12 +545,12 @@ function politeia_confirm_table_shortcode() {
 						toggleConfirmAll();
 						ensureNoEmpty();
 					} else {
-						alert('Error confirming all.');
+						alert(I18N.error_confirming_all);
 						btnAll.disabled = false;
 						console.warn(resp);
 					}
 				} catch(e){
-					alert('Network error.');
+					alert(I18N.network_error);
 					btnAll.disabled = false;
 					console.error(e);
 				}
@@ -551,20 +572,20 @@ function politeia_confirm_table_shortcode() {
 						<td class="pol-td">
 							<span class="pol-cell" data-field="title">
 								<span class="pol-text"></span>
-								<button class="pol-edit" title="Edit" aria-label="Edit title">✎</button>
+								<button class="pol-edit" title="${I18N.edit}" aria-label="${I18N.edit_title}">✎</button>
 							</span>
 						</td>
 						<td class="pol-td">
 							<span class="pol-cell" data-field="author">
 								<span class="pol-text"></span>
-								<button class="pol-edit" title="Edit" aria-label="Edit author">✎</button>
+								<button class="pol-edit" title="${I18N.edit}" aria-label="${I18N.edit_author}">✎</button>
 							</span>
 						</td>
 						<td class="pol-td pol-year"><span class="pol-year-text">${Number.isInteger(year)? year : '…'}</span></td>
 						<td class="pol-td pol-actions">
 							${ in_shelf
-								? `<span class="pill">In Shelf</span>`
-								: `<button class="pol-btn pol-btn-ghost pol-confirm-one">Confirm</button>`
+								? `<span class="pill">${I18N.in_shelf}</span>`
+								: `<button class="pol-btn pol-btn-ghost pol-confirm-one">${I18N.confirm}</button>`
 							}
 						</td>`;
 					q('[data-field="title"] .pol-text', tr).textContent  = title || '';

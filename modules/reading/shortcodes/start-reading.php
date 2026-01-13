@@ -11,7 +11,7 @@ add_shortcode(
 	'politeia_start_reading',
 	function ( $atts ) {
 		if ( ! is_user_logged_in() ) {
-			return '<p>You must be logged in.</p>';
+			return '<p>' . esc_html__( 'You must be logged in.', 'politeia-reading' ) . '</p>';
 		}
 
 		$atts = shortcode_atts(
@@ -87,6 +87,19 @@ add_shortcode(
 				'actions'       => array(
 					'start' => 'prs_start_reading',
 					'save'  => 'prs_save_reading',
+				),
+				'strings'       => array(
+					'tooltip_pages_required' => __( 'Set total Pages for this book before starting a session.', 'politeia-reading' ),
+					'tooltip_not_owned'      => __( 'You cannot start a session: the book is not in your possession (Borrowed, Lost or Sold).', 'politeia-reading' ),
+					'alert_pages_required'   => __( 'You must set total Pages to start a session.', 'politeia-reading' ),
+					'alert_start_network'    => __( 'Network error while starting the session.', 'politeia-reading' ),
+					'alert_save_failed'      => __( 'Could not save the session.', 'politeia-reading' ),
+					'alert_save_network'     => __( 'Network error while saving the session.', 'politeia-reading' ),
+					'pages_single'           => __( '1 page', 'politeia-reading' ),
+					'pages_multiple'         => __( '%d pages', 'politeia-reading' ),
+					'minutes_under_one'      => __( 'less than a minute', 'politeia-reading' ),
+					'minutes_single'         => __( '1 minute', 'politeia-reading' ),
+					'minutes_multiple'       => __( '%d minutes', 'politeia-reading' ),
 				),
 			)
 		);
@@ -177,9 +190,18 @@ add_shortcode(
         >
                 <div class="prs-sr-flash-inner">
                 <div id="prs-sr-summary">
-                        <h2>Great job!</h2>
-                        <h3>You read <span id="prs-sr-flash-pages">—</span> in <span id="prs-sr-flash-time">—</span>.</h3>
-                        <div class="prs-sr-flash-sub">See you soon to keep reading this book.</div>
+                        <h2><?php esc_html_e( 'Great job!', 'politeia-reading' ); ?></h2>
+                        <h3>
+                                <?php
+                                printf(
+                                        /* translators: 1: pages read, 2: time spent. */
+                                        wp_kses_post( __( 'You read %1$s in %2$s.', 'politeia-reading' ) ),
+                                        '<span id="prs-sr-flash-pages">—</span>',
+                                        '<span id="prs-sr-flash-time">—</span>'
+                                );
+                                ?>
+                        </h3>
+                        <div class="prs-sr-flash-sub"><?php esc_html_e( 'See you soon to keep reading this book.', 'politeia-reading' ); ?></div>
                         <button type="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn" aria-controls="prs-note-panel" aria-expanded="false">
                                 <?php esc_html_e( 'Add Note', 'politeia-reading' ); ?>
                         </button>
@@ -270,7 +292,7 @@ add_shortcode(
                                                 <line x1="12" y1="9" x2="12" y2="13"></line>
                                                 <line x1="12" y1="17" x2="12.01" y2="17"></line>
                                         </svg>
-                                        <span>To start a session, set the total Pages for this book in the info panel.</span>
+                                        <span><?php esc_html_e( 'To start a session, set the total Pages for this book in the info panel.', 'politeia-reading' ); ?></span>
                                 </div>
                         </td>
                         </tr>

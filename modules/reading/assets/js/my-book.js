@@ -4,6 +4,9 @@ window.PRS_isSaving = false;
 
 // Debug flag (safe no-op in production if left false)
 window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
+const PRS_STRINGS = (window.PRS_BOOK && window.PRS_BOOK.strings) || (window.PRS_LIBRARY && window.PRS_LIBRARY.strings) || {};
+const prsText = (key, fallback) => (PRS_STRINGS && PRS_STRINGS[key]) ? PRS_STRINGS[key] : fallback;
+const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s', String(value)).replace('%d', String(value));
 
 /**
  * Utilidades
@@ -646,13 +649,13 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
 
       if (!editor) {
-        window.alert("Please write a note before saving.");
+        window.alert(prsText("note_required", "Please write a note before saving."));
         return;
       }
 
       ensureEditorPlaceholder();
       if (isEditorEmpty()) {
-        window.alert("Please write a note before saving.");
+        window.alert(prsText("note_required", "Please write a note before saving."));
         focusEditorAtEnd();
         return;
       }
@@ -665,20 +668,20 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       const userId = flash?.dataset?.userId || "";
 
       if (!rsId || rsId === "0" || !bookId || !userId) {
-        window.alert("Missing session details. Please try again.");
+        window.alert(prsText("note_missing_details", "Missing session details. Please try again."));
         return;
       }
 
       const ajaxUrl = resolveAjaxUrl();
       if (!ajaxUrl) {
         console.error("[Politeia] Missing ajax URL for saving session note");
-        window.alert("Unable to save the note right now. Please refresh the page and try again.");
+        window.alert(prsText("note_unavailable", "Unable to save the note right now. Please refresh the page and try again."));
         return;
       }
 
       const nonce = getReadingNonce();
       if (!nonce) {
-        window.alert("Unable to save the note because the session security token is missing. Please refresh the page and try again.");
+        window.alert(prsText("note_missing_nonce", "Unable to save the note because the session security token is missing. Please refresh the page and try again."));
         return;
       }
 
@@ -698,7 +701,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       jQuery.post(ajaxUrl, payload)
         .done(response => {
           if (response && response.success) {
-            window.alert("✅ Note saved successfully!");
+            window.alert(prsText("note_saved", "✅ Note saved successfully!"));
             clearEditor();
             applyEditorPlaceholder(defaultPlaceholder);
             if (flash && flash.dataset && flash.dataset.sessionId) {
@@ -720,12 +723,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
             const errorData = response && response.data ? response.data : null;
             const message = typeof errorData === "string"
               ? errorData
-              : (errorData && typeof errorData.message === "string" ? errorData.message : "Unknown error");
-            window.alert("⚠️ Failed to save note: " + message);
+              : (errorData && typeof errorData.message === "string" ? errorData.message : prsText("unknown_error", "Unknown error"));
+            window.alert(prsFormat("note_save_failed_prefix", "⚠️ Failed to save note: %s", message));
           }
         })
         .fail(() => {
-          window.alert("❌ AJAX request failed — check console.");
+          window.alert(prsText("note_ajax_failed", "❌ AJAX request failed — check console."));
         })
         .always(() => {
           isSavingNote = false;
@@ -812,10 +815,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       const buttonBookTitle = getDataValue(btn.dataset.bookTitle);
       const bookTitle = buttonBookTitle || fallbackBookTitle;
 
-      if (!sessionId) {
-        window.alert("Unable to load this session note because the session identifier is missing.");
-        return;
-      }
+    if (!sessionId) {
+      window.alert(prsText("note_missing_session_id", "Unable to load this session note because the session identifier is missing."));
+      return;
+    }
 
       document.dispatchEvent(new CustomEvent("prs-session-modal:open", {
         detail: {
@@ -969,9 +972,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     const shouldDisable = isBorrowRelated || isSold || isLost;
 
     const lostText = readingSelect.getAttribute("data-disabled-text-lost")
-      || "Disabled while this book is lost.";
+      || prsText("disabled_lost", "Disabled while this book is lost.");
     const defaultDisabledText = readingSelect.getAttribute("data-disabled-text")
-      || "Disabled while this book is being borrowed.";
+      || prsText("disabled_borrowed", "Disabled while this book is being borrowed.");
     const disabledText = isLost ? lostText : defaultDisabledText;
 
     if (shouldDisable) {
@@ -1289,7 +1292,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       if (!hint) return;
       const current = normalizeValue(input.value);
       if (current !== originalValue) {
-        hint.textContent = defaultHint || "Press Enter to save";
+        hint.textContent = defaultHint || prsText("press_enter_to_save", "Press Enter to save");
         hint.style.display = "block";
       } else {
         hint.style.display = "none";
@@ -1298,18 +1301,18 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     }
 
     function handleError(msg) {
-      setHint(msg || "Error saving pages.");
+      setHint(msg || prsText("pages_error", "Error saving pages."));
     }
 
     function saveValue(newValue) {
       if (!ajaxUrl || !bookId) {
-        handleError("Error saving pages.");
+        handleError(prsText("pages_error", "Error saving pages."));
         return;
       }
 
       const numeric = parseInt(newValue, 10);
       if (!Number.isFinite(numeric) || numeric < 1) {
-        handleError("Please enter a number greater than zero.");
+        handleError(prsText("pages_too_small", "Please enter a number greater than zero."));
         return;
       }
 
@@ -1323,7 +1326,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         payload.nonce = nonce;
       }
 
-      setHint("Saving...");
+      setHint(prsText("status_saving", "Saving..."));
       input.disabled = true;
 
       const jq = window.jQuery;
@@ -1331,7 +1334,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         const resp = (json && typeof json === "object" && Object.prototype.hasOwnProperty.call(json, "success")) ? json : null;
 
         if (!resp || !resp.success) {
-          const message = resp && resp.data && resp.data.message ? resp.data.message : "Error saving pages.";
+          const message = resp && resp.data && resp.data.message ? resp.data.message : prsText("pages_error", "Error saving pages.");
           handleError(message);
           input.disabled = false;
           return;
@@ -1341,12 +1344,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         originalValue = savedValue;
         view.textContent = displayValue(originalValue);
         closeEditor();
-        setHint("Saved!", 1200);
+        setHint(prsText("pages_saved", "Saved!"), 1200);
         input.disabled = false;
       };
 
       const onFail = () => {
-        handleError("Error saving pages.");
+        handleError(prsText("pages_error", "Error saving pages."));
         input.disabled = false;
       };
 
@@ -1685,12 +1688,14 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         .then(json => {
           if (!json || !json.success) throw json;
           setText(view, dateVal ? dateVal : "—");
-          setStatus(status, "Saved.", true);
+          setStatus(status, prsText("saved_short", "Saved."), true);
           show(editBtn);
           hide(form);
         })
         .catch(err => {
-          const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving date.";
+          const msg = (err && err.data && err.data.message)
+            ? err.data.message
+            : prsText("error_saving_date", "Error saving date.");
           setStatus(status, msg, false, 4000);
         });
     });
@@ -1747,17 +1752,23 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         .then(json => {
           if (!json || !json.success) throw json;
           let label = "—";
+          const channelLabels = PRS_BOOK.purchase_channel_labels || {
+            online: prsText("channel_online", "Online"),
+            store: prsText("channel_store", "Store"),
+          };
           if (channel) {
-            label = channel.charAt(0).toUpperCase() + channel.slice(1);
+            label = channelLabels[channel] || (channel.charAt(0).toUpperCase() + channel.slice(1));
             if (placeVal) label += " — " + placeVal;
           }
           setText(view, label);
-          setStatus(status, "Saved.", true);
+          setStatus(status, prsText("saved_short", "Saved."), true);
           show(editBtn);
           hide(form);
         })
         .catch(err => {
-          const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving channel.";
+          const msg = (err && err.data && err.data.message)
+            ? err.data.message
+            : prsText("error_saving_channel", "Error saving channel.");
           setStatus(status, msg, false, 4000);
         });
     });
@@ -1792,10 +1803,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           .then(json => {
             if (!json || !json.success) throw json;
             paint(val);
-            setStatus(status, "Saved.", true);
+            setStatus(status, prsText("saved_short", "Saved."), true);
           })
           .catch(err => {
-            const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving rating.";
+            const msg = (err && err.data && err.data.message)
+              ? err.data.message
+              : prsText("error_saving_rating", "Error saving rating.");
             setStatus(status, msg, false, 4000);
           });
       });
@@ -1822,12 +1835,14 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       ajaxPost(PRS_BOOK.ajax_url, fd)
         .then(json => {
           if (!json || !json.success) throw json;
-          setStatus(status, "Saved.", true);
+          setStatus(status, prsText("saved_short", "Saved."), true);
           PRS_BOOK.type_book = val;
           document.dispatchEvent(new CustomEvent("prs:type-book-changed", { detail: { type: val } }));
         })
         .catch(err => {
-          const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving format.";
+          const msg = (err && err.data && err.data.message)
+            ? err.data.message
+            : prsText("error_saving_format", "Error saving format.");
           setStatus(status, msg, false, 4000);
         });
     });
@@ -1854,7 +1869,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       ajaxPost(PRS_BOOK.ajax_url, fd)
         .then(json => {
           if (!json || !json.success) throw json;
-          setStatus(status, "Saved.", true);
+          setStatus(status, prsText("saved_short", "Saved."), true);
         })
         .catch(err => {
           const msg = (err && err.data && err.data.message) ? err.data.message : "Error updating status.";
@@ -2093,10 +2108,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
       if (statusValue === "sold" && priorState === "borrowing") {
         if (overlayTitle) {
-          overlayTitle.textContent = "Borrowed person is buying this book:";
+          overlayTitle.textContent = prsText("borrower_buying_title", "Borrowed person is buying this book:");
         }
         if (overlayStatus) {
-          overlayStatus.textContent = "Confirm that the borrower is purchasing or compensating for the book.";
+          overlayStatus.textContent = prsText("borrower_buying_confirm", "Confirm that the borrower is purchasing or compensating for the book.");
         }
       }
       if (nameInput) nameInput.value = "";
@@ -2126,7 +2141,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
     function updateDerived(val) {
       const locked = isDigitalType();
       const inShelf = !val; // NULL/'' => In Shelf
-      setText(derivedText, inShelf ? "In Shelf" : "Not In Shelf");
+      const labelInShelf = prsText("label_in_shelf", "In Shelf");
+      const labelNotInShelf = prsText("label_not_in_shelf", "Not In Shelf");
+      setText(derivedText, inShelf ? labelInShelf : labelNotInShelf);
       // botón "Mark as returned" visible solo si borrowed/borrowing
       const showReturn = (!locked) && (val === "borrowed" || val === "borrowing");
       if (returnBtn) {
@@ -2167,7 +2184,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       return ajaxPost(PRS_BOOK.ajax_url, fd)
         .then(json => {
           if (!json || !json.success) throw json;
-          setStatus(status, "Saved.", true);
+          setStatus(status, prsText("saved_short", "Saved."), true);
           updateDerived(val);
           savedOwningStatus = val;
           toggleReadingStatusLock(select);
@@ -2186,7 +2203,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           }
         })
         .catch(err => {
-          const msg = (err && err.data && err.data.message) ? err.data.message : "Error updating owning status.";
+          const msg = (err && err.data && err.data.message)
+            ? err.data.message
+            : prsText("error_owning_status", "Error updating owning status.");
           setStatus(status, msg, false, 4000);
           if (select) {
             select.value = savedOwningStatus;
@@ -2224,10 +2243,10 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
       if (useOverlay && overlayStatus) {
         overlayStatus.style.color = "";
-        overlayStatus.textContent = "Saving...";
+        overlayStatus.textContent = prsText("status_saving", "Saving...");
       } else if (!useOverlay && status) {
         status.style.color = "";
-        status.textContent = "Saving...";
+        status.textContent = prsText("status_saving", "Saving...");
       }
 
       const rowEl = select.closest("tr");
@@ -2314,7 +2333,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
           if (useOverlay && overlayStatus) {
             overlayStatus.style.color = "green";
-            overlayStatus.textContent = (payload && payload.message) || "Saved successfully.";
+            overlayStatus.textContent = (payload && payload.message) || prsText("saved_successfully", "Saved successfully.");
             setTimeout(() => {
               overlayStatus.textContent = "";
             }, 2000);
@@ -2337,7 +2356,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           return res;
         })
         .catch(err => {
-          const msg = (err && err.data && err.data.message) ? err.data.message : "Error saving contact.";
+          const msg = (err && err.data && err.data.message)
+            ? err.data.message
+            : prsText("error_saving_contact", "Error saving contact.");
           if (useOverlay && overlayStatus) {
             overlayStatus.style.color = "#b00020";
             overlayStatus.textContent = msg;
@@ -2379,7 +2400,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
       if (status) {
         status.style.color = "";
-        status.textContent = "Saving...";
+        status.textContent = prsText("status_saving", "Saving...");
       }
       if (activeBtn) {
         activeBtn.disabled = true;
@@ -2493,7 +2514,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
             readingSelect.disabled = true;
             readingSelect.classList.add("is-disabled");
             readingSelect.setAttribute("aria-disabled", "true");
-            readingSelect.title = "Disabled while this book is lost.";
+            readingSelect.title = prsText("disabled_lost", "Disabled while this book is lost.");
           }
 
           const fallbackName = lastContactName || labelUnknown;
@@ -2558,7 +2579,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         if (!name || !email) {
           if (overlayStatus) {
             overlayStatus.style.color = "#b00020";
-            overlayStatus.textContent = "Please enter both name and email.";
+            overlayStatus.textContent = prsText("missing_contact", "Please enter both name and email.");
           }
           return;
         }
@@ -2941,7 +2962,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
 
     function updateMultiLabel(toggle, checkboxes) {
       if (!toggle) return;
-      const defaultLabel = toggle.getAttribute("data-default-label") || "All";
+      const defaultLabel = toggle.getAttribute("data-default-label") || prsText("filter_all", "All");
       const checked = getCheckedValues(checkboxes);
       if (!checked.length) {
         toggle.textContent = defaultLabel;
@@ -2954,7 +2975,9 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         return (label || value).trim();
       });
 
-      toggle.textContent = labels.length <= 2 ? labels.join(", ") : `${labels.length} selected`;
+      toggle.textContent = labels.length <= 2
+        ? labels.join(", ")
+        : prsFormat("selected_count", "%d selected", labels.length);
     }
 
     function applyInputs(state) {
@@ -3322,21 +3345,21 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       || (window.PRS_LIBRARY && PRS_LIBRARY.ajax_url)
       || "";
 
-    const msgMissingContact = owningMessages.missing || "Please enter both name and email.";
-    const msgSaving = owningMessages.saving || "Saving...";
-    const msgError = owningMessages.error || "Error saving contact.";
+    const msgMissingContact = owningMessages.missing || prsText("missing_contact", "Please enter both name and email.");
+    const msgSaving = owningMessages.saving || prsText("status_saving", "Saving...");
+    const msgError = owningMessages.error || prsText("error_saving_contact", "Error saving contact.");
     const msgAlert = owningMessages.alert || msgError;
 
-    const labelBorrowing = owningLabels.borrowing || "Borrowing to:";
-    const labelBorrowed = owningLabels.borrowed || "Borrowed from:";
-    const labelSold = owningLabels.sold || "Sold to:";
-    const labelLost = owningLabels.lost || "Last borrowed to:";
-    const labelSoldOn = owningLabels.sold_on || "Sold on:";
-    const labelLostDate = owningLabels.lost_date || "Lost:";
-    const labelLocation = owningLabels.location || "Location";
-    const labelInShelf = owningLabels.in_shelf || "In Shelf";
-    const labelNotInShelf = owningLabels.not_in_shelf || "Not In Shelf";
-    const labelUnknown = owningLabels.unknown || "Unknown";
+    const labelBorrowing = owningLabels.borrowing || prsText("label_borrowing", "Borrowing to:");
+    const labelBorrowed = owningLabels.borrowed || prsText("label_borrowed", "Borrowed from:");
+    const labelSold = owningLabels.sold || prsText("label_sold", "Sold to:");
+    const labelLost = owningLabels.lost || prsText("label_lost", "Last borrowed to:");
+    const labelSoldOn = owningLabels.sold_on || prsText("label_sold_on", "Sold on:");
+    const labelLostDate = owningLabels.lost_date || prsText("label_lost_date", "Lost:");
+    const labelLocation = owningLabels.location || prsText("label_location", "Location");
+    const labelInShelf = owningLabels.in_shelf || prsText("label_in_shelf", "In Shelf");
+    const labelNotInShelf = owningLabels.not_in_shelf || prsText("label_not_in_shelf", "Not In Shelf");
+    const labelUnknown = owningLabels.unknown || prsText("label_unknown", "Unknown");
 
     let currentSelect = null;
     let currentStatus = "";
@@ -3399,11 +3422,11 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       const priorState = normalizeStatus(previousValue || "");
       if (status === "sold" && priorState === "borrowing") {
         if (overlayTitle) {
-          overlayTitle.textContent = "Borrowed person is buying this book:";
+          overlayTitle.textContent = prsText("borrower_buying_title", "Borrowed person is buying this book:");
         }
         if (statusMsg) {
           statusMsg.style.color = "";
-          statusMsg.textContent = "Confirm that the borrower is purchasing or compensating for the book.";
+          statusMsg.textContent = prsText("borrower_buying_confirm", "Confirm that the borrower is purchasing or compensating for the book.");
         }
       }
       if (nameInput) {
@@ -3644,7 +3667,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
           updateInfoElement(rowInfo, savedStatus, nextName, infoDate, nextSaleAmount);
 
           if (fromOverlay && statusMsg) {
-            const successMsg = (payload && payload.message) ? payload.message : "Saved successfully.";
+            const successMsg = (payload && payload.message) ? payload.message : prsText("saved_successfully", "Saved successfully.");
             statusMsg.style.color = "#2f6b2f";
             statusMsg.textContent = successMsg;
             setTimeout(() => {
@@ -3878,7 +3901,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
             readingSelect.disabled = true;
             readingSelect.classList.add("is-disabled");
             readingSelect.setAttribute("aria-disabled", "true");
-            readingSelect.title = "Disabled while this book is lost.";
+            readingSelect.title = prsText("disabled_lost", "Disabled while this book is lost.");
           }
 
           saveOwningContact(select, rawValue, select.dataset.contactName || "", select.dataset.contactEmail || "", {
@@ -4040,18 +4063,18 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       return;
     }
 
-    if (!window.confirm("Are you sure you want to remove this book from your library?")) {
+    if (!window.confirm(prsText("remove_book_confirm", "Are you sure you want to remove this book from your library?"))) {
       return;
     }
 
-    btn.prop("disabled", true).text("Removing...");
+    btn.prop("disabled", true).text(prsText("remove_book_removing", "Removing..."));
 
     const ajaxUrl = (typeof PRS_LIBRARY !== "undefined" && PRS_LIBRARY && PRS_LIBRARY.ajax_url)
       ? PRS_LIBRARY.ajax_url
       : (typeof ajaxurl !== "undefined" ? ajaxurl : "");
 
     if (!ajaxUrl) {
-      window.alert("Error removing book.");
+      window.alert(prsText("remove_book_error", "Error removing book."));
       btn.prop("disabled", false).text(originalText);
       return;
     }
@@ -4070,12 +4093,12 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
             });
           }
         } else {
-          window.alert((response && response.data) || "Error removing book.");
+          window.alert((response && response.data) || prsText("remove_book_error", "Error removing book."));
           btn.prop("disabled", false).text(originalText);
         }
       })
       .fail(() => {
-        window.alert("Error removing book.");
+        window.alert(prsText("remove_book_error", "Error removing book."));
         btn.prop("disabled", false).text(originalText);
       });
   });
@@ -4101,7 +4124,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
       attributionEl = document.createElement("p");
       attributionEl.className = "prs-search-cover-attribution";
-      attributionEl.textContent = "Images from Google Books";
+      attributionEl.textContent = prsText("images_from_google", "Images from Google Books");
       const parent = optionsContainer.parentNode;
       if (parent) {
         parent.insertBefore(attributionEl, optionsContainer.nextSibling);
@@ -4290,7 +4313,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         optionsContainer.innerHTML = html;
         const options = optionsContainer.querySelectorAll(".prs-cover-option");
         if (!options.length) {
-          const fallbackMessage = optionsContainer.textContent.trim() || "No covers found.";
+        const fallbackMessage = optionsContainer.textContent.trim() || prsText("no_covers_found", "No covers found.");
           renderMessage(fallbackMessage, "prs-search-cover-empty");
           return;
         }
@@ -4327,7 +4350,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
 
       if (!Array.isArray(items) || items.length === 0) {
-        renderMessage("No covers found.", "prs-search-cover-empty");
+        renderMessage(prsText("no_covers_found", "No covers found."), "prs-search-cover-empty");
         return;
       }
 
@@ -4387,7 +4410,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
       }
 
       if (!appended) {
-        renderMessage("No covers found.", "prs-search-cover-empty");
+        renderMessage(prsText("no_covers_found", "No covers found."), "prs-search-cover-empty");
         return;
       }
 
@@ -4613,7 +4636,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         if (!data || data.success !== true) {
           const message = data && data.data && data.data.message
             ? String(data.data.message)
-            : "Unable to save cover.";
+            : prsText("cover_save_failed", "Unable to save cover.");
           window.alert(message);
           prsCoverLog("Save failed:", data);
           return null;
@@ -4625,7 +4648,7 @@ window.__PRS_DEBUG_COVER__ = Boolean(window.__PRS_DEBUG_COVER__);
         return normalizedSavedUrl;
       } catch (error) {
         prsCoverLog("Save request error:", error);
-        window.alert("Unable to save cover.");
+        window.alert(prsText("cover_save_failed", "Unable to save cover."));
         return null;
       }
     }

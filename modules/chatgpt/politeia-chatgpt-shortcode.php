@@ -26,6 +26,24 @@ function politeia_chatgpt_enqueue_scripts() {
 		[
 			'ajaxurl' => admin_url('admin-ajax.php'),
 			'nonce'   => wp_create_nonce('politeia-chatgpt-nonce'),
+			'strings' => [
+				'processing_text'          => __( 'Processing text…', 'politeia-chatgpt' ),
+				'processing_image'         => __( 'Analyzing image…', 'politeia-chatgpt' ),
+				'done_queued'              => __( 'Done. Queued candidates: %d', 'politeia-chatgpt' ),
+				'done_updated'             => __( 'Done. Results updated.', 'politeia-chatgpt' ),
+				'error_text'               => __( 'Error processing the text.', 'politeia-chatgpt' ),
+				'error_image'              => __( 'Error processing the image.', 'politeia-chatgpt' ),
+				'error_read_image'         => __( 'Error reading/sending the image.', 'politeia-chatgpt' ),
+				'network_error'            => __( 'Network error.', 'politeia-chatgpt' ),
+				'network_error_retry'      => __( 'Network error. Please try again.', 'politeia-chatgpt' ),
+				'unknown_response'         => __( 'Unknown server response.', 'politeia-chatgpt' ),
+				'unknown_response_not_json' => __( 'Unknown server response (not JSON).', 'politeia-chatgpt' ),
+				'upload_error'             => __( 'Error uploading the image. Check the allowed size.', 'politeia-chatgpt' ),
+				'openai_error'             => __( 'There was a problem contacting OpenAI.', 'politeia-chatgpt' ),
+				'no_books_detected'        => __( 'No books detected.', 'politeia-chatgpt' ),
+				'no_books_detected_unknown'=> __( 'No books detected (unrecognized response).', 'politeia-chatgpt' ),
+				'audio_disabled'           => __( 'Audio recording is not enabled yet.', 'politeia-chatgpt' ),
+			],
 		]
 	);
 }
@@ -36,7 +54,7 @@ add_action('wp_enqueue_scripts', 'politeia_chatgpt_enqueue_scripts');
 function politeia_chatgpt_shortcode_callback() {
 	// Requiere token para operar
 	if ( empty( get_option('politeia_chatgpt_api_token') ) ) {
-		return '<p>Error: AI functionality is not configured. Add an API token in PoliteiaGPT → General.</p>';
+		return '<p>' . esc_html__( 'Error: AI functionality is not configured. Add an API token in PoliteiaGPT → General.', 'politeia-chatgpt' ) . '</p>';
 	}
 
 	ob_start();
@@ -65,20 +83,20 @@ function politeia_chatgpt_shortcode_callback() {
                 .politeia-chat-confirm { margin-top:0px; }
         </style>
 
-        <div class="politeia-chat-container">
+		<div class="politeia-chat-container">
                 <div class="politeia-chat-input-bar">
 			<input type="file" id="politeia-file-upload" accept="image/*" style="display:none;" />
-			<label for="politeia-file-upload" class="politeia-icon-button" title="Upload an image of your books" aria-label="Upload an image of your books">
+			<label for="politeia-file-upload" class="politeia-icon-button" title="<?php echo esc_attr__( 'Upload an image of your books', 'politeia-chatgpt' ); ?>" aria-label="<?php echo esc_attr__( 'Upload an image of your books', 'politeia-chatgpt' ); ?>">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
 			</label>
 
-			<textarea id="politeia-chat-prompt" placeholder="Describe your books, record your voice, or upload a photo..." rows="1"></textarea>
+			<textarea id="politeia-chat-prompt" placeholder="<?php echo esc_attr__( 'Describe your books, record your voice, or upload a photo...', 'politeia-chatgpt' ); ?>" rows="1"></textarea>
 
-			<button class="politeia-icon-button" id="politeia-mic-btn" title="Record your voice describing the books">
+			<button class="politeia-icon-button" id="politeia-mic-btn" title="<?php echo esc_attr__( 'Record your voice describing the books', 'politeia-chatgpt' ); ?>" aria-label="<?php echo esc_attr__( 'Record your voice describing the books', 'politeia-chatgpt' ); ?>">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path><path d="M19 10v2a7 7 0 0 1-14 0v-2"></path><line x1="12" y1="19" x2="12" y2="23"></line><line x1="8" y1="23" x2="16" y2="23"></line></svg>
 			</button>
 
-			<button class="politeia-icon-button" id="politeia-submit-btn" title="Send text">
+			<button class="politeia-icon-button" id="politeia-submit-btn" title="<?php echo esc_attr__( 'Send text', 'politeia-chatgpt' ); ?>" aria-label="<?php echo esc_attr__( 'Send text', 'politeia-chatgpt' ); ?>">
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
 			</button>
 		</div>

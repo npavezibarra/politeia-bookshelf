@@ -13,12 +13,12 @@ class Politeia_Reading_Ajax_Handler {
 
         public static function save_session_note() {
                 if ( ! is_user_logged_in() ) {
-                        wp_send_json_error( 'Not allowed.', 401 );
+                        wp_send_json_error( __( 'Not allowed.', 'politeia-reading' ), 401 );
                 }
 
                 $nonce_valid = check_ajax_referer( 'prs_reading_nonce', 'nonce', false );
                 if ( ! $nonce_valid ) {
-                        wp_send_json_error( 'Invalid nonce.', 403 );
+                        wp_send_json_error( __( 'Invalid nonce.', 'politeia-reading' ), 403 );
                 }
 
                 global $wpdb;
@@ -34,7 +34,7 @@ class Politeia_Reading_Ajax_Handler {
                 $note_txt = trim( preg_replace( '/\xc2\xa0|\x{00A0}/u', ' ', wp_strip_all_tags( $note ) ) );
 
                 if ( ! $rs_id || ! $book_id || ! $user_id || '' === $note_txt ) {
-                        wp_send_json_error( 'Missing required fields.', 400 );
+                        wp_send_json_error( __( 'Missing required fields.', 'politeia-reading' ), 400 );
                 }
 
                 $session = $wpdb->get_row(
@@ -47,7 +47,7 @@ class Politeia_Reading_Ajax_Handler {
                 );
 
                 if ( ! $session ) {
-                        wp_send_json_error( 'Invalid session.', 404 );
+                        wp_send_json_error( __( 'Invalid session.', 'politeia-reading' ), 404 );
                 }
 
                 $existing = $wpdb->get_row(
@@ -74,7 +74,7 @@ class Politeia_Reading_Ajax_Handler {
                         );
 
                         if ( false === $updated ) {
-                                $error = $wpdb->last_error ? $wpdb->last_error : 'DB update failed.';
+                                $error = $wpdb->last_error ? $wpdb->last_error : __( 'DB update failed.', 'politeia-reading' );
                                 wp_send_json_error( $error, 500 );
                         }
 
@@ -100,7 +100,7 @@ class Politeia_Reading_Ajax_Handler {
                 );
 
                 if ( false === $inserted ) {
-                        $error = $wpdb->last_error ? $wpdb->last_error : 'DB insert failed.';
+                        $error = $wpdb->last_error ? $wpdb->last_error : __( 'DB insert failed.', 'politeia-reading' );
                         wp_send_json_error( $error, 500 );
                 }
 
@@ -114,12 +114,12 @@ class Politeia_Reading_Ajax_Handler {
 
         public static function get_session_note() {
                 if ( ! is_user_logged_in() ) {
-                        wp_send_json_error( 'Not allowed.', 401 );
+                        wp_send_json_error( __( 'Not allowed.', 'politeia-reading' ), 401 );
                 }
 
                 $nonce_valid = check_ajax_referer( 'prs_reading_nonce', 'nonce', false );
                 if ( ! $nonce_valid ) {
-                        wp_send_json_error( 'Invalid nonce.', 403 );
+                        wp_send_json_error( __( 'Invalid nonce.', 'politeia-reading' ), 403 );
                 }
 
                 global $wpdb;
@@ -132,7 +132,7 @@ class Politeia_Reading_Ajax_Handler {
                 $book_id = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
 
                 if ( ! $rs_id || ! $book_id || ! $user_id ) {
-                        wp_send_json_error( 'Missing required fields.', 400 );
+                        wp_send_json_error( __( 'Missing required fields.', 'politeia-reading' ), 400 );
                 }
 
                 $session = $wpdb->get_row(
@@ -145,7 +145,7 @@ class Politeia_Reading_Ajax_Handler {
                 );
 
                 if ( ! $session ) {
-                        wp_send_json_error( 'Invalid session.', 404 );
+                        wp_send_json_error( __( 'Invalid session.', 'politeia-reading' ), 404 );
                 }
 
                 $note_row = $wpdb->get_row(
@@ -171,12 +171,12 @@ class Politeia_Reading_Ajax_Handler {
 
         public static function save_note_emotions() {
                 if ( ! is_user_logged_in() ) {
-                        wp_send_json_error( 'Not allowed.', 401 );
+                        wp_send_json_error( __( 'Not allowed.', 'politeia-reading' ), 401 );
                 }
 
                 $nonce_valid = check_ajax_referer( 'prs_reading_nonce', 'nonce', false );
                 if ( ! $nonce_valid ) {
-                        wp_send_json_error( 'Invalid nonce.', 403 );
+                        wp_send_json_error( __( 'Invalid nonce.', 'politeia-reading' ), 403 );
                 }
 
                 global $wpdb;
@@ -187,7 +187,7 @@ class Politeia_Reading_Ajax_Handler {
                 $raw_emotions = isset( $_POST['emotions'] ) ? wp_unslash( $_POST['emotions'] ) : '';
 
                 if ( ! $note_id || ! $user_id ) {
-                        wp_send_json_error( 'Missing required fields.', 400 );
+                        wp_send_json_error( __( 'Missing required fields.', 'politeia-reading' ), 400 );
                 }
 
                 $note_row = $wpdb->get_row(
@@ -199,12 +199,12 @@ class Politeia_Reading_Ajax_Handler {
                 );
 
                 if ( ! $note_row ) {
-                        wp_send_json_error( 'Invalid note.', 404 );
+                        wp_send_json_error( __( 'Invalid note.', 'politeia-reading' ), 404 );
                 }
 
                 $decoded = json_decode( (string) $raw_emotions, true );
                 if ( ! is_array( $decoded ) ) {
-                        wp_send_json_error( 'Invalid emotions payload.', 400 );
+                        wp_send_json_error( __( 'Invalid emotions payload.', 'politeia-reading' ), 400 );
                 }
 
                 $allowed_keys = array( 'joy', 'sorrow', 'fear', 'fascination', 'anger', 'serenity', 'enlightenment' );
@@ -225,7 +225,7 @@ class Politeia_Reading_Ajax_Handler {
 
                 $emotions_json = wp_json_encode( $sanitized );
                 if ( false === $emotions_json ) {
-                        wp_send_json_error( 'Failed to encode emotions.', 500 );
+                        wp_send_json_error( __( 'Failed to encode emotions.', 'politeia-reading' ), 500 );
                 }
 
                 $updated = $wpdb->update(
@@ -240,7 +240,7 @@ class Politeia_Reading_Ajax_Handler {
                 );
 
                 if ( false === $updated ) {
-                        $error = $wpdb->last_error ? $wpdb->last_error : 'DB update failed.';
+                        $error = $wpdb->last_error ? $wpdb->last_error : __( 'DB update failed.', 'politeia-reading' );
                         wp_send_json_error( $error, 500 );
                 }
 
