@@ -190,6 +190,7 @@ January 13, 2026, 18:22 UTC
 
 January 14, 2026, 08:14 UTC
 1. Replaced toggle buttons with <a> elements; updated handlers and styles for My Plans calendar/list toggle.
+2. Updated My Plans list view to show per-session page ranges and recalculate when sessions change.
 
 ------
 

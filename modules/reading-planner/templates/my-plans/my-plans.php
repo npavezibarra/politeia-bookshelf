@@ -76,12 +76,12 @@ $is_owner       = $requested_user
 	.prs-plan-subtitle {
 		display: block;
 		color: #a0a0a0;
-		font-size: 18px;
+		font-size: 16px;
 		font-weight: 500;
 	}
 
 	.prs-plan-toggle {
-		margin: 0 24px 24px;
+		margin: 0 24px 15px;
 		width: calc(100% - 48px);
 		display: flex;
 		align-items: center;
@@ -92,10 +92,19 @@ $is_owner       = $requested_user
 		border-radius: var(--prs-radius);
 		cursor: pointer;
 		transition: background 0.2s ease;
+		appearance: none;
+		-webkit-appearance: none;
+		outline: none;
 	}
 
-	.prs-plan-toggle:hover {
+	.prs-plan-toggle:hover,
+	.prs-plan-toggle:focus,
+	.prs-plan-toggle:focus-visible,
+	.prs-plan-toggle:active {
 		background: var(--prs-subtle-gray);
+		border-color: #e2e2e2;
+		box-shadow: none;
+		outline: none;
 	}
 
 	.prs-plan-toggle-icon {
@@ -149,7 +158,7 @@ $is_owner       = $requested_user
 	}
 
 	.prs-calendar-card {
-		margin-top: 16px;
+		margin-top: 0px;
 		padding: 24px;
 		background: var(--prs-subtle-gray);
 		border: 1px solid var(--prs-light-gray);
@@ -184,8 +193,8 @@ $is_owner       = $requested_user
 	}
 
 	.prs-calendar-nav-btn {
-		width: 28px;
-		height: 28px;
+		width: 20px;
+		height: 20px;
 		border-radius: 50%;
 		border: 1px solid #d6d6d6;
 		background: #ffffff;
@@ -398,6 +407,7 @@ $is_owner       = $requested_user
 		border-radius: var(--prs-radius);
 		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
 		transition: border 0.2s ease;
+		margin-bottom: 10px;
 	}
 
 	.prs-list-item:hover {
@@ -453,7 +463,7 @@ $is_owner       = $requested_user
 	}
 
 	.prs-progress {
-		background: #f6f6f6;
+		background: #ffffff;
 		padding: 24px 32px 32px;
 	}
 
@@ -605,19 +615,30 @@ $is_owner       = $requested_user
 				? __( 'Plan: More Pages', 'politeia-reading' )
 				: __( 'Reading Plan', 'politeia-reading' );
 			$goal_kind = $goal && ! empty( $goal['goal_kind'] ) ? (string) $goal['goal_kind'] : '';
+			$progress = 0;
+			$goal_book_id = $goal && ! empty( $goal['book_id'] ) ? (int) $goal['book_id'] : 0;
+			$goal_target = $goal && ! empty( $goal['target_value'] ) ? (int) $goal['target_value'] : 0;
+			$total_pages = $goal_target;
+			if ( $goal_book_id && $total_pages <= 0 ) {
+				$ub_pages = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT pages FROM {$wpdb->prefix}politeia_user_books WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+						$user_id,
+						$goal_book_id
+					)
+				);
+				$total_pages = $ub_pages ? (int) $ub_pages : 0;
+			}
+
 			if ( 'complete_books' === $goal_kind ) {
 				$badge = sprintf(
 					/* translators: 1: goal label, 2: page count, 3: pages label. */
 					__( 'Goal: %1$s %2$s %3$s', 'politeia-reading' ),
 					__( 'Finish Book', 'politeia-reading' ),
-					(int) $goal_target,
+					(int) $total_pages,
 					__( 'pages', 'politeia-reading' )
 				);
 			}
-
-			$progress = 0;
-			$goal_book_id = $goal && ! empty( $goal['book_id'] ) ? (int) $goal['book_id'] : 0;
-			$goal_target = $goal && ! empty( $goal['target_value'] ) ? (int) $goal['target_value'] : 0;
 			$subtitle = '';
 			if ( $goal_book_id ) {
 				$subtitle = (string) $wpdb->get_var(
@@ -630,7 +651,7 @@ $is_owner       = $requested_user
 					)
 				);
 			}
-			if ( $goal_book_id && $goal_target > 0 ) {
+			if ( $goal_book_id && $total_pages > 0 ) {
 				$total_read = (int) $wpdb->get_var(
 					$wpdb->prepare(
 						"SELECT SUM(
@@ -646,7 +667,7 @@ $is_owner       = $requested_user
 						$goal_book_id
 					)
 				);
-				$progress = min( 100, (int) floor( ( $total_read / $goal_target ) * 100 ) );
+				$progress = min( 100, (int) floor( ( $total_read / $total_pages ) * 100 ) );
 			}
 
 			$cards[] = array(
@@ -661,7 +682,7 @@ $is_owner       = $requested_user
 				'start_offset' => $start_offset,
 				'selected'     => $selected,
 				'session_dates' => $session_dates,
-				'total_pages'  => $goal_target,
+				'total_pages'  => $total_pages,
 				'progress'     => $progress,
 			);
 		}
@@ -701,7 +722,7 @@ $is_owner       = $requested_user
 							</svg>
 						</div>
 						<div>
-							<span class="prs-plan-toggle-label"><?php esc_html_e( 'See Session Calendar', 'politeia-reading' ); ?></span>
+							<span class="prs-plan-toggle-label"><?php esc_html_e( 'See Session Calendar', 'politeia-reading' ); ?></span><br>
 							<span class="prs-plan-toggle-date"><?php echo esc_html( $card['month_range'] ); ?></span>
 						</div>
 						<svg class="prs-chevron" data-role="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1062,6 +1083,10 @@ $is_owner       = $requested_user
 				listContainer.innerHTML = '';
 				const monthSessions = getMonthSessions(currentMonthKey);
 				const sorted = monthSessions.map((dateStr) => parseInt(dateStr.split('-')[2], 10));
+				const sessionCount = sorted.length;
+				const pagesPerSession = sessionCount > 0 && totalPages > 0
+					? Math.ceil(totalPages / sessionCount)
+					: 0;
 
 				sorted.forEach((day, index) => {
 					const item = document.createElement('div');
@@ -1078,7 +1103,13 @@ $is_owner       = $requested_user
 
 					const title = document.createElement('span');
 					title.className = 'prs-list-title';
-					title.textContent = strings.sessionLabel;
+					if (pagesPerSession > 0) {
+						const startPage = (index * pagesPerSession) + 1;
+						const endPage = Math.min(startPage + pagesPerSession - 1, totalPages);
+						title.textContent = `${startPage}-${endPage}`;
+					} else {
+						title.textContent = strings.sessionLabel;
+					}
 					left.appendChild(title);
 
 					const date = document.createElement('span');
