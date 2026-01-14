@@ -166,6 +166,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 			<?php endforeach; ?>
 		</div>
 	<?php else : ?>
-		<p class="prs-no-sessions"><?php esc_html_e( 'No sessions recorded for this book yet.', 'politeia-reading' ); ?></p>
+		<p class="prs-no-sessions"><?php esc_html_e( 'No session registered yet.', 'politeia-reading' ); ?></p>
+		<?php
+		if ( isset( $book->id, $ub->id ) ) {
+			$shortcode_bits = array(
+				'politeia_reading_plan',
+				'user_book_id="' . (int) $ub->id . '"',
+				'book_id="' . (int) $book->id . '"',
+			);
+
+			if ( ! empty( $book->title ) ) {
+				$shortcode_bits[] = 'book_title="' . esc_attr( (string) $book->title ) . '"';
+			}
+
+			if ( isset( $book_authors ) && '' !== $book_authors ) {
+				$shortcode_bits[] = 'book_author="' . esc_attr( (string) $book_authors ) . '"';
+			}
+
+			if ( ! empty( $ub->pages ) ) {
+				$shortcode_bits[] = 'book_pages="' . (int) $ub->pages . '"';
+			}
+
+			if ( isset( $cover_url ) && '' !== $cover_url ) {
+				$shortcode_bits[] = 'book_cover="' . esc_url( (string) $cover_url ) . '"';
+			}
+
+			echo do_shortcode( '[' . implode( ' ', $shortcode_bits ) . ']' );
+		}
+		?>
 	<?php endif; ?>
 </section>

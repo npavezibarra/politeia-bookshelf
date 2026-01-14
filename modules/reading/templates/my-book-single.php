@@ -1005,7 +1005,7 @@ wp_add_inline_script(
                                 </tbody>
                         </table>
                 <?php else : ?>
-                        <p class="prs-no-sessions"><?php esc_html_e( 'No sessions recorded for this book yet.', 'politeia-reading' ); ?></p>
+                        <p class="prs-no-sessions"><?php esc_html_e( 'No session registered yet.', 'politeia-reading' ); ?></p>
                 <?php endif; ?>
         </section>
 

@@ -5,6 +5,7 @@
 
   const qs = (selector) => overlay.querySelector(selector);
   const RP = window.PoliteiaReadingPlan || {};
+  const PREFILL_BOOK = RP.prefillBook || null;
   const STRINGS = RP.strings || {};
   const t = (key, fallback) => (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
   const format = (key, fallback, value, value2) => {
@@ -36,6 +37,17 @@
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+
+  const pad2 = (value) => String(value).padStart(2, '0');
+  const formatDateTime = (date, hours, minutes) => {
+    const d = new Date(date);
+    d.setHours(hours, minutes, 0, 0);
+    return [
+      d.getFullYear(),
+      pad2(d.getMonth() + 1),
+      pad2(d.getDate()),
+    ].join('-') + ' ' + [pad2(d.getHours()), pad2(d.getMinutes()), '00'].join(':');
+  };
 
   const assetState = {
     loading: null,
@@ -145,22 +157,39 @@
     { id: 'form_habit', title: t('goal_habit_title', 'Build a habit'), description: t('goal_habit_desc', 'Increase the frequency and consistency of your reading.'), icon: 'calendar' },
   ];
 
-  const getInitialState = () => ({
-    mainStep: 1,
-    isBaselineActive: false,
-    baselineIndex: 0,
-    subStep: 0,
-    formData: {
-      goals: [],
-      baselines: {},
-      books: [],
-      exigencia: null,
-    },
-    calculatedPlan: { pps: 0, durationWeeks: 0, sessions: [], type: 'ccl' },
-    currentMonthOffset: 0,
-    currentViewMode: 'calendar',
-    listCurrentPage: 0,
-  });
+  const normalizePrefillBook = (data) => {
+    if (!data || (!data.title && !data.bookId && !data.userBookId)) return null;
+    const parsedPages = parseInt(data.pages, 10);
+    return {
+      id: data.bookId || Date.now(),
+      bookId: data.bookId || null,
+      userBookId: data.userBookId || null,
+      title: data.title || '',
+      author: data.author || '',
+      pages: Number.isFinite(parsedPages) ? parsedPages : 0,
+      cover: data.cover || '',
+    };
+  };
+
+  const getInitialState = () => {
+    const prefillBook = normalizePrefillBook(PREFILL_BOOK);
+    return {
+      mainStep: 1,
+      isBaselineActive: false,
+      baselineIndex: 0,
+      subStep: 0,
+      formData: {
+        goals: [],
+        baselines: {},
+        books: prefillBook ? [prefillBook] : [],
+        exigencia: null,
+      },
+      calculatedPlan: { pps: 0, durationWeeks: 0, sessions: [], type: 'ccl' },
+      currentMonthOffset: 0,
+      currentViewMode: 'calendar',
+      listCurrentPage: 0,
+    };
+  };
 
   let state = getInitialState();
 
@@ -918,6 +947,89 @@
     state.calculatedPlan.sessions = sorted;
   }
 
+  function buildBaselineMetrics() {
+    const metrics = {};
+    const baselines = state.formData.baselines || {};
+    if (baselines.complete_books?.value) {
+      metrics.books_per_year = String(baselines.complete_books.value);
+    }
+    if (baselines.complete_books?.details?.length) {
+      metrics.book_pages_ranges = JSON.stringify(baselines.complete_books.details);
+    }
+    if (baselines.form_habit?.value) {
+      metrics.sessions_per_month = String(baselines.form_habit.value);
+    }
+    if (baselines.form_habit?.time) {
+      metrics.minutes_per_session = String(baselines.form_habit.time);
+    }
+    if (baselines.form_habit?.intensity) {
+      metrics.habit_intensity = String(baselines.form_habit.intensity);
+    }
+    return metrics;
+  }
+
+  function buildGoals() {
+    const goals = [];
+    const selectedGoals = state.formData.goals || [];
+    const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
+
+    if (selectedGoals.includes('complete_books')) {
+      const totalPages = parseInt(activeBook?.pages, 10) || state.calculatedPlan.totalPages || 0;
+      const targetValue = totalPages > 0 ? totalPages : (parseInt(state.calculatedPlan.pps, 10) || 0);
+      const metric = totalPages > 0 ? 'pages_total' : 'pages_per_session';
+      const period = totalPages > 0 ? 'plan' : 'session';
+      if (targetValue > 0) {
+        goals.push({
+          goal_kind: 'complete_books',
+          metric,
+          target_value: targetValue,
+          period,
+          book_id: activeBook?.bookId || null,
+        });
+      }
+    }
+
+    if (selectedGoals.includes('form_habit')) {
+      const sessionsPerWeek = EXIGENCIA_SESSIONS[state.formData.exigencia] || 0;
+      if (sessionsPerWeek > 0) {
+        goals.push({
+          goal_kind: 'form_habit',
+          metric: 'sessions_per_week',
+          target_value: sessionsPerWeek,
+          period: 'week',
+        });
+      }
+    }
+
+    return goals;
+  }
+
+  function buildPlannedSessions() {
+    const sessions = state.calculatedPlan.sessions ? state.calculatedPlan.sessions.slice() : [];
+    sessions.sort((a, b) => a.date - b.date);
+    const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
+    const totalPages = parseInt(activeBook?.pages, 10) || state.calculatedPlan.totalPages || 0;
+    const pps = parseInt(state.calculatedPlan.pps, 10) || 0;
+
+    return sessions.map((session, idx) => {
+      const planned = {
+        planned_start_datetime: formatDateTime(session.date, 0, 0),
+        planned_end_datetime: formatDateTime(session.date, 0, 30),
+        planned_start_page: null,
+        planned_end_page: null,
+      };
+
+      if (totalPages > 0 && pps > 0) {
+        const startPage = (idx * pps) + 1;
+        const endPage = Math.min(startPage + pps - 1, totalPages);
+        planned.planned_start_page = startPage;
+        planned.planned_end_page = endPage;
+      }
+
+      return planned;
+    });
+  }
+
   function updateCargaLabel() {
     if (state.calculatedPlan.type === 'ccl') {
       qs('#propuesta-carga').innerText = format('suggested_load', 'Suggested Load: %s PAGES / SESSION', state.calculatedPlan.pps);
@@ -1108,6 +1220,15 @@
     state = getInitialState();
     formContainer.classList.remove('hidden');
     summaryContainer.classList.add('hidden');
+    const successEl = qs('#reading-plan-success');
+    const errorEl = qs('#reading-plan-error');
+    const acceptBtn = qs('#accept-button');
+    if (successEl) successEl.classList.add('hidden');
+    if (errorEl) errorEl.classList.add('hidden');
+    if (acceptBtn) {
+      acceptBtn.disabled = false;
+      acceptBtn.classList.remove('opacity-60', 'pointer-events-none');
+    }
     render();
   }
 
@@ -1189,6 +1310,74 @@
     state.mainStep = 1;
     state.isBaselineActive = false;
     render();
+  });
+
+  qs('#accept-button')?.addEventListener('click', () => {
+    const successEl = qs('#reading-plan-success');
+    const errorEl = qs('#reading-plan-error');
+    const acceptBtn = qs('#accept-button');
+    if (!acceptBtn || acceptBtn.disabled) return;
+
+    const goals = buildGoals();
+    const baselines = buildBaselineMetrics();
+    if (!goals.length || !Object.keys(baselines).length) {
+      if (errorEl) {
+        errorEl.textContent = t('plan_create_failed', 'Could not create the plan. Please try again.');
+        errorEl.classList.remove('hidden');
+      }
+      if (successEl) successEl.classList.add('hidden');
+      return;
+    }
+
+    const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
+    const planName = activeBook?.title || t('plan_title_default', 'Plan Title');
+    const payload = {
+      name: planName,
+      plan_type: state.calculatedPlan.type || 'custom',
+      status: 'accepted',
+      goals,
+      baselines,
+      planned_sessions: buildPlannedSessions(),
+    };
+
+    acceptBtn.disabled = true;
+    acceptBtn.classList.add('opacity-60', 'pointer-events-none');
+    if (errorEl) errorEl.classList.add('hidden');
+
+    fetch(RP.restUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-WP-Nonce': RP.nonce,
+      },
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (err) {
+          data = {};
+        }
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'request_failed');
+        }
+        return data;
+      })
+      .then(() => {
+        if (successEl) {
+          successEl.textContent = t('plan_created', 'Plan created successfully.');
+          successEl.classList.remove('hidden');
+        }
+      })
+      .catch(() => {
+        if (errorEl) {
+          errorEl.textContent = t('plan_create_failed', 'Could not create the plan. Please try again.');
+          errorEl.classList.remove('hidden');
+        }
+        acceptBtn.disabled = false;
+        acceptBtn.classList.remove('opacity-60', 'pointer-events-none');
+      });
   });
 
   resetForm();

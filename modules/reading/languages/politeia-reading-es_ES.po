@@ -672,8 +672,8 @@ msgstr "No se recibieron datos de imagen."
 msgid "No sessions"
 msgstr "Sin sesiones"
 
-msgid "No sessions recorded for this book yet."
-msgstr "Aún no hay sesiones registradas para este libro."
+msgid "No session registered yet."
+msgstr "Aún no hay sesiones registradas."
 
 msgid "Not In Shelf"
 msgstr "No en estantería"
@@ -842,6 +842,15 @@ msgstr "Eliminar portada del libro"
 
 msgid "Remove session"
 msgstr "Eliminar sesión"
+
+msgid "sessions"
+msgstr "sesiones"
+
+msgid "pages"
+msgstr "páginas"
+
+msgid "Goal: %1$s %2$s %3$s"
+msgstr "Objetivo: %1$s %2$s %3$s"
 
 msgid "Remove this book cover?"
 msgstr "¿Eliminar esta portada?"
@@ -1230,9 +1239,6 @@ msgstr "o haz clic para subir"
 msgid "or other:"
 msgstr "u otro:"
 
-msgid "pages"
-msgstr "páginas"
-
 msgid "pages %1$s - %2$s"
 msgstr "páginas %1$s - %2$s"
 
@@ -1259,7 +1265,7 @@ msgid_plural "%d books"
 msgstr[0] "%d libro"
 msgstr[1] "%d libros"
 
-msgid "It\'s the \"magic number\" for making progress without it feeling like a burden."
+msgid "It's the \"magic number\" for making progress without it feeling like a burden."
 msgstr "Es el “número mágico” para avanzar sin que se sienta como una carga."
 
 msgid "Cannot change from %1$s to %2$s."
@@ -1292,14 +1298,45 @@ msgstr "Mis estadisticas de lectura"
 msgid "Plan: More Pages"
 msgstr "Plan: Mas paginas"
 
+msgid "Plan created successfully."
+msgstr "Plan creado correctamente."
+
+msgid "Could not create the plan. Please try again."
+msgstr "No se pudo crear el plan. Por favor, intenta de nuevo."
+
+msgid "Reading Plan"
+msgstr "Plan de lectura"
+
+msgid "Finish Book"
+msgstr "Terminar libro"
+
+msgid "Goal: %s"
+msgstr "Objetivo: %s"
+
+msgid "Plan created"
+msgstr "Plan creado"
+
+msgid "No plans yet."
+msgstr "Aun no hay planes."
+
+msgid "See Session Calendar"
+msgstr "Ver calendario de sesiones"
+
+msgid "in %d month"
+msgid_plural "in %d months"
+msgstr[0] "en %d mes"
+msgstr[1] "en %d meses"
+
+msgid "in %d week"
+msgid_plural "in %d weeks"
+msgstr[0] "en %d semana"
+msgstr[1] "en %d semanas"
+
 msgid "The Iliad by Homer"
 msgstr "La Iliada de Homero"
 
 msgid "in 1 month"
 msgstr "en 1 mes"
-
-msgid "October"
-msgstr "Octubre"
 
 msgid "October 2023"
 msgstr "Octubre 2023"
@@ -1309,9 +1346,6 @@ msgstr "La Odisea de Homero"
 
 msgid "in 2 months"
 msgstr "en 2 meses"
-
-msgid "November"
-msgstr "Noviembre"
 
 msgid "November 2023"
 msgstr "Noviembre 2023"

@@ -8,11 +8,44 @@ if ( ! defined( 'ABSPATH' ) ) {
 /**
  * Render the reading plan launch button and modal root.
  *
+ * @param array $atts Shortcode attributes.
  * @return string
  */
-function render_reading_plan_shortcode(): string {
+function render_reading_plan_shortcode( $atts = array() ): string {
 	if ( ! is_user_logged_in() ) {
 		return '';
+	}
+
+	$atts = shortcode_atts(
+		array(
+			'user_book_id' => 0,
+			'book_id'      => 0,
+			'book_title'   => '',
+			'book_author'  => '',
+			'book_pages'   => 0,
+			'book_cover'   => '',
+		),
+		$atts,
+		'politeia_reading_plan'
+	);
+
+	$user_book_id = absint( $atts['user_book_id'] );
+	$book_id      = absint( $atts['book_id'] );
+	$book_title   = sanitize_text_field( (string) $atts['book_title'] );
+	$book_author  = sanitize_text_field( (string) $atts['book_author'] );
+	$book_pages   = (int) $atts['book_pages'];
+	$book_cover   = esc_url_raw( (string) $atts['book_cover'] );
+	$prefill_book = null;
+
+	if ( $user_book_id || $book_id || $book_title || $book_author || $book_pages || $book_cover ) {
+		$prefill_book = array(
+			'userBookId' => $user_book_id,
+			'bookId'     => $book_id,
+			'title'      => $book_title,
+			'author'     => $book_author,
+			'pages'      => $book_pages,
+			'cover'      => $book_cover,
+		);
 	}
 
 	$script_handle = 'politeia-reading-plan-app';
@@ -39,6 +72,7 @@ function render_reading_plan_shortcode(): string {
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'prs_canonical_title_search' ),
 			),
+			'prefillBook' => $prefill_book,
 			'strings' => array(
 				'month_names'        => array(
 					__( 'January', 'politeia-reading' ),
@@ -64,6 +98,8 @@ function render_reading_plan_shortcode(): string {
 				'sessions_label'     => __( 'Sessions', 'politeia-reading' ),
 				'drag_to_adjust'     => __( 'drag to another date to adjust', 'politeia-reading' ),
 				'accept_plan'        => __( 'Accept Plan', 'politeia-reading' ),
+				'plan_created'       => __( 'Plan created successfully.', 'politeia-reading' ),
+				'plan_create_failed' => __( 'Could not create the plan. Please try again.', 'politeia-reading' ),
 				'adjust_plan'        => __( 'Adjust Plan Details', 'politeia-reading' ),
 				'previous_month'     => __( 'Previous Month', 'politeia-reading' ),
 				'next_month'         => __( 'Next Month', 'politeia-reading' ),
@@ -215,9 +251,11 @@ function render_reading_plan_shortcode(): string {
 					</div>
 				</div>
 				<div class="mt-8 flex flex-col items-center space-y-4">
+					<div id="reading-plan-success" class="hidden text-[11px] font-medium uppercase tracking-widest text-[#2F7D32]"><?php esc_html_e( 'Plan created successfully.', 'politeia-reading' ); ?></div>
 					<button id="accept-button" class="btn-primary w-full py-4 rounded-custom font-medium uppercase tracking-widest text-sm shadow-lg">
 						<?php esc_html_e( 'Accept Plan', 'politeia-reading' ); ?>
 					</button>
+					<div id="reading-plan-error" class="hidden text-[11px] font-medium uppercase tracking-widest text-[#B42318]"><?php esc_html_e( 'Could not create the plan. Please try again.', 'politeia-reading' ); ?></div>
 					<button id="adjust-btn" class="text-[10px] font-medium uppercase text-[#A8A8A8] hover:text-black transition-colors tracking-widest">
 						<?php esc_html_e( 'Adjust Plan Details', 'politeia-reading' ); ?>
 					</button>

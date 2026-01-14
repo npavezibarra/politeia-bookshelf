@@ -188,6 +188,9 @@ January 13, 2026, 18:22 UTC
 2. Deleted the reading planner `node_modules` directory to keep the module lean.
 3. Cleaned unused React bundle path variables from the reading planner shortcode enqueue.
 
+January 14, 2026, 08:14 UTC
+1. Replaced toggle buttons with <a> elements; updated handlers and styles for My Plans calendar/list toggle.
+
 ------
 
 TO DO:
