@@ -262,12 +262,69 @@ class Politeia_Reading_Sessions {
 			}
 		}
 
+		self::mark_planned_session_accomplished( $user_id, $book_id, $start_gmt );
+
 		self::ok(
 			array(
 				'session_id' => (int) $session_id,
 				'start_time' => $start_gmt,
 				'end_time'   => $now_gmt,
 				'coverage'   => $coverage, // { covered, total, full }
+			)
+		);
+	}
+
+	/**
+	 * Mark matching planned sessions as accomplished for the reading session date.
+	 *
+	 * @param int    $user_id
+	 * @param int    $book_id
+	 * @param string $start_gmt
+	 * @return void
+	 */
+	private static function mark_planned_session_accomplished( $user_id, $book_id, $start_gmt ) {
+		if ( empty( $start_gmt ) ) {
+			return;
+		}
+
+		$dt = \DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', (string) $start_gmt, new \DateTimeZone( 'UTC' ) );
+		if ( ! $dt ) {
+			return;
+		}
+
+		$day_key = $dt->setTimezone( wp_timezone() )->format( 'Y-m-d' );
+
+		global $wpdb;
+		$plans_table    = $wpdb->prefix . 'politeia_plans';
+		$goals_table    = $wpdb->prefix . 'politeia_plan_goals';
+		$sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
+
+		$plan_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT p.id
+				FROM {$plans_table} p
+				INNER JOIN {$goals_table} g ON g.plan_id = p.id
+				WHERE p.user_id = %d AND g.book_id = %d",
+				$user_id,
+				$book_id
+			)
+		);
+
+		if ( empty( $plan_ids ) ) {
+			return;
+		}
+
+		$placeholders = implode( ',', array_fill( 0, count( $plan_ids ), '%d' ) );
+		$params       = array_merge( $plan_ids, array( $day_key ) );
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$sessions_table}
+				SET status = 'accomplished'
+				WHERE plan_id IN ({$placeholders})
+				AND DATE(planned_start_datetime) = %s
+				AND status = 'planned'",
+				...$params
 			)
 		);
 	}

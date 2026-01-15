@@ -192,6 +192,12 @@ January 14, 2026, 08:14 UTC
 1. Replaced toggle buttons with <a> elements; updated handlers and styles for My Plans calendar/list toggle.
 2. Updated My Plans list view to show per-session page ranges and recalculate when sessions change.
 
+January 15, 2026, 17:32 UTC
+1. Implemented plan session status handling for complete_books (missed/accomplished), 24-hour default windows, and updated plan pages to use current user book page counts.
+2. Updated My Plans calendar/list UI: status-based colors, locked states, derived numbering, recalculated list content, and multi-session-per-day rendering with actual ranges and status labels.
+3. Added the session recorder play button and modal to My Plans, matching single book ver-2 styling and behavior.
+4. Updated session recorder button styling and increased reading session note limit to 3000 characters (UI, JS, and translations).
+
 ------
 
 TO DO:

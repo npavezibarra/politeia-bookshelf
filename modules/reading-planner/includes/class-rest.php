@@ -152,6 +152,12 @@ class Rest {
 					return new WP_REST_Response( array( 'error' => 'invalid_session' ), 400 );
 				}
 
+				$start_dt = date_create_immutable( $planned_start, wp_timezone() );
+				if ( $start_dt ) {
+					$planned_start = $start_dt->setTime( 0, 0, 0 )->format( 'Y-m-d H:i:s' );
+					$planned_end   = $start_dt->setTime( 23, 59, 59 )->format( 'Y-m-d H:i:s' );
+				}
+
 				$session_inserted = $wpdb->insert(
 					$sessions_table,
 					array(

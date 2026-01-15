@@ -1173,8 +1173,8 @@ msgstr "No puedes iniciar una sesión: el libro no está en tu posesión (Presta
 msgid "You have not taken any notes on this book yet"
 msgstr "Aún no has tomado notas sobre este libro"
 
-msgid "You have reached the 1000 character limit."
-msgstr "Has alcanzado el límite de 1000 caracteres."
+msgid "You have reached the 3000 character limit."
+msgstr "Has alcanzado el límite de 3000 caracteres."
 
 msgid "You must be logged in to add books."
 msgstr "Debes iniciar sesión para agregar libros."
@@ -1376,3 +1376,9 @@ msgstr "Lista"
 
 msgid "Reading Completed"
 msgstr "Lectura completada"
+
+msgid "Missed"
+msgstr "Perdida"
+
+msgid "Completed"
+msgstr "Completada"

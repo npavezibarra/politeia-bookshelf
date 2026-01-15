@@ -214,7 +214,7 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
       ? (editor.getAttribute("data-placeholder") || editor.getAttribute("placeholder") || "")
       : "";
     const limitWarning = notePanel?.querySelector(".note-limit-warning");
-    const MAX_NOTE_CHARACTERS = 1000;
+    const MAX_NOTE_CHARACTERS = 3000;
     let savedRange = null;
     let lastValidEditorHtml = editor ? editor.innerHTML : "";
     let lastValidSelection = null;

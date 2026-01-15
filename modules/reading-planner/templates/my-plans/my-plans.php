@@ -13,6 +13,8 @@ $is_owner       = $requested_user
 ?>
 
 <style>
+	@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
 	:root {
 		--prs-black: #000000;
 		--prs-deep-gray: #333333;
@@ -73,11 +75,95 @@ $is_owner       = $requested_user
 		line-height: 1.2;
 	}
 
+	.prs-plan-title-row {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+	}
+
 	.prs-plan-subtitle {
 		display: block;
 		color: #a0a0a0;
 		font-size: 16px;
 		font-weight: 500;
+		margin-top: -30px;
+	}
+
+	.material-symbols-outlined {
+		font-family: 'Material Symbols Outlined';
+		font-weight: normal;
+		font-style: normal;
+		line-height: 1;
+		text-transform: none;
+		display: inline-block;
+		white-space: nowrap;
+		word-wrap: normal;
+		direction: ltr;
+		font-feature-settings: 'liga';
+		-webkit-font-feature-settings: 'liga';
+		-webkit-font-smoothing: antialiased;
+	}
+
+	.prs-session-recorder-trigger {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		cursor: pointer;
+		color: #111827;
+		font-size: 35px;
+		line-height: 1;
+		font-variation-settings: "FILL" 1, "wght" 600, "opsz" 24;
+	}
+
+	.prs-session-modal {
+		display: none;
+		position: fixed;
+		inset: 0;
+		background: rgba(0, 0, 0, 0.6);
+		z-index: 9999;
+		align-items: center;
+		justify-content: center;
+		padding: 24px;
+	}
+
+	.prs-session-modal.is-active {
+		display: flex;
+	}
+
+	.prs-session-modal__content {
+		position: relative;
+		max-width: 600px;
+		width: 100%;
+		max-height: 90vh;
+		overflow-y: auto;
+		background: #ffffff;
+		padding: 24px;
+		border: 1px solid #dddddd;
+		border-radius: 12px;
+	}
+
+	.prs-session-modal__close {
+		position: absolute;
+		top: 12px;
+		right: 12px;
+		border: none;
+		background: none;
+		color: #000000;
+		cursor: pointer;
+		font-size: 20px;
+		line-height: 1;
+		padding: 4px;
+		outline: none;
+		box-shadow: none;
+	}
+
+	.prs-session-modal__close:hover,
+	.prs-session-modal__close:focus,
+	.prs-session-modal__close:focus-visible {
+		background: none;
+		box-shadow: none;
+		color: #000000;
+		outline: none;
 	}
 
 	.prs-plan-toggle {
@@ -328,6 +414,20 @@ $is_owner       = $requested_user
 		user-select: none;
 	}
 
+	.prs-day-selected.is-missed {
+		background: #cfcfcf;
+		color: #666666;
+		box-shadow: none;
+		cursor: default;
+	}
+
+	.prs-day-selected.is-accomplished {
+		background: #000000;
+		color: var(--prs-gold);
+		box-shadow: none;
+		cursor: default;
+	}
+
 	.prs-day-remove {
 		position: absolute;
 		top: 0px;
@@ -425,6 +525,21 @@ $is_owner       = $requested_user
 		font-size: 10px;
 		font-weight: 700;
 		border-radius: var(--prs-radius);
+	}
+
+	.prs-list-badge.is-missed {
+		background: #cfcfcf;
+		color: #666666;
+	}
+
+	.prs-list-badge.is-accomplished {
+		background: #000000;
+		color: var(--prs-gold);
+	}
+
+	.prs-list-badge.is-planned {
+		background: var(--prs-gold);
+		color: #ffffff;
 	}
 
 	.prs-list-title {
@@ -534,10 +649,44 @@ $is_owner       = $requested_user
 				),
 				ARRAY_A
 			);
+			$goal_kind = $goal && ! empty( $goal['goal_kind'] ) ? (string) $goal['goal_kind'] : '';
+			$goal_book_id = $goal && ! empty( $goal['book_id'] ) ? (int) $goal['book_id'] : 0;
+			$goal_target = $goal && ! empty( $goal['target_value'] ) ? (int) $goal['target_value'] : 0;
+			$total_pages = $goal_target;
+			if ( $goal_book_id ) {
+				$ub_pages = $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT pages FROM {$wpdb->prefix}politeia_user_books WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+						$user_id,
+						$goal_book_id
+					)
+				);
+				if ( $ub_pages ) {
+					$total_pages = (int) $ub_pages;
+				}
+			}
+			$today_key = current_time( 'Y-m-d' );
+
+			if ( 'complete_books' === $goal_kind ) {
+				$wpdb->query(
+					$wpdb->prepare(
+						"UPDATE {$sessions_table}
+						SET status = 'missed'
+						WHERE plan_id = %d
+						AND status = 'planned'
+						AND DATE(planned_start_datetime) < %s",
+						$plan_id,
+						$today_key
+					)
+				);
+			}
 
 			$sessions = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT planned_start_datetime FROM {$sessions_table} WHERE plan_id = %d ORDER BY planned_start_datetime ASC",
+					"SELECT planned_start_datetime, planned_start_page, planned_end_page, status
+					FROM {$sessions_table}
+					WHERE plan_id = %d
+					ORDER BY planned_start_datetime ASC",
 					$plan_id
 				),
 				ARRAY_A
@@ -583,7 +732,52 @@ $is_owner       = $requested_user
 			$month_start_ts = strtotime( date( 'Y-m-01', $month_ts ) );
 			$start_offset = (int) date( 'w', $month_start_ts );
 
+			$actual_ranges = array();
+			$actual_sessions_payload = array();
+			if ( $goal_book_id ) {
+				$actual_sessions = $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT start_time, start_page, end_page
+						FROM {$reading_sessions_table}
+						WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL",
+						$user_id,
+						$goal_book_id
+					),
+					ARRAY_A
+				);
+				if ( $actual_sessions ) {
+					foreach ( $actual_sessions as $actual_session ) {
+						if ( empty( $actual_session['start_time'] ) ) {
+							continue;
+						}
+						$start_page = isset( $actual_session['start_page'] ) ? (int) $actual_session['start_page'] : 0;
+						$end_page = isset( $actual_session['end_page'] ) ? (int) $actual_session['end_page'] : 0;
+						if ( $start_page <= 0 || $end_page <= 0 || $end_page < $start_page ) {
+							continue;
+						}
+						$date_key = date( 'Y-m-d', strtotime( $actual_session['start_time'] ) );
+						$actual_sessions_payload[] = array(
+							'date' => $date_key,
+							'start' => $start_page,
+							'end' => $end_page,
+							'start_time' => (string) $actual_session['start_time'],
+						);
+						if ( empty( $actual_ranges[ $date_key ] ) ) {
+							$actual_ranges[ $date_key ] = array(
+								'start' => $start_page,
+								'end' => $end_page,
+							);
+							continue;
+						}
+						$actual_ranges[ $date_key ]['start'] = min( $actual_ranges[ $date_key ]['start'], $start_page );
+						$actual_ranges[ $date_key ]['end'] = max( $actual_ranges[ $date_key ]['end'], $end_page );
+					}
+				}
+			}
+
 			$selected = array();
+			$session_dates = array();
+			$session_items = array();
 			if ( $sessions ) {
 				$month_key = date( 'Y-m', $month_ts );
 				foreach ( $sessions as $session ) {
@@ -594,41 +788,27 @@ $is_owner       = $requested_user
 					if ( $session_ts && date( 'Y-m', $session_ts ) === $month_key ) {
 						$selected[] = (int) date( 'j', $session_ts );
 					}
+					$date_key = date( 'Y-m-d', strtotime( $session['planned_start_datetime'] ) );
+					$session_dates[] = $date_key;
+					$actual_range = isset( $actual_ranges[ $date_key ] ) ? $actual_ranges[ $date_key ] : array();
+					$session_items[] = array(
+						'date' => $date_key,
+						'status' => ! empty( $session['status'] ) ? (string) $session['status'] : 'planned',
+						'planned_start_page' => isset( $session['planned_start_page'] ) ? (int) $session['planned_start_page'] : null,
+						'planned_end_page' => isset( $session['planned_end_page'] ) ? (int) $session['planned_end_page'] : null,
+						'actual_start_page' => isset( $actual_range['start'] ) ? (int) $actual_range['start'] : null,
+						'actual_end_page' => isset( $actual_range['end'] ) ? (int) $actual_range['end'] : null,
+					);
 				}
 			}
 			$selected = array_values( array_unique( $selected ) );
 			sort( $selected );
-
-			$session_dates = array();
-			if ( $sessions ) {
-				foreach ( $sessions as $session ) {
-					if ( empty( $session['planned_start_datetime'] ) ) {
-						continue;
-					}
-					$date_key = date( 'Y-m-d', strtotime( $session['planned_start_datetime'] ) );
-					$session_dates[] = $date_key;
-				}
-			}
 			$session_dates = array_values( array_unique( $session_dates ) );
 
 			$badge = 'ccl' === (string) $plan['plan_type']
 				? __( 'Plan: More Pages', 'politeia-reading' )
 				: __( 'Reading Plan', 'politeia-reading' );
-			$goal_kind = $goal && ! empty( $goal['goal_kind'] ) ? (string) $goal['goal_kind'] : '';
 			$progress = 0;
-			$goal_book_id = $goal && ! empty( $goal['book_id'] ) ? (int) $goal['book_id'] : 0;
-			$goal_target = $goal && ! empty( $goal['target_value'] ) ? (int) $goal['target_value'] : 0;
-			$total_pages = $goal_target;
-			if ( $goal_book_id && $total_pages <= 0 ) {
-				$ub_pages = $wpdb->get_var(
-					$wpdb->prepare(
-						"SELECT pages FROM {$wpdb->prefix}politeia_user_books WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
-						$user_id,
-						$goal_book_id
-					)
-				);
-				$total_pages = $ub_pages ? (int) $ub_pages : 0;
-			}
 
 			if ( 'complete_books' === $goal_kind ) {
 				$badge = sprintf(
@@ -671,6 +851,8 @@ $is_owner       = $requested_user
 			}
 
 			$cards[] = array(
+				'plan_id'      => $plan_id,
+				'book_id'      => $goal_book_id,
 				'badge'        => $badge,
 				'title'        => $plan['name'],
 				'subtitle'     => $subtitle,
@@ -684,6 +866,10 @@ $is_owner       = $requested_user
 				'session_dates' => $session_dates,
 				'total_pages'  => $total_pages,
 				'progress'     => $progress,
+				'goal_kind'    => $goal_kind,
+				'session_items' => $session_items,
+				'actual_sessions' => $actual_sessions_payload,
+				'today_key'    => $today_key,
 			);
 		}
 		?>
@@ -702,15 +888,35 @@ $is_owner       = $requested_user
 						data-total-pages="<?php echo esc_attr( (string) $card['total_pages'] ); ?>"
 						data-sessions-label="<?php echo esc_attr__( 'sessions', 'politeia-reading' ); ?>"
 						data-pages-label="<?php echo esc_attr__( 'pages', 'politeia-reading' ); ?>"
+						data-missed-label="<?php echo esc_attr__( 'Missed', 'politeia-reading' ); ?>"
+						data-completed-label="<?php echo esc_attr__( 'Completed', 'politeia-reading' ); ?>"
 						data-session-dates="<?php echo esc_attr( wp_json_encode( $card['session_dates'] ) ); ?>"
+						data-session-items="<?php echo esc_attr( wp_json_encode( $card['session_items'] ) ); ?>"
+						data-actual-sessions="<?php echo esc_attr( wp_json_encode( $card['actual_sessions'] ) ); ?>"
 						data-initial-month="<?php echo esc_attr( $card['initial_month'] ); ?>"
+						data-goal-kind="<?php echo esc_attr( $card['goal_kind'] ); ?>"
+						data-today-key="<?php echo esc_attr( $card['today_key'] ); ?>"
 						data-confirm-text="<?php echo esc_attr__( 'Accept Proposal', 'politeia-reading' ); ?>"
 						data-confirmed-text="<?php echo esc_attr__( 'Plan saved!', 'politeia-reading' ); ?>"
 					>
 					<div class="prs-plan-header">
 						<span class="prs-plan-badge"><?php echo esc_html( $card['badge'] ); ?></span>
 							<h2 class="prs-plan-title">
-								<?php echo esc_html( $card['title'] ); ?><br>
+								<span class="prs-plan-title-row">
+									<span><?php echo esc_html( $card['title'] ); ?></span>
+									<?php if ( ! empty( $card['book_id'] ) ) : ?>
+										<span
+											role="button"
+											tabindex="0"
+											class="prs-session-recorder-trigger material-symbols-outlined"
+											data-role="session-open"
+											aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>"
+											aria-controls="prs-session-modal-<?php echo esc_attr( (string) $card['plan_id'] ); ?>"
+											aria-expanded="false"
+										>play_circle</span>
+									<?php endif; ?>
+								</span>
+								<br>
 								<span class="prs-plan-subtitle"><?php echo esc_html( $card['subtitle'] ); ?></span>
 							</h2>
 						</div>
@@ -804,6 +1010,29 @@ $is_owner       = $requested_user
 							<div class="prs-progress-bar-fill" style="width: <?php echo esc_attr( (string) $card['progress'] ); ?>%;"></div>
 						</div>
 					</div>
+					<?php if ( ! empty( $card['book_id'] ) ) : ?>
+						<div
+							id="prs-session-modal-<?php echo esc_attr( (string) $card['plan_id'] ); ?>"
+							class="prs-session-modal"
+							role="dialog"
+							aria-modal="true"
+							aria-hidden="true"
+							aria-label="<?php esc_attr_e( 'Session recorder', 'politeia-reading' ); ?>"
+							data-role="session-modal"
+						>
+							<div class="prs-session-modal__content">
+								<button
+									type="button"
+									class="prs-session-modal__close"
+									aria-label="<?php esc_attr_e( 'Close session recorder', 'politeia-reading' ); ?>"
+									data-role="session-close"
+								>
+									×
+								</button>
+								<?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $card['book_id'] . '"]' ); ?>
+							</div>
+						</div>
+					<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
 			</div>
@@ -837,18 +1066,40 @@ $is_owner       = $requested_user
 			const titleLabel = card.querySelector('[data-role="calendar-title"]');
 			const btnPrevMonth = card.querySelector('[data-role="month-prev"]');
 			const btnNextMonth = card.querySelector('[data-role="month-next"]');
+			const sessionOpen = card.querySelector('[data-role="session-open"]');
+			const sessionModal = card.querySelector('[data-role="session-modal"]');
+			const sessionClose = card.querySelector('[data-role="session-close"]');
 
 			const totalPages = parseInt(card.dataset.totalPages, 10) || 0;
+			const goalKind = card.dataset.goalKind || '';
+			const todayKey = card.dataset.todayKey || '';
 			let sessionDates = [];
+			let sessionItems = [];
+			let actualSessions = [];
 			let currentView = 'calendar';
 			let currentMonthKey = card.dataset.initialMonth || '';
 			let minMonthKey = '';
 			let maxMonthKey = '';
 
 			try {
+				sessionItems = JSON.parse(card.dataset.sessionItems || '[]');
+			} catch (error) {
+				sessionItems = [];
+			}
+
+			try {
+				actualSessions = JSON.parse(card.dataset.actualSessions || '[]');
+			} catch (error) {
+				actualSessions = [];
+			}
+
+			try {
 				sessionDates = JSON.parse(card.dataset.sessionDates || '[]');
 			} catch (error) {
 				sessionDates = [];
+			}
+			if (!sessionDates.length && sessionItems.length) {
+				sessionDates = sessionItems.map((item) => item.date).filter(Boolean);
 			}
 			sessionDates = Array.from(new Set(sessionDates));
 
@@ -867,6 +1118,7 @@ $is_owner       = $requested_user
 			const locale = document.documentElement.lang || 'es-ES';
 			const formatMonthYear = (date) => new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(date);
 			const formatMonthName = (date) => new Intl.DateTimeFormat(locale, { month: 'long' }).format(date);
+			const isCompleteBooks = goalKind === 'complete_books';
 
 			if (!currentMonthKey) {
 				if (sessionDates.length) {
@@ -892,8 +1144,28 @@ $is_owner       = $requested_user
 				removeLabel: card.dataset.removeLabel || '',
 				sessionsLabel: card.dataset.sessionsLabel || 'sessions',
 				pagesLabel: card.dataset.pagesLabel || 'pages',
+				missedLabel: card.dataset.missedLabel || 'Missed',
+				completedLabel: card.dataset.completedLabel || 'Completed',
 				confirmText: card.dataset.confirmText || '',
 				confirmedText: card.dataset.confirmedText || '',
+			};
+
+			const getStatusByDate = (dateStr) => {
+				const item = sessionItems.find((entry) => entry.date === dateStr);
+				return item?.status || 'planned';
+			};
+
+			const getPlannedRangeByDate = (dateStr) => {
+				const item = sessionItems.find((entry) => entry.date === dateStr);
+				if (!item) {
+					return null;
+				}
+				const start = typeof item.planned_start_page === 'number' ? item.planned_start_page : null;
+				const end = typeof item.planned_end_page === 'number' ? item.planned_end_page : null;
+				if (!start || !end) {
+					return null;
+				}
+				return { start, end };
 			};
 
 			const getMonthSessions = (monthKeyValue) => {
@@ -902,13 +1174,107 @@ $is_owner       = $requested_user
 					.sort();
 			};
 
+			const plannedPagesForItem = (item) => {
+				if (!item || typeof item.planned_start_page !== 'number' || typeof item.planned_end_page !== 'number') {
+					return 0;
+				}
+				if (item.planned_end_page < item.planned_start_page) {
+					return 0;
+				}
+				return item.planned_end_page - item.planned_start_page + 1;
+			};
+
+			const buildDerivedPlan = () => {
+				const actualPages = actualSessions.reduce((sum, entry) => {
+					const start = typeof entry.start === 'number' ? entry.start : 0;
+					const end = typeof entry.end === 'number' ? entry.end : 0;
+					if (!start || !end || end < start) {
+						return sum;
+					}
+					return sum + (end - start + 1);
+				}, 0);
+				const allDates = sessionDates.slice().sort();
+				const orderAll = new Map();
+				allDates.forEach((dateStr, index) => {
+					orderAll.set(dateStr, index + 1);
+				});
+				const nonMissedDates = sessionDates
+					.filter((dateStr) => getStatusByDate(dateStr) !== 'missed')
+					.sort();
+				const orderByDate = new Map();
+				nonMissedDates.forEach((dateStr, index) => {
+					orderByDate.set(dateStr, index + 1);
+				});
+
+				if (!isCompleteBooks) {
+					return {
+						derivedByDate: new Map(),
+						remainingItems: [],
+						remainingPages: totalPages,
+						remainingCount: sessionDates.length,
+						orderAll,
+						orderByDate,
+						actualPages,
+					};
+				}
+
+				const completedPages = Math.min(totalPages, actualPages);
+
+				const remainingDates = sessionDates
+					.filter((dateStr) => {
+						const status = sessionItems.find((item) => item.date === dateStr)?.status || 'planned';
+						if (status !== 'planned') {
+							return false;
+						}
+						if (todayKey && dateStr < todayKey) {
+							return false;
+						}
+						return true;
+					})
+					.sort();
+
+				const remainingPages = Math.max(0, totalPages - completedPages);
+				const remainingCount = remainingDates.length;
+				const basePages = remainingCount > 0 ? Math.floor(remainingPages / remainingCount) : 0;
+				const extraPages = remainingCount > 0 ? remainingPages % remainingCount : 0;
+				const derivedByDate = new Map();
+
+				let cursor = 1;
+				remainingDates.forEach((dateStr, index) => {
+					const pages = basePages + (index < extraPages ? 1 : 0);
+					const startPage = pages > 0 ? cursor : 0;
+					const endPage = pages > 0 ? cursor + pages - 1 : 0;
+					if (pages > 0) {
+						cursor = endPage + 1;
+					}
+					derivedByDate.set(dateStr, {
+						start: startPage,
+						end: endPage,
+						order: index + 1,
+					});
+				});
+
+				return {
+					derivedByDate,
+					remainingItems: remainingDates,
+					remainingPages,
+					remainingCount,
+					orderAll,
+					orderByDate,
+					actualPages,
+				};
+			};
+
 			const updateMeta = () => {
 				if (!metaLabel) return;
+				const derived = buildDerivedPlan();
 				const monthSessions = getMonthSessions(currentMonthKey);
-				const sessionCount = monthSessions.length;
-				const pagesPerSession = sessionCount > 0 && totalPages > 0
-					? Math.ceil(totalPages / sessionCount)
-					: 0;
+				const sessionCount = isCompleteBooks
+					? monthSessions.filter((dateStr) => derived.remainingItems.includes(dateStr)).length
+					: monthSessions.length;
+				const pagesPerSession = isCompleteBooks
+					? (derived.remainingCount > 0 ? Math.ceil(derived.remainingPages / derived.remainingCount) : 0)
+					: (sessionCount > 0 && totalPages > 0 ? Math.ceil(totalPages / sessionCount) : 0);
 				metaLabel.textContent = `${sessionCount} ${strings.sessionsLabel} | ${pagesPerSession} ${strings.pagesLabel}`;
 			};
 
@@ -932,6 +1298,7 @@ $is_owner       = $requested_user
 				const startOffset = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
 				grid.innerHTML = '';
 				const monthSessions = getMonthSessions(currentMonthKey);
+				const derived = buildDerivedPlan();
 				const sortedDays = monthSessions.map((dateStr) => parseInt(dateStr.split('-')[2], 10));
 				updateMeta();
 				updateTitle();
@@ -954,58 +1321,71 @@ $is_owner       = $requested_user
 					cell.appendChild(label);
 
 					if (sortedDays.includes(day)) {
-						const order = sortedDays.indexOf(day) + 1;
+						const targetDate = `${currentMonthKey}-${pad2(day)}`;
+						const status = getStatusByDate(targetDate);
+						const isMissed = status === 'missed' && isCompleteBooks;
+						const isAccomplished = status === 'accomplished';
+						const isLocked = status !== 'planned';
+						const order = isCompleteBooks
+							? (derived.orderByDate.get(targetDate) || sortedDays.indexOf(day) + 1)
+							: (sortedDays.indexOf(day) + 1);
+
 						const mark = document.createElement('div');
-						mark.className = 'prs-day-selected';
-						mark.setAttribute('draggable', 'true');
-						mark.textContent = String(order);
+						mark.className = `prs-day-selected${isMissed ? ' is-missed' : ''}${isAccomplished ? ' is-accomplished' : ''}`;
+						if (isCompleteBooks) {
+							mark.textContent = isMissed ? '' : String(order);
+						} else {
+							mark.textContent = String(order);
+						}
 						mark.dataset.day = String(day);
 						let hideTimer = null;
-						mark.addEventListener('mouseenter', () => {
-							if (hideTimer) {
-								clearTimeout(hideTimer);
-								hideTimer = null;
-							}
-							mark.classList.add('is-remove-visible');
-						});
-						mark.addEventListener('mouseleave', () => {
-							if (hideTimer) {
-								clearTimeout(hideTimer);
-							}
-							hideTimer = setTimeout(() => {
-								mark.classList.remove('is-remove-visible');
-								hideTimer = null;
-							}, 1000);
-						});
-						const removeBtn = document.createElement('button');
-						removeBtn.type = 'button';
-						removeBtn.className = 'prs-day-remove';
-						removeBtn.setAttribute('aria-label', strings.removeLabel || 'Remove session');
-						removeBtn.textContent = '×';
-						removeBtn.addEventListener('click', (event) => {
-							event.stopPropagation();
-							const targetDate = `${currentMonthKey}-${pad2(day)}`;
-							sessionDates = sessionDates.filter((dateStr) => dateStr !== targetDate);
-							renderCalendar();
-							if (currentView === 'list') {
-								renderList();
-							}
-						});
-						mark.appendChild(removeBtn);
+						if (!isLocked) {
+							mark.setAttribute('draggable', 'true');
+							mark.addEventListener('mouseenter', () => {
+								if (hideTimer) {
+									clearTimeout(hideTimer);
+									hideTimer = null;
+								}
+								mark.classList.add('is-remove-visible');
+							});
+							mark.addEventListener('mouseleave', () => {
+								if (hideTimer) {
+									clearTimeout(hideTimer);
+								}
+								hideTimer = setTimeout(() => {
+									mark.classList.remove('is-remove-visible');
+									hideTimer = null;
+								}, 1000);
+							});
+							const removeBtn = document.createElement('button');
+							removeBtn.type = 'button';
+							removeBtn.className = 'prs-day-remove';
+							removeBtn.setAttribute('aria-label', strings.removeLabel || 'Remove session');
+							removeBtn.textContent = '×';
+							removeBtn.addEventListener('click', (event) => {
+								event.stopPropagation();
+								sessionDates = sessionDates.filter((dateStr) => dateStr !== targetDate);
+								renderCalendar();
+								if (currentView === 'list') {
+									renderList();
+								}
+							});
+							mark.appendChild(removeBtn);
 
-						mark.addEventListener('dragstart', (event) => {
-							if (event.target && event.target.classList.contains('prs-day-remove')) {
-								event.preventDefault();
-								return;
-							}
-							event.dataTransfer.setData('text/plain', String(day));
-							setTimeout(() => mark.classList.add('opacity-0'), 0);
-						});
+							mark.addEventListener('dragstart', (event) => {
+								if (event.target && event.target.classList.contains('prs-day-remove')) {
+									event.preventDefault();
+									return;
+								}
+								event.dataTransfer.setData('text/plain', String(day));
+								setTimeout(() => mark.classList.add('opacity-0'), 0);
+							});
 
-						mark.addEventListener('dragend', () => {
-							mark.classList.remove('opacity-0');
-							renderCalendar();
-						});
+								mark.addEventListener('dragend', () => {
+									mark.classList.remove('opacity-0');
+									renderCalendar();
+								});
+						}
 
 						cell.appendChild(mark);
 					}
@@ -1082,13 +1462,56 @@ $is_owner       = $requested_user
 			const renderList = () => {
 				listContainer.innerHTML = '';
 				const monthSessions = getMonthSessions(currentMonthKey);
-				const sorted = monthSessions.map((dateStr) => parseInt(dateStr.split('-')[2], 10));
+				const derived = buildDerivedPlan();
+				const listDates = monthSessions;
+				const sorted = listDates.map((dateStr) => parseInt(dateStr.split('-')[2], 10));
 				const sessionCount = sorted.length;
 				const pagesPerSession = sessionCount > 0 && totalPages > 0
 					? Math.ceil(totalPages / sessionCount)
 					: 0;
+				const sessionsByDate = new Map();
+				actualSessions
+					.slice()
+					.sort((a, b) => {
+						const at = String(a.start_time || '');
+						const bt = String(b.start_time || '');
+						if (at === bt) return 0;
+						return at < bt ? -1 : 1;
+					})
+					.forEach((entry) => {
+						if (!entry.date) return;
+						if (!sessionsByDate.has(entry.date)) {
+							sessionsByDate.set(entry.date, []);
+						}
+						sessionsByDate.get(entry.date).push(entry);
+					});
 
-				sorted.forEach((day, index) => {
+				const entries = [];
+				listDates.forEach((dateKey) => {
+					const status = getStatusByDate(dateKey);
+					const actualList = sessionsByDate.get(dateKey) || [];
+					if (status === 'accomplished' && actualList.length) {
+						actualList.forEach((entry) => {
+							entries.push({
+								type: 'accomplished',
+								dateKey: entry.date,
+								range: { start: entry.start, end: entry.end },
+							});
+						});
+					} else if (status === 'accomplished') {
+						entries.push({ type: 'accomplished', dateKey });
+					} else if (status === 'missed') {
+						entries.push({ type: 'missed', dateKey });
+					} else {
+						entries.push({ type: 'planned', dateKey });
+					}
+				});
+
+				let listOrder = 0;
+				entries.forEach((entry, index) => {
+					const dateKey = entry.dateKey;
+					const day = parseInt(dateKey.split('-')[2], 10);
+					const status = entry.type === 'accomplished' ? 'accomplished' : (entry.type === 'missed' ? 'missed' : 'planned');
 					const item = document.createElement('div');
 					item.className = 'prs-list-item';
 
@@ -1097,24 +1520,52 @@ $is_owner       = $requested_user
 					left.style.alignItems = 'center';
 
 					const badge = document.createElement('span');
-					badge.className = 'prs-list-badge';
-					badge.textContent = String(index + 1);
+					const badgeStatus = status === 'missed' ? 'is-missed' : (status === 'accomplished' ? 'is-accomplished' : 'is-planned');
+					badge.className = `prs-list-badge ${badgeStatus}`;
+					if (status === 'missed') {
+						badge.textContent = '';
+					} else {
+						listOrder += 1;
+						badge.textContent = String(listOrder);
+					}
 					left.appendChild(badge);
 
 					const title = document.createElement('span');
 					title.className = 'prs-list-title';
-					if (pagesPerSession > 0) {
-						const startPage = (index * pagesPerSession) + 1;
-						const endPage = Math.min(startPage + pagesPerSession - 1, totalPages);
-						title.textContent = `${startPage}-${endPage}`;
+					if (status === 'planned') {
+						let expectedPages = 0;
+						if (isCompleteBooks && derived.derivedByDate.has(dateKey)) {
+							const range = derived.derivedByDate.get(dateKey);
+							if (range.start > 0 && range.end > 0) {
+								expectedPages = range.end - range.start + 1;
+							}
+						} else if (pagesPerSession > 0) {
+							expectedPages = pagesPerSession;
+						}
+						if (expectedPages > 0) {
+							title.textContent = `${expectedPages} ${strings.pagesLabel}`;
+						} else {
+							title.textContent = strings.sessionLabel;
+						}
 					} else {
-						title.textContent = strings.sessionLabel;
+						const range = entry.range;
+						if (status === 'accomplished' && range && range.start && range.end) {
+							title.textContent = `${range.start}-${range.end}`;
+						} else if (status === 'accomplished') {
+							title.textContent = strings.sessionLabel;
+						} else {
+							title.textContent = `${strings.missedLabel} 🙁`;
+						}
+						if (status === 'accomplished') {
+							title.textContent = `${title.textContent} · ${strings.completedLabel} 🙂`;
+						}
 					}
 					left.appendChild(title);
 
 					const date = document.createElement('span');
 					date.className = 'prs-list-date';
-					date.textContent = `${day} ${formatMonthName(parseMonthKey(currentMonthKey))}`;
+					const entryMonthKey = dateKey.slice(0, 7);
+					date.textContent = `${day} ${formatMonthName(parseMonthKey(entryMonthKey))}`;
 
 					item.appendChild(left);
 					item.appendChild(date);
@@ -1133,6 +1584,75 @@ $is_owner       = $requested_user
 				} else {
 					renderList();
 				}
+			};
+
+			const setupSessionRecorderModal = () => {
+				if (!sessionOpen || !sessionModal) return;
+
+				const handleKeydown = (event) => {
+					if (event.key === 'Escape') {
+						event.preventDefault();
+						closeModal();
+					}
+				};
+
+				const openModal = (options = {}) => {
+					const shouldFocusClose = options.focusClose !== false;
+					if (!sessionModal.classList.contains('is-active')) {
+						sessionModal.classList.add('is-active');
+						document.addEventListener('keydown', handleKeydown);
+					}
+					sessionModal.setAttribute('aria-hidden', 'false');
+					sessionOpen.setAttribute('aria-expanded', 'true');
+					if (shouldFocusClose && sessionClose) {
+						setTimeout(() => sessionClose.focus(), 0);
+					}
+				};
+
+				const closeModal = () => {
+					if (!sessionModal.classList.contains('is-active')) {
+						return;
+					}
+					sessionModal.classList.remove('is-active');
+					sessionOpen.setAttribute('aria-expanded', 'false');
+					sessionModal.setAttribute('aria-hidden', 'true');
+					document.removeEventListener('keydown', handleKeydown);
+					setTimeout(() => sessionOpen.focus(), 0);
+				};
+
+				sessionOpen.addEventListener('click', (event) => {
+					event.preventDefault();
+					openModal();
+				});
+
+				sessionOpen.addEventListener('keydown', (event) => {
+					if (event.key === 'Enter' || event.key === ' ') {
+						event.preventDefault();
+						openModal();
+					}
+				});
+
+				if (sessionClose) {
+					sessionClose.addEventListener('click', (event) => {
+						event.preventDefault();
+						closeModal();
+					});
+				}
+
+				sessionModal.addEventListener('click', (event) => {
+					if (event.target === sessionModal) {
+						closeModal();
+					}
+				});
+
+				document.addEventListener('prs-session-modal:open', (event) => {
+					const detail = event?.detail || {};
+					openModal({ focusClose: detail.focusClose !== false });
+				});
+
+				document.addEventListener('prs-session-modal:close', () => {
+					closeModal();
+				});
 			};
 
 			if (toggleBtn && collapsible && chevron) {
@@ -1190,6 +1710,7 @@ $is_owner       = $requested_user
 				});
 			}
 
+			setupSessionRecorderModal();
 			renderCalendar();
 		});
 	})();

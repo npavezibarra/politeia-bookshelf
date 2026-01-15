@@ -149,17 +149,42 @@ add_shortcode(
 	}
 
 	.prs-btn {
-		padding:10px 14px;
-		background:#111;
-		color:#fff;
-		border:none;
-		cursor:pointer;
-		box-shadow:none;
-		outline:none;
-		border-radius:6px;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 8px;
+		min-height: 42px;
+		padding: 10px 18px;
+		background: #111111;
+		color: #ffffff;
+		border: none;
+		cursor: pointer;
+		box-shadow: none;
+		outline: none;
+		border-radius: 8px;
+		font-weight: 600;
+		letter-spacing: 0.01em;
 	}
 	.prs-btn[disabled] { opacity:.4; cursor:not-allowed; }
 	.prs-btn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
+	#prs-sr-start {
+		background: #000000;
+		color: #ffffff;
+	}
+	#prs-sr-start .prs-play-icon {
+		color: #ffffff;
+		font-size: 22px;
+		line-height: 1;
+	}
+	#prs-sr-start:hover,
+	#prs-sr-start:focus {
+		background: #c79f32;
+		color: #000000;
+	}
+	#prs-sr-start:hover .prs-play-icon,
+	#prs-sr-start:focus .prs-play-icon {
+		color: #000000;
+	}
 
 	/* Nota cuando faltan páginas */
 	.prs-sr-note {
@@ -239,7 +264,7 @@ add_shortcode(
                                         placeholder="<?php echo $note_placeholder; ?>"
                                 ></div>
                                 <div class="note-limit-warning" role="status" aria-live="polite" style="display:none; font-size:12px; color:#b91c1c; text-align:center;">
-                                        <?php esc_html_e( 'You have reached the 1000 character limit.', 'politeia-reading' ); ?>
+                                        <?php esc_html_e( 'You have reached the 3000 character limit.', 'politeia-reading' ); ?>
                                 </div>
                         </div>
                         <div class="note-actions">
