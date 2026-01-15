@@ -1382,3 +1382,15 @@ msgstr "Perdida"
 
 msgid "Completed"
 msgstr "Completada"
+
+msgid "No tienes sesiones de lectura de este libro."
+msgstr "No tienes sesiones de lectura de este libro."
+
+msgid "¿Te gustaría iniciar un plan para terminarlo?"
+msgstr "¿Te gustaría iniciar un plan para terminarlo?"
+
+msgid "Iniciar Plan de Lectura"
+msgstr "Iniciar Plan de Lectura"
+
+msgid "Personaliza tu ritmo y alcanza tus metas literarias"
+msgstr "Personaliza tu ritmo y alcanza tus metas literarias"

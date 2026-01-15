@@ -576,6 +576,10 @@ wp_add_inline_script(
         .prs-inline-actions{ margin-left:0; }
 	.prs-inline-actions a{ margin-left:8px; }
 	.prs-help{ color:#666; font-size:12px; }
+	.prs-owning-status-note {
+		max-width: 180px;
+		line-height: 1.4;
+	}
 	#derived-location{ margin-top:6px; font-size:0.9em; color:#333; }
 	#derived-location strong{ font-weight:600; }
 

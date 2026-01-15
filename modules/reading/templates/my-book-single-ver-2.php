@@ -417,6 +417,11 @@ wp_add_inline_script(
 		line-height: 1.2;
 	}
 
+	.prs-owning-status-note {
+		max-width: 180px;
+		line-height: 1.4;
+	}
+
 	.prs-cover-overlay {
 		position: absolute;
 		inset: 0;

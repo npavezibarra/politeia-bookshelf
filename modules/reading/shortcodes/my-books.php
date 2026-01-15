@@ -148,7 +148,18 @@ add_shortcode(
                 error_log( '[PRS_MY_BOOKS] Found ' . count( $books ) . ' books for user ' . $user_id );
 
 		// Helper de enlaces de paginación
-		$base_url = remove_query_arg( 'prs_page' );
+		$base_url = remove_query_arg(
+			array(
+				'prs_page',
+				'prs_added',
+				'prs_added_title',
+				'prs_added_author',
+				'prs_added_year',
+				'prs_added_pages',
+				'prs_added_cover',
+				'prs_added_slug',
+			)
+		);
 		$pagination_links = paginate_links(
 			array(
 				'base'      => add_query_arg( 'prs_page', '%#%', $base_url ),
