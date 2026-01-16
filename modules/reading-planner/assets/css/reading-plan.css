@@ -98,6 +98,10 @@
 
 .politeia-reading-plan-shell .rounded-custom { border-radius: 6px !important; }
 .politeia-reading-plan-shell .text-deep-gray { color: var(--color-deep-gray); }
+.politeia-reading-plan-shell #form-container,
+.politeia-reading-plan-shell #form-container * {
+  text-transform: none !important;
+}
 .politeia-reading-plan-shell h2.text-2xl.font-medium.text-black.uppercase.tracking-tight {
   font-weight: 700;
   margin: 0;
@@ -844,16 +848,15 @@
 }
 
 .politeia-reading-plan-shell .exigencia-dot--mediano {
-  background: linear-gradient(135deg, #e5a663, #cd7f32);
+  background: linear-gradient(135deg, #783F27, #B87333, #E5AA70);
 }
 
 .politeia-reading-plan-shell .exigencia-dot--exigente {
-  background: linear-gradient(135deg, #f5f5f5, #b0b0b0);
-  border: 1px solid #e5e7eb;
+  background: linear-gradient(135deg, #949494, #D1D1D1, #F2F2F2);
 }
 
 .politeia-reading-plan-shell .exigencia-dot--intenso {
-  background: linear-gradient(135deg, #f7e7a0, #d4af37);
+  background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
 }
 
 .politeia-reading-plan-shell .exigencia-title {

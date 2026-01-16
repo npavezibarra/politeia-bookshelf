@@ -26,6 +26,8 @@ $is_owner       = $requested_user
 		--prs-radius: 6px;
 	}
 
+
+
 	.prs-plans-wrap {
 		background: none;
 		padding: 24px;
@@ -616,11 +618,15 @@ $is_owner       = $requested_user
 		border-radius: var(--prs-radius);
 		box-shadow: 0 0 10px rgba(199, 159, 50, 0.5);
 	}
+
+	#politeia-open-reading-plan {
+		display: none;
+	}
 </style>
 
 <div class="wrap prs-plans-wrap">
+	<?php echo do_shortcode( '[politeia_reading_plan]' ); ?>
 	<?php if ( $is_owner ) : ?>
-		<h1><?php esc_html_e( 'My Plans', 'politeia-reading' ); ?></h1>
 		<?php
 		global $wpdb;
 		$cards = array();
@@ -983,13 +989,13 @@ $is_owner       = $requested_user
 
 							<div class="prs-view" data-role="calendar-view">
 								<div class="prs-weekdays">
-									<div><?php esc_html_e( 'Sun', 'politeia-reading' ); ?></div>
 									<div><?php esc_html_e( 'Mon', 'politeia-reading' ); ?></div>
 									<div><?php esc_html_e( 'Tue', 'politeia-reading' ); ?></div>
 									<div><?php esc_html_e( 'Wed', 'politeia-reading' ); ?></div>
 									<div><?php esc_html_e( 'Thu', 'politeia-reading' ); ?></div>
 									<div><?php esc_html_e( 'Fri', 'politeia-reading' ); ?></div>
 									<div><?php esc_html_e( 'Sat', 'politeia-reading' ); ?></div>
+									<div><?php esc_html_e( 'Sun', 'politeia-reading' ); ?></div>
 								</div>
 								<div class="prs-calendar-grid" data-role="calendar-grid"></div>
 							</div>
@@ -1295,7 +1301,7 @@ $is_owner       = $requested_user
 			const renderCalendar = () => {
 				const viewDate = parseMonthKey(currentMonthKey);
 				const daysCount = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
-				const startOffset = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay();
+				const startOffset = (new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay() + 6) % 7;
 				grid.innerHTML = '';
 				const monthSessions = getMonthSessions(currentMonthKey);
 				const derived = buildDerivedPlan();

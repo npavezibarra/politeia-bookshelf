@@ -127,7 +127,7 @@
   const BENCHMARK_MIN_PER_PAGE = 1.5;
 
   const PAGE_RANGES_MAP = { "<100": 80, "200~": 200, "400~": 400, "600~": 600, "1000~": 1000 };
-  const EXIGENCIA_SESSIONS = { liviano: 2, mediano: 4, exigente: 6, intenso: 7 };
+  const EXIGENCIA_SESSIONS = { liviano: 3, mediano: 3, exigente: 5, intenso: 7 };
 
   const HABIT_INTENSITY_CONFIG = {
     liviano: { time: 15, label: t('intensity_light', 'LIGHT'), reason: t('intensity_light_reason', 'It\'s the "magic number" for making progress without it feeling like a burden.') },
@@ -223,7 +223,7 @@
 
   function renderStepGoals() {
     stepContent.innerHTML = `
-      <div class="space-y-6 step-transition">
+      <div class="space-y-6 step-transition h-full flex flex-col justify-center">
         <div class="text-center mb-8">
           <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('goal_prompt', 'What goal do you want to achieve?')}</h2>
           <p class="text-sm font-medium">${t('goal_subtitle', 'Select your primary goal')}</p>
@@ -923,7 +923,14 @@
 
   function generateSessions(total, perWeek) {
     const sessions = [];
-    const patterns = { 2: [0, 3], 4: [0, 2, 4, 6], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6] };
+    const patterns = {
+      2: [0, 3],
+      3: [0, 2, 4],
+      4: [0, 2, 4, 6],
+      5: [0, 1, 2, 4, 5],
+      6: [0, 1, 2, 3, 4, 5],
+      7: [0, 1, 2, 3, 4, 5, 6],
+    };
     const myPattern = patterns[perWeek];
     let i = 0;
     while (sessions.length < total) {

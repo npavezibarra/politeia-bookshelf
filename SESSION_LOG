@@ -202,6 +202,12 @@ January 15, 2026, 23:05 UTC
 1. Built a new empty-state card for my-book-single-ver-2 reading sessions with plan CTA, iconography, and copy, preserving the plan opener behavior.
 2. Adjusted plan CTA styling and localized the new empty-state strings (ES) with updated compiled translations.
 
+January 16, 2026, 15:37 UTC
+1. Updated My Plans calendar to start weeks on Monday for both languages.
+2. Added metallic My Plans nav bar inside theme content area and wired its button to open the Reading Plan modal via the shortcode.
+3. Centered the goal selection step vertically and disabled text-transform in the reading plan form.
+4. Adjusted intensity sessions to 3/5/7, fixed selection for 3/5, and applied Copper/Silver/Gold gradients to the intensity dots.
+
 ------
 
 TO DO:
