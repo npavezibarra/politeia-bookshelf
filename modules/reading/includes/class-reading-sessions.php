@@ -64,7 +64,7 @@ class Politeia_Reading_Sessions {
 		global $wpdb;
 		$t = $wpdb->prefix . 'politeia_reading_sessions';
 
-		$now_gmt = current_time( 'mysql', true ); // GMT
+		$now_gmt = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp', true ) ); // GMT
 		// Guardamos placeholder (end_time=end_time=start_time) por restricción NOT NULL
 		$ins = array(
 			'user_id'      => (int) $user_id,
@@ -145,8 +145,9 @@ class Politeia_Reading_Sessions {
 		global $wpdb;
 		$t = $wpdb->prefix . 'politeia_reading_sessions';
 
-		$now_gmt   = current_time( 'mysql', true ); // end_time GMT
-		$end_ts    = strtotime( $now_gmt . ' +0 seconds' );
+		$now_gmt   = gmdate( 'Y-m-d H:i:s', current_time( 'timestamp', true ) ); // end_time GMT
+		$end_dt    = \DateTimeImmutable::createFromFormat( 'Y-m-d H:i:s', $now_gmt, new \DateTimeZone( 'UTC' ) );
+		$end_ts    = $end_dt ? $end_dt->getTimestamp() : time();
 		$start_ts  = $duration_sec > 0 ? max( 0, $end_ts - $duration_sec ) : $end_ts;
 		$start_gmt = gmdate( 'Y-m-d H:i:s', $start_ts );
 

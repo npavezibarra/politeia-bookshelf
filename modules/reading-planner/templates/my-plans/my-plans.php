@@ -4,6 +4,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 get_header();
+$enqueue_my_book_assets = function () {
+	if ( function_exists( 'wp_enqueue_style' ) && function_exists( 'wp_enqueue_script' ) ) {
+		wp_enqueue_style( 'politeia-my-book' );
+		wp_enqueue_script( 'politeia-my-book' );
+	}
+};
+$enqueue_my_book_assets();
 $requested_user = (string) get_query_var( 'prs_my_plans_user' );
 $current_user   = wp_get_current_user();
 $is_owner       = $requested_user
@@ -37,6 +44,7 @@ $is_owner       = $requested_user
 		display: grid;
 		grid-template-columns: repeat(2, minmax(0, 1fr));
 		gap: 24px;
+		align-items: start;
 	}
 
 	@media (max-width: 960px) {
@@ -54,7 +62,7 @@ $is_owner       = $requested_user
 	}
 
 	.prs-plan-header {
-		padding: 32px 32px 16px;
+		padding: 16px 32px 16px;
 	}
 
 	.prs-plan-badge {
@@ -75,6 +83,17 @@ $is_owner       = $requested_user
 		font-weight: 700;
 		color: var(--prs-black);
 		line-height: 1.2;
+	}
+
+	.prs-plan-title a {
+		color: inherit;
+		text-decoration: none;
+	}
+
+	.prs-plan-title a:hover,
+	.prs-plan-title a:focus {
+		color: inherit;
+		text-decoration: none;
 	}
 
 	.prs-plan-title-row {
@@ -622,6 +641,114 @@ $is_owner       = $requested_user
 	#politeia-open-reading-plan {
 		display: none;
 	}
+
+	.prs-upcoming-wrap {
+		width: 100%;
+		align-self: start;
+	}
+
+	.prs-upcoming-card {
+		background: #000000;
+		border-radius: 6px;
+		height: auto;
+		width: 100%;
+		max-width: none;
+		padding: 24px;
+		color: #ffffff;
+		display: flex;
+		flex-direction: column;
+		box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+	}
+
+	.prs-upcoming-title {
+		font-family: 'Poppins', sans-serif;
+		font-size: 30px;
+		font-weight: 700;
+		margin: 0;
+		color: #ffffff;
+		text-align: left;
+		border-bottom: 1px solid #333333;
+		padding-bottom: 12px;
+		letter-spacing: -0.02em;
+	}
+
+	.prs-upcoming-list {
+		margin-top: 12px;
+	}
+
+
+	.prs-upcoming-item {
+		padding: 12px 0;
+		border-bottom: 1px solid #1f1f1f;
+	}
+
+	.prs-upcoming-item:last-child {
+		border-bottom: 0;
+	}
+
+	.prs-upcoming-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 12px;
+	}
+
+	.prs-upcoming-info {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		min-width: 0;
+	}
+
+	.prs-upcoming-book {
+		font-size: 1rem;
+		font-weight: 500;
+		margin: 0;
+		color: #d1d5db;
+		text-decoration: none;
+	}
+
+	.prs-upcoming-book:hover,
+	.prs-upcoming-book:focus {
+		color: #ffffff;
+		text-decoration: none;
+	}
+
+	.prs-upcoming-meta {
+		font-size: 0.85rem;
+		color: #9ca3af;
+	}
+
+	.prs-upcoming-date {
+		font-size: 0.85rem;
+		color: #9ca3af;
+		white-space: nowrap;
+	}
+
+	.prs-upcoming-date--today {
+		color: #C79F32;
+		font-weight: 700;
+		letter-spacing: 0.06em;
+		text-transform: uppercase;
+	}
+
+	.prs-upcoming-empty {
+		font-size: 0.9rem;
+		color: #9ca3af;
+		margin-top: 16px;
+	}
+
+	.prs-upcoming-item h4 {
+		font-size: 1rem;
+		font-weight: 400;
+		margin: 0;
+		color: #d1d5db;
+	}
+
+	.prs-upcoming-today {
+		color: #10b981;
+		font-weight: 600;
+	}
 </style>
 
 <div class="wrap prs-plans-wrap">
@@ -631,10 +758,12 @@ $is_owner       = $requested_user
 		global $wpdb;
 		$cards = array();
 		$user_id = (int) $current_user->ID;
+		$timezone = wp_timezone();
 		$plans_table = $wpdb->prefix . 'politeia_plans';
 		$goals_table = $wpdb->prefix . 'politeia_plan_goals';
 		$sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
 		$reading_sessions_table = $wpdb->prefix . 'politeia_reading_sessions';
+		$books_table = $wpdb->prefix . 'politeia_books';
 			$authors_table = $wpdb->prefix . 'politeia_authors';
 			$book_authors_table = $wpdb->prefix . 'politeia_book_authors';
 
@@ -703,8 +832,14 @@ $is_owner       = $requested_user
 			if ( $sessions ) {
 				$first_session = reset( $sessions );
 				$last_session = end( $sessions );
-				$start_ts = $first_session && ! empty( $first_session['planned_start_datetime'] ) ? strtotime( $first_session['planned_start_datetime'] ) : null;
-				$end_ts = $last_session && ! empty( $last_session['planned_start_datetime'] ) ? strtotime( $last_session['planned_start_datetime'] ) : $start_ts;
+				$start_dt = $first_session && ! empty( $first_session['planned_start_datetime'] )
+					? date_create_immutable( $first_session['planned_start_datetime'], $timezone )
+					: null;
+				$end_dt = $last_session && ! empty( $last_session['planned_start_datetime'] )
+					? date_create_immutable( $last_session['planned_start_datetime'], $timezone )
+					: null;
+				$start_ts = $start_dt ? $start_dt->getTimestamp() : null;
+				$end_ts = $end_dt ? $end_dt->getTimestamp() : $start_ts;
 			}
 			if ( ! $start_ts && ! empty( $plan['created_at'] ) ) {
 				$start_ts = strtotime( $plan['created_at'] );
@@ -735,11 +870,11 @@ $is_owner       = $requested_user
 				}
 			}
 			$days_count = (int) date( 't', $month_ts );
-			$month_start_ts = strtotime( date( 'Y-m-01', $month_ts ) );
-			$start_offset = (int) date( 'w', $month_start_ts );
+			$month_start_ts = strtotime( wp_date( 'Y-m-01', $month_ts, $timezone ) );
+			$start_offset = (int) wp_date( 'w', $month_start_ts, $timezone );
 
-			$actual_ranges = array();
 			$actual_sessions_payload = array();
+			$actual_session_dates = array();
 			if ( $goal_book_id ) {
 				$actual_sessions = $wpdb->get_results(
 					$wpdb->prepare(
@@ -761,49 +896,62 @@ $is_owner       = $requested_user
 						if ( $start_page <= 0 || $end_page <= 0 || $end_page < $start_page ) {
 							continue;
 						}
-						$date_key = date( 'Y-m-d', strtotime( $actual_session['start_time'] ) );
+						$date_key = get_date_from_gmt( $actual_session['start_time'], 'Y-m-d' );
+						if ( '' === $date_key ) {
+							continue;
+						}
+						$actual_session_dates[] = $date_key;
 						$actual_sessions_payload[] = array(
 							'date' => $date_key,
 							'start' => $start_page,
 							'end' => $end_page,
 							'start_time' => (string) $actual_session['start_time'],
 						);
-						if ( empty( $actual_ranges[ $date_key ] ) ) {
-							$actual_ranges[ $date_key ] = array(
-								'start' => $start_page,
-								'end' => $end_page,
-							);
-							continue;
-						}
-						$actual_ranges[ $date_key ]['start'] = min( $actual_ranges[ $date_key ]['start'], $start_page );
-						$actual_ranges[ $date_key ]['end'] = max( $actual_ranges[ $date_key ]['end'], $end_page );
 					}
 				}
+			}
+
+			if ( $actual_session_dates ) {
+				$actual_session_dates = array_values( array_unique( $actual_session_dates ) );
+				$placeholders = implode( ',', array_fill( 0, count( $actual_session_dates ), '%s' ) );
+				$wpdb->query(
+					$wpdb->prepare(
+						"UPDATE {$sessions_table}
+						SET status = 'accomplished'
+						WHERE plan_id = %d
+						AND status != 'accomplished'
+						AND DATE(planned_start_datetime) IN ({$placeholders})",
+						array_merge( array( $plan_id ), $actual_session_dates )
+					)
+				);
 			}
 
 			$selected = array();
 			$session_dates = array();
 			$session_items = array();
 			if ( $sessions ) {
-				$month_key = date( 'Y-m', $month_ts );
+				$month_key = wp_date( 'Y-m', $month_ts, $timezone );
 				foreach ( $sessions as $session ) {
 					if ( empty( $session['planned_start_datetime'] ) ) {
 						continue;
 					}
-					$session_ts = strtotime( $session['planned_start_datetime'] );
-					if ( $session_ts && date( 'Y-m', $session_ts ) === $month_key ) {
-						$selected[] = (int) date( 'j', $session_ts );
+					$session_dt = date_create_immutable( $session['planned_start_datetime'], $timezone );
+					$session_ts = $session_dt ? $session_dt->getTimestamp() : null;
+					if ( $session_ts && wp_date( 'Y-m', $session_ts, $timezone ) === $month_key ) {
+						$selected[] = (int) wp_date( 'j', $session_ts, $timezone );
 					}
-					$date_key = date( 'Y-m-d', strtotime( $session['planned_start_datetime'] ) );
+					$date_key = $session_ts ? wp_date( 'Y-m-d', $session_ts, $timezone ) : '';
+					if ( '' === $date_key ) {
+						continue;
+					}
 					$session_dates[] = $date_key;
-					$actual_range = isset( $actual_ranges[ $date_key ] ) ? $actual_ranges[ $date_key ] : array();
 					$session_items[] = array(
 						'date' => $date_key,
 						'status' => ! empty( $session['status'] ) ? (string) $session['status'] : 'planned',
 						'planned_start_page' => isset( $session['planned_start_page'] ) ? (int) $session['planned_start_page'] : null,
 						'planned_end_page' => isset( $session['planned_end_page'] ) ? (int) $session['planned_end_page'] : null,
-						'actual_start_page' => isset( $actual_range['start'] ) ? (int) $actual_range['start'] : null,
-						'actual_end_page' => isset( $actual_range['end'] ) ? (int) $actual_range['end'] : null,
+						'actual_start_page' => null,
+						'actual_end_page' => null,
 					);
 				}
 			}
@@ -878,8 +1026,69 @@ $is_owner       = $requested_user
 				'today_key'    => $today_key,
 			);
 		}
+
+		$baseline_metrics = array();
+		if ( function_exists( 'get_latest_user_baseline' ) ) {
+			$baseline = get_latest_user_baseline( $user_id );
+			if ( ! empty( $baseline['metrics'] ) ) {
+				$baseline_metrics = (array) $baseline['metrics'];
+			}
+		}
+
+		$today_key = current_time( 'Y-m-d' );
+		$upcoming_sessions = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT s.plan_id, s.planned_start_datetime, s.planned_start_page, s.planned_end_page,
+				        p.name AS plan_name, g.goal_kind, g.book_id
+				 FROM {$sessions_table} s
+				 INNER JOIN {$plans_table} p ON p.id = s.plan_id
+				 LEFT JOIN {$goals_table} g ON g.plan_id = p.id
+				 WHERE p.user_id = %d
+				   AND s.status = 'planned'
+				   AND DATE(s.planned_start_datetime) >= %s
+				 ORDER BY s.planned_start_datetime ASC
+				 LIMIT 5",
+				$user_id,
+				$today_key
+			),
+			ARRAY_A
+		);
+
+		$book_titles = array();
+		$book_slugs = array();
+		if ( $upcoming_sessions ) {
+			$book_ids = array();
+			foreach ( $upcoming_sessions as $session_row ) {
+				if ( ! empty( $session_row['book_id'] ) ) {
+					$book_ids[] = (int) $session_row['book_id'];
+				}
+			}
+			$book_ids = array_values( array_unique( $book_ids ) );
+			if ( $book_ids ) {
+				$placeholders = implode( ',', array_fill( 0, count( $book_ids ), '%d' ) );
+				$book_rows = $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT id, title FROM {$books_table} WHERE id IN ({$placeholders})",
+						$book_ids
+					),
+					ARRAY_A
+				);
+				foreach ( $book_rows as $book_row ) {
+					$book_titles[ (int) $book_row['id'] ] = (string) $book_row['title'];
+				}
+				if ( function_exists( 'prs_get_primary_slug_for_book' ) ) {
+					foreach ( $book_ids as $book_id ) {
+						$slug = prs_get_primary_slug_for_book( $book_id );
+						if ( $slug ) {
+							$book_slugs[ $book_id ] = $slug;
+						}
+					}
+				}
+			}
+		}
 		?>
 		<?php if ( $cards ) : ?>
+			<?php $cards_count = count( $cards ); ?>
 			<div class="prs-plan-grid">
 				<?php foreach ( $cards as $card ) : ?>
 					<div
@@ -909,7 +1118,19 @@ $is_owner       = $requested_user
 						<span class="prs-plan-badge"><?php echo esc_html( $card['badge'] ); ?></span>
 							<h2 class="prs-plan-title">
 								<span class="prs-plan-title-row">
-									<span><?php echo esc_html( $card['title'] ); ?></span>
+									<?php if ( ! empty( $card['book_id'] ) && function_exists( 'prs_get_primary_slug_for_book' ) ) : ?>
+										<?php
+										$book_slug = prs_get_primary_slug_for_book( (int) $card['book_id'] );
+										$book_url = $book_slug ? home_url( '/my-books/my-book-' . $book_slug . '/' ) : '';
+										?>
+										<?php if ( $book_url ) : ?>
+											<a href="<?php echo esc_url( $book_url ); ?>"><?php echo esc_html( $card['title'] ); ?></a>
+										<?php else : ?>
+											<span><?php echo esc_html( $card['title'] ); ?></span>
+										<?php endif; ?>
+									<?php else : ?>
+										<span><?php echo esc_html( $card['title'] ); ?></span>
+									<?php endif; ?>
 									<?php if ( ! empty( $card['book_id'] ) ) : ?>
 										<span
 											role="button"
@@ -1041,6 +1262,95 @@ $is_owner       = $requested_user
 					<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
+				<?php if ( 1 === $cards_count ) : ?>
+					<div class="prs-upcoming-wrap">
+						<div class="prs-upcoming-card">
+							<h2 class="prs-upcoming-title"><?php esc_html_e( 'Upcoming Reading Sessions', 'politeia-reading' ); ?></h2>
+							<div class="prs-upcoming-list">
+								<?php if ( $upcoming_sessions ) : ?>
+									<?php foreach ( $upcoming_sessions as $session_row ) : ?>
+										<?php
+										$session_title = $session_row['plan_name'] ?? '';
+										$book_id = isset( $session_row['book_id'] ) ? (int) $session_row['book_id'] : 0;
+										$book_url = '';
+										if ( $book_id && isset( $book_titles[ $book_id ] ) ) {
+											$session_title = $book_titles[ $book_id ];
+											if ( isset( $book_slugs[ $book_id ] ) && $book_slugs[ $book_id ] ) {
+												$book_url = home_url( '/my-books/my-book-' . $book_slugs[ $book_id ] . '/' );
+											}
+										}
+										$session_title = $session_title ? $session_title : __( 'Reading Session', 'politeia-reading' );
+
+										$goal_kind = isset( $session_row['goal_kind'] ) ? (string) $session_row['goal_kind'] : '';
+										$meta_label = '';
+										if ( 'form_habit' === $goal_kind ) {
+											$minutes = isset( $baseline_metrics['minutes_per_session'] ) ? (int) $baseline_metrics['minutes_per_session'] : 0;
+											if ( $minutes <= 0 ) {
+												$minutes = 30;
+											}
+											$meta_label = sprintf( __( '%d min', 'politeia-reading' ), $minutes );
+										} else {
+											$start_page = isset( $session_row['planned_start_page'] ) ? (int) $session_row['planned_start_page'] : 0;
+											$end_page = isset( $session_row['planned_end_page'] ) ? (int) $session_row['planned_end_page'] : 0;
+											$page_count = $end_page >= $start_page && $start_page > 0 ? ( $end_page - $start_page + 1 ) : 0;
+											$meta_label = $page_count > 0
+												? sprintf( _n( '%d página', '%d páginas', $page_count, 'politeia-reading' ), $page_count )
+												: __( 'Páginas', 'politeia-reading' );
+										}
+
+										$date_label = '';
+										$is_today = false;
+										$is_tomorrow = false;
+										if ( ! empty( $session_row['planned_start_datetime'] ) ) {
+											$session_dt = date_create_immutable( $session_row['planned_start_datetime'], $timezone );
+											$session_ts = $session_dt ? $session_dt->getTimestamp() : null;
+											if ( $session_ts ) {
+												$session_key = wp_date( 'Y-m-d', $session_ts, $timezone );
+												$today_dt = new DateTimeImmutable( $today_key . ' 00:00:00', $timezone );
+												$tomorrow_key = $today_dt->modify( '+1 day' )->format( 'Y-m-d' );
+												$is_today = $session_key === $today_key;
+												$is_tomorrow = $session_key === $tomorrow_key;
+												$date_label = wp_date( 'j F', $session_ts, $timezone );
+											}
+										}
+										?>
+										<div class="prs-upcoming-item">
+											<div class="prs-upcoming-row">
+												<div class="prs-upcoming-info">
+													<?php if ( $book_url ) : ?>
+														<a class="prs-upcoming-book" href="<?php echo esc_url( $book_url ); ?>">
+															<?php echo esc_html( $session_title ); ?>
+														</a>
+													<?php else : ?>
+														<div class="prs-upcoming-book"><?php echo esc_html( $session_title ); ?></div>
+													<?php endif; ?>
+													<?php if ( $meta_label ) : ?>
+														<div class="prs-upcoming-meta"><?php echo esc_html( $meta_label ); ?></div>
+													<?php endif; ?>
+												</div>
+												<?php if ( $date_label ) : ?>
+													<div class="prs-upcoming-date <?php echo $is_today ? 'prs-upcoming-date--today' : ''; ?>">
+														<?php
+														if ( $is_today ) {
+															echo esc_html( __( 'Today', 'politeia-reading' ) );
+														} elseif ( $is_tomorrow ) {
+															echo esc_html( __( 'Tomorrow', 'politeia-reading' ) );
+														} else {
+															echo esc_html( $date_label );
+														}
+														?>
+													</div>
+												<?php endif; ?>
+											</div>
+										</div>
+									<?php endforeach; ?>
+								<?php else : ?>
+									<div class="prs-upcoming-empty"><?php esc_html_e( 'No upcoming sessions yet.', 'politeia-reading' ); ?></div>
+								<?php endif; ?>
+							</div>
+						</div>
+					</div>
+				<?php endif; ?>
 			</div>
 		<?php else : ?>
 			<p><?php esc_html_e( 'No plans yet.', 'politeia-reading' ); ?></p>

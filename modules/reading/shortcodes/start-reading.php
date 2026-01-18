@@ -92,6 +92,8 @@ add_shortcode(
 					'tooltip_pages_required' => __( 'Set total Pages for this book before starting a session.', 'politeia-reading' ),
 					'tooltip_not_owned'      => __( 'You cannot start a session: the book is not in your possession (Borrowed, Lost or Sold).', 'politeia-reading' ),
 					'alert_pages_required'   => __( 'You must set total Pages to start a session.', 'politeia-reading' ),
+					'alert_end_page_required' => __( 'Please enter an ending page before saving.', 'politeia-reading' ),
+					'alert_session_expired'  => __( 'Session expired. Please refresh the page and try again.', 'politeia-reading' ),
 					'alert_start_network'    => __( 'Network error while starting the session.', 'politeia-reading' ),
 					'alert_save_failed'      => __( 'Could not save the session.', 'politeia-reading' ),
 					'alert_save_network'     => __( 'Network error while saving the session.', 'politeia-reading' ),
@@ -123,9 +125,9 @@ add_shortcode(
 	.prs-sr-flash-block {
 		display:none;
 		width:100%;
-		background:#ffe680;     /* amarillo */
-		color:#111;             /* texto negro */
-		border:1px solid #ddd;
+		background:#ffffff;
+		color:#111;
+		border:1px solid #e5e5e5;
 		border-radius:10px;
 		padding:24px;
 	}
@@ -186,6 +188,17 @@ add_shortcode(
 		color: #000000;
 	}
 
+	#prs-sr-stop {
+		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+		color: #000000;
+	}
+
+	#prs-sr-stop:hover,
+	#prs-sr-stop:focus {
+		background: #000000;
+		color: #C79F32;
+	}
+
 	/* Nota cuando faltan páginas */
 	.prs-sr-note {
 		font-size:13px;
@@ -207,6 +220,7 @@ add_shortcode(
         <div
                 id="prs-sr-flash"
                 class="prs-sr-flash-block"
+                style="display:none;"
                 role="status"
                 aria-live="polite"
                 data-session-id=""

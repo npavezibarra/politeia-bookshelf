@@ -279,14 +279,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const ACTION_SAVE  = (PRS_SR?.actions?.save)  || 'prs_save_reading';
 
   async function api(action, payload) {
+    const fallback = (window.PRS_BOOK && typeof window.PRS_BOOK === 'object') ? window.PRS_BOOK : {};
+    const nonce = PRS_SR?.nonce || fallback.reading_nonce || fallback.nonce || '';
+    const ajaxUrl = PRS_SR?.ajax_url || fallback.ajax_url || '';
+    const userId = PRS_SR?.user_id || fallback.user_id || '';
+    const bookId = PRS_SR?.book_id || fallback.book_id || '';
+
     const body = new URLSearchParams({
       action,
-      nonce: PRS_SR.nonce,
-      user_id: PRS_SR.user_id,
-      book_id: PRS_SR.book_id,
+      nonce,
+      user_id: userId,
+      book_id: bookId,
       ...payload
     });
-    const r = await fetch(PRS_SR.ajax_url, {
+    const r = await fetch(ajaxUrl, {
       method: 'POST',
       credentials: 'same-origin',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
@@ -327,7 +333,9 @@ document.addEventListener('DOMContentLoaded', () => {
         stopTimer();
         setIdle();
         console.error('Start reading error', out);
-        if (out?.message === 'pages_required' || out?.data?.message === 'pages_required') {
+        if (out?.message === 'bad_nonce' || out?.data?.message === 'bad_nonce') {
+          alert(text('alert_session_expired', 'Session expired. Please refresh the page and try again.'));
+        } else if (out?.message === 'pages_required' || out?.data?.message === 'pages_required') {
           alert(text('alert_pages_required', 'You must set total Pages to start a session.'));
         }
       }
@@ -351,7 +359,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Save
   $saveBtn?.addEventListener('click', async () => {
-    if (!validEnd()) return;
+    if (!validEnd()) {
+      alert(text('alert_end_page_required', 'Please enter an ending page before saving.'));
+      return;
+    }
     $saveBtn.disabled = true;
 
     try {
@@ -400,7 +411,11 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         console.error('Save reading error', out);
         $saveBtn.disabled = false;
-        alert(text('alert_save_failed', 'Could not save the session.'));
+        if (out?.message === 'bad_nonce' || out?.data?.message === 'bad_nonce') {
+          alert(text('alert_session_expired', 'Session expired. Please refresh the page and try again.'));
+        } else {
+          alert(text('alert_save_failed', 'Could not save the session.'));
+        }
       }
     } catch (err) {
       console.error(err);

@@ -6,6 +6,18 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
+msgid "Session expired. Please refresh the page and try again."
+msgstr "La sesión expiró. Actualiza la página y vuelve a intentarlo."
+
+msgid "Upcoming Reading Sessions"
+msgstr "Próximas Lecturas"
+
+msgid "Today"
+msgstr "Hoy"
+
+msgid "Tomorrow"
+msgstr "Mañana"
+
 msgid "%1$s / %2$s"
 msgstr "%1$s / %2$s"
 
