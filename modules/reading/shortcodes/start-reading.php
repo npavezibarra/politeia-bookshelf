@@ -438,9 +438,9 @@ add_shortcode(
 	.prs-btn[disabled] { opacity: .4; cursor: not-allowed; }
 	.prs-btn:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
 	.prs-add-note-btn {
-		background: #1a1a1a;
-		color: transparent;
-		border: none;
+		background: #1a1a1a !important;
+		color: transparent !important;
+		border: none !important;
 		font-size: 18px;
 		padding: 12px 26px;
 		letter-spacing: 0.2em;
@@ -449,7 +449,7 @@ add_shortcode(
 		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
 		-webkit-background-clip: text;
 		background-clip: text;
-		color: transparent;
+		color: transparent !important;
 	}
 	.prs-add-note-btn:hover,
 	.prs-add-note-btn:focus {
@@ -463,11 +463,24 @@ add_shortcode(
 		color: #ffffff;
 		border: none;
 	}
+	#prs-note-panel {
+		background: #1a1a1a !important;
+		color: #ffffff !important;
+		border: none !important;
+	}
 	.note-editor-panel {
 		border: none;
 		border-radius: 18px;
 		padding: 18px;
 		background: #1a1a1a;
+	}
+	#prs-note-panel .note-editor-panel,
+	#prs-note-panel .note-toolbar,
+	#prs-note-panel .note-textarea,
+	#prs-note-panel .note-actions {
+		background: #1a1a1a !important;
+		color: #ffffff !important;
+		border: none !important;
 	}
 	.prs-note-header {
 		display: flex;
@@ -477,7 +490,13 @@ add_shortcode(
 		font-size: 11px;
 		text-transform: uppercase;
 		letter-spacing: 0.2em;
-		color: rgba(255, 255, 255, 0.6);
+		color: #ffffff;
+		text-align: center;
+	}
+	.prs-note-header .prs-session-id,
+	.prs-note-header .prs-pages {
+		flex: 1;
+		text-align: center;
 	}
 	.note-toolbar {
 		display: flex;
@@ -488,15 +507,24 @@ add_shortcode(
 		margin-bottom: 12px;
 		background: #1a1a1a;
 	}
-	.note-toolbar .tool-button {
-		background: transparent;
+	#prs-note-panel .tool-button {
+		background: none;
 		border: none;
 		color: #ffffff;
-		font-size: 14px;
+		font-weight: 600;
+		padding: 6px 10px;
 		cursor: pointer;
-		transition: color 0.2s ease;
+		font-size: 16px;
+		border-radius: 6px;
+		font-family: inherit;
 	}
-	.note-toolbar .tool-button:hover { color: #E9D18A; }
+	#prs-note-panel .tool-button:hover,
+	#prs-note-panel .tool-button:focus,
+	#prs-note-panel .tool-button:focus-visible {
+		background: none;
+		color: #ffffff;
+		outline: none;
+	}
 	.note-textarea {
 		min-height: 160px;
 		color: #ffffff;
@@ -505,6 +533,10 @@ add_shortcode(
 		border-radius: 16px;
 		padding: 16px;
 		font-size: 15px;
+		text-align: left;
+	}
+	div#prs-note-editor {
+		font-family: 'Poppins', sans-serif !important;
 	}
 	.note-textarea:focus {
 		outline: none;
@@ -518,6 +550,18 @@ add_shortcode(
 		margin-top: 18px;
 		background: #1a1a1a;
 	}
+	#prs-note-panel .note-actions {
+		background: #1a1a1a;
+	}
+	#prs-cancel-note-btn {
+		background: #1a1a1a !important;
+		color: #ffffff !important;
+		border: none !important;
+	}
+	#prs-save-note-btn {
+		background: #1a1a1a !important;
+		border: none !important;
+	}
 	#prs-save-note-btn {
 		background: #1a1a1a;
 		color: transparent;
@@ -528,6 +572,12 @@ add_shortcode(
 		-webkit-background-clip: text;
 		background-clip: text;
 		color: transparent;
+		font-size: 18px;
+	}
+	#prs-cancel-note-btn {
+		background: #1a1a1a;
+		color: #ffffff;
+		border: none;
 	}
 	.prs-sr-end-error {
 		margin-top: 10px;
@@ -615,30 +665,17 @@ add_shortcode(
                                 ?>
                         </h3>
                         <div class="prs-sr-flash-sub"><?php esc_html_e( 'See you soon to keep reading this book.', 'politeia-reading' ); ?></div>
-						<a href="#" role="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn" aria-controls="prs-note-panel" aria-expanded="false" aria-disabled="false">
+						<button type="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn" aria-controls="prs-note-panel" aria-expanded="false">
 							<span class="prs-add-note-text"><?php esc_html_e( 'Add Note', 'politeia-reading' ); ?></span>
-						</a>
+						</button>
                 </div>
 
                 <div id="prs-note-panel" class="prs-note-panel" style="display:none;">
                         <div class="note-editor-panel" role="group" aria-label="<?php esc_attr_e( 'Session note editor', 'politeia-reading' ); ?>">
-                                <div
-                                        class="prs-note-header"
-                                        data-default-title="<?php echo esc_attr( $book_title ); ?>"
-                                        data-book-title="<?php echo esc_attr( $book_title ); ?>"
-                                        data-label-prefix="<?php echo esc_attr__( 'SESSION', 'politeia-reading' ); ?>"
-                                        data-default-session-label="<?php echo esc_attr__( 'SESSION —', 'politeia-reading' ); ?>"
-                                        data-default-page-range="<?php echo esc_attr__( '— · —', 'politeia-reading' ); ?>"
-                                >
-                                        <div class="prs-session-id"><?php esc_html_e( 'SESSION —', 'politeia-reading' ); ?></div>
-                                        <div class="prs-pages"><?php esc_html_e( '— · —', 'politeia-reading' ); ?></div>
-                                </div>
                                 <div class="note-toolbar" role="toolbar" aria-label="<?php esc_attr_e( 'Formatting options', 'politeia-reading' ); ?>">
-                                        <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 1', 'politeia-reading' ); ?>">H1</button>
-                                        <button type="button" class="tool-button" title="<?php esc_attr_e( 'Heading 2', 'politeia-reading' ); ?>">H2</button>
-                                        <button type="button" class="tool-button bold" title="<?php esc_attr_e( 'Bold', 'politeia-reading' ); ?>">B</button>
-                                        <button type="button" class="tool-button italic" title="<?php esc_attr_e( 'Italic', 'politeia-reading' ); ?>">I</button>
-                                        <button type="button" class="tool-button" title="<?php esc_attr_e( 'Bullet list', 'politeia-reading' ); ?>">•</button>
+                                        <button type="button" class="tool-button bold" data-command="bold" title="<?php esc_attr_e( 'Bold', 'politeia-reading' ); ?>">B</button>
+                                        <button type="button" class="tool-button italic" data-command="italic" title="<?php esc_attr_e( 'Italic', 'politeia-reading' ); ?>">I</button>
+                                        <button type="button" class="tool-button" data-command="bullet" title="<?php esc_attr_e( 'Bullet list', 'politeia-reading' ); ?>">•</button>
                                 </div>
                                 <?php $note_placeholder = esc_attr__( 'Write your thoughts about this session…', 'politeia-reading' ); ?>
                                 <div
@@ -749,8 +786,3 @@ add_shortcode(
 		return ob_get_clean();
 	}
 );
-	#prs-cancel-note-btn {
-		background: #1a1a1a;
-		color: #ffffff;
-		border: none;
-	}

@@ -413,11 +413,9 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
       updateLimitWarning(getEditorCharacterCount());
       lastValidEditorHtml = editor.innerHTML;
       lastValidSelection = savedRange ? savedRange.cloneRange() : null;
-      bindToolbarCommand('.tool-button.bold', 'bold');
-      bindToolbarCommand('.tool-button.italic', 'italic');
-      bindToolbarCommand('.tool-button[title="Heading 1"]', 'formatBlock', 'h1');
-      bindToolbarCommand('.tool-button[title="Heading 2"]', 'formatBlock', 'h2');
-      bindToolbarCommand('.tool-button[title="Bullet list"]', 'insertUnorderedList');
+      bindToolbarCommand('.tool-button[data-command="bold"]', 'bold');
+      bindToolbarCommand('.tool-button[data-command="italic"]', 'italic');
+      bindToolbarCommand('.tool-button[data-command="bullet"]', 'insertUnorderedList');
     }
 
     const normalizeString = value => (typeof value === "string" ? value.trim() : "");
