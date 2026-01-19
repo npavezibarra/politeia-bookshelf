@@ -1406,3 +1406,144 @@ msgstr "Iniciar Plan de Lectura"
 
 msgid "Personaliza tu ritmo y alcanza tus metas literarias"
 msgstr "Personaliza tu ritmo y alcanza tus metas literarias"
+
+msgid "Total Pages this Week"
+msgstr "Total de paginas esta semana"
+
+msgid "Avg Session Time this Month"
+msgstr "Tiempo promedio por sesion este mes"
+
+msgid "Books Read this Month"
+msgstr "Libros leidos este mes"
+
+msgid "Average Session Time This Month"
+msgstr "Tiempo promedio por sesion este mes"
+
+msgid "Total Pages This Month"
+msgstr "Total de paginas este mes"
+
+msgid "Total Reading Time This Month"
+msgstr "Tiempo Total de Lectura este mes"
+
+msgid "Average Pages per Hour"
+msgstr "Promedio de paginas por hora"
+
+msgid "%1$s: %2$s %3$s"
+msgstr "%1$s: %2$s %3$s"
+
+msgid "Mayo"
+msgstr "Mayo"
+
+msgid "Rendimiento Maestro"
+msgstr "Rendimiento Maestro"
+
+msgid "Libros Terminados"
+msgstr "Libros Terminados"
+
+msgid "Páginas Totales"
+msgstr "Páginas Totales"
+
+msgid "%d h"
+msgstr "%d h"
+
+msgid "Tiempo Invertido"
+msgstr "Tiempo Invertido"
+
+msgid "Pág / Hora Media"
+msgstr "Pág / Hora Media"
+
+msgid "Consistencia de Hábito"
+msgstr "Consistencia de Hábito"
+
+msgid "Frecuencia de Lectura Anual"
+msgstr "Frecuencia de Lectura Anual"
+
+msgid "Menos"
+msgstr "Menos"
+
+msgid "Más"
+msgstr "Más"
+
+msgid "Ene"
+msgstr "Ene"
+
+msgid "Feb"
+msgstr "Feb"
+
+msgid "Mar"
+msgstr "Mar"
+
+msgid "Abr"
+msgstr "Abr"
+
+msgid "Jun"
+msgstr "Jun"
+
+msgid "Jul"
+msgstr "Jul"
+
+msgid "Ago"
+msgstr "Ago"
+
+msgid "Sep"
+msgstr "Sep"
+
+msgid "Oct"
+msgstr "Oct"
+
+msgid "Nov"
+msgstr "Nov"
+
+msgid "Dic"
+msgstr "Dic"
+
+msgid "%d DÍAS"
+msgstr "%d DÍAS"
+
+msgid "Racha Actual"
+msgstr "Racha Actual"
+
+msgid "Puntos Politeia"
+msgstr "Puntos Politeia"
+
+msgid "Estado de la Biblioteca"
+msgstr "Estado de la Biblioteca"
+
+msgid "Formato Predominante"
+msgstr "Formato Predominante"
+
+msgid "%d%% Físico"
+msgstr "%d%% Físico"
+
+msgid "%d%% iPad"
+msgstr "%d%% iPad"
+
+msgid "Predicción IA"
+msgstr "Predicción IA"
+
+msgid "Terminarás el año con %1$s si mantienes tu ritmo actual."
+msgstr "Terminarás el año con %1$s si mantienes tu ritmo actual."
+
+msgid "26 libros"
+msgstr "26 libros"
+
+msgid "Radar de Intereses Global"
+msgstr "Radar de Intereses Global"
+
+msgid "FILOSOFÍA"
+msgstr "FILOSOFÍA"
+
+msgid "POLÍTICA"
+msgstr "POLÍTICA"
+
+msgid "HISTORIA"
+msgstr "HISTORIA"
+
+msgid "CIENCIA"
+msgstr "CIENCIA"
+
+msgid "Especialización Principal"
+msgstr "Especialización Principal"
+
+msgid "Reading Statistics"
+msgstr "Estadísticas de Lectura"
