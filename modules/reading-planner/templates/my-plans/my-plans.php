@@ -130,10 +130,14 @@ $is_owner       = $requested_user
 		align-items: center;
 		justify-content: center;
 		cursor: pointer;
-		color: #111827;
+		color: #C79F32;
 		font-size: 35px;
 		line-height: 1;
 		font-variation-settings: "FILL" 1, "wght" 600, "opsz" 24;
+	}
+	.prs-session-recorder-trigger:hover,
+	.prs-session-recorder-trigger:focus {
+		color: #E9D18A;
 	}
 
 	.prs-session-modal {
@@ -153,29 +157,31 @@ $is_owner       = $requested_user
 
 	.prs-session-modal__content {
 		position: relative;
+		filter: drop-shadow(10px 10px 50px rgba(0, 0, 0, 0.5));
 		max-width: 600px;
 		width: 100%;
 		max-height: 90vh;
 		overflow-y: auto;
-		background: #ffffff;
-		padding: 24px;
-		border: 1px solid #dddddd;
-		border-radius: 12px;
+		background: transparent;
+		padding: 0;
+		border: none;
+		border-radius: 0;
 	}
 
 	.prs-session-modal__close {
 		position: absolute;
-		top: 12px;
-		right: 12px;
+		top: 16px;
+		right: 16px;
 		border: none;
 		background: none;
-		color: #000000;
+		color: #ffffff;
 		cursor: pointer;
-		font-size: 20px;
+		font-size: 22px;
 		line-height: 1;
 		padding: 4px;
 		outline: none;
 		box-shadow: none;
+		z-index: 2;
 	}
 
 	.prs-session-modal__close:hover,
@@ -183,7 +189,7 @@ $is_owner       = $requested_user
 	.prs-session-modal__close:focus-visible {
 		background: none;
 		box-shadow: none;
-		color: #000000;
+		color: #ffffff;
 		outline: none;
 	}
 
@@ -1958,7 +1964,6 @@ $is_owner       = $requested_user
 				const handleKeydown = (event) => {
 					if (event.key === 'Escape') {
 						event.preventDefault();
-						closeModal();
 					}
 				};
 
@@ -2022,7 +2027,7 @@ $is_owner       = $requested_user
 
 				sessionModal.addEventListener('click', (event) => {
 					if (event.target === sessionModal) {
-						closeModal();
+						event.preventDefault();
 					}
 				});
 

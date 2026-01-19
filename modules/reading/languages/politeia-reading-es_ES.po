@@ -1083,6 +1083,9 @@ msgstr "Título (Z → A)"
 msgid "To start a session, set the total Pages for this book in the info panel."
 msgstr "Para iniciar una sesión, establece el total de páginas de este libro en el panel de información."
 
+msgid "Page number cannot be less than the starting page."
+msgstr "El número de páginas no puede ser menor a la página inicial."
+
 msgid "Total Pages"
 msgstr "Total de páginas"
 

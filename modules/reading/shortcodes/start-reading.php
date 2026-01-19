@@ -148,50 +148,273 @@ add_shortcode(
 		ob_start();
 		?>
 	<style>
-	/* Estilos mínimos (la alineación derecha de botones la manejas con tu CSS externo) */
-	.prs-sr { width:100%; }
-	.prs-sr .prs-sr-head { margin:0 0 8px; }
-	.prs-sr .prs-sr-meta { margin:0 0 14px; color:#666; font-size:14px; }
-	.prs-sr .prs-sr-meta-title { color:#111; font-weight:700; }
-	.prs-sr .prs-sr-meta-author { color:#555; font-weight:500; }
-	.prs-sr .prs-sr-last { color:#555; margin:4px 0 10px; }
+	@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@200;300;400;500;600;700&display=swap');
 
-	.prs-sr-table { width:100%; border-collapse: collapse; background:#fff; }
-	.prs-sr-table th,
-	.prs-sr-table td { padding:10px; border:1px solid #ddd; vertical-align:middle; }
-	.prs-sr-table th { width:40%; background:#f6f6f6; text-align:left; }
-	.prs-sr-input { width:100%; box-sizing:border-box; }
-	.prs-sr-timer { font-size:28px; font-weight:600; padding:12px 0; text-align:center; }
+	.prs-sr {
+		width: 100%;
+		background: #1a1a1a;
+		color: #ffffff;
+		border-radius: 24px;
+		padding: 32px;
+		font-family: 'Poppins', sans-serif;
+	}
+	.prs-sr * { box-sizing: border-box; }
+	.prs-sr input[type=number]::-webkit-outer-spin-button,
+	.prs-sr input[type=number]::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+	.prs-sr input[type=number] { -moz-appearance: textfield; }
+	.prs-sr-header { text-align: center; margin-bottom: 22px; }
+	.prs-sr-kicker {
+		font-size: 12px;
+		text-transform: uppercase;
+		letter-spacing: 0.28em;
+		opacity: 0.6;
+		margin-bottom: 12px;
+		font-weight: 600;
+	}
+	.prs-sr-meta { margin: 0 0 8px; }
+	.prs-sr-meta-title {
+		display: block;
+		font-size: 22px;
+		font-weight: 500;
+		letter-spacing: 0.03em;
+	}
+	.prs-sr-meta-author {
+		display: block;
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+		opacity: 0.55;
+		margin-top: 4px;
+	}
+	.prs-sr-last {
+		text-align: center;
+		font-size: 14px;
+		color: rgba(255, 255, 255, 0.75);
+		margin-bottom: 28px;
+	}
 
-	/* Bloque de éxito (HTML) */
+	.prs-sr-form {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 32px;
+	}
+	.prs-sr-field {
+		width: 100%;
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+	}
+	.prs-sr-input,
+	.prs-sr-view {
+		width: 100%;
+		max-width: 460px;
+		background: #1a1a1a;
+		border: none;
+		border-bottom: 2px solid rgba(255, 255, 255, 0.12);
+		border-radius: 0;
+		padding: 12px 0;
+		font-size: 34px;
+		text-align: center;
+		color: #ffffff;
+		transition: border-color 0.2s ease;
+	}
+	.prs-sr-input:focus {
+		outline: none;
+		background: #1a1a1a;
+		border-bottom-color: #c79f32;
+		box-shadow: none;
+	}
+	.prs-sr-input:focus-visible {
+		outline: none;
+		box-shadow: none;
+	}
+	.prs-sr-input::placeholder { color: rgba(255, 255, 255, 0.1); }
+	.prs-sr-label {
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.35em;
+		color: #ffffff;
+		opacity: 1;
+		font-weight: 600;
+		text-align: center;
+	}
+	.prs-sr-view { display: none; }
+
+	.prs-sr-timer-row {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 20px;
+	}
+	.prs-sr-clock {
+		position: relative;
+		width: 260px;
+		height: 260px;
+		border-radius: 50%;
+		background: #f5f5dc;
+		box-shadow: 0 0 60px rgba(0, 0, 0, 0.6);
+		overflow: hidden;
+	}
+	.prs-sr-stardust {
+		position: absolute;
+		inset: 0;
+		width: 100%;
+		height: 100%;
+		display: block;
+		z-index: 0;
+	}
+	.prs-sr-clock-inner {
+		position: absolute;
+		inset: 8px;
+		border-radius: 50%;
+		border: 1px solid rgba(255, 255, 255, 0.08);
+		background: #f5f5dc;
+		z-index: 2;
+	}
+	.prs-sr-clock svg {
+		position: absolute;
+		inset: 8px;
+		width: calc(100% - 16px);
+		height: calc(100% - 16px);
+		z-index: 2;
+	}
+	.prs-sr-clock-center {
+		position: absolute;
+		top: 50%;
+		left: 50%;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: rgba(0, 0, 0, 0.1);
+		transform: translate(-50%, -50%);
+		z-index: 2;
+	}
+	.prs-sr-timer {
+		font-size: 40px;
+		letter-spacing: 0.08em;
+		font-weight: 600;
+		color: rgba(255, 255, 255, 0.8);
+	}
+
+	.prs-sr-actions {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 14px;
+	}
+	.prs-sr-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 16px;
+		background: transparent;
+		border: none;
+		color: inherit;
+		cursor: pointer;
+		text-transform: uppercase;
+		letter-spacing: 0.25em;
+		font-size: 18px;
+		font-weight: 600;
+		padding: 10px 14px;
+		transition: transform 0.2s ease, opacity 0.2s ease;
+	}
+	.prs-sr-btn[disabled] { opacity: 0.4; cursor: not-allowed; }
+	.prs-sr-btn:active { transform: scale(0.98); }
+	.prs-sr-btn-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 24px;
+		background: transparent;
+	}
+	.prs-sr-btn-icon svg {
+		width: 28px;
+		height: 28px;
+		fill: #C79F32;
+		display: block;
+	}
+	.prs-sr-btn-label { display: inline-block; }
+	.prs-sr-btn--start .prs-sr-btn-label,
+	.prs-sr-btn--save .prs-sr-btn-label {
+		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.prs-sr-btn--stop .prs-sr-btn-label {
+		background: linear-gradient(135deg, #783F27, #B87333, #E5AA70);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.prs-sr-btn--start .prs-sr-btn-icon { color: #C79F32; }
+	.prs-sr-btn--stop .prs-sr-btn-icon { color: #B87333; }
+	.prs-sr-btn--save .prs-sr-btn-icon { color: #C79F32; }
+
+	.prs-sr-row-needs-pages {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 10px;
+		font-size: 13px;
+		color: rgba(255, 255, 255, 0.7);
+	}
+
 	.prs-sr-flash-block {
-		display:none;
-		width:100%;
-		background:#ffffff;
-		color:#111;
-		border:1px solid #e5e5e5;
-		border-radius:10px;
-		padding:24px;
+		display: none;
+		width: 100%;
+		background: #1a1a1a;
+		color: #ffffff;
+		border-radius: 20px;
+		padding: 0 28px 28px;
+		font-family: 'Poppins', sans-serif;
 	}
-	.prs-sr-flash-inner{
-		min-height:140px;       /* se ajusta a la altura del form via JS */
-		display:flex;
-		flex-direction:column;
-		align-items:center;
-		justify-content:center;
-		text-align:center;
-		gap:6px;
+	.prs-sr-flash-inner {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		text-align: center;
+		gap: 10px;
 	}
-	.prs-sr-flash-inner h2{
-		margin:0; font-size:22px; font-weight:800;
+	.prs-sr-flash-inner h2 {
+		margin: 0;
+		font-size: 22px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.16em;
+		color: #ffffff;
 	}
-	.prs-sr-flash-inner h3{
-		margin:0; font-size:18px; font-weight:600;
+	.prs-sr-flash-inner h3 {
+		margin: 0;
+		font-size: 18px;
+		font-weight: 500;
+		color: #ffffff;
 	}
-	.prs-sr-flash-sub{
-		margin-top:6px; font-size:14px; opacity:.9;
+	.prs-sr-flash-sub {
+		margin-top: 4px;
+		font-size: 13px;
+		color: rgba(255, 255, 255, 0.7);
 	}
-
+	.prs-sr-flash-icon {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		width: 54px;
+		height: 54px;
+		margin-bottom: 6px;
+	}
+	.prs-sr-flash-icon svg {
+		width: 54px;
+		height: 54px;
+		fill: none;
+		stroke: url(#prs-sr-gold-check);
+		stroke-width: 2.5;
+	}
 	.prs-btn {
 		display: inline-flex;
 		align-items: center;
@@ -199,52 +422,130 @@ add_shortcode(
 		gap: 8px;
 		min-height: 42px;
 		padding: 10px 18px;
-		background: #111111;
+		background: rgba(255, 255, 255, 0.08);
 		color: #ffffff;
-		border: none;
+		border: 1px solid rgba(255, 255, 255, 0.1);
 		cursor: pointer;
 		box-shadow: none;
 		outline: none;
-		border-radius: 8px;
+		border-radius: 12px;
 		font-weight: 600;
-		letter-spacing: 0.01em;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		font-size: 12px;
 	}
-	.prs-btn[disabled] { opacity:.4; cursor:not-allowed; }
-	.prs-btn:focus-visible { outline:2px solid #fff; outline-offset:2px; }
-	#prs-sr-start {
-		background: #000000;
-		color: #ffffff;
+	.prs-btn-secondary { background: transparent; }
+	.prs-btn[disabled] { opacity: .4; cursor: not-allowed; }
+	.prs-btn:focus-visible { outline: 2px solid #ffffff; outline-offset: 2px; }
+	.prs-add-note-btn {
+		background: #1a1a1a;
+		color: transparent;
+		border: none;
+		font-size: 18px;
+		padding: 12px 26px;
+		letter-spacing: 0.2em;
 	}
-	#prs-sr-start .prs-play-icon {
-		color: #ffffff;
-		font-size: 22px;
-		line-height: 1;
-	}
-	#prs-sr-start:hover,
-	#prs-sr-start:focus {
-		background: #c79f32;
-		color: #000000;
-	}
-	#prs-sr-start:hover .prs-play-icon,
-	#prs-sr-start:focus .prs-play-icon {
-		color: #000000;
-	}
-
-	#prs-sr-stop {
+	.prs-add-note-btn .prs-add-note-text {
 		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-		color: #000000;
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.prs-add-note-btn:hover,
+	.prs-add-note-btn:focus {
+		filter: brightness(1.05);
 	}
 
-	#prs-sr-stop:hover,
-	#prs-sr-stop:focus {
-		background: #000000;
-		color: #C79F32;
+	.prs-note-panel {
+		width: 100%;
+		margin-top: 18px;
+		background: #1a1a1a;
+		color: #ffffff;
+		border: none;
+	}
+	.note-editor-panel {
+		border: none;
+		border-radius: 18px;
+		padding: 18px;
+		background: #1a1a1a;
+	}
+	.prs-note-header {
+		display: flex;
+		justify-content: space-between;
+		gap: 16px;
+		margin-bottom: 12px;
+		font-size: 11px;
+		text-transform: uppercase;
+		letter-spacing: 0.2em;
+		color: rgba(255, 255, 255, 0.6);
+	}
+	.note-toolbar {
+		display: flex;
+		justify-content: center;
+		gap: 18px;
+		border-bottom: none;
+		padding-bottom: 10px;
+		margin-bottom: 12px;
+		background: #1a1a1a;
+	}
+	.note-toolbar .tool-button {
+		background: transparent;
+		border: none;
+		color: #ffffff;
+		font-size: 14px;
+		cursor: pointer;
+		transition: color 0.2s ease;
+	}
+	.note-toolbar .tool-button:hover { color: #E9D18A; }
+	.note-textarea {
+		min-height: 160px;
+		color: #ffffff;
+		background: #1a1a1a;
+		border: none;
+		border-radius: 16px;
+		padding: 16px;
+		font-size: 15px;
+	}
+	.note-textarea:focus {
+		outline: none;
+		box-shadow: none;
+	}
+	.note-textarea::placeholder { color: rgba(255, 255, 255, 0.35); }
+	.note-actions {
+		display: flex;
+		justify-content: center;
+		gap: 16px;
+		margin-top: 18px;
+		background: #1a1a1a;
+	}
+	#prs-save-note-btn {
+		background: #1a1a1a;
+		color: transparent;
+		border: none;
+	}
+	#prs-save-note-btn .prs-btn-text {
+		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+		-webkit-background-clip: text;
+		background-clip: text;
+		color: transparent;
+	}
+	.prs-sr-end-error {
+		margin-top: 10px;
+		font-size: 12px;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+		color: #E9D18A;
+		text-align: center;
+		display: none;
 	}
 
-	/* Nota cuando faltan páginas */
-	.prs-sr-note {
-		font-size:13px;
-		color:#444;
+	@media (max-width: 640px) {
+		.prs-sr { padding: 24px; }
+		.prs-sr-input,
+		.prs-sr-view { font-size: 28px; }
+		.prs-sr-clock { width: 210px; height: 210px; }
+		.prs-sr-timer { font-size: 32px; }
+		.prs-sr-btn { letter-spacing: 0.15em; font-size: 14px; }
 	}
 	</style>
 
@@ -253,26 +554,28 @@ add_shortcode(
 		data-book-id="<?php echo (int) $book_id; ?>"
 		data-prs-sr="<?php echo esc_attr( wp_json_encode( $prs_sr ) ); ?>"
 	>
-	<h2 class="prs-sr-head"><?php esc_html_e( 'Session recorder', 'politeia-reading' ); ?></h2>
-	<?php if ( $book_title || $book_author ) : ?>
-		<div class="prs-sr-meta">
-			<?php if ( $book_title ) : ?>
-				<span class="prs-sr-meta-title"><?php echo esc_html( $book_title ); ?></span>
-			<?php endif; ?>
-			<?php if ( $book_author ) : ?>
-				<span class="prs-sr-meta-author">
-					<?php echo esc_html( sprintf( __( 'by %s', 'politeia-reading' ), $book_author ) ); ?>
-				</span>
+		<div class="prs-sr-header">
+			<div class="prs-sr-kicker"><?php esc_html_e( 'Session recorder', 'politeia-reading' ); ?></div>
+			<?php if ( $book_title || $book_author ) : ?>
+				<div class="prs-sr-meta">
+					<?php if ( $book_title ) : ?>
+						<span class="prs-sr-meta-title"><?php echo esc_html( $book_title ); ?></span>
+					<?php endif; ?>
+					<?php if ( $book_author ) : ?>
+						<span class="prs-sr-meta-author">
+							<?php echo esc_html( sprintf( __( 'by %s', 'politeia-reading' ), $book_author ) ); ?>
+						</span>
+					<?php endif; ?>
+				</div>
 			<?php endif; ?>
 		</div>
-	<?php endif; ?>
 
 		<?php if ( $last_end_page ) : ?>
-		<div class="prs-sr-last">
-			<?php esc_html_e( 'Last session page', 'politeia-reading' ); ?>:
-		<strong><?php echo (int) $last_end_page; ?></strong>
-		</div>
-	<?php endif; ?>
+			<div class="prs-sr-last" data-role="sr-last">
+				<?php esc_html_e( 'Last session page', 'politeia-reading' ); ?>:
+				<strong><?php echo (int) $last_end_page; ?></strong>
+			</div>
+		<?php endif; ?>
 
 	<!-- Bloque HTML de éxito (centrado, amarillo, h2/h3) -->
         <div
@@ -286,7 +589,20 @@ add_shortcode(
                 data-user-id="<?php echo esc_attr( $user_id ); ?>"
         >
                 <div class="prs-sr-flash-inner">
-                <div id="prs-sr-summary">
+                <div id="prs-sr-summary" style="font-family: 'Poppins', sans-serif;">
+						<div class="prs-sr-flash-icon" aria-hidden="true">
+							<svg viewBox="0 0 24 24">
+								<defs>
+									<linearGradient id="prs-sr-gold-check" x1="0%" y1="0%" x2="100%" y2="100%">
+										<stop offset="0%" stop-color="#8A6B1E"></stop>
+										<stop offset="50%" stop-color="#C79F32"></stop>
+										<stop offset="100%" stop-color="#E9D18A"></stop>
+									</linearGradient>
+								</defs>
+								<circle cx="12" cy="12" r="9.5"></circle>
+								<path d="M7 12.5l3 3 7-7"></path>
+							</svg>
+						</div>
                         <h2><?php esc_html_e( 'Great job!', 'politeia-reading' ); ?></h2>
                         <h3>
                                 <?php
@@ -299,9 +615,9 @@ add_shortcode(
                                 ?>
                         </h3>
                         <div class="prs-sr-flash-sub"><?php esc_html_e( 'See you soon to keep reading this book.', 'politeia-reading' ); ?></div>
-                        <button type="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn" aria-controls="prs-note-panel" aria-expanded="false">
-                                <?php esc_html_e( 'Add Note', 'politeia-reading' ); ?>
-                        </button>
+						<a href="#" role="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn" aria-controls="prs-note-panel" aria-expanded="false" aria-disabled="false">
+							<span class="prs-add-note-text"><?php esc_html_e( 'Add Note', 'politeia-reading' ); ?></span>
+						</a>
                 </div>
 
                 <div id="prs-note-panel" class="prs-note-panel" style="display:none;">
@@ -341,7 +657,7 @@ add_shortcode(
                         </div>
                         <div class="note-actions">
                                 <button type="button" id="prs-save-note-btn" class="prs-btn">
-                                <?php esc_html_e( 'Save Note', 'politeia-reading' ); ?>
+									<span class="prs-btn-text"><?php esc_html_e( 'Save Note', 'politeia-reading' ); ?></span>
                                 </button>
                                 <button type="button" id="prs-cancel-note-btn" class="prs-btn prs-btn-secondary">
                                 <?php esc_html_e( 'Cancel', 'politeia-reading' ); ?>
@@ -352,86 +668,89 @@ add_shortcode(
         </div>
 
 	<!-- Wrapper del formulario (se oculta mientras se muestra el flash) -->
-	<div id="prs-sr-formwrap">
-		<table class="prs-sr-table" role="grid">
-		<tbody>
-			<!-- Start page -->
-			<tr id="prs-sr-row-start">
-			<th scope="row"><label for="prs-sr-start-page"><?php esc_html_e( 'Start page', 'politeia-reading' ); ?>*</label></th>
-			<td>
-				<input type="number" min="1" id="prs-sr-start-page" class="prs-sr-input" />
-				<span id="prs-sr-start-page-view" class="prs-sr-view" style="display:none;"></span>
-			</td>
-			</tr>
+	<div id="prs-sr-formwrap" class="prs-sr-form">
+		<div id="prs-sr-row-start" class="prs-sr-field" data-role="sr-field">
+			<input type="number" min="1" id="prs-sr-start-page" class="prs-sr-input" placeholder="1" />
+			<span id="prs-sr-start-page-view" class="prs-sr-view"></span>
+			<label for="prs-sr-start-page" class="prs-sr-label"><?php esc_html_e( 'Start page', 'politeia-reading' ); ?>*</label>
+		</div>
 
-			<!-- Capítulo -->
-			<tr id="prs-sr-row-chapter">
-			<th scope="row"><label for="prs-sr-chapter"><?php esc_html_e( 'Chapter', 'politeia-reading' ); ?></label></th>
-			<td>
-				<input type="text" id="prs-sr-chapter" class="prs-sr-input" />
-				<span id="prs-sr-chapter-view" class="prs-sr-view" style="display:none;"></span>
-			</td>
-			</tr>
+		<div id="prs-sr-row-chapter" class="prs-sr-field" data-role="sr-field">
+			<input type="text" id="prs-sr-chapter" class="prs-sr-input" placeholder="<?php esc_attr_e( 'Chapter', 'politeia-reading' ); ?>" />
+			<span id="prs-sr-chapter-view" class="prs-sr-view"></span>
+			<label for="prs-sr-chapter" class="prs-sr-label"><?php esc_html_e( 'Chapter', 'politeia-reading' ); ?></label>
+		</div>
 
-			<!-- Timer -->
-			<tr id="prs-sr-row-timer" class="prs-sr-row--full">
-			<td colspan="2">
-				<div id="prs-sr-timer" class="prs-sr-timer">00:00:00</div>
-			</td>
-			</tr>
+		<div id="prs-sr-row-timer" class="prs-sr-timer-row">
+			<div class="prs-sr-clock" aria-hidden="true" style="display:none;">
+				<canvas class="prs-sr-stardust" aria-hidden="true"></canvas>
+				<div class="prs-sr-clock-inner"></div>
+				<svg viewBox="0 0 200 200">
+					<defs>
+						<linearGradient id="prs-sr-gold-<?php echo (int) $book_id; ?>" x1="0" y1="0" x2="200" y2="200" gradientUnits="userSpaceOnUse">
+							<stop offset="0%" stop-color="#8A6B1E" />
+							<stop offset="50%" stop-color="#C79F32" />
+							<stop offset="100%" stop-color="#E9D18A" />
+						</linearGradient>
+					</defs>
+					<path id="prs-sr-progress" d="" fill="url(#prs-sr-gold-<?php echo (int) $book_id; ?>)" />
+					<circle cx="100" cy="5" r="1.2" fill="#8B7355" opacity="0.4" />
+					<circle cx="195" cy="100" r="1.2" fill="#8B7355" opacity="0.4" />
+					<circle cx="100" cy="195" r="1.2" fill="#8B7355" opacity="0.4" />
+					<circle cx="5" cy="100" r="1.2" fill="#8B7355" opacity="0.4" />
+				</svg>
+				<div class="prs-sr-clock-center"></div>
+			</div>
+		</div>
 
-			<!-- AVISO cuando no hay pages -->
-                        <tr id="prs-sr-row-needs-pages" class="prs-sr-row--full" style="display:none;">
-                        <td colspan="2">
-                                <div class="prs-sr-row-needs-pages">
-                                        <svg class="prs-warning-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                                <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-                                                <line x1="12" y1="9" x2="12" y2="13"></line>
-                                                <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                                        </svg>
-                                        <span><?php esc_html_e( 'To start a session, set the total Pages for this book in the info panel.', 'politeia-reading' ); ?></span>
-                                </div>
-                        </td>
-                        </tr>
+		<div id="prs-sr-row-needs-pages" style="display:none;">
+			<div class="prs-sr-row-needs-pages">
+				<svg class="prs-warning-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#EAB308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+					<line x1="12" y1="9" x2="12" y2="13"></line>
+					<line x1="12" y1="17" x2="12.01" y2="17"></line>
+				</svg>
+				<span><?php esc_html_e( 'To start a session, set the total Pages for this book in the info panel.', 'politeia-reading' ); ?></span>
+			</div>
+		</div>
 
-			<!-- Start/Stop Buttons (tu layout exacto; alineación derecha en tu CSS externo) -->
-			<tr id="prs-sr-row-actions" class="prs-sr-row--full">
-			<td colspan="2">
-				<button
-				type="button"
-				id="prs-sr-start"
-				class="prs-btn"
-				disabled
-				>
-				<span aria-hidden="true" class="material-symbols-outlined prs-play-icon">play_circle</span> <?php esc_html_e( 'Start Reading', 'politeia-reading' ); ?>
-				</button>
-				<button type="button" id="prs-sr-stop" class="prs-btn" style="display:none;">
-				■ <?php esc_html_e( 'Stop Reading', 'politeia-reading' ); ?>
-				</button>
-			</td>
-			</tr>
+		<div id="prs-sr-row-actions" class="prs-sr-actions">
+			<a href="#" role="button" id="prs-sr-start" class="prs-sr-btn prs-sr-btn--start" aria-disabled="true">
+				<span class="prs-sr-btn-icon" aria-hidden="true">
+					<svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+						<polygon points="8,5 20,12 8,19"></polygon>
+					</svg>
+				</span>
+				<span class="prs-sr-btn-label"><?php esc_html_e( 'Start Reading', 'politeia-reading' ); ?></span>
+			</a>
+			<a href="#" role="button" id="prs-sr-stop" class="prs-sr-btn prs-sr-btn--stop" style="display:none;" aria-disabled="false">
+				<span class="prs-sr-btn-icon">&#9632;</span>
+				<span class="prs-sr-btn-label"><?php esc_html_e( 'Stop Reading', 'politeia-reading' ); ?></span>
+			</a>
+		</div>
 
-			<!-- End Page (aparece tras Stop) -->
-			<tr id="prs-sr-row-end" style="display:none;">
-			<th scope="row"><label for="prs-sr-end-page"><?php esc_html_e( 'End Page', 'politeia-reading' ); ?>*</label></th>
-			<td>
-				<input type="number" min="1" id="prs-sr-end-page" class="prs-sr-input" />
-			</td>
-			</tr>
+		<div id="prs-sr-row-end" class="prs-sr-field" style="display:none;">
+			<input type="number" min="1" id="prs-sr-end-page" class="prs-sr-input" placeholder="000" />
+			<label for="prs-sr-end-page" class="prs-sr-label"><?php esc_html_e( 'End Page', 'politeia-reading' ); ?>*</label>
+			<div id="prs-sr-end-error" class="prs-sr-end-error">
+				<?php esc_html_e( 'Page number cannot be less than the starting page.', 'politeia-reading' ); ?>
+			</div>
+		</div>
 
-			<!-- Guardar sesión (aparece tras Stop) -->
-			<tr id="prs-sr-row-save" class="prs-sr-row--full" style="display:none;">
-			<td colspan="2">
-				<button type="button" id="prs-sr-save" class="prs-btn" disabled>
-				<?php esc_html_e( 'Save Session', 'politeia-reading' ); ?>
-				</button>
-			</td>
-			</tr>
-		</tbody>
-		</table>
+		<div id="prs-sr-row-save" class="prs-sr-actions" style="display:none;">
+			<a href="#" role="button" id="prs-sr-save" class="prs-sr-btn prs-sr-btn--save" aria-disabled="true">
+				<span class="prs-sr-btn-icon">&#10003;</span>
+				<span class="prs-sr-btn-label"><?php esc_html_e( 'Save Session', 'politeia-reading' ); ?></span>
+			</a>
+		</div>
 	</div>
 	</div>
 		<?php
 		return ob_get_clean();
 	}
 );
+	#prs-cancel-note-btn {
+		background: #1a1a1a;
+		color: #ffffff;
+		border: none;
+	}

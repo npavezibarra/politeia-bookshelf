@@ -2714,7 +2714,6 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
     function handleKeydown(event) {
       if (event.key === "Escape") {
         event.preventDefault();
-        close();
       }
     }
 
@@ -2760,7 +2759,7 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
 
     modal.addEventListener("click", (event) => {
       if (event.target === modal) {
-        close();
+        event.preventDefault();
       }
     });
 

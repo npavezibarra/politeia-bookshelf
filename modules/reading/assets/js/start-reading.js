@@ -20,10 +20,14 @@ const prsStartReadingInit = (options = {}) => {
   const $rowActions   = root.querySelector('#prs-sr-row-actions');
   const $startBtn     = $('#prs-sr-start');
   const $stopBtn      = $('#prs-sr-stop');
+  const $clockPath    = root.querySelector('#prs-sr-progress');
+  const $clockWrap    = root.querySelector('.prs-sr-clock');
+  const $stardustCanvas = root.querySelector('.prs-sr-stardust');
 
   // End/Save
   const $rowEnd       = $('#prs-sr-row-end');
   const $endPage      = $('#prs-sr-end-page');
+  const $endError     = $('#prs-sr-end-error');
   const $rowSave      = $('#prs-sr-row-save');
   const $saveBtn      = $('#prs-sr-save');
 
@@ -63,6 +67,7 @@ const prsStartReadingInit = (options = {}) => {
 
   // helpers de tiempo
   let t0 = 0, raf = 0;
+  let clockStartSeconds = null;
   const pad = (n) => String(n).padStart(2, '0');
   const hms = (ms) => {
     const s = Math.floor(ms / 1000);
@@ -71,9 +76,150 @@ const prsStartReadingInit = (options = {}) => {
     const r = s % 60;
     return `${pad(h)}:${pad(m)}:${pad(r)}`;
   };
-  const tick = () => { if ($timer) $timer.textContent = hms(Date.now() - t0); raf = requestAnimationFrame(tick); };
+  const secondsInHour = (date) => (date.getMinutes() * 60) + date.getSeconds();
+  const calculatePiePath = (startSeconds, currentSeconds) => {
+    if (startSeconds === null || currentSeconds === null) return '';
+    let diff = currentSeconds - startSeconds;
+    if (diff < 0) diff += 3600;
+    if (diff <= 0) return '';
+    if (diff >= 3599) return 'M 100 100 m -100 0 a 100 100 0 1 0 200 0 a 100 100 0 1 0 -200 0';
+    const startAngle = (startSeconds / 3600) * 360 - 90;
+    const endAngle = (currentSeconds / 3600) * 360 - 90;
+    const startRad = (startAngle * Math.PI) / 180;
+    const endRad = (endAngle * Math.PI) / 180;
+    const x1 = 100 + 100 * Math.cos(startRad);
+    const y1 = 100 + 100 * Math.sin(startRad);
+    const x2 = 100 + 100 * Math.cos(endRad);
+    const y2 = 100 + 100 * Math.sin(endRad);
+    const largeArcFlag = diff > 1800 ? 1 : 0;
+    return `M 100 100 L ${x1} ${y1} A 100 100 0 ${largeArcFlag} 1 ${x2} ${y2} Z`;
+  };
+  const updateClock = () => {
+    if (!$clockPath || clockStartSeconds === null) return;
+    const currentSeconds = secondsInHour(new Date());
+    $clockPath.setAttribute('d', calculatePiePath(clockStartSeconds, currentSeconds));
+  };
+  const tick = () => {
+    if ($timer) $timer.textContent = hms(Date.now() - t0);
+    updateClock();
+    raf = requestAnimationFrame(tick);
+  };
   const startTimer = () => { t0 = Date.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
   const stopTimer  = () => { cancelAnimationFrame(raf); raf = 0; return Math.floor((Date.now() - t0) / 1000); };
+
+  const stardustState = {
+    running: false,
+    raf: 0,
+    particles: [],
+  };
+
+  const stardustSettings = {
+    speed: 1.6,
+    spawnRate: 0.5,
+    burstChance: 0.025,
+    spreadFactor: 0.4,
+    beige: '245, 245, 220',
+  };
+
+  if ($stardustCanvas) {
+    window.addEventListener('resize', () => {
+      if (stardustState.running) {
+        sizeStardustCanvas();
+      }
+    });
+  }
+
+  const sizeStardustCanvas = () => {
+    if (!$stardustCanvas || !$clockWrap) return;
+    $stardustCanvas.width = $clockWrap.clientWidth;
+    $stardustCanvas.height = $clockWrap.clientHeight;
+  };
+
+  const getBiasedY = (height) => {
+    const centerY = height / 2;
+    const spread = height * stardustSettings.spreadFactor;
+    const bias = (Math.random() - 0.5) * (Math.random() * spread);
+    return centerY + bias;
+  };
+
+  const updateStardust = () => {
+    if (!stardustState.running || !$stardustCanvas) return;
+    const ctx2d = $stardustCanvas.getContext('2d');
+    if (!ctx2d) return;
+    const width = $stardustCanvas.width;
+    const height = $stardustCanvas.height;
+    ctx2d.clearRect(0, 0, width, height);
+
+    if (Math.random() < stardustSettings.spawnRate) {
+      stardustState.particles.push({
+        x: width,
+        y: getBiasedY(height),
+        speed: stardustSettings.speed + Math.random() * (stardustSettings.speed * 0.25),
+        opacity: 0,
+        hasBurst: false,
+        size: 1,
+        fragment: false,
+        vy: 0,
+      });
+    }
+
+    for (let i = stardustState.particles.length - 1; i >= 0; i -= 1) {
+      const p = stardustState.particles[i];
+      p.x -= p.speed;
+      p.y += p.vy;
+      const centerX = width / 2;
+      const distFromCenter = Math.abs(p.x - centerX);
+      const maxDist = width / 2;
+      p.opacity = Math.max(0, 1 - (distFromCenter / maxDist));
+
+      if (!p.fragment && !p.hasBurst && p.x < width * 0.55 && p.x > width * 0.45) {
+        if (Math.random() < stardustSettings.burstChance) {
+          p.hasBurst = true;
+          const fragments = 4 + Math.floor(Math.random() * 6);
+          for (let j = 0; j < fragments; j += 1) {
+            stardustState.particles.push({
+              x: p.x,
+              y: p.y,
+              speed: p.speed * (0.9 + Math.random() * 0.3),
+              opacity: 0,
+              hasBurst: true,
+              size: 1,
+              fragment: true,
+              vy: (Math.random() - 0.5) * 1.2,
+            });
+          }
+        }
+      }
+
+      ctx2d.fillStyle = `rgba(${stardustSettings.beige}, ${p.opacity})`;
+      ctx2d.fillRect(Math.floor(p.x), Math.floor(p.y), p.size, p.size);
+
+      if (p.x < -10) {
+        stardustState.particles.splice(i, 1);
+      }
+    }
+
+    stardustState.raf = requestAnimationFrame(updateStardust);
+  };
+
+  const startStardust = () => {
+    if (!$stardustCanvas || stardustState.running) return;
+    sizeStardustCanvas();
+    stardustState.running = true;
+    stardustState.raf = requestAnimationFrame(updateStardust);
+  };
+
+  const stopStardust = () => {
+    if (!stardustState.running) return;
+    stardustState.running = false;
+    if (stardustState.raf) cancelAnimationFrame(stardustState.raf);
+    stardustState.raf = 0;
+    stardustState.particles = [];
+    if ($stardustCanvas) {
+      const ctx2d = $stardustCanvas.getContext('2d');
+      if (ctx2d) ctx2d.clearRect(0, 0, $stardustCanvas.width, $stardustCanvas.height);
+    }
+  };
 
   // util UI
   const setText   = (el, t) => { if (el) el.textContent = t || ''; };
@@ -89,6 +235,21 @@ const prsStartReadingInit = (options = {}) => {
     const s = Number($startPage?.value || 0);
     const e = Number($endPage?.value || 0);
     return Number.isInteger(e) && e >= s && e > 0;
+  }
+  function updateEndError() {
+    if (!$endError) return;
+    const s = Number($startPage?.value || 0);
+    const eRaw = ($endPage?.value || '').trim();
+    const e = Number(eRaw || 0);
+    if (!eRaw) {
+      $endError.style.display = 'none';
+      return;
+    }
+    if (Number.isInteger(e) && e > 0 && e < s) {
+      $endError.style.display = 'block';
+    } else {
+      $endError.style.display = 'none';
+    }
   }
 
   // Bloqueo por estado de posesión
@@ -153,12 +314,8 @@ const prsStartReadingInit = (options = {}) => {
     }
   }
 
-  function scheduleFlashAutoHide(ms = 4200) {
+  function scheduleFlashAutoHide() {
     cancelFlashAutoHide();
-    flashHideTimer = window.setTimeout(() => {
-      flashHideTimer = null;
-      hideFlash();
-    }, ms);
   }
 
   // Flash helpers (igualar dimensiones y mostrar)
@@ -169,6 +326,8 @@ const prsStartReadingInit = (options = {}) => {
       $flash.style.display = 'none';
     }
     if ($formWrap) $formWrap.style.display = '';
+    const lastEl = root.querySelector('[data-role="sr-last"]');
+    if (lastEl) lastEl.style.display = '';
     document.dispatchEvent(new CustomEvent('prs-sr-flash:reset'));
   }
   function showFlash(pagesText, timeText, ms = 4200) {
@@ -184,6 +343,8 @@ const prsStartReadingInit = (options = {}) => {
       setText($flashTime, timeText);
       $flash.style.display = 'block';
       $formWrap.style.display = 'none';
+      const lastEl = root.querySelector('[data-role="sr-last"]');
+      if (lastEl) lastEl.style.display = 'none';
       scheduleFlashAutoHide(ms);
     }
   }
@@ -192,10 +353,8 @@ const prsStartReadingInit = (options = {}) => {
     cancelFlashAutoHide();
   });
 
-  document.addEventListener('prs-sr-flash:closeNote', (event) => {
+  document.addEventListener('prs-sr-flash:closeNote', () => {
     if (!isFlashVisible()) return;
-    const delay = Number(event?.detail?.delay || 0) || 2000;
-    scheduleFlashAutoHide(delay);
   });
 
   document.addEventListener('prs-sr-flash:showNoteForSession', (event) => {
@@ -244,6 +403,14 @@ const prsStartReadingInit = (options = {}) => {
     toggleRow($rowActions, true);
     toggle($startBtn, true);    toggle($stopBtn, false);
     toggleRow($rowEnd, false);  toggleRow($rowSave, false);
+    if ($clockPath) $clockPath.setAttribute('d', '');
+    clockStartSeconds = null;
+    toggle($clockWrap, false);
+    stopStardust();
+    const hideDuringRun = root.querySelectorAll('[data-role="sr-field"], [data-role="sr-last"]');
+    hideDuringRun.forEach((el) => {
+      el.style.display = '';
+    });
     updateStartEnabled();
   }
   function setRunning() {
@@ -253,17 +420,36 @@ const prsStartReadingInit = (options = {}) => {
     toggleRow($rowActions, true);
     toggle($startBtn, false);   toggle($stopBtn, true);
     toggleRow($rowEnd, false);  toggleRow($rowSave, false);
+    toggle($clockWrap, true);
+    startStardust();
+    const hideDuringRun = root.querySelectorAll('[data-role="sr-field"], [data-role="sr-last"]');
+    hideDuringRun.forEach((el) => {
+      el.style.display = 'none';
+    });
+    if ($clockPath && clockStartSeconds === null) {
+      clockStartSeconds = secondsInHour(new Date());
+      updateClock();
+    }
   }
   function setStopped() {
     toggle($startBtn, false);   toggle($stopBtn, false);
     toggleRow($rowActions, false);
     toggleRow($rowEnd, true);   toggleRow($rowSave, true);
+    toggle($clockWrap, false);
+    stopStardust();
+    const hideDuringRun = root.querySelectorAll('[data-role="sr-field"], [data-role="sr-last"]');
+    hideDuringRun.forEach((el) => {
+      el.style.display = 'none';
+    });
     if ($saveBtn) $saveBtn.disabled = !validEnd();
   }
 
   // Eventos de inputs
   $startPage?.addEventListener('input', updateStartEnabled);
-  $endPage?.addEventListener('input',   () => { if ($saveBtn) $saveBtn.disabled = !validEnd(); });
+  $endPage?.addEventListener('input',   () => {
+    updateEndError();
+    if ($saveBtn) $saveBtn.disabled = !validEnd();
+  });
   $owningSelect?.addEventListener('change', updateStartEnabled);
 
   // Si el usuario guarda "Pages" en el panel del libro (mismo DOM)
@@ -313,8 +499,8 @@ const prsStartReadingInit = (options = {}) => {
 
   // Start
   $startBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
     if ($startBtn.disabled || !hasPages() || !canStartByStatus() || !validStart()) {
-      e.preventDefault();
       updateStartEnabled();
       return;
     }
@@ -325,6 +511,8 @@ const prsStartReadingInit = (options = {}) => {
     setText($startView, String(startPageVal));
     setText($chapterView, chapterVal || '—');
 
+    clockStartSeconds = secondsInHour(new Date());
+    updateClock();
     setRunning();
     startTimer();
 
@@ -353,17 +541,20 @@ const prsStartReadingInit = (options = {}) => {
   });
 
   // Stop
-  $stopBtn?.addEventListener('click', () => {
+  $stopBtn?.addEventListener('click', (e) => {
+    e.preventDefault();
     durationSec = stopTimer();
     setStopped();
-    if ($endPage && $startPage && !$endPage.value) {
-      $endPage.value = String(Number($startPage.value));
+    if ($endPage) {
+      $endPage.value = '';
+      updateEndError();
       if ($saveBtn) $saveBtn.disabled = !validEnd();
     }
   });
 
   // Save
-  $saveBtn?.addEventListener('click', async () => {
+  $saveBtn?.addEventListener('click', async (e) => {
+    e.preventDefault();
     if (!validEnd()) {
       alert(text('alert_end_page_required', 'Please enter an ending page before saving.'));
       return;

@@ -541,17 +541,17 @@ wp_add_inline_script(
         .prs-box h2{ margin:0 0 8px; }
         .prs-book-title{ display:flex; align-items:center; gap:12px; margin:0; }
         .prs-book-title__text{ flex:1 1 auto; }
-        .prs-session-recorder-trigger{ display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#000; color:#fff; border:none; border-radius:6px; cursor:pointer; padding:0; font-size:18px; line-height:1; }
+        .prs-session-recorder-trigger{ display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; background:#000; color:#C79F32; border:none; border-radius:6px; cursor:pointer; padding:0; font-size:18px; line-height:1; }
         .prs-session-recorder-trigger:hover,
-        .prs-session-recorder-trigger:focus{ background:#222; }
+        .prs-session-recorder-trigger:focus{ background:#111; color:#E9D18A; }
         .prs-session-recorder-trigger:focus{ outline:2px solid #fff; outline-offset:2px; }
         .prs-session-modal{ display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:9999; align-items:center; justify-content:center; padding:24px; }
         .prs-session-modal.is-active{ display:flex; }
-        .prs-session-modal__content{ position:relative; max-width:600px; width:100%; max-height:90vh; overflow-y:auto; background:#ffffff; padding:24px; border:1px solid #dddddd; border-radius:12px; }
-        .prs-session-modal__close{ position:absolute; top:12px; right:12px; border:none; background:none; color:#000000; cursor:pointer; font-size:20px; line-height:1; padding:4px; outline:none; box-shadow:none; }
+        .prs-session-modal__content{ position:relative; filter: drop-shadow(10px 10px 50px rgba(0, 0, 0, 0.5)); max-width:600px; width:100%; max-height:90vh; overflow-y:auto; background:transparent; padding:0; border:none; border-radius:0; }
+        .prs-session-modal__close{ position:absolute; top:16px; right:16px; border:none; background:none; color:#ffffff; cursor:pointer; font-size:22px; line-height:1; padding:4px; outline:none; box-shadow:none; z-index:2; }
         .prs-session-modal__close:hover,
         .prs-session-modal__close:focus,
-        .prs-session-modal__close:focus-visible{ background:none; box-shadow:none; color:#000000; outline:none; }
+        .prs-session-modal__close:focus-visible{ background:none; box-shadow:none; color:#ffffff; outline:none; }
         .prs-meta{ color:#555; margin-top:0px; }
 	.prs-table{ width:100%; border-collapse:collapse; background:#fff; }
         .prs-table th, .prs-table td{ padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
