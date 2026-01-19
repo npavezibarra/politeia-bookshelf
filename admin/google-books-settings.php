@@ -16,6 +16,9 @@ if ( ! defined( 'POLITEIA_BOOKSHELF_FORCE_HTTP_COVERS_OPTION' ) ) {
 if ( ! defined( 'POLITEIA_BOOKSHELF_TEMPLATES_OPTION' ) ) {
     define( 'POLITEIA_BOOKSHELF_TEMPLATES_OPTION', 'politeia_bookshelf_page_templates' );
 }
+if ( ! defined( 'POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION' ) ) {
+    define( 'POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION', 'politeia_bookshelf_my_stats_sections' );
+}
 
 if ( ! function_exists( 'politeia_bookshelf_get_google_books_api_key' ) ) {
     /**
@@ -176,6 +179,28 @@ function politeia_bookshelf_sanitize_templates( $value ) {
     return $cleaned;
 }
 
+function politeia_bookshelf_sanitize_my_stats_sections( $value ) {
+    $allowed = array( 'performance', 'consistency', 'library' );
+    $clean   = array();
+
+    foreach ( $allowed as $key ) {
+        $clean[ $key ] = ( isset( $value[ $key ] ) && '1' === (string) $value[ $key ] ) ? 1 : 0;
+    }
+
+    return $clean;
+}
+
+function politeia_bookshelf_get_my_stats_sections() {
+    $defaults = array(
+        'performance' => 1,
+        'consistency' => 1,
+        'library'     => 1,
+    );
+    $stored = get_option( POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION, array() );
+
+    return wp_parse_args( $stored, $defaults );
+}
+
 /**
  * Register Google Books API settings section and field.
  */
@@ -239,6 +264,15 @@ function politeia_bookshelf_register_google_books_settings() {
             'default'           => array(),
         ]
     );
+    register_setting(
+        'politeia_bookshelf_templates',
+        POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION,
+        [
+            'type'              => 'array',
+            'sanitize_callback' => 'politeia_bookshelf_sanitize_my_stats_sections',
+            'default'           => array(),
+        ]
+    );
 
     add_settings_section(
         'politeia_bookshelf_templates_section',
@@ -253,6 +287,21 @@ function politeia_bookshelf_register_google_books_settings() {
         'politeia_bookshelf_render_templates_field',
         'politeia_bookshelf_templates',
         'politeia_bookshelf_templates_section'
+    );
+
+    add_settings_section(
+        'politeia_bookshelf_my_stats_section',
+        __( 'My Stats Page', 'politeia-bookshelf' ),
+        'politeia_bookshelf_render_my_stats_section_intro',
+        'politeia_bookshelf_my_stats'
+    );
+
+    add_settings_field(
+        'politeia_bookshelf_my_stats_sections_field',
+        __( 'Section visibility', 'politeia-bookshelf' ),
+        'politeia_bookshelf_render_my_stats_sections_field',
+        'politeia_bookshelf_my_stats',
+        'politeia_bookshelf_my_stats_section'
     );
 }
 add_action( 'admin_init', 'politeia_bookshelf_register_google_books_settings' );
@@ -368,6 +417,29 @@ function politeia_bookshelf_render_templates_field() {
     <?php
 }
 
+function politeia_bookshelf_render_my_stats_section_intro() {
+    echo '<p>' . esc_html__( 'Toggle which sections appear on the My Reading Stats template.', 'politeia-bookshelf' ) . '</p>';
+}
+
+function politeia_bookshelf_render_my_stats_sections_field() {
+    $sections = politeia_bookshelf_get_my_stats_sections();
+    $labels   = array(
+        'performance' => __( 'Master Performance', 'politeia-bookshelf' ),
+        'consistency' => __( 'Habit Consistency', 'politeia-bookshelf' ),
+        'library'     => __( 'Library Status', 'politeia-bookshelf' ),
+    );
+
+    foreach ( $labels as $key => $label ) :
+        $checked = ! empty( $sections[ $key ] );
+        ?>
+        <label class="prs-admin-toggle">
+            <input type="checkbox" name="<?php echo esc_attr( POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION ); ?>[<?php echo esc_attr( $key ); ?>]" value="1" <?php checked( $checked ); ?> />
+            <span class="prs-admin-toggle__control" aria-hidden="true"></span>
+            <span class="prs-admin-toggle__label"><?php echo esc_html( $label ); ?></span>
+        </label>
+    <?php endforeach;
+}
+
 /**
  * Render the Politeia Bookshelf admin page with navigation tabs.
  */
@@ -399,6 +471,14 @@ function politeia_bookshelf_render_admin_page() {
     $google_url    = add_query_arg( 'tab', 'google-books', $base_url );
     $test_url      = add_query_arg( 'tab', 'test-settings', $base_url );
     $templates_url = add_query_arg( 'tab', 'templates', $base_url );
+    $templates_subtab = isset( $_GET['templates_tab'] ) ? sanitize_key( wp_unslash( $_GET['templates_tab'] ) ) : 'my-stats';
+    $templates_subtabs = array(
+        'my-stats'    => __( 'My Stats Page', 'politeia-bookshelf' ),
+        'assignments' => __( 'Template assignments', 'politeia-bookshelf' ),
+    );
+    if ( ! array_key_exists( $templates_subtab, $templates_subtabs ) ) {
+        $templates_subtab = 'my-stats';
+    }
     ?>
     <div class="wrap">
         <h1><?php esc_html_e( 'Politeia Bookshelf', 'politeia-bookshelf' ); ?></h1>
@@ -429,11 +509,70 @@ function politeia_bookshelf_render_admin_page() {
                 ?>
             </form>
         <?php elseif ( 'templates' === $current_tab ) : ?>
+            <style>
+                .prs-admin-subtabs {
+                    margin: 16px 0 24px;
+                }
+                .prs-admin-toggle {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 12px;
+                    margin: 0 24px 12px 0;
+                }
+                .prs-admin-toggle input {
+                    display: none;
+                }
+                .prs-admin-toggle__control {
+                    width: 42px;
+                    height: 22px;
+                    border-radius: 999px;
+                    background: #ccd0d4;
+                    position: relative;
+                    transition: background 0.2s ease;
+                }
+                .prs-admin-toggle__control::after {
+                    content: '';
+                    position: absolute;
+                    top: 2px;
+                    left: 2px;
+                    width: 18px;
+                    height: 18px;
+                    border-radius: 50%;
+                    background: #ffffff;
+                    transition: transform 0.2s ease;
+                    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+                }
+                .prs-admin-toggle input:checked + .prs-admin-toggle__control {
+                    background: #2271b1;
+                }
+                .prs-admin-toggle input:checked + .prs-admin-toggle__control::after {
+                    transform: translateX(20px);
+                }
+                .prs-admin-toggle__label {
+                    font-weight: 600;
+                }
+            </style>
+
+            <h2 class="nav-tab-wrapper prs-admin-subtabs">
+                <?php foreach ( $templates_subtabs as $subtab_key => $subtab_label ) : ?>
+                    <a
+                        href="<?php echo esc_url( add_query_arg( array( 'tab' => 'templates', 'templates_tab' => $subtab_key ), $base_url ) ); ?>"
+                        class="nav-tab <?php echo $templates_subtab === $subtab_key ? 'nav-tab-active' : ''; ?>"
+                    >
+                        <?php echo esc_html( $subtab_label ); ?>
+                    </a>
+                <?php endforeach; ?>
+            </h2>
+
             <?php settings_errors( 'politeia_bookshelf_templates' ); ?>
             <form action="<?php echo esc_url( admin_url( 'options.php' ) ); ?>" method="post">
                 <?php
                 settings_fields( 'politeia_bookshelf_templates' );
-                do_settings_sections( 'politeia_bookshelf_templates' );
+                if ( 'assignments' === $templates_subtab ) {
+                    do_settings_sections( 'politeia_bookshelf_templates' );
+                } else {
+                    do_settings_sections( 'politeia_bookshelf_my_stats' );
+                }
                 submit_button();
                 ?>
             </form>

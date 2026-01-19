@@ -1428,6 +1428,21 @@ msgstr "Tiempo Total de Lectura este mes"
 msgid "Average Pages per Hour"
 msgstr "Promedio de paginas por hora"
 
+msgid "Starting Page"
+msgstr "Página inicial"
+
+msgid "Congratulations! You have accepted your reading plan for \"%s\"."
+msgstr "¡Felicitaciones! Has aceptado tu plan de lectura para \"%s\"."
+
+msgid "Your next reading session is %s."
+msgstr "Tu próxima sesión de lectura es %s."
+
+msgid "Session recorder is not available for this book."
+msgstr "El registrador de sesiones no está disponible para este libro."
+
+msgid "To be scheduled"
+msgstr "Por programar"
+
 msgid "%1$s: %2$s %3$s"
 msgstr "%1$s: %2$s %3$s"
 

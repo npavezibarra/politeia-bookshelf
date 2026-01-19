@@ -60,12 +60,15 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 
 	wp_enqueue_script( $script_handle );
 	wp_enqueue_style( $style_handle );
+	wp_enqueue_script( 'politeia-start-reading' );
+	wp_enqueue_style( 'politeia-reading' );
 
 	wp_localize_script(
 		$script_handle,
 		'PoliteiaReadingPlan',
 		array(
 			'restUrl' => rest_url( 'politeia/v1/reading-plan' ),
+			'sessionRecorderUrl' => rest_url( 'politeia/v1/reading-plan/session-recorder' ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'userId'  => get_current_user_id(),
 			'autocomplete' => array(
@@ -149,6 +152,7 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 				'author'             => __( 'Author', 'politeia-reading' ),
 				'pages'              => __( 'Pages', 'politeia-reading' ),
 				'add_book'           => __( 'Add book', 'politeia-reading' ),
+				'starting_page'      => __( 'Starting Page', 'politeia-reading' ),
 				'unknown_author'     => __( 'Unknown author', 'politeia-reading' ),
 				'by_label'           => __( 'by', 'politeia-reading' ),
 				'pages_label'        => __( 'pages', 'politeia-reading' ),
@@ -169,6 +173,11 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 				'add_session'        => __( 'Add session', 'politeia-reading' ),
 				'no_sessions'        => __( 'No sessions', 'politeia-reading' ),
 				'reading_session'    => __( 'Reading Session', 'politeia-reading' ),
+				'plan_accepted_message' => __( 'Congratulations! You have accepted your reading plan for "%s".', 'politeia-reading' ),
+				'next_session_message' => __( 'Your next reading session is %s.', 'politeia-reading' ),
+				'start_reading'       => __( 'Start Reading', 'politeia-reading' ),
+				'session_recorder_unavailable' => __( 'Session recorder is not available for this book.', 'politeia-reading' ),
+				'next_session_tbd'    => __( 'To be scheduled', 'politeia-reading' ),
 			),
 		)
 	);
@@ -252,6 +261,14 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 				</div>
 				<div class="mt-8 flex flex-col items-center space-y-4">
 					<div id="reading-plan-success" class="hidden text-[11px] font-medium uppercase tracking-widest text-[#2F7D32]"><?php esc_html_e( 'Plan created successfully.', 'politeia-reading' ); ?></div>
+					<div id="reading-plan-success-panel" class="reading-plan-success hidden">
+						<h3 id="reading-plan-success-title" class="reading-plan-success__title"></h3>
+						<p id="reading-plan-success-next" class="reading-plan-success__next"></p>
+						<button id="reading-plan-start-session" class="reading-plan-success__btn" type="button">
+							<?php esc_html_e( 'Start Reading', 'politeia-reading' ); ?>
+						</button>
+						<p id="reading-plan-success-note" class="reading-plan-success__note hidden"></p>
+					</div>
 					<button id="accept-button" class="btn-primary w-full py-4 rounded-custom font-medium uppercase tracking-widest text-sm shadow-lg">
 						<?php esc_html_e( 'Accept Plan', 'politeia-reading' ); ?>
 					</button>
@@ -259,6 +276,12 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 					<button id="adjust-btn" class="text-[10px] font-medium uppercase text-[#A8A8A8] hover:text-black transition-colors tracking-widest">
 						<?php esc_html_e( 'Adjust Plan Details', 'politeia-reading' ); ?>
 					</button>
+				</div>
+			</div>
+			<div id="reading-plan-session-modal" class="reading-plan-session-modal" aria-hidden="true">
+				<div class="reading-plan-session-modal__content">
+					<button type="button" class="reading-plan-session-modal__close" aria-label="<?php echo esc_attr__( 'Close session recorder', 'politeia-reading' ); ?>">×</button>
+					<div id="reading-plan-session-content"></div>
 				</div>
 			</div>
 		</div>

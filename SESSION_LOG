@@ -211,6 +211,11 @@ January 16, 2026, 15:37 UTC
 January 19, 2026, 01:25 UTC
 1. Built the My Reading Stats dashboard layout with localized metrics, live monthly aggregates, and a 2026 daily heatmap styled to match the metallic theme.
 
+January 19, 2026, 19:42 UTC
+1. Added book title/author metadata to the Session Recorder header and ensured the plan Play button opens the recorder for the correct book.
+2. Passed plan_id into the recorder to derive a default start page from the first planned session, and wired plan acceptance to return plan_id for recorder loading.
+3. Fixed Session Recorder initialization to re-apply start-page defaults per book and avoid stale values across modal opens.
+
 ------
 
 TO DO:

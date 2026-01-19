@@ -16,7 +16,15 @@ $total_reading_hours_month = 0;
 $total_reading_seconds_month = 0;
 $avg_pages_per_hour = 0;
 $heatmap_cells = array();
+$stats_sections = array(
+	'performance' => true,
+	'consistency' => true,
+	'library'     => true,
+);
 if ( $is_owner ) {
+	if ( function_exists( 'politeia_bookshelf_get_my_stats_sections' ) ) {
+		$stats_sections = politeia_bookshelf_get_my_stats_sections();
+	}
 	global $wpdb;
 	$user_id        = (int) $current_user->ID;
 	$sessions_table = $wpdb->prefix . 'politeia_reading_sessions';
@@ -176,7 +184,11 @@ if ( $is_owner ) {
 
 <div class="wrap">
 	<?php if ( $is_owner ) : ?>
+		<?php echo do_shortcode( '[politeia_reading_plan]' ); ?>
 		<style>
+			#politeia-open-reading-plan {
+				display: none;
+			}
 			.prs-reading-stats-dashboard {
 				background-color: #f8fafc;
 				display: flex;
@@ -205,7 +217,7 @@ if ( $is_owner ) {
 			}
 			@media (min-width: 768px) {
 				.prs-reading-stats-shell {
-					padding: 0px;
+					padding: 0px 0px 122px;
 				}
 			}
 			.prs-stats-container {
@@ -243,9 +255,7 @@ if ( $is_owner ) {
 				display: flex;
 				align-items: center;
 				gap: 12px;
-				margin-bottom: 24px;
 				padding-bottom: 8px;
-				border-bottom: 1px solid var(--pure-black);
 			}
 			.prs-stats-section-title {
 				font-size: 0.95rem;
@@ -557,7 +567,8 @@ if ( $is_owner ) {
 		<div class="prs-reading-stats-dashboard">
 			<div class="prs-reading-stats-shell">
 				<div class="prs-stats-container">
-					<section class="prs-stats-section">
+					<?php if ( ! empty( $stats_sections['performance'] ) ) : ?>
+					<section class="prs-stats-section" id="prs-stats-performance">
 						<div class="section-header">
 							<span class="material-symbols-outlined prs-stats-section-icon" style="color: #c79f32">military_tech</span>
 							<h2 class="prs-stats-section-title"><?php esc_html_e( 'Rendimiento Maestro', 'politeia-reading' ); ?></h2>
@@ -602,8 +613,10 @@ if ( $is_owner ) {
 							</div>
 						</div>
 					</section>
+					<?php endif; ?>
 
-					<section class="prs-stats-section">
+					<?php if ( ! empty( $stats_sections['consistency'] ) ) : ?>
+					<section class="prs-stats-section" id="prs-stats-consistency">
 						<div class="section-header">
 							<span class="material-symbols-outlined prs-stats-section-icon" style="color: #b87333">local_fire_department</span>
 							<h2 class="prs-stats-section-title"><?php esc_html_e( 'Consistencia de Hábito', 'politeia-reading' ); ?></h2>
@@ -687,8 +700,10 @@ if ( $is_owner ) {
 							</div>
 						</div>
 					</section>
+					<?php endif; ?>
 
-					<section class="prs-stats-section">
+					<?php if ( ! empty( $stats_sections['library'] ) ) : ?>
+					<section class="prs-stats-section" id="prs-stats-library">
 						<div class="section-header">
 							<span class="material-symbols-outlined prs-stats-section-icon" style="color: #949494">category</span>
 							<h2 class="prs-stats-section-title"><?php esc_html_e( 'Estado de la Biblioteca', 'politeia-reading' ); ?></h2>
@@ -759,6 +774,7 @@ if ( $is_owner ) {
 							</div>
 						</div>
 					</section>
+					<?php endif; ?>
 				</div>
 			</div>
 		</div>

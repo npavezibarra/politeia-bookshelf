@@ -25,6 +25,132 @@ class Rest {
 				},
 			)
 		);
+		register_rest_route(
+			'politeia/v1',
+			'/reading-plan/session-recorder',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'session_recorder' ),
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
+			)
+		);
+	}
+
+	public static function session_recorder( WP_REST_Request $request ) {
+		if ( ! is_user_logged_in() ) {
+			return new WP_REST_Response( array( 'error' => 'not_logged_in' ), 401 );
+		}
+
+		$nonce = $request->get_header( 'X-WP-Nonce' ) ?: ( $request['nonce'] ?? '' );
+		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
+			return new WP_REST_Response( array( 'error' => 'invalid_nonce' ), 403 );
+		}
+
+		$book_id = (int) $request->get_param( 'book_id' );
+		$plan_id = (int) $request->get_param( 'plan_id' );
+		if ( $book_id <= 0 ) {
+			return new WP_REST_Response( array( 'error' => 'invalid_book' ), 400 );
+		}
+
+		global $wpdb;
+		$user_id = get_current_user_id();
+		$tbl_rs           = $wpdb->prefix . 'politeia_reading_sessions';
+		$tbl_ub           = $wpdb->prefix . 'politeia_user_books';
+		$tbl_plans        = $wpdb->prefix . 'politeia_plans';
+		$tbl_plan_sessions = $wpdb->prefix . 'politeia_planned_sessions';
+		$default_start_page = 0;
+
+		$last_end_page = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT end_page FROM {$tbl_rs}
+				 WHERE user_id = %d AND book_id = %d AND end_time IS NOT NULL AND deleted_at IS NULL
+				 ORDER BY end_time DESC LIMIT 1",
+				$user_id,
+				$book_id
+			)
+		);
+
+		$row_ub = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT owning_status, pages FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
+				$user_id,
+				$book_id
+			)
+		);
+		$owning_status = $row_ub && $row_ub->owning_status ? (string) $row_ub->owning_status : 'in_shelf';
+		$total_pages   = $row_ub && $row_ub->pages ? (int) $row_ub->pages : 0;
+		$can_start     = ! in_array( $owning_status, array( 'borrowed', 'lost', 'sold' ), true );
+
+		if ( $plan_id > 0 ) {
+			$plan_owner = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT user_id FROM {$tbl_plans} WHERE id = %d LIMIT 1",
+					$plan_id
+				)
+			);
+			if ( $plan_owner === (int) $user_id ) {
+				$default_start_page = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT planned_start_page FROM {$tbl_plan_sessions}
+						WHERE plan_id = %d AND planned_start_page IS NOT NULL
+						ORDER BY planned_start_datetime ASC LIMIT 1",
+						$plan_id
+					)
+				);
+			}
+		}
+
+		$prs_sr = array(
+			'ajax_url'      => admin_url( 'admin-ajax.php' ),
+			'nonce'         => wp_create_nonce( 'prs_reading_nonce' ),
+			'user_id'       => (int) $user_id,
+			'book_id'       => (int) $book_id,
+			'last_end_page' => is_null( $last_end_page ) ? '' : (int) $last_end_page,
+			'default_start_page' => $default_start_page,
+			'owning_status' => (string) $owning_status,
+			'total_pages'   => (int) $total_pages,
+			'can_start'     => $can_start ? 1 : 0,
+			'actions'       => array(
+				'start' => 'prs_start_reading',
+				'save'  => 'prs_save_reading',
+			),
+			'strings'       => array(
+				'tooltip_pages_required' => __( 'Set total Pages for this book before starting a session.', 'politeia-reading' ),
+				'tooltip_not_owned'      => __( 'You cannot start a session: the book is not in your possession (Borrowed, Lost or Sold).', 'politeia-reading' ),
+				'alert_pages_required'   => __( 'You must set total Pages to start a session.', 'politeia-reading' ),
+				'alert_end_page_required' => __( 'Please enter an ending page before saving.', 'politeia-reading' ),
+				'alert_session_expired'  => __( 'Session expired. Please refresh the page and try again.', 'politeia-reading' ),
+				'alert_start_network'    => __( 'Network error while starting the session.', 'politeia-reading' ),
+				'alert_save_failed'      => __( 'Could not save the session.', 'politeia-reading' ),
+				'alert_save_network'     => __( 'Network error while saving the session.', 'politeia-reading' ),
+				'pages_single'           => __( '1 page', 'politeia-reading' ),
+				'pages_multiple'         => __( '%d pages', 'politeia-reading' ),
+				'minutes_under_one'      => __( 'less than a minute', 'politeia-reading' ),
+				'minutes_single'         => __( '1 minute', 'politeia-reading' ),
+				'minutes_multiple'       => __( '%d minutes', 'politeia-reading' ),
+			),
+		);
+
+		$shortcode = '[politeia_start_reading book_id="' . $book_id . '"';
+		if ( $plan_id > 0 ) {
+			$shortcode .= ' plan_id="' . $plan_id . '"';
+		}
+		$shortcode .= ']';
+
+		$html = do_shortcode( $shortcode );
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'data'    => array(
+					'html'   => $html,
+					'prs_sr' => $prs_sr,
+				),
+			),
+			200
+		);
 	}
 
 	public static function accept_plan( WP_REST_Request $request ) {
@@ -197,7 +323,13 @@ class Rest {
 			return new WP_REST_Response( array( 'error' => 'baseline_creation_failed' ), 500 );
 		}
 
-		return new WP_REST_Response( array( 'success' => true ), 200 );
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'plan_id' => $plan_id,
+			),
+			200
+		);
 	}
 }
 Rest::init();

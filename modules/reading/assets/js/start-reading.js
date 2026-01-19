@@ -1,8 +1,10 @@
 /* global PRS_SR */
-document.addEventListener('DOMContentLoaded', () => {
-  if (typeof PRS_SR === 'undefined') return;
-  const $ = (s) => document.querySelector(s);
-  const STRINGS = PRS_SR.strings || {};
+const prsStartReadingInit = (options = {}) => {
+  const ctx = options.data || PRS_SR;
+  if (typeof ctx === 'undefined') return;
+  const root = options.root || document;
+  const $ = (s) => root.querySelector(s);
+  const STRINGS = ctx.strings || {};
   const text = (key, fallback) => (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
   const format = (key, fallback, value) =>
     text(key, fallback).replace('%d', String(value));
@@ -15,7 +17,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Timer y acciones
   const $timer        = $('#prs-sr-timer');
-  const $rowActions   = document.getElementById('prs-sr-row-actions');
+  const $rowActions   = root.querySelector('#prs-sr-row-actions');
   const $startBtn     = $('#prs-sr-start');
   const $stopBtn      = $('#prs-sr-stop');
 
@@ -30,16 +32,19 @@ document.addEventListener('DOMContentLoaded', () => {
   const $flashPages   = $('#prs-sr-flash-pages');
   const $flashTime    = $('#prs-sr-flash-time');
   const $formWrap     = $('#prs-sr-formwrap');
+  const existingBookId = $formWrap?.dataset.prsBookId || '';
+  const currentBookId = typeof ctx?.book_id !== 'undefined' ? String(ctx.book_id) : '';
+  if ($formWrap && $formWrap.dataset.prsInit === '1' && existingBookId === currentBookId) return;
 
   let flashHideTimer  = null;
 
   const ensureFlashDatasetDefaults = () => {
     if (!$flash) return;
-    if (typeof PRS_SR?.book_id !== 'undefined') {
-      $flash.dataset.bookId = String(PRS_SR.book_id);
+    if (typeof ctx?.book_id !== 'undefined') {
+      $flash.dataset.bookId = String(ctx.book_id);
     }
-    if (typeof PRS_SR?.user_id !== 'undefined') {
-      $flash.dataset.userId = String(PRS_SR.user_id);
+    if (typeof ctx?.user_id !== 'undefined') {
+      $flash.dataset.userId = String(ctx.user_id);
     }
     if (typeof $flash.dataset.sessionId === 'undefined') {
       $flash.dataset.sessionId = '';
@@ -54,7 +59,7 @@ document.addEventListener('DOMContentLoaded', () => {
   ensureFlashDatasetDefaults();
 
   // Aviso falta de pages
-  const $rowNeedsPages = document.getElementById('prs-sr-row-needs-pages');
+  const $rowNeedsPages = root.querySelector('#prs-sr-row-needs-pages');
 
   // helpers de tiempo
   let t0 = 0, raf = 0;
@@ -88,12 +93,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Bloqueo por estado de posesión
   const BLOCKED = new Set(['borrowed', 'lost', 'sold']);
-  const $owningSelect = document.getElementById('owning-status-select'); // si existe en la misma página
+  const $owningSelect = root.querySelector('#owning-status-select'); // si existe en la misma página
 
   function statusValue() {
     const v = ($owningSelect && $owningSelect.value)
       ? String($owningSelect.value).trim()
-      : (PRS_SR.owning_status || 'in_shelf');
+      : (ctx.owning_status || 'in_shelf');
     return v;
   }
   function canStartByStatus() {
@@ -102,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Bloqueo por Pages
   function hasPages() {
-    return Number(PRS_SR.total_pages || 0) > 0;
+    return Number(ctx.total_pages || 0) > 0;
   }
 
   // Mensajes de tooltip en Start
@@ -262,28 +267,28 @@ document.addEventListener('DOMContentLoaded', () => {
   $owningSelect?.addEventListener('change', updateStartEnabled);
 
   // Si el usuario guarda "Pages" en el panel del libro (mismo DOM)
-  const $pagesSave = document.getElementById('pages-save');
-  const $pagesInput = document.getElementById('pages-input');
+  const $pagesSave = root.querySelector('#pages-save');
+  const $pagesInput = root.querySelector('#pages-input');
   if ($pagesSave && $pagesInput) {
     $pagesSave.addEventListener('click', () => {
       const v = Number($pagesInput.value || 0);
       if (Number.isInteger(v) && v > 0) {
-        PRS_SR.total_pages = v;  // actualiza cache local
+        ctx.total_pages = v;  // actualiza cache local
         updateStartEnabled();
       }
     });
   }
 
   // API
-  const ACTION_START = (PRS_SR?.actions?.start) || 'prs_start_reading';
-  const ACTION_SAVE  = (PRS_SR?.actions?.save)  || 'prs_save_reading';
+  const ACTION_START = (ctx?.actions?.start) || 'prs_start_reading';
+  const ACTION_SAVE  = (ctx?.actions?.save)  || 'prs_save_reading';
 
   async function api(action, payload) {
     const fallback = (window.PRS_BOOK && typeof window.PRS_BOOK === 'object') ? window.PRS_BOOK : {};
-    const nonce = PRS_SR?.nonce || fallback.reading_nonce || fallback.nonce || '';
-    const ajaxUrl = PRS_SR?.ajax_url || fallback.ajax_url || '';
-    const userId = PRS_SR?.user_id || fallback.user_id || '';
-    const bookId = PRS_SR?.book_id || fallback.book_id || '';
+    const nonce = ctx?.nonce || fallback.reading_nonce || fallback.nonce || '';
+    const ajaxUrl = ctx?.ajax_url || fallback.ajax_url || '';
+    const userId = ctx?.user_id || fallback.user_id || '';
+    const bookId = ctx?.book_id || fallback.book_id || '';
 
     const body = new URLSearchParams({
       action,
@@ -387,7 +392,7 @@ document.addEventListener('DOMContentLoaded', () => {
         sessionId = null;
 
         // Actualiza “Last session page” en la UI
-        const lastNode = document.querySelector('.prs-sr-last strong');
+        const lastNode = root.querySelector('.prs-sr-last strong');
         if (lastNode) lastNode.textContent = String(end);
 
         // Prepara próxima sesión: start = end
@@ -426,8 +431,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Estado inicial
   setIdle();
-  if (PRS_SR.last_end_page && !$startPage.value) {
-    $startPage.value = PRS_SR.last_end_page;
+  if (existingBookId && existingBookId !== currentBookId && $startPage) {
+    $startPage.value = '';
+  }
+  if (ctx.last_end_page && !$startPage.value) {
+    $startPage.value = ctx.last_end_page;
+  } else if (ctx.default_start_page && !$startPage.value) {
+    $startPage.value = ctx.default_start_page;
+  } else if (!$startPage.value) {
+    $startPage.value = '1';
   }
   updateStartEnabled();
-});
+  if ($formWrap) {
+    $formWrap.dataset.prsInit = '1';
+    if (currentBookId) {
+      $formWrap.dataset.prsBookId = currentBookId;
+    }
+  }
+};
+
+const prsStartReadingRun = () => {
+  prsStartReadingInit();
+};
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', prsStartReadingRun);
+} else {
+  prsStartReadingRun();
+}
+
+window.prsStartReadingInit = prsStartReadingInit;

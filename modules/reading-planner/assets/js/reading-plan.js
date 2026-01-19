@@ -25,6 +25,14 @@
   const stepContent = qs('#step-content');
   const calendarGrid = qs('#calendar-grid');
   const listView = qs('#list-view');
+  const successPanel = qs('#reading-plan-success-panel');
+  const successTitle = qs('#reading-plan-success-title');
+  const successNext = qs('#reading-plan-success-next');
+  const successNote = qs('#reading-plan-success-note');
+  const successStartBtn = qs('#reading-plan-start-session');
+  const sessionModal = qs('#reading-plan-session-modal');
+  const sessionModalClose = qs('.reading-plan-session-modal__close');
+  const sessionContent = qs('#reading-plan-session-content');
 
   let suggestionTimer = null;
   let suggestionController = null;
@@ -49,9 +57,21 @@
     ].join('-') + ' ' + [pad2(d.getHours()), pad2(d.getMinutes()), '00'].join(':');
   };
 
+  const formatSessionDate = (date) => {
+    if (!date) return t('next_session_tbd', 'To be scheduled');
+    const monthName = MONTH_NAMES[date.getMonth()];
+    return `${date.getDate()} ${monthName} ${date.getFullYear()}`;
+  };
+
   const assetState = {
     loading: null,
     loaded: false,
+  };
+
+  const recorderState = {
+    loading: null,
+    bookId: null,
+    planId: null,
   };
 
   const ensureScript = (id, src) => new Promise((resolve, reject) => {
@@ -182,12 +202,14 @@
         goals: [],
         baselines: {},
         books: prefillBook ? [prefillBook] : [],
+        startPage: 1,
         exigencia: null,
       },
       calculatedPlan: { pps: 0, durationWeeks: 0, sessions: [], type: 'ccl' },
       currentMonthOffset: 0,
       currentViewMode: 'calendar',
       listCurrentPage: 0,
+      acceptedPlanId: null,
     };
   };
 
@@ -437,6 +459,7 @@
   function renderStepBooks() {
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
     const hasBook = !!activeBook;
+    const startPageValue = parseInt(state.formData.startPage, 10) || 1;
     stepContent.innerHTML = `
       <div class="space-y-6 step-transition">
         <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('book_prompt', 'Which book do you want to read now?')}</h2></div>
@@ -472,6 +495,20 @@
           <div id="book-meta-info" class="text-center${hasBook ? '' : ' hidden'}">
             <div id="meta-text" class="text-xs font-medium text-black uppercase tracking-tight leading-relaxed"></div>
           </div>
+          ${hasBook ? `
+            <div class="w-full max-w-xs mx-auto">
+              <label for="starting-page-input" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-black mb-2 text-center">
+                ${t('starting_page', 'Starting Page')}
+              </label>
+              <input
+                id="starting-page-input"
+                type="number"
+                min="1"
+                value="${startPageValue}"
+                class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all text-center"
+              />
+            </div>
+          ` : ''}
         </div>
         ${hasBook ? `
           <button type="button" id="next-step" class="w-full bg-black text-[#C79F32] py-4 rounded-custom hover:opacity-90 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest">
@@ -527,6 +564,7 @@
     const titleInput = stepContent.querySelector('#new-book-title');
     const authorInput = stepContent.querySelector('#new-book-author');
     const pagesInput = stepContent.querySelector('#new-book-pages');
+    const startPageInput = stepContent.querySelector('#starting-page-input');
     const suggestions = stepContent.querySelector('#reading-plan-title-suggestions');
 
     if (!hasBook && titleInput && suggestions) {
@@ -746,6 +784,7 @@
         const cover = titleInput?.dataset?.cover ? titleInput.dataset.cover : '';
         if (t && a && p) {
           state.formData.books = [{ id: Date.now(), title: t, author: a, pages: p, cover }];
+          state.formData.startPage = 1;
           render();
         }
       });
@@ -760,7 +799,20 @@
     if (removeBtn) {
       removeBtn.addEventListener('click', () => {
         state.formData.books = [];
+        state.formData.startPage = 1;
         render();
+      });
+    }
+
+    if (startPageInput) {
+      startPageInput.addEventListener('input', (e) => {
+        const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
+        const maxPages = parseInt(activeBook?.pages, 10) || 1;
+        let value = parseInt(e.target.value, 10);
+        if (!Number.isFinite(value) || value < 1) value = 1;
+        if (value > maxPages) value = maxPages;
+        state.formData.startPage = value;
+        startPageInput.value = value;
       });
     }
   }
@@ -872,6 +924,8 @@
   function calculateCCLPlan() {
     const data = state.formData;
     const targetBook = data.books[0];
+    const startingPage = getStartingPage(targetBook);
+    const effectivePages = getEffectivePages(targetBook, startingPage);
     let avgPages = 100;
     const bBooks = data.baselines.complete_books;
     if (bBooks && bBooks.value !== '0') {
@@ -880,7 +934,7 @@
     }
     const pps = Math.ceil(Math.max((avgPages / 10) * K_GROWTH, MIN_PPS));
     const sessionsPerWeek = EXIGENCIA_SESSIONS[data.exigencia];
-    const totalSessions = Math.ceil(targetBook.pages / pps);
+    const totalSessions = effectivePages > 0 ? Math.ceil(effectivePages / pps) : 0;
     const totalWeeks = Math.ceil(totalSessions / sessionsPerWeek);
 
     state.calculatedPlan = {
@@ -888,7 +942,7 @@
       durationWeeks: totalWeeks,
       sessions: generateSessions(totalSessions, sessionsPerWeek),
       type: 'ccl',
-      totalPages: targetBook.pages,
+      totalPages: effectivePages,
     };
 
     qs('#propuesta-tipo-label').innerText = t('realistic_plan', 'REALISTIC READING PLAN');
@@ -981,7 +1035,7 @@
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
 
     if (selectedGoals.includes('complete_books')) {
-      const totalPages = parseInt(activeBook?.pages, 10) || state.calculatedPlan.totalPages || 0;
+      const totalPages = getEffectiveTotalPages(activeBook);
       const targetValue = totalPages > 0 ? totalPages : (parseInt(state.calculatedPlan.pps, 10) || 0);
       const metric = totalPages > 0 ? 'pages_total' : 'pages_per_session';
       const period = totalPages > 0 ? 'plan' : 'session';
@@ -1015,8 +1069,10 @@
     const sessions = state.calculatedPlan.sessions ? state.calculatedPlan.sessions.slice() : [];
     sessions.sort((a, b) => a.date - b.date);
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
-    const totalPages = parseInt(activeBook?.pages, 10) || state.calculatedPlan.totalPages || 0;
+    const totalPages = getEffectiveTotalPages(activeBook);
     const pps = parseInt(state.calculatedPlan.pps, 10) || 0;
+    const startingPage = getStartingPage(activeBook);
+    const finalPage = startingPage + Math.max(totalPages - 1, 0);
 
     return sessions.map((session, idx) => {
       const planned = {
@@ -1027,8 +1083,8 @@
       };
 
       if (totalPages > 0 && pps > 0) {
-        const startPage = (idx * pps) + 1;
-        const endPage = Math.min(startPage + pps - 1, totalPages);
+        const startPage = startingPage + (idx * pps);
+        const endPage = Math.min(startPage + pps - 1, finalPage);
         planned.planned_start_page = startPage;
         planned.planned_end_page = endPage;
       }
@@ -1052,7 +1108,7 @@
     );
     normalizeSessionOrder();
     if (state.calculatedPlan.type === 'ccl') {
-      const totalPages = state.calculatedPlan.totalPages || state.formData.books[0]?.pages || 0;
+      const totalPages = getEffectiveTotalPages(state.formData.books[0]);
       const sessionCount = state.calculatedPlan.sessions.length || 1;
       state.calculatedPlan.pps = Math.ceil(totalPages / sessionCount);
       updateCargaLabel();
@@ -1068,11 +1124,32 @@
     state.calculatedPlan.sessions.push({ date: target, order: 0 });
     normalizeSessionOrder();
     if (state.calculatedPlan.type === 'ccl') {
-      const totalPages = state.calculatedPlan.totalPages || state.formData.books[0]?.pages || 0;
+      const totalPages = getEffectiveTotalPages(state.formData.books[0]);
       const sessionCount = state.calculatedPlan.sessions.length || 1;
       state.calculatedPlan.pps = Math.ceil(totalPages / sessionCount);
       updateCargaLabel();
     }
+  }
+
+  function getStartingPage(activeBook) {
+    const totalPages = parseInt(activeBook?.pages, 10) || 0;
+    const rawStart = parseInt(state.formData.startPage, 10) || 1;
+    if (totalPages < 1) return 1;
+    return Math.min(Math.max(rawStart, 1), totalPages);
+  }
+
+  function getEffectivePages(activeBook, startPage) {
+    const totalPages = parseInt(activeBook?.pages, 10) || 0;
+    if (totalPages < 1) return 0;
+    return Math.max(0, totalPages - (startPage - 1));
+  }
+
+  function getEffectiveTotalPages(activeBook) {
+    if (state.calculatedPlan.totalPages) {
+      return state.calculatedPlan.totalPages;
+    }
+    const startPage = getStartingPage(activeBook);
+    return getEffectivePages(activeBook, startPage);
   }
 
   function renderCalendar() {
@@ -1230,6 +1307,20 @@
     const successEl = qs('#reading-plan-success');
     const errorEl = qs('#reading-plan-error');
     const acceptBtn = qs('#accept-button');
+    if (summaryContainer) summaryContainer.classList.remove('is-success');
+    if (successPanel) successPanel.classList.add('hidden');
+    if (successTitle) successTitle.textContent = '';
+    if (successNext) successNext.textContent = '';
+    if (successNote) successNote.classList.add('hidden');
+    if (successStartBtn) {
+      successStartBtn.disabled = false;
+      successStartBtn.setAttribute('aria-disabled', 'false');
+    }
+    if (sessionContent) sessionContent.innerHTML = '';
+    recorderState.loading = null;
+    recorderState.bookId = null;
+    recorderState.planId = null;
+    closeSessionModal();
     if (successEl) successEl.classList.add('hidden');
     if (errorEl) errorEl.classList.add('hidden');
     if (acceptBtn) {
@@ -1249,6 +1340,65 @@
     document.body.style.overflow = 'hidden';
     resetForm();
   };
+
+  const loadSessionRecorder = (bookId, planId) => {
+    if (!bookId || !RP.sessionRecorderUrl) {
+      return Promise.reject(new Error('missing_book'));
+    }
+    if (recorderState.loading) return recorderState.loading;
+    if (recorderState.bookId === bookId && recorderState.planId === planId && sessionContent && sessionContent.innerHTML.trim()) {
+      return Promise.resolve();
+    }
+    const url = new URL(RP.sessionRecorderUrl, window.location.origin);
+    url.searchParams.set('book_id', bookId);
+    if (planId) {
+      url.searchParams.set('plan_id', planId);
+    }
+    recorderState.loading = fetch(url.toString(), {
+      headers: {
+        'X-WP-Nonce': RP.nonce,
+      },
+    })
+      .then((res) => res.ok ? res.json() : Promise.reject(new Error('request_failed')))
+      .then((payload) => {
+        if (!payload || !payload.success || !payload.data) {
+          throw new Error('request_failed');
+        }
+        const recorderHtml = payload.data.html || '';
+        const recorderData = payload.data.prs_sr || null;
+        if (sessionContent) sessionContent.innerHTML = recorderHtml;
+        if (recorderData) {
+          window.PRS_SR = recorderData;
+        }
+        if (typeof window.prsStartReadingInit === 'function') {
+          window.prsStartReadingInit({ root: sessionModal || document, data: recorderData || window.PRS_SR });
+        }
+        recorderState.bookId = bookId;
+        recorderState.planId = planId;
+      })
+      .finally(() => {
+        recorderState.loading = null;
+      });
+    return recorderState.loading;
+  };
+
+  const closeSessionModal = () => {
+    if (!sessionModal) return;
+    sessionModal.classList.remove('is-active');
+    sessionModal.setAttribute('aria-hidden', 'true');
+  };
+
+  if (sessionModalClose) {
+    sessionModalClose.addEventListener('click', closeSessionModal);
+  }
+
+  if (sessionModal) {
+    sessionModal.addEventListener('click', (event) => {
+      if (event.target === sessionModal) {
+        closeSessionModal();
+      }
+    });
+  }
 
   openBtn.addEventListener('click', () => {
     loadExternalAssets().then(openModal);
@@ -1319,6 +1469,39 @@
     render();
   });
 
+  if (successStartBtn) {
+    successStartBtn.addEventListener('click', () => {
+      const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
+      const bookId = activeBook?.bookId;
+      const planId = state.acceptedPlanId || null;
+      if (!bookId) {
+        if (successNote) {
+          successNote.textContent = t('session_recorder_unavailable', 'Session recorder is not available for this book.');
+          successNote.classList.remove('hidden');
+        }
+        return;
+      }
+      if (successNote) successNote.classList.add('hidden');
+      successStartBtn.disabled = true;
+      loadSessionRecorder(bookId, planId)
+        .then(() => {
+          if (sessionModal) {
+            sessionModal.classList.add('is-active');
+            sessionModal.setAttribute('aria-hidden', 'false');
+          }
+        })
+        .catch(() => {
+          if (successNote) {
+            successNote.textContent = t('session_recorder_unavailable', 'Session recorder is not available for this book.');
+            successNote.classList.remove('hidden');
+          }
+        })
+        .finally(() => {
+          successStartBtn.disabled = false;
+        });
+    });
+  }
+
   qs('#accept-button')?.addEventListener('click', () => {
     const successEl = qs('#reading-plan-success');
     const errorEl = qs('#reading-plan-error');
@@ -1371,11 +1554,26 @@
         }
         return data;
       })
-      .then(() => {
-        if (successEl) {
-          successEl.textContent = t('plan_created', 'Plan created successfully.');
-          successEl.classList.remove('hidden');
+      .then((data) => {
+        if (successEl) successEl.classList.add('hidden');
+        const bookTitle = activeBook?.title || t('plan_title_default', 'Plan Title');
+        const sessionsSorted = Array.from(state.calculatedPlan.sessions || []).sort((a, b) => a.date - b.date);
+        const nextSession = sessionsSorted.length ? sessionsSorted[0].date : null;
+        if (successTitle) {
+          successTitle.textContent = format('plan_accepted_message', 'Congratulations! You have accepted your reading plan for "%s".', bookTitle);
         }
+        if (successNext) {
+          successNext.textContent = format('next_session_message', 'Your next reading session is %s.', formatSessionDate(nextSession));
+        }
+        if (successNote) successNote.classList.add('hidden');
+        if (successStartBtn) {
+          const hasBookId = !!activeBook?.bookId;
+          successStartBtn.disabled = !hasBookId;
+          successStartBtn.setAttribute('aria-disabled', hasBookId ? 'false' : 'true');
+        }
+        state.acceptedPlanId = data?.plan_id || null;
+        if (summaryContainer) summaryContainer.classList.add('is-success');
+        if (successPanel) successPanel.classList.remove('hidden');
       })
       .catch(() => {
         if (errorEl) {

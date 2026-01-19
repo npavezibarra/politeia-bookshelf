@@ -767,65 +767,109 @@ $is_owner       = $requested_user
 			$authors_table = $wpdb->prefix . 'politeia_authors';
 			$book_authors_table = $wpdb->prefix . 'politeia_book_authors';
 
-		$plan = $wpdb->get_row(
+		$plans = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$plans_table} WHERE user_id = %d ORDER BY created_at DESC, id DESC LIMIT 1",
-				$user_id
+				"SELECT * FROM {$plans_table} WHERE user_id = %d AND status = %s ORDER BY created_at DESC, id DESC",
+				$user_id,
+				'accepted'
 			),
 			ARRAY_A
 		);
 
-		if ( $plan ) {
-			$plan_id = (int) $plan['id'];
-			$goal = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT * FROM {$goals_table} WHERE plan_id = %d ORDER BY id ASC LIMIT 1",
-					$plan_id
-				),
-				ARRAY_A
-			);
-			$goal_kind = $goal && ! empty( $goal['goal_kind'] ) ? (string) $goal['goal_kind'] : '';
-			$goal_book_id = $goal && ! empty( $goal['book_id'] ) ? (int) $goal['book_id'] : 0;
-			$goal_target = $goal && ! empty( $goal['target_value'] ) ? (int) $goal['target_value'] : 0;
-			$total_pages = $goal_target;
-			if ( $goal_book_id ) {
-				$ub_pages = $wpdb->get_var(
+		if ( $plans ) {
+			foreach ( $plans as $plan ) {
+				$plan_id = (int) $plan['id'];
+				$goal = $wpdb->get_row(
 					$wpdb->prepare(
-						"SELECT pages FROM {$wpdb->prefix}politeia_user_books WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
-						$user_id,
-						$goal_book_id
-					)
-				);
-				if ( $ub_pages ) {
-					$total_pages = (int) $ub_pages;
-				}
-			}
-			$today_key = current_time( 'Y-m-d' );
-
-			if ( 'complete_books' === $goal_kind ) {
-				$wpdb->query(
-					$wpdb->prepare(
-						"UPDATE {$sessions_table}
-						SET status = 'missed'
+						"SELECT * FROM {$goals_table}
 						WHERE plan_id = %d
-						AND status = 'planned'
-						AND DATE(planned_start_datetime) < %s",
-						$plan_id,
-						$today_key
-					)
+						ORDER BY (book_id IS NULL), id ASC
+						LIMIT 1",
+						$plan_id
+					),
+					ARRAY_A
 				);
-			}
+				$goal_kind = $goal && ! empty( $goal['goal_kind'] ) ? (string) $goal['goal_kind'] : '';
+				$goal_book_id = $goal && ! empty( $goal['book_id'] ) ? (int) $goal['book_id'] : 0;
+				$goal_target = $goal && ! empty( $goal['target_value'] ) ? (int) $goal['target_value'] : 0;
+				if ( ! $goal_book_id && ! empty( $plan['name'] ) ) {
+					$normalized = function_exists( 'prs_normalize_title' )
+						? prs_normalize_title( (string) $plan['name'] )
+						: '';
+					$book_row = $wpdb->get_row(
+						$wpdb->prepare(
+							"SELECT id FROM {$books_table} WHERE title = %s OR normalized_title = %s LIMIT 1",
+							(string) $plan['name'],
+							(string) $normalized
+						),
+						ARRAY_A
+					);
+					if ( $book_row && ! empty( $book_row['id'] ) ) {
+						$goal_book_id = (int) $book_row['id'];
+					}
+					if ( ! $goal_book_id ) {
+						$params = array(
+							$user_id,
+							(string) $plan['name'],
+							(string) $normalized,
+						);
+						$sql = "SELECT b.id FROM {$wpdb->prefix}politeia_user_books ub
+							INNER JOIN {$books_table} b ON b.id = ub.book_id
+							WHERE ub.user_id = %d AND ub.deleted_at IS NULL
+							AND (b.title = %s OR b.normalized_title = %s";
+						if ( '' !== $normalized ) {
+							$params[] = '%' . $wpdb->esc_like( $normalized ) . '%';
+							$sql .= ' OR b.normalized_title LIKE %s';
+						}
+						$sql .= ') ORDER BY ub.id DESC LIMIT 1';
+						$book_row = $wpdb->get_row(
+							$wpdb->prepare( $sql, $params ),
+							ARRAY_A
+						);
+						if ( $book_row && ! empty( $book_row['id'] ) ) {
+							$goal_book_id = (int) $book_row['id'];
+						}
+					}
+				}
+				$total_pages = $goal_target;
+				if ( $goal_book_id ) {
+					$ub_pages = $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT pages FROM {$wpdb->prefix}politeia_user_books WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+							$user_id,
+							$goal_book_id
+						)
+					);
+					if ( $ub_pages ) {
+						$total_pages = (int) $ub_pages;
+					}
+				}
+				$today_key = current_time( 'Y-m-d' );
 
-			$sessions = $wpdb->get_results(
-				$wpdb->prepare(
-					"SELECT planned_start_datetime, planned_start_page, planned_end_page, status
-					FROM {$sessions_table}
-					WHERE plan_id = %d
-					ORDER BY planned_start_datetime ASC",
-					$plan_id
-				),
-				ARRAY_A
-			);
+				if ( 'complete_books' === $goal_kind ) {
+					$wpdb->query(
+						$wpdb->prepare(
+							"UPDATE {$sessions_table}
+							SET status = 'missed'
+							WHERE plan_id = %d
+							AND status = 'planned'
+							AND DATE(planned_start_datetime) < %s",
+							$plan_id,
+							$today_key
+						)
+					);
+				}
+
+				$sessions = $wpdb->get_results(
+					$wpdb->prepare(
+						"SELECT planned_start_datetime, planned_start_page, planned_end_page, status
+						FROM {$sessions_table}
+						WHERE plan_id = %d
+						ORDER BY planned_start_datetime ASC",
+						$plan_id
+					),
+					ARRAY_A
+				);
 
 			$start_ts = null;
 			$end_ts = null;
@@ -984,6 +1028,9 @@ $is_owner       = $requested_user
 						$goal_book_id
 					)
 				);
+				if ( '' === $subtitle ) {
+					$subtitle = __( 'Unknown author', 'politeia-reading' );
+				}
 			}
 			if ( $goal_book_id && $total_pages > 0 ) {
 				$total_read = (int) $wpdb->get_var(
@@ -1004,27 +1051,28 @@ $is_owner       = $requested_user
 				$progress = min( 100, (int) floor( ( $total_read / $total_pages ) * 100 ) );
 			}
 
-			$cards[] = array(
-				'plan_id'      => $plan_id,
-				'book_id'      => $goal_book_id,
-				'badge'        => $badge,
-				'title'        => $plan['name'],
-				'subtitle'     => $subtitle,
-				'month_label'  => $month_label,
-				'month_year'   => $month_year,
-				'month_range'  => $month_range_label,
-				'initial_month' => date( 'Y-m', $month_ts ),
-				'days_count'   => $days_count,
-				'start_offset' => $start_offset,
-				'selected'     => $selected,
-				'session_dates' => $session_dates,
-				'total_pages'  => $total_pages,
-				'progress'     => $progress,
-				'goal_kind'    => $goal_kind,
-				'session_items' => $session_items,
-				'actual_sessions' => $actual_sessions_payload,
-				'today_key'    => $today_key,
-			);
+				$cards[] = array(
+					'plan_id'      => $plan_id,
+					'book_id'      => $goal_book_id,
+					'badge'        => $badge,
+					'title'        => $plan['name'],
+					'subtitle'     => $subtitle,
+					'month_label'  => $month_label,
+					'month_year'   => $month_year,
+					'month_range'  => $month_range_label,
+					'initial_month' => date( 'Y-m', $month_ts ),
+					'days_count'   => $days_count,
+					'start_offset' => $start_offset,
+					'selected'     => $selected,
+					'session_dates' => $session_dates,
+					'total_pages'  => $total_pages,
+					'progress'     => $progress,
+					'goal_kind'    => $goal_kind,
+					'session_items' => $session_items,
+					'actual_sessions' => $actual_sessions_payload,
+					'today_key'    => $today_key,
+				);
+			}
 		}
 
 		$baseline_metrics = array();
@@ -1044,11 +1092,13 @@ $is_owner       = $requested_user
 				 INNER JOIN {$plans_table} p ON p.id = s.plan_id
 				 LEFT JOIN {$goals_table} g ON g.plan_id = p.id
 				 WHERE p.user_id = %d
+				   AND p.status = %s
 				   AND s.status = 'planned'
 				   AND DATE(s.planned_start_datetime) >= %s
 				 ORDER BY s.planned_start_datetime ASC
 				 LIMIT 5",
 				$user_id,
+				'accepted',
 				$today_key
 			),
 			ARRAY_A
@@ -1256,7 +1306,7 @@ $is_owner       = $requested_user
 								>
 									×
 								</button>
-								<?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $card['book_id'] . '"]' ); ?>
+								<?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $card['book_id'] . '" plan_id="' . (int) $card['plan_id'] . '"]' ); ?>
 							</div>
 						</div>
 					<?php endif; ?>
@@ -1920,6 +1970,21 @@ $is_owner       = $requested_user
 					}
 					sessionModal.setAttribute('aria-hidden', 'false');
 					sessionOpen.setAttribute('aria-expanded', 'true');
+					const recorder = sessionModal.querySelector('.prs-sr');
+					if (recorder && typeof window.prsStartReadingInit === 'function') {
+						let data = null;
+						if (recorder.dataset.prsSr) {
+							try {
+								data = JSON.parse(recorder.dataset.prsSr);
+							} catch (error) {
+								data = null;
+							}
+						}
+						if (data) {
+							window.PRS_SR = data;
+						}
+						window.prsStartReadingInit({ root: sessionModal, data: data || window.PRS_SR });
+					}
 					if (shouldFocusClose && sessionClose) {
 						setTimeout(() => sessionClose.focus(), 0);
 					}

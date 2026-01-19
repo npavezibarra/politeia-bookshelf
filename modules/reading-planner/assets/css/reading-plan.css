@@ -102,6 +102,101 @@
 .politeia-reading-plan-shell #form-container * {
   text-transform: none !important;
 }
+.politeia-reading-plan-shell .reading-plan-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+  font-family: 'Poppins', sans-serif;
+  color: #111111;
+}
+.politeia-reading-plan-shell .reading-plan-success__title {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+.politeia-reading-plan-shell .reading-plan-success__next {
+  font-size: 13px;
+  font-weight: 500;
+  margin: 0;
+  color: #333333;
+}
+.politeia-reading-plan-shell .reading-plan-success__btn {
+  width: 100%;
+  max-width: 320px;
+  padding: 14px 20px;
+  border-radius: 8px;
+  border: none;
+  background: #000000;
+  color: #ffffff;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+.politeia-reading-plan-shell .reading-plan-success__btn:hover {
+  background: #c79f32;
+  color: #000000;
+  transform: translateY(-1px);
+}
+.politeia-reading-plan-shell .reading-plan-success__btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+.politeia-reading-plan-shell .reading-plan-success__note {
+  font-size: 12px;
+  margin: 0;
+  color: #9b1c1c;
+}
+.politeia-reading-plan-shell #summary-container.is-success header,
+.politeia-reading-plan-shell #summary-container.is-success #main-view-container,
+.politeia-reading-plan-shell #summary-container.is-success #reading-plan-success,
+.politeia-reading-plan-shell #summary-container.is-success #reading-plan-error,
+.politeia-reading-plan-shell #summary-container.is-success #accept-button,
+.politeia-reading-plan-shell #summary-container.is-success #adjust-btn,
+.politeia-reading-plan-shell #summary-container.is-success #list-pagination,
+.politeia-reading-plan-shell #summary-container.is-success #calendar-nav-controls {
+  display: none !important;
+}
+.politeia-reading-plan-shell #summary-container.is-success .reading-plan-success {
+  display: flex;
+}
+.reading-plan-session-modal {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 20;
+}
+.reading-plan-session-modal.is-active {
+  display: flex;
+}
+.reading-plan-session-modal__content {
+  position: relative;
+  width: min(520px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 24px;
+}
+.reading-plan-session-modal__close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  cursor: pointer;
+  color: #111111;
+}
 .politeia-reading-plan-shell h2.text-2xl.font-medium.text-black.uppercase.tracking-tight {
   font-weight: 700;
   margin: 0;

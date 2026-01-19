@@ -17,30 +17,47 @@ add_shortcode(
 		$atts = shortcode_atts(
 			array(
 				'book_id' => 0,
+				'plan_id' => 0,
 			),
 			$atts,
 			'politeia_start_reading'
 		);
 
 		$book_id = absint( $atts['book_id'] );
+		$plan_id = absint( $atts['plan_id'] );
 		if ( ! $book_id ) {
 			return '';
 		}
 
 		global $wpdb;
 		$user_id = get_current_user_id();
+		$default_start_page = 0;
 
-                $tbl_rs     = $wpdb->prefix . 'politeia_reading_sessions';
-                $tbl_ub     = $wpdb->prefix . 'politeia_user_books';
-                $tbl_books  = $wpdb->prefix . 'politeia_books';
+                $tbl_rs           = $wpdb->prefix . 'politeia_reading_sessions';
+                $tbl_ub           = $wpdb->prefix . 'politeia_user_books';
+                $tbl_books        = $wpdb->prefix . 'politeia_books';
+                $tbl_authors      = $wpdb->prefix . 'politeia_authors';
+                $tbl_book_authors = $wpdb->prefix . 'politeia_book_authors';
+		$tbl_plans         = $wpdb->prefix . 'politeia_plans';
+		$tbl_plan_sessions = $wpdb->prefix . 'politeia_planned_sessions';
 
-                $book_title = $wpdb->get_var(
-                        $wpdb->prepare(
-                                "SELECT title FROM {$tbl_books} WHERE id = %d LIMIT 1",
-                                $book_id
-                        )
-                );
-                $book_title = $book_title ? (string) $book_title : '';
+		$book_title = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT title FROM {$tbl_books} WHERE id = %d LIMIT 1",
+				$book_id
+			)
+		);
+		$book_title = $book_title ? (string) $book_title : '';
+		$book_author = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+				FROM {$tbl_book_authors} ba
+				LEFT JOIN {$tbl_authors} a ON a.id = ba.author_id
+				WHERE ba.book_id = %d",
+				$book_id
+			)
+		);
+		$book_author = $book_author ? (string) $book_author : __( 'Unknown author', 'politeia-reading' );
 
 		// Última página de la última sesión (si existe)
 		$last_end_page = $wpdb->get_var(
@@ -67,43 +84,65 @@ add_shortcode(
 		// No se puede iniciar si está prestado a otro, perdido o vendido
 		$can_start = ! in_array( $owning_status, array( 'borrowed', 'lost', 'sold' ), true );
 
+		if ( $plan_id > 0 ) {
+			$plan_owner = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT user_id FROM {$tbl_plans} WHERE id = %d LIMIT 1",
+					$plan_id
+				)
+			);
+			if ( $plan_owner === (int) $user_id ) {
+				$default_start_page = (int) $wpdb->get_var(
+					$wpdb->prepare(
+						"SELECT planned_start_page FROM {$tbl_plan_sessions}
+						WHERE plan_id = %d AND planned_start_page IS NOT NULL
+						ORDER BY planned_start_datetime ASC LIMIT 1",
+						$plan_id
+					)
+				);
+			}
+		}
+
 		// Encolar JS/CSS del recorder
 		wp_enqueue_script( 'politeia-start-reading' );
 		wp_enqueue_style( 'politeia-reading' );
+
+		$prs_sr = array(
+			'ajax_url'      => admin_url( 'admin-ajax.php' ),
+			'nonce'         => wp_create_nonce( 'prs_reading_nonce' ),
+			'user_id'       => (int) $user_id,
+			'book_id'       => (int) $book_id,
+			'last_end_page' => is_null( $last_end_page ) ? '' : (int) $last_end_page,
+			'default_start_page' => $default_start_page,
+			'owning_status' => (string) $owning_status,
+			'total_pages'   => (int) $total_pages, // ← NUEVO
+			'can_start'     => $can_start ? 1 : 0,
+			'actions'       => array(
+				'start' => 'prs_start_reading',
+				'save'  => 'prs_save_reading',
+			),
+			'strings'       => array(
+				'tooltip_pages_required' => __( 'Set total Pages for this book before starting a session.', 'politeia-reading' ),
+				'tooltip_not_owned'      => __( 'You cannot start a session: the book is not in your possession (Borrowed, Lost or Sold).', 'politeia-reading' ),
+				'alert_pages_required'   => __( 'You must set total Pages to start a session.', 'politeia-reading' ),
+				'alert_end_page_required' => __( 'Please enter an ending page before saving.', 'politeia-reading' ),
+				'alert_session_expired'  => __( 'Session expired. Please refresh the page and try again.', 'politeia-reading' ),
+				'alert_start_network'    => __( 'Network error while starting the session.', 'politeia-reading' ),
+				'alert_save_failed'      => __( 'Could not save the session.', 'politeia-reading' ),
+				'alert_save_network'     => __( 'Network error while saving the session.', 'politeia-reading' ),
+				'pages_single'           => __( '1 page', 'politeia-reading' ),
+				'pages_multiple'         => __( '%d pages', 'politeia-reading' ),
+				'minutes_under_one'      => __( 'less than a minute', 'politeia-reading' ),
+				'minutes_single'         => __( '1 minute', 'politeia-reading' ),
+				'minutes_multiple'       => __( '%d minutes', 'politeia-reading' ),
+			),
+		);
 
 		// Pasar datos al JS
 		wp_localize_script(
 			'politeia-start-reading',
 			'PRS_SR',
-			array(
-				'ajax_url'      => admin_url( 'admin-ajax.php' ),
-				'nonce'         => wp_create_nonce( 'prs_reading_nonce' ),
-				'user_id'       => (int) $user_id,
-				'book_id'       => (int) $book_id,
-				'last_end_page' => is_null( $last_end_page ) ? '' : (int) $last_end_page,
-				'owning_status' => (string) $owning_status,
-				'total_pages'   => (int) $total_pages, // ← NUEVO
-				'can_start'     => $can_start ? 1 : 0,
-				'actions'       => array(
-					'start' => 'prs_start_reading',
-					'save'  => 'prs_save_reading',
-				),
-				'strings'       => array(
-					'tooltip_pages_required' => __( 'Set total Pages for this book before starting a session.', 'politeia-reading' ),
-					'tooltip_not_owned'      => __( 'You cannot start a session: the book is not in your possession (Borrowed, Lost or Sold).', 'politeia-reading' ),
-					'alert_pages_required'   => __( 'You must set total Pages to start a session.', 'politeia-reading' ),
-					'alert_end_page_required' => __( 'Please enter an ending page before saving.', 'politeia-reading' ),
-					'alert_session_expired'  => __( 'Session expired. Please refresh the page and try again.', 'politeia-reading' ),
-					'alert_start_network'    => __( 'Network error while starting the session.', 'politeia-reading' ),
-					'alert_save_failed'      => __( 'Could not save the session.', 'politeia-reading' ),
-					'alert_save_network'     => __( 'Network error while saving the session.', 'politeia-reading' ),
-					'pages_single'           => __( '1 page', 'politeia-reading' ),
-					'pages_multiple'         => __( '%d pages', 'politeia-reading' ),
-					'minutes_under_one'      => __( 'less than a minute', 'politeia-reading' ),
-					'minutes_single'         => __( '1 minute', 'politeia-reading' ),
-					'minutes_multiple'       => __( '%d minutes', 'politeia-reading' ),
-				),
-			)
+			$prs_sr
 		);
 
 		ob_start();
@@ -112,6 +151,9 @@ add_shortcode(
 	/* Estilos mínimos (la alineación derecha de botones la manejas con tu CSS externo) */
 	.prs-sr { width:100%; }
 	.prs-sr .prs-sr-head { margin:0 0 8px; }
+	.prs-sr .prs-sr-meta { margin:0 0 14px; color:#666; font-size:14px; }
+	.prs-sr .prs-sr-meta-title { color:#111; font-weight:700; }
+	.prs-sr .prs-sr-meta-author { color:#555; font-weight:500; }
 	.prs-sr .prs-sr-last { color:#555; margin:4px 0 10px; }
 
 	.prs-sr-table { width:100%; border-collapse: collapse; background:#fff; }
@@ -206,8 +248,24 @@ add_shortcode(
 	}
 	</style>
 
-	<div class="prs-sr" data-book-id="<?php echo (int) $book_id; ?>">
+	<div
+		class="prs-sr"
+		data-book-id="<?php echo (int) $book_id; ?>"
+		data-prs-sr="<?php echo esc_attr( wp_json_encode( $prs_sr ) ); ?>"
+	>
 	<h2 class="prs-sr-head"><?php esc_html_e( 'Session recorder', 'politeia-reading' ); ?></h2>
+	<?php if ( $book_title || $book_author ) : ?>
+		<div class="prs-sr-meta">
+			<?php if ( $book_title ) : ?>
+				<span class="prs-sr-meta-title"><?php echo esc_html( $book_title ); ?></span>
+			<?php endif; ?>
+			<?php if ( $book_author ) : ?>
+				<span class="prs-sr-meta-author">
+					<?php echo esc_html( sprintf( __( 'by %s', 'politeia-reading' ), $book_author ) ); ?>
+				</span>
+			<?php endif; ?>
+		</div>
+	<?php endif; ?>
 
 		<?php if ( $last_end_page ) : ?>
 		<div class="prs-sr-last">
