@@ -1339,7 +1339,7 @@ $is_owner       = $requested_user
 
 										$goal_kind = isset( $session_row['goal_kind'] ) ? (string) $session_row['goal_kind'] : '';
 										$meta_label = '';
-										if ( 'form_habit' === $goal_kind ) {
+										if ( in_array( $goal_kind, array( 'form_habit', 'habit' ), true ) ) {
 											$minutes = isset( $baseline_metrics['minutes_per_session'] ) ? (int) $baseline_metrics['minutes_per_session'] : 0;
 											if ( $minutes <= 0 ) {
 												$minutes = 30;

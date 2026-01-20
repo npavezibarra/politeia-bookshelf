@@ -292,15 +292,13 @@ class Rest {
 						'planned_end_datetime'   => $planned_end,
 						'planned_start_page'     => isset( $session['planned_start_page'] ) ? (int) $session['planned_start_page'] : null,
 						'planned_end_page'       => isset( $session['planned_end_page'] ) ? (int) $session['planned_end_page'] : null,
-						'actual_start_datetime'  => isset( $session['actual_start_datetime'] ) ? sanitize_text_field( (string) $session['actual_start_datetime'] ) : null,
-						'actual_end_datetime'    => isset( $session['actual_end_datetime'] ) ? sanitize_text_field( (string) $session['actual_end_datetime'] ) : null,
-						'actual_start_page'      => isset( $session['actual_start_page'] ) ? (int) $session['actual_start_page'] : null,
-						'actual_end_page'        => isset( $session['actual_end_page'] ) ? (int) $session['actual_end_page'] : null,
+						'expected_number_of_pages' => isset( $session['expected_number_of_pages'] ) ? (int) $session['expected_number_of_pages'] : null,
+						'expected_duration_minutes' => isset( $session['expected_duration_minutes'] ) ? (int) $session['expected_duration_minutes'] : null,
 						'status'                 => 'planned',
 						'previous_session_id'    => isset( $session['previous_session_id'] ) ? (int) $session['previous_session_id'] : null,
 						'comment'                => isset( $session['comment'] ) ? wp_kses_post( (string) $session['comment'] ) : null,
 					),
-					array( '%d', '%s', '%s', '%d', '%d', '%s', '%s', '%d', '%d', '%s', '%d', '%s' )
+					array( '%d', '%s', '%s', '%d', '%d', '%d', '%d', '%s', '%d', '%s' )
 				);
 
 				if ( false === $session_inserted ) {

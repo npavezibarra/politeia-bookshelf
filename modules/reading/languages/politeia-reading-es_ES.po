@@ -1410,6 +1410,60 @@ msgstr "Iniciar Plan de Lectura"
 msgid "Personaliza tu ritmo y alcanza tus metas literarias"
 msgstr "Personaliza tu ritmo y alcanza tus metas literarias"
 
+msgid "48-Day Habit Challenge"
+msgstr "Desafío de hábito de 48 días"
+
+msgid "A short, focused plan designed to build consistency without overwhelming you."
+msgstr "Un plan breve y enfocado diseñado para construir constancia sin abrumarte."
+
+msgid "Gradual Difficulty"
+msgstr "Dificultad gradual"
+
+msgid "Your targets grow daily to build stamina."
+msgstr "Tus metas crecen a diario para desarrollar resistencia."
+
+msgid "Two-Strike Rule"
+msgstr "Regla de dos faltas"
+
+msgid "Missing 2 days fails the entire plan."
+msgstr "Faltar 2 días hace fallar todo el plan."
+
+msgid "Total Freedom"
+msgstr "Libertad total"
+
+msgid "Read any book in your library to fulfill daily goals."
+msgstr "Lee cualquier libro de tu biblioteca para cumplir las metas diarias."
+
+msgid "Choose your intensity"
+msgstr "Elige tu intensidad"
+
+msgid "Light"
+msgstr "Ligero"
+
+msgid "%1$s–%2$s min"
+msgstr "%1$s–%2$s min"
+
+msgid "%1$s–%2$s pages"
+msgstr "%1$s–%2$s páginas"
+
+msgid "48-DAY HABIT CHALLENGE"
+msgstr "DESAFÍO DE HÁBITO DE 48 DÍAS"
+
+msgid "Intensity: %s"
+msgstr "Intensidad: %s"
+
+msgid "Daily targets grow linearly."
+msgstr "Las metas diarias crecen de forma lineal."
+
+msgid "Targets: %1$s–%2$s min / %3$s–%4$s pages"
+msgstr "Metas: %1$s–%2$s min / %3$s–%4$s páginas"
+
+msgid "Duration: %s days"
+msgstr "Duración: %s días"
+
+msgid "Congratulations! You have started your 48-day habit challenge."
+msgstr "¡Felicitaciones! Has comenzado tu desafío de hábito de 48 días."
+
 msgid "Total Pages this Week"
 msgstr "Total de paginas esta semana"
 

@@ -193,13 +193,13 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
     }
   });
 
-  function setupFlashNoteToggle() {
-    const summary = document.getElementById("prs-sr-summary");
-    const notePanel = document.getElementById("prs-note-panel");
-    const addBtn = document.getElementById("prs-add-note-btn");
-    const cancelBtn = document.getElementById("prs-cancel-note-btn");
-    const saveBtn = document.getElementById("prs-save-note-btn");
-    const flash = document.getElementById("prs-sr-flash");
+  function setupFlashNoteToggle(root) {
+    const summary = root.querySelector("#prs-sr-summary");
+    const notePanel = root.querySelector("#prs-note-panel");
+    const addBtn = root.querySelector("#prs-add-note-btn");
+    const cancelBtn = root.querySelector("#prs-cancel-note-btn");
+    const saveBtn = root.querySelector("#prs-save-note-btn");
+    const flash = root.querySelector("#prs-sr-flash");
     const editor = notePanel?.querySelector("#prs-note-editor");
     const noteHeader = notePanel?.querySelector(".prs-note-header");
     const sessionLabelEl = noteHeader?.querySelector(".prs-session-id");
@@ -207,9 +207,7 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
       || noteHeader?.querySelector(".prs-book-title");
     const pageRangeEl = noteHeader?.querySelector(".prs-pages");
     const flashInner = flash?.querySelector(".prs-sr-flash-inner");
-    const srContainer = summary?.closest?.(".prs-sr")
-      || notePanel?.closest?.(".prs-sr")
-      || flash?.closest?.(".prs-sr");
+    const srContainer = root;
     const defaultPlaceholder = editor
       ? (editor.getAttribute("data-placeholder") || editor.getAttribute("placeholder") || "")
       : "";
@@ -615,6 +613,9 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
 
     document.addEventListener("prs-sr-flash:showNoteEditor", event => {
       const detail = event?.detail || {};
+      if (flash && detail?.bookId && flash.dataset?.bookId && String(detail.bookId) !== String(flash.dataset.bookId)) {
+        return;
+      }
       if (editor) {
         const noteHtml = typeof detail.note === "string" ? detail.note : "";
         if (noteHtml) {
@@ -660,7 +661,6 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
 
       const noteContent = editor.innerHTML.trim();
 
-      const flash = document.getElementById("prs-sr-flash");
       const rsId = flash?.dataset?.sessionId || "";
       const bookId = flash?.dataset?.bookId || "";
       const userId = flash?.dataset?.userId || "";
@@ -744,7 +744,9 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
     });
   }
 
-  setupFlashNoteToggle();
+  document.querySelectorAll(".prs-sr").forEach((root) => {
+    setupFlashNoteToggle(root);
+  });
 
   function setupReadNoteButtons() {
     const flash = document.getElementById("prs-sr-flash");

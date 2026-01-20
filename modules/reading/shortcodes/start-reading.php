@@ -411,9 +411,6 @@ add_shortcode(
 	.prs-sr-flash-icon svg {
 		width: 54px;
 		height: 54px;
-		fill: none;
-		stroke: url(#prs-sr-gold-check);
-		stroke-width: 2.5;
 	}
 	.prs-btn {
 		display: inline-flex;
@@ -649,8 +646,8 @@ add_shortcode(
 										<stop offset="100%" stop-color="#E9D18A"></stop>
 									</linearGradient>
 								</defs>
-								<circle cx="12" cy="12" r="9.5"></circle>
-								<path d="M7 12.5l3 3 7-7"></path>
+								<circle cx="12" cy="12" r="9.5" fill="url(#prs-sr-gold-check)"></circle>
+								<path d="M7 12.5l3 3 7-7" fill="none" stroke="#111111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
 							</svg>
 						</div>
                         <h2><?php esc_html_e( 'Great job!', 'politeia-reading' ); ?></h2>

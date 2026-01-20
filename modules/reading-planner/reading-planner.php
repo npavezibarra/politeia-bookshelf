@@ -18,3 +18,5 @@ if ( ! defined( 'POLITEIA_READING_PLAN_URL' ) ) {
 }
 
 add_action( 'plugins_loaded', array( '\\Politeia\\ReadingPlanner\\Upgrader', 'maybe_upgrade' ) );
+
+require_once POLITEIA_READING_PLAN_PATH . 'includes/class-habit-validator.php';

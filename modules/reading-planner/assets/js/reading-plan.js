@@ -56,6 +56,15 @@
       pad2(d.getDate()),
     ].join('-') + ' ' + [pad2(d.getHours()), pad2(d.getMinutes()), '00'].join(':');
   };
+  const formatDateTimeSeconds = (date, hours, minutes, seconds) => {
+    const d = new Date(date);
+    d.setHours(hours, minutes, seconds, 0);
+    return [
+      d.getFullYear(),
+      pad2(d.getMonth() + 1),
+      pad2(d.getDate()),
+    ].join('-') + ' ' + [pad2(d.getHours()), pad2(d.getMinutes()), pad2(d.getSeconds())].join(':');
+  };
 
   const formatSessionDate = (date) => {
     if (!date) return t('next_session_tbd', 'To be scheduled');
@@ -145,14 +154,26 @@
   const MIN_PPS = 15;
   const SESSIONS_PER_PAGE = 10;
   const BENCHMARK_MIN_PER_PAGE = 1.5;
+  const HABIT_CHALLENGE_DAYS = 48;
 
   const PAGE_RANGES_MAP = { "<100": 80, "200~": 200, "400~": 400, "600~": 600, "1000~": 1000 };
   const EXIGENCIA_SESSIONS = { liviano: 3, mediano: 3, exigente: 5, intenso: 7 };
 
   const HABIT_INTENSITY_CONFIG = {
-    liviano: { time: 15, label: t('intensity_light', 'LIGHT'), reason: t('intensity_light_reason', 'It\'s the "magic number" for making progress without it feeling like a burden.') },
-    mediano: { time: 30, label: t('intensity_balanced', 'BALANCED'), reason: t('intensity_balanced_reason', 'It lets you finish a full chapter, creating a real sense of achievement.') },
-    intenso: { time: 60, label: t('intensity_intense', 'INTENSE'), reason: t('intensity_intense_reason', 'Ideal for those who want reading to be a central part of their identity.') },
+    light: {
+      label: t('habit_light_label', 'Light'),
+      startMin: 15,
+      endMin: 30,
+      startPg: 3,
+      endPg: 10,
+    },
+    intense: {
+      label: t('habit_intense_label', 'Intense'),
+      startMin: 30,
+      endMin: 60,
+      startPg: 15,
+      endPg: 30,
+    },
   };
 
   const MONTH_NAMES = (STRINGS.month_names && STRINGS.month_names.length)
@@ -351,108 +372,77 @@
       if (state.subStep === 0) {
         stepContent.innerHTML = `
           <div class="space-y-8 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('baseline_frequency', 'Baseline Frequency')}</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('baseline_sessions_month', 'How many reading sessions did you have in the last month?')}</h2>
-            <div class="max-w-xs mx-auto mt-10">
-              <input type="number" id="habit-sessions-input" value="${state.formData.baselines[gid]?.value || ''}" data-habit-sessions placeholder="${t('example_sessions', 'e.g. 8')}" class="w-full text-center text-4xl font-bold p-6 bg-[#F5F5F5] border-2 border-[#A8A8A8] rounded-custom outline-none focus:border-[#C79F32] transition-colors" />
-              <button type="button" id="habit-confirm-freq" class="w-full mt-6 bg-[#C79F32] text-black py-4 rounded-custom font-bold uppercase text-[10px] tracking-widest ${state.formData.baselines[gid]?.value ? '' : 'opacity-30 pointer-events-none'}">${t('confirm_continue', 'Confirm and Continue')}</button>
-            </div>
+            <h2 class="text-3xl font-medium text-black uppercase tracking-tight">${t('habit_step1_title', '48-Day Habit Challenge')}</h2>
+            <p class="text-sm font-medium text-black/70">${t('habit_step1_body', 'A short, focused plan designed to build consistency without overwhelming you.')}</p>
+            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
           </div>`;
-
-        const input = stepContent.querySelector('#habit-sessions-input');
-        const confirmBtn = stepContent.querySelector('#habit-confirm-freq');
-        if (input) {
-          input.addEventListener('input', (e) => {
-            state.formData.baselines[gid] = { ...state.formData.baselines[gid], value: e.target.value };
-            const hasValue = !!e.target.value;
-            if (confirmBtn) {
-              confirmBtn.classList.toggle('opacity-30', !hasValue);
-              confirmBtn.classList.toggle('pointer-events-none', !hasValue);
-            }
-          });
-        }
-        if (confirmBtn) {
-          confirmBtn.addEventListener('click', () => goToNext());
-        }
       } else if (state.subStep === 1) {
-        const currentTime = state.formData.baselines[gid]?.time || '';
         stepContent.innerHTML = `
           <div class="space-y-8 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('minimum_session', 'Minimum Session')}</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('average_session_time', 'On average, how much time did you spend per session?')}</h2>
-            <div class="grid grid-cols-2 gap-3 mt-6">
-              ${[15, 30, 45, 60].map((m) => `
-                <button type="button" id="habit-time-${m}" data-habit-time="${m}" class="p-5 border-2 rounded-custom transition-all ${
-                  parseInt(currentTime, 10) === m
-                    ? 'border-[#C79F32] bg-[#F5F5F5] text-[#C79F32]'
-                    : 'border-[#A8A8A8] bg-white text-[#A8A8A8] hover:border-[#C79F32]'
-                }"><span class="block text-2xl font-bold">${m}</span><span class="text-[10px] font-medium uppercase tracking-widest">${t('minutes_label', 'minutes')}</span></button>`).join('')}
-            </div>
-            <div class="mt-6 flex flex-col items-center">
-              <div class="flex items-center justify-center space-x-3">
-                <span class="text-[10px] font-bold text-[#A8A8A8] uppercase tracking-widest">${t('or_other', 'or other:')}</span>
-                <input type="number" id="habit-time-custom" value="${![15, 30, 45, 60].includes(parseInt(currentTime, 10)) ? currentTime : ''}" data-habit-time-custom placeholder="${t('minutes_placeholder', '20')}" class="w-20 text-center text-lg font-bold p-2 bg-[#F5F5F5] border-2 border-[#A8A8A8] rounded-custom outline-none focus:border-[#C79F32]" />
-                <span class="text-[10px] font-bold text-[#A8A8A8] uppercase tracking-widest">${t('minutes_short', 'min')}</span>
-              </div>
-              <button type="button" id="habit-confirm-time" class="w-full mt-4 bg-[#C79F32] text-black py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest ${state.formData.baselines[gid]?.time ? '' : 'opacity-30 pointer-events-none'}">${t('confirm', 'Confirm')}</button>
-            </div>
+            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step2_title', 'Gradual Difficulty')}</h2>
+            <p class="text-sm font-medium text-black/70">${t('habit_step2_body', 'Your targets grow daily to build stamina.')}</p>
+            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
           </div>`;
-
-        stepContent.querySelectorAll('[data-habit-time]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const val = btn.getAttribute('data-habit-time');
-            state.formData.baselines.form_habit = { ...state.formData.baselines.form_habit, time: val };
-            goToNext();
-          });
-        });
-        const customInput = stepContent.querySelector('#habit-time-custom');
-        const confirmBtn = stepContent.querySelector('#habit-confirm-time');
-        if (customInput) {
-          customInput.addEventListener('input', (e) => {
-            state.formData.baselines.form_habit = { ...state.formData.baselines.form_habit, time: e.target.value };
-            const hasValue = !!e.target.value;
-            if (confirmBtn) {
-              confirmBtn.classList.toggle('opacity-30', !hasValue);
-              confirmBtn.classList.toggle('pointer-events-none', !hasValue);
-            }
-          });
-        }
-        if (confirmBtn) {
-          confirmBtn.addEventListener('click', () => goToNext());
-        }
       } else if (state.subStep === 2) {
+        stepContent.innerHTML = `
+          <div class="space-y-8 text-center step-transition">
+            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step3_title', 'Two-Strike Rule')}</h2>
+            <p class="text-sm font-medium text-black/70">${t('habit_step3_body', 'Missing 2 days fails the entire plan.')}</p>
+            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
+          </div>`;
+      } else if (state.subStep === 3) {
+        stepContent.innerHTML = `
+          <div class="space-y-8 text-center step-transition">
+            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step4_title', 'Total Freedom')}</h2>
+            <p class="text-sm font-medium text-black/70">${t('habit_step4_body', 'Read any book in your library to fulfill daily goals.')}</p>
+            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
+          </div>`;
+      } else if (state.subStep === 4) {
         const currentIntensity = state.formData.baselines[gid]?.intensity || '';
         stepContent.innerHTML = `
           <div class="space-y-6 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('daily_ambition', 'Daily Ambition')}</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('habit_intensity_prompt', 'How intense do you want this habit to be?')}</h2>
+            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step5_title', 'Choose your intensity')}</h2>
             <div class="grid grid-cols-1 gap-4 mt-6">
               ${Object.keys(HABIT_INTENSITY_CONFIG).map((key) => {
                 const config = HABIT_INTENSITY_CONFIG[key];
+                const minutesRange = format('habit_minutes_range', '%1$s–%2$s min', config.startMin, config.endMin);
+                const pagesRange = format('habit_pages_range', '%1$s–%2$s pages', config.startPg, config.endPg);
                 return `
                   <button type="button" id="habit-intensity-${key}" data-habit-intensity="${key}" class="p-5 border-2 text-left rounded-custom transition-all ${
                     currentIntensity === key
                       ? 'border-[#C79F32] bg-[#F5F5F5] ring-2 ring-[#C79F32]'
                       : 'border-[#A8A8A8] bg-white hover:border-[#C79F32]'
                   }">
-                    <div class="flex justify-between items-center mb-1">
+                    <div class="flex justify-between items-center mb-2">
                       <h3 class="font-bold text-black uppercase text-sm">${config.label}</h3>
-                      <span class="text-[10px] font-black text-[#C79F32] bg-[#C79F32]/10 px-2 py-1 rounded">${format('minutes_per_day', '%s MIN / DAY', config.time)}</span>
+                      <span class="text-[10px] font-black text-[#C79F32] bg-[#C79F32]/10 px-2 py-1 rounded">${minutesRange}</span>
                     </div>
-                    <p class="text-[10px] text-black/50 font-medium leading-relaxed italic">${config.reason}</p>
+                    <p class="text-[10px] text-black/60 font-medium leading-relaxed">${pagesRange}</p>
                   </button>`;
               }).join('')}
             </div>
           </div>`;
-
-        stepContent.querySelectorAll('[data-habit-intensity]').forEach((btn) => {
-          btn.addEventListener('click', () => {
-            const val = btn.getAttribute('data-habit-intensity');
-            state.formData.baselines.form_habit = { ...state.formData.baselines.form_habit, intensity: val };
-            calculateHabitPlan();
-          });
-        });
       }
+
+      const nextBtn = stepContent.querySelector('button[type="button"]');
+      if (nextBtn && state.subStep < 4) {
+        nextBtn.addEventListener('click', () => goToNext());
+      }
+
+      stepContent.querySelectorAll('[data-habit-intensity]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const val = btn.getAttribute('data-habit-intensity');
+          const config = HABIT_INTENSITY_CONFIG[val];
+          state.formData.baselines.form_habit = {
+            intensity: val,
+            start_minutes: config?.startMin || 0,
+            end_minutes: config?.endMin || 0,
+            start_pages: config?.startPg || 0,
+            end_pages: config?.endPg || 0,
+          };
+          goToNext();
+        });
+      });
     }
   }
 
@@ -871,8 +861,12 @@
           state.mainStep = 2;
           state.isBaselineActive = false;
         }
-      } else if (gid === 'form_habit' && state.subStep < 2) {
+      } else if (gid === 'form_habit' && state.subStep < 4) {
         state.subStep += 1;
+      } else if (gid === 'form_habit' && state.subStep === 4) {
+        state.isBaselineActive = false;
+        calculatePlan();
+        return;
       } else {
         state.mainStep = 2;
         state.isBaselineActive = false;
@@ -894,25 +888,49 @@
 
   function calculateHabitPlan() {
     const data = state.formData;
-    const intensityKey = data.baselines.form_habit.intensity;
-    const dailyMinutes = HABIT_INTENSITY_CONFIG[intensityKey].time;
-    const pps = Math.ceil(dailyMinutes / BENCHMARK_MIN_PER_PAGE);
-    const totalDays = 42;
-    const sessionsPerWeek = 6;
-    const totalSessions = Math.ceil((totalDays / 7) * sessionsPerWeek);
+    const intensityKey = data.baselines.form_habit?.intensity || 'light';
+    const config = HABIT_INTENSITY_CONFIG[intensityKey] || HABIT_INTENSITY_CONFIG.light;
+    const totalDays = HABIT_CHALLENGE_DAYS;
+    const steps = Math.max(1, totalDays - 1);
+
+    const sessions = Array.from({ length: totalDays }).map((_, i) => {
+      const date = new Date(TODAY);
+      date.setDate(TODAY.getDate() + i);
+      const expectedMinutes = Math.round(config.startMin + (i * (config.endMin - config.startMin) / steps));
+      const expectedPages = Math.round(config.startPg + (i * (config.endPg - config.startPg) / steps));
+      return {
+        date,
+        order: i + 1,
+        expectedMinutes,
+        expectedPages,
+      };
+    });
 
     state.calculatedPlan = {
-      pps,
-      durationWeeks: totalDays / 7,
-      sessions: generateHabitSessions(totalSessions, sessionsPerWeek),
+      durationDays: totalDays,
+      sessions,
       type: 'habit',
+      habitConfig: {
+        intensity: intensityKey,
+        startMin: config.startMin,
+        endMin: config.endMin,
+        startPg: config.startPg,
+        endPg: config.endPg,
+      },
     };
 
-    qs('#propuesta-tipo-label').innerText = t('habit_plan_title', 'HABIT FORMATION PROPOSAL');
-    qs('#propuesta-plan-titulo').innerText = format('habit_plan_of', 'HABIT OF %s MIN / DAY', dailyMinutes);
-    qs('#propuesta-sub-label').innerText = t('habit_cycle_label', 'CONSOLIDATION CYCLE (42 DAYS)');
-    qs('#propuesta-carga').innerText = format('estimated_load', 'Estimated Load: %s PAGES / SESSION', pps);
-    qs('#propuesta-duracion').innerText = format('cycle_duration_weeks', 'Cycle duration: %s WEEKS', Math.round(totalDays / 7));
+    qs('#propuesta-tipo-label').innerText = t('habit_48_title', '48-DAY HABIT CHALLENGE');
+    qs('#propuesta-plan-titulo').innerText = format('habit_intensity_label', 'Intensity: %s', config.label);
+    qs('#propuesta-sub-label').innerText = t('habit_growth_label', 'Daily targets grow linearly.');
+    qs('#propuesta-carga').innerText = format(
+      'habit_range_label',
+      'Targets: %1$s–%2$s min / %3$s–%4$s pages',
+      config.startMin,
+      config.endMin,
+      config.startPg,
+      config.endPg
+    );
+    qs('#propuesta-duracion').innerText = format('habit_duration_days', 'Duration: %s days', totalDays);
 
     formContainer.classList.add('hidden');
     summaryContainer.classList.remove('hidden');
@@ -1020,11 +1038,20 @@
     if (baselines.form_habit?.value) {
       metrics.sessions_per_month = String(baselines.form_habit.value);
     }
-    if (baselines.form_habit?.time) {
-      metrics.minutes_per_session = String(baselines.form_habit.time);
-    }
     if (baselines.form_habit?.intensity) {
       metrics.habit_intensity = String(baselines.form_habit.intensity);
+    }
+    if (baselines.form_habit?.start_minutes) {
+      metrics.habit_start_minutes = String(baselines.form_habit.start_minutes);
+    }
+    if (baselines.form_habit?.end_minutes) {
+      metrics.habit_end_minutes = String(baselines.form_habit.end_minutes);
+    }
+    if (baselines.form_habit?.start_pages) {
+      metrics.habit_start_pages = String(baselines.form_habit.start_pages);
+    }
+    if (baselines.form_habit?.end_pages) {
+      metrics.habit_end_pages = String(baselines.form_habit.end_pages);
     }
     return metrics;
   }
@@ -1051,13 +1078,15 @@
     }
 
     if (selectedGoals.includes('form_habit')) {
-      const sessionsPerWeek = EXIGENCIA_SESSIONS[state.formData.exigencia] || 0;
-      if (sessionsPerWeek > 0) {
+      const habitData = state.formData.baselines?.form_habit || {};
+      const targetValue = parseInt(habitData.end_minutes, 10) || parseInt(habitData.end_pages, 10) || 0;
+      if (targetValue > 0) {
         goals.push({
-          goal_kind: 'form_habit',
-          metric: 'sessions_per_week',
-          target_value: sessionsPerWeek,
-          period: 'week',
+          goal_kind: 'habit',
+          metric: 'daily_threshold',
+          target_value: targetValue,
+          period: 'day',
+          book_id: null,
         });
       }
     }
@@ -1080,7 +1109,16 @@
         planned_end_datetime: formatDateTime(session.date, 0, 30),
         planned_start_page: null,
         planned_end_page: null,
+        expected_number_of_pages: null,
+        expected_duration_minutes: null,
       };
+
+      if (state.calculatedPlan.type === 'habit') {
+        planned.planned_end_datetime = formatDateTimeSeconds(session.date, 23, 59, 59);
+        planned.expected_number_of_pages = session.expectedPages || null;
+        planned.expected_duration_minutes = session.expectedMinutes || null;
+        return planned;
+      }
 
       if (totalPages > 0 && pps > 0) {
         const startPage = startingPage + (idx * pps);
@@ -1520,7 +1558,10 @@
     }
 
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
-    const planName = activeBook?.title || t('plan_title_default', 'Plan Title');
+    const isHabitPlan = state.calculatedPlan.type === 'habit';
+    const planName = isHabitPlan
+      ? t('habit_plan_name', '48-Day Habit Challenge')
+      : (activeBook?.title || t('plan_title_default', 'Plan Title'));
     const payload = {
       name: planName,
       plan_type: state.calculatedPlan.type || 'custom',
@@ -1560,14 +1601,16 @@
         const sessionsSorted = Array.from(state.calculatedPlan.sessions || []).sort((a, b) => a.date - b.date);
         const nextSession = sessionsSorted.length ? sessionsSorted[0].date : null;
         if (successTitle) {
-          successTitle.textContent = format('plan_accepted_message', 'Congratulations! You have accepted your reading plan for "%s".', bookTitle);
+          successTitle.textContent = isHabitPlan
+            ? t('habit_accepted_message', 'Congratulations! You have started your 48-day habit challenge.')
+            : format('plan_accepted_message', 'Congratulations! You have accepted your reading plan for "%s".', bookTitle);
         }
         if (successNext) {
           successNext.textContent = format('next_session_message', 'Your next reading session is %s.', formatSessionDate(nextSession));
         }
         if (successNote) successNote.classList.add('hidden');
         if (successStartBtn) {
-          const hasBookId = !!activeBook?.bookId;
+          const hasBookId = !isHabitPlan && !!activeBook?.bookId;
           successStartBtn.disabled = !hasBookId;
           successStartBtn.setAttribute('aria-disabled', hasBookId ? 'false' : 'true');
         }
