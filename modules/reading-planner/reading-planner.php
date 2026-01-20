@@ -6,7 +6,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 if ( ! defined( 'POLITEIA_READING_PLAN_DB_VERSION' ) ) {
-	define( 'POLITEIA_READING_PLAN_DB_VERSION', '1.0.0' );
+	define( 'POLITEIA_READING_PLAN_DB_VERSION', '1.2.0' );
 }
 
 if ( ! defined( 'POLITEIA_READING_PLAN_PATH' ) ) {
