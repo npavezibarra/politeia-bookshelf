@@ -265,7 +265,7 @@ function politeia_bookshelf_register_google_books_settings() {
         ]
     );
     register_setting(
-        'politeia_bookshelf_templates',
+        'politeia_bookshelf_my_stats',
         POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION,
         [
             'type'              => 'array',
@@ -564,13 +564,19 @@ function politeia_bookshelf_render_admin_page() {
                 <?php endforeach; ?>
             </h2>
 
-            <?php settings_errors( 'politeia_bookshelf_templates' ); ?>
+            <?php
+            $settings_group = ( 'assignments' === $templates_subtab )
+                ? 'politeia_bookshelf_templates'
+                : 'politeia_bookshelf_my_stats';
+            settings_errors( $settings_group );
+            ?>
             <form action="<?php echo esc_url( admin_url( 'options.php' ) ); ?>" method="post">
                 <?php
-                settings_fields( 'politeia_bookshelf_templates' );
                 if ( 'assignments' === $templates_subtab ) {
+                    settings_fields( $settings_group );
                     do_settings_sections( 'politeia_bookshelf_templates' );
                 } else {
+                    settings_fields( $settings_group );
                     do_settings_sections( 'politeia_bookshelf_my_stats' );
                 }
                 submit_button();

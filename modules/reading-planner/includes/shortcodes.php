@@ -115,9 +115,9 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 				'day_sun'            => __( 'Sun', 'politeia-reading' ),
 				'list_page_label'    => __( '%1$s / %2$s', 'politeia-reading' ),
 				'goal_prompt'        => __( 'What goal do you want to achieve?', 'politeia-reading' ),
-				'goal_subtitle'      => __( 'Select your primary goal', 'politeia-reading' ),
+				'goal_subtitle'      => __( 'Select your primary goal to begin', 'politeia-reading' ),
 				'goal_complete_title' => __( 'Finish a book', 'politeia-reading' ),
-				'goal_complete_desc' => __( 'Finish specific books within a set time frame.', 'politeia-reading' ),
+				'goal_complete_desc' => __( 'Finish a specific book within a set timeframe.', 'politeia-reading' ),
 				'goal_habit_title'   => __( 'Build a habit', 'politeia-reading' ),
 				'goal_habit_desc'    => __( 'Increase the frequency and consistency of your reading.', 'politeia-reading' ),
 				'baseline_label'     => __( 'Baseline', 'politeia-reading' ),
@@ -153,30 +153,57 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 				'pages'              => __( 'Pages', 'politeia-reading' ),
 				'add_book'           => __( 'Add book', 'politeia-reading' ),
 				'starting_page'      => __( 'Starting Page', 'politeia-reading' ),
+				'start_page_question' => __( 'What page does the book content start on?', 'politeia-reading' ),
 				'unknown_author'     => __( 'Unknown author', 'politeia-reading' ),
 				'by_label'           => __( 'by', 'politeia-reading' ),
 				'pages_label'        => __( 'pages', 'politeia-reading' ),
-				'intensity_balanced_label' => __( 'Balanced', 'politeia-reading' ),
-				'intensity_challenging_label' => __( 'Challenging', 'politeia-reading' ),
+				'intensity_balanced_label' => __( 'Intermediate', 'politeia-reading' ),
+				'intensity_challenging_label' => __( 'Light', 'politeia-reading' ),
 				'intensity_intense_label' => __( 'Intense', 'politeia-reading' ),
-				'intensity_prompt'   => __( 'What intensity level do you want?', 'politeia-reading' ),
+				'intensity_prompt'   => __( 'Select intensity', 'politeia-reading' ),
 				'sessions_per_week'  => __( '%d sessions<br>per week', 'politeia-reading' ),
+				'habit_session_meta' => __( '%1$s min / %2$s pages', 'politeia-reading' ),
 				'habit_plan_title'   => __( 'HABIT FORMATION PROPOSAL', 'politeia-reading' ),
 				'habit_plan_of'      => __( 'HABIT OF %s MIN / DAY', 'politeia-reading' ),
 				'habit_cycle_label'  => __( 'CONSOLIDATION CYCLE (42 DAYS)', 'politeia-reading' ),
-				'habit_step1_title'  => __( '48-Day Habit Challenge', 'politeia-reading' ),
-				'habit_step1_body'   => __( 'A short, focused plan designed to build consistency without overwhelming you.', 'politeia-reading' ),
-				'habit_step2_title'  => __( 'Gradual Difficulty', 'politeia-reading' ),
-				'habit_step2_body'   => __( 'Your targets grow daily to build stamina.', 'politeia-reading' ),
-				'habit_step3_title'  => __( 'Two-Strike Rule', 'politeia-reading' ),
-				'habit_step3_body'   => __( 'Missing 2 days fails the entire plan.', 'politeia-reading' ),
-				'habit_step4_title'  => __( 'Total Freedom', 'politeia-reading' ),
-				'habit_step4_body'   => __( 'Read any book in your library to fulfill daily goals.', 'politeia-reading' ),
-				'habit_step5_title'  => __( 'Choose your intensity', 'politeia-reading' ),
+				'habit_step1_title'  => __( '48 days of reading', 'politeia-reading' ),
+				'habit_step1_body'   => __( 'To build and consolidate your reading habit, you will complete 48 daily reading sessions.', 'politeia-reading' ),
+				'habit_step1_cta'    => __( 'Got it!', 'politeia-reading' ),
+				'habit_step2_title'  => __( 'Progressive growth', 'politeia-reading' ),
+				'habit_step2_body'   => __( 'The <span class="habit-highlight">session time</span> and the <span class="habit-highlight">number of pages</span> will increase gradually to challenge you.', 'politeia-reading' ),
+				'habit_step2_cta'    => __( 'Next', 'politeia-reading' ),
+				'habit_step3_title'  => __( 'Consistency is everything', 'politeia-reading' ),
+				'habit_step3_body'   => __( 'Missing one session is a warning. Missing <span class="habit-highlight">2 sessions</span> ends the plan.', 'politeia-reading' ),
+				'habit_step3_cta'    => __( 'Got it!', 'politeia-reading' ),
+				'habit_step4_title'  => __( 'Your library, your rules', 'politeia-reading' ),
+				'habit_step4_body'   => __( 'Any reading session from any book in <span class="habit-highlight">My Library</span> that meets the system targets counts automatically.', 'politeia-reading' ),
+				'habit_step4_cta'    => __( 'Got it!', 'politeia-reading' ),
+				'habit_step5_title'  => __( 'Select intensity', 'politeia-reading' ),
+				'habit_fail_label'   => __( 'Plan Failed', 'politeia-reading' ),
+				'habit_intensity_light_desc' => __( 'We start at 15m and 3pg. We finish at 30m and 10pg minimum.', 'politeia-reading' ),
+				'habit_intensity_intense_desc' => __( 'We start at 30m and 15pg. We finish at 60m and 30pg.', 'politeia-reading' ),
+				'habit_graph_step1_label' => __( '15 min', 'politeia-reading' ),
+				'habit_graph_step1_sublabel' => __( '5 pages', 'politeia-reading' ),
+				'habit_graph_step2_label' => __( '18 min', 'politeia-reading' ),
+				'habit_graph_step2_sublabel' => __( '6 pages', 'politeia-reading' ),
+				'habit_graph_step3_label' => __( '25 min', 'politeia-reading' ),
+				'habit_graph_step3_sublabel' => __( '10 pages', 'politeia-reading' ),
+				'habit_step6_small' => __( 'Are you ready to dedicate the next 48 days to reading?', 'politeia-reading' ),
+				'habit_step6_title' => __( 'Which day do you want to start?', 'politeia-reading' ),
+				'habit_step6_cta'   => __( 'Continue', 'politeia-reading' ),
+				'habit_day_today'   => __( 'Today', 'politeia-reading' ),
+				'habit_day_sun'     => __( 'Sun', 'politeia-reading' ),
+				'habit_day_mon'     => __( 'Mon', 'politeia-reading' ),
+				'habit_day_tue'     => __( 'Tue', 'politeia-reading' ),
+				'habit_day_wed'     => __( 'Wed', 'politeia-reading' ),
+				'habit_day_thu'     => __( 'Thu', 'politeia-reading' ),
+				'habit_day_fri'     => __( 'Fri', 'politeia-reading' ),
+				'habit_day_sat'     => __( 'Sat', 'politeia-reading' ),
 				'habit_light_label'  => __( 'Light', 'politeia-reading' ),
 				'habit_intense_label' => __( 'Intense', 'politeia-reading' ),
 				'habit_minutes_range' => __( '%1$s–%2$s min', 'politeia-reading' ),
 				'habit_pages_range'  => __( '%1$s–%2$s pages', 'politeia-reading' ),
+				'habit_intensity_range' => __( '%1$s–%2$s min / %3$s–%4$s pages', 'politeia-reading' ),
 				'habit_48_title'     => __( '48-DAY HABIT CHALLENGE', 'politeia-reading' ),
 				'habit_intensity_label' => __( 'Intensity: %s', 'politeia-reading' ),
 				'habit_growth_label' => __( 'Daily targets grow linearly.', 'politeia-reading' ),
@@ -209,13 +236,13 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 		<div class="politeia-reading-plan-shell" role="dialog" aria-modal="true" aria-labelledby="politeia-reading-plan-title">
 			<button type="button" class="politeia-modal-close" aria-label="<?php echo esc_attr__( 'Close', 'politeia-reading' ); ?>">×</button>
 			<div id="form-container" class="bg-[#FEFEFF] w-full max-w-xl rounded-custom shadow-2xl overflow-hidden border border-[#A8A8A8] flex flex-col hidden">
-				<div class="bg-[#F5F5F5] h-1.5 flex" id="progress-bar">
-					<div class="flex-1 transition-all duration-700"></div>
-					<div class="flex-1 transition-all duration-700"></div>
-					<div class="flex-1 transition-all duration-700"></div>
-				</div>
 				<div class="p-10 flex-1 flex flex-col">
 					<div id="step-content" class="flex-1 min-h-[400px]"></div>
+				</div>
+				<div id="progress-dots" class="reading-plan-progress-dots" aria-hidden="true">
+					<span class="progress-dot"></span>
+					<span class="progress-dot"></span>
+					<span class="progress-dot"></span>
 				</div>
 			</div>
 			<div id="summary-container" class="calendar-card rounded-custom shadow-2xl p-6 max-w-xl w-full hidden">

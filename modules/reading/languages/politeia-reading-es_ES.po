@@ -36,6 +36,9 @@ msgstr "%d seleccionadas"
 msgid "%d sessions<br>per week"
 msgstr "%d sesiones<br>por semana"
 
+msgid "%1$s min / %2$s pages"
+msgstr "%1$s min / %2$s páginas"
+
 msgid "%d%% completed"
 msgstr "%d%% completado"
 
@@ -144,8 +147,11 @@ msgstr "EQUILIBRADO"
 msgid "Back to My Books"
 msgstr "Volver a Mis libros"
 
+msgid "My Books"
+msgstr "Mis Libros"
+
 msgid "Balanced"
-msgstr "Equilibrado"
+msgstr "Intermedio"
 
 msgid "Baseline"
 msgstr "Línea base"
@@ -223,7 +229,7 @@ msgid "Cancel"
 msgstr "Cancelar"
 
 msgid "Challenging"
-msgstr "Desafiante"
+msgstr "Liviano"
 
 msgid "Change Book Cover"
 msgstr "Cambiar portada del libro"
@@ -432,8 +438,8 @@ msgstr "Terminar lectura"
 msgid "Finish a book"
 msgstr "Terminar un libro"
 
-msgid "Finish specific books within a set time frame."
-msgstr "Termina libros específicos en un plazo determinado."
+msgid "Finish a specific book within a set timeframe."
+msgstr "Termina un libro en específico en un plazo determinado"
 
 msgid "Finished"
 msgstr "Terminado"
@@ -502,7 +508,7 @@ msgid "In Shelf"
 msgstr "En estantería"
 
 msgid "Increase the frequency and consistency of your reading."
-msgstr "Aumenta la frecuencia y la constancia de tu lectura."
+msgstr "Aumentar la frecuencia y la constancia de tus lecturas"
 
 msgid "Initial Page"
 msgstr "Página inicial"
@@ -960,6 +966,9 @@ msgstr "Selecciona una portada abajo y haz clic en “Establecer portada”. Mos
 msgid "Select your primary goal"
 msgstr "Selecciona tu objetivo principal"
 
+msgid "Select your primary goal to begin"
+msgstr "Selecciona tu objetivo principal para comenzar"
+
 msgid "Selected book cover preview"
 msgstr "Vista previa de la portada seleccionada"
 
@@ -1410,41 +1419,87 @@ msgstr "Iniciar Plan de Lectura"
 msgid "Personaliza tu ritmo y alcanza tus metas literarias"
 msgstr "Personaliza tu ritmo y alcanza tus metas literarias"
 
-msgid "48-Day Habit Challenge"
-msgstr "Desafío de hábito de 48 días"
+msgid "In 48 days you will complete sessions"
+msgstr "48 días de lecturas"
 
-msgid "A short, focused plan designed to build consistency without overwhelming you."
-msgstr "Un plan breve y enfocado diseñado para construir constancia sin abrumarte."
+msgid "48 days of reading"
+msgstr "48 días de lecturas"
 
-msgid "Gradual Difficulty"
-msgstr "Dificultad gradual"
+msgid "One session every day for 48 straight days."
+msgstr "Para acostumbrar y consolidar el hábito de lectura tendremos 48 sesiones diarias de lecturas"
 
-msgid "Your targets grow daily to build stamina."
-msgstr "Tus metas crecen a diario para desarrollar resistencia."
+msgid "To build and consolidate your reading habit, you will complete 48 daily reading sessions."
+msgstr "Para acostumbrar y consolidar el hábito de lectura tendremos 48 sesiones diarias de lecturas"
 
-msgid "Two-Strike Rule"
-msgstr "Regla de dos faltas"
+msgid "Got it!"
+msgstr "Entendido!"
 
-msgid "Missing 2 days fails the entire plan."
-msgstr "Faltar 2 días hace fallar todo el plan."
+msgid "Progressive growth"
+msgstr "Crecimiento progresivo"
 
-msgid "Total Freedom"
-msgstr "Libertad total"
+msgid "The <span class=\"habit-highlight\">session time</span> and the <span class=\"habit-highlight\">number of pages</span> will increase gradually to challenge you."
+msgstr "El <span class=\"habit-highlight\">tiempo de sesión</span> como el <span class=\"habit-highlight\">número de páginas</span> irán incrementando gradualmente para dar variabilidad y desafiarte a superar la resistencia."
 
-msgid "Read any book in your library to fulfill daily goals."
-msgstr "Lee cualquier libro de tu biblioteca para cumplir las metas diarias."
+msgid "Consistency is everything"
+msgstr "La consistencia es todo"
 
-msgid "Choose your intensity"
-msgstr "Elige tu intensidad"
+msgid "Missing one session is a warning. Missing <span class=\"habit-highlight\">2 sessions</span> ends the plan."
+msgstr "Fallar una sesión es un aviso. Fallar <span class=\"habit-highlight\">2 sesiones</span> tiene consecuencias, todo el plan se declara fallido y tendrás que comenzar otro para cumplir este desafío. Para crear hábito la consistencia es el factor más importante."
 
-msgid "Light"
-msgstr "Ligero"
+msgid "Your library, your rules"
+msgstr "Tu biblioteca, tus reglas"
 
-msgid "%1$s–%2$s min"
-msgstr "%1$s–%2$s min"
+msgid "Any reading session from any book in <span class=\"habit-highlight\">My Library</span> that meets the system targets counts automatically."
+msgstr "Cualquier sesión de lectura de cualquier libro que hayas ingresado a <span class=\"habit-highlight\">Mi Librería</span> que cumpla con los parámetros de cada sesión prefijados por nuestro sistema cuenta automáticamente como sesión cumplida."
 
-msgid "%1$s–%2$s pages"
-msgstr "%1$s–%2$s páginas"
+msgid "Continue"
+msgstr "Continuar"
+
+msgid "Select intensity"
+msgstr "Selecciona la Intensidad"
+
+msgid "Plan Failed"
+msgstr "Fallaste el plan"
+
+msgid "Intensity"
+msgstr "Intensidad"
+
+msgid "I agree"
+msgstr "Acepto"
+
+msgid "We start at 15m and 3pg. We finish at 30m and 10pg minimum."
+msgstr "Partimos con 15m y 3pg. Finalizamos con 30m y 10pg mínimo."
+
+msgid "We start at 30m and 15pg. We finish at 60m and 30pg."
+msgstr "Partimos con 30m y 15pg. Finalizamos con 60m y 30pg."
+
+msgid "15 min"
+msgstr "15 min"
+
+msgid "5 pages"
+msgstr "5 páginas"
+
+msgid "18 min"
+msgstr "18 min"
+
+msgid "6 pages"
+msgstr "6 páginas"
+
+msgid "25 min"
+msgstr "25 min"
+
+msgid "10 pages"
+msgstr "10 páginas"
+
+msgid "Are you ready to dedicate the next 48 days to reading?"
+msgstr "¿Estás listo para dedicar los próximos 48 días a leer?"
+
+msgid "Which day do you want to start?"
+msgstr "¿Qué día quieres comenzar?"
+
+
+msgid "%1$s–%2$s min / %3$s–%4$s pages"
+msgstr "%1$s–%2$s min / %3$s–%4$s páginas"
 
 msgid "48-DAY HABIT CHALLENGE"
 msgstr "DESAFÍO DE HÁBITO DE 48 DÍAS"
@@ -1487,6 +1542,9 @@ msgstr "Promedio de paginas por hora"
 
 msgid "Starting Page"
 msgstr "Página inicial"
+
+msgid "What page does the book content start on?"
+msgstr "¿En qué página comienza el contenido del libro?"
 
 msgid "Congratulations! You have accepted your reading plan for \"%s\"."
 msgstr "¡Felicitaciones! Has aceptado tu plan de lectura para \"%s\"."

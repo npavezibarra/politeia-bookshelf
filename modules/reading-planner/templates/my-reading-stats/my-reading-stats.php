@@ -348,7 +348,7 @@ if ( $is_owner ) {
 			.prs-stats-badge {
 				width: 56px;
 				height: 56px;
-				border-radius: 9px;
+				border-radius: 50%;
 				display: inline-flex;
 				align-items: center;
 				justify-content: center;

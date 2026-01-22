@@ -51,22 +51,617 @@
 
 .politeia-reading-plan-shell {
   position: relative;
-  width: min(36rem, 92vw);
+  width: min(45rem, 92vw);
   max-height: 92vh;
   overflow: auto;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-  background: #fefeff;
+  background: #000000;
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
-  color: #333333;
+  color: #ffffff;
+  text-align: center;
+  border: none;
   --color-black: #000000;
   --color-deep-gray: #333333;
   --color-gold: #c79f32;
+  --gold-gradient: linear-gradient(280deg, #8a6b1e, #c79f32, #e9d18a);
   --color-orange: #ff8c00;
   --color-light-gray: #a8a8a8;
   --color-subtle-gray: #f5f5f5;
   --color-off-white: #fefeff;
+}
+
+.politeia-reading-plan-shell > :not(#summary-container) {
+  background-color: #000000;
+  color: #ffffff;
+  text-align: center;
+}
+
+.politeia-reading-plan-shell > :not(#summary-container) * {
+  color: #ffffff;
+  text-align: center;
+  border-color: transparent;
+  border-image: none;
+  font-family: 'Poppins', sans-serif;
+}
+
+.politeia-reading-plan-shell > :not(#summary-container) svg,
+.politeia-reading-plan-shell > :not(#summary-container) svg * {
+  background-color: transparent !important;
+}
+
+.politeia-reading-plan-shell > :not(#summary-container) ::placeholder {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.politeia-reading-plan-shell > :not(#summary-container) .text-left {
+  text-align: center;
+}
+
+.politeia-reading-plan-shell > :not(#summary-container) .items-start,
+.politeia-reading-plan-shell > :not(#summary-container) .items-end {
+  align-items: center;
+}
+
+.politeia-reading-plan-shell > :not(#summary-container) .justify-between,
+.politeia-reading-plan-shell > :not(#summary-container) .justify-end {
+  justify-content: center;
+}
+
+.politeia-reading-plan-shell #summary-container {
+  color: #333333;
+  text-align: left;
+}
+
+.politeia-reading-plan-shell .habit-slide {
+  width: 100%;
+  max-width: 620px;
+  text-align: center;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  padding-bottom: 120px;
+  background-color: transparent;
+}
+
+.politeia-reading-plan-shell .habit-slide--intensity {
+  min-height: 100%;
+  height: 100%;
+  padding-top: 24px;
+  padding-bottom: 24px;
+  margin-top: auto;
+  margin-bottom: auto;
+}
+
+.politeia-reading-plan-shell #form-container {
+  border: none !important;
+}
+
+.politeia-reading-plan-shell .goal-slide {
+  width: 100%;
+  max-width: 700px;
+  text-align: center;
+  position: relative;
+  min-height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding-bottom: 90px;
+  padding-top: 90px;
+  margin-top: auto;
+  margin-bottom: auto;
+  align-items: center;
+}
+
+.politeia-reading-plan-shell .goal-title {
+  font-size: 2.15rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.1;
+  text-transform: none;
+}
+
+.politeia-reading-plan-shell .goal-subtitle {
+  font-size: 1.15rem;
+  font-weight: 300;
+  color: #aaaaaa;
+  margin-bottom: 15px;
+  line-height: 1.4;
+}
+
+.politeia-reading-plan-shell .goal-option-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+.politeia-reading-plan-shell #goal-option-group {
+  max-width: 500px;
+}
+
+.politeia-reading-plan-shell .goal-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent !important;
+  border: none;
+  border-radius: 20px;
+}
+
+.politeia-reading-plan-shell .goal-option-card:hover {
+  transform: translateY(-5px);
+}
+
+.politeia-reading-plan-shell .goal-icon-circle {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+    var(--gold-gradient) border-box;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+
+.politeia-reading-plan-shell .goal-option-card:hover .goal-icon-circle {
+  box-shadow: 0 10px 35px rgba(138, 107, 30, 0.3);
+  transform: scale(1.05);
+}
+
+.politeia-reading-plan-shell .goal-option-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.politeia-reading-plan-shell .goal-option-desc {
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: #aaaaaa;
+  line-height: 1.2;
+  max-width: 180px;
+}
+
+.politeia-reading-plan-shell .habit-icon {
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: center;
+}
+
+.politeia-reading-plan-shell .habit-title {
+  font-size: 2.15rem;
+  font-weight: 700;
+  margin-bottom: 6px;
+  line-height: 1.1;
+  text-transform: none;
+}
+
+.politeia-reading-plan-shell .habit-title-large {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 20px;
+  text-transform: none;
+}
+
+.politeia-reading-plan-shell .habit-subtitle {
+  font-size: 1.15rem;
+  font-weight: 300;
+  color: #aaaaaa;
+  margin-bottom: 0 !important;
+  line-height: 1.4;
+}
+
+.politeia-reading-plan-shell .habit-small-text {
+  font-size: 1rem;
+  color: #aaaaaa;
+  margin-bottom: 5px;
+}
+
+.politeia-reading-plan-shell .habit-highlight {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent !important;
+  font-weight: 700;
+  display: inline-block;
+}
+
+.politeia-reading-plan-shell .habit-next-btn {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 500px;
+  padding: 16px 40px;
+  background: transparent;
+  border: none;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  cursor: pointer;
+  font-size: 1.4rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-bottom: 20px;
+  background-image: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent !important;
+  display: inline-block;
+}
+
+.politeia-reading-plan-shell .habit-next-btn:hover {
+  opacity: 0.8;
+  transform: translateX(-50%) translateY(-2px);
+  filter: brightness(1.2);
+}
+
+.politeia-reading-plan-shell .progression-graph {
+  width: 100%;
+  max-width: 500px;
+  height: 250px;
+  margin: 20px auto;
+  position: relative;
+}
+
+.politeia-reading-plan-shell .graph-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+.politeia-reading-plan-shell .habit-graph .path-line {
+  stroke-dasharray: 8, 8;
+  stroke-dashoffset: 1000;
+  opacity: 0;
+}
+
+.politeia-reading-plan-shell .habit-graph .graph-svg {
+  transform: translateY(-23px);
+}
+
+.politeia-reading-plan-shell .habit-graph.is-animating .path-line {
+  animation: habitDrawPath 3.2s linear forwards;
+  animation-delay: 0.5s;
+  opacity: 1;
+}
+
+@keyframes habitDrawPath {
+  from { stroke-dashoffset: 1000; }
+  to { stroke-dashoffset: 0; }
+}
+
+.politeia-reading-plan-shell .habit-step {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0;
+  transform: translate(-50%, -50%) scale(0.8);
+}
+
+.politeia-reading-plan-shell .habit-step--start { left: 15%; top: 80%; }
+.politeia-reading-plan-shell .habit-step--mid { left: 50%; top: 50%; }
+.politeia-reading-plan-shell .habit-step--end { left: 85%; top: 20%; }
+
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step {
+  animation: habitStepAppear 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--start { animation-delay: 0.2s; }
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--mid { animation-delay: 1.6s; }
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--end { animation-delay: 3.0s; }
+
+@keyframes habitStepAppear {
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.politeia-reading-plan-shell .habit-step-icon {
+  width: 60px;
+  height: 60px;
+  background: #0a0a0a;
+  border: 2px solid #333333;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8);
+  position: relative;
+  z-index: 3;
+  transition: background 0.5s ease, border-color 0.5s ease;
+}
+
+@keyframes habitActivateGold {
+  0% { background: #0a0a0a; border-color: #333333; }
+  100% { background: var(--gold-gradient); border-color: transparent; }
+}
+
+@keyframes habitIconBlack {
+  0% { stroke: url(#gold-grad); }
+  100% { stroke: #000000; }
+}
+
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--start .habit-step-icon { animation: habitActivateGold 0.5s forwards 0.5s; }
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--start .habit-step-icon svg { animation: habitIconBlack 0.5s forwards 0.5s; }
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--mid .habit-step-icon { animation: habitActivateGold 0.5s forwards 1.9s; }
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--mid .habit-step-icon svg { animation: habitIconBlack 0.5s forwards 1.9s; }
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--end .habit-step-icon { animation: habitActivateGold 0.5s forwards 3.3s; }
+.politeia-reading-plan-shell .habit-graph.is-animating .habit-step--end .habit-step-icon svg { animation: habitIconBlack 0.5s forwards 3.3s; }
+
+.politeia-reading-plan-shell .habit-step-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+.politeia-reading-plan-shell .habit-step-sublabel {
+  font-size: 10px !important;
+  color: #888888;
+  margin-top: -10px;
+}
+
+.politeia-reading-plan-shell .habit-option-group {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 10px;
+  justify-content: center;
+  width: 100%;
+}
+
+.politeia-reading-plan-shell .habit-option-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  position: relative;
+  aspect-ratio: 1 / 1;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  background: transparent;
+  border: none;
+  border-radius: 20px;
+}
+
+.politeia-reading-plan-shell .habit-option-card:hover {
+  transform: translateY(-5px);
+}
+
+.politeia-reading-plan-shell .icon-circle-wrapper {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(#0a0a0a, #0a0a0a) padding-box,
+    var(--gold-gradient) border-box;
+  border: 2px solid transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 15px;
+  box-shadow: 0 5px 25px rgba(0, 0, 0, 0.5);
+  transition: all 0.3s ease;
+}
+
+.politeia-reading-plan-shell .habit-option-card:hover .icon-circle-wrapper {
+  box-shadow: 0 10px 35px rgba(138, 107, 30, 0.3);
+  transform: scale(1.05);
+}
+
+.politeia-reading-plan-shell .habit-option-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.politeia-reading-plan-shell .habit-fail-seq {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-top: -14px;
+}
+
+.politeia-reading-plan-shell .habit-fail-seq::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 8%;
+  right: 8%;
+  height: 2px;
+  border-top: 2px dashed rgba(199, 159, 50, 0.55);
+  transform: translateY(-50%);
+}
+
+.politeia-reading-plan-shell .habit-fail-step {
+  width: 64px;
+  height: 64px;
+  border-radius: 999px;
+  background: var(--gold-gradient);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 600;
+  opacity: 0;
+  transform: scale(0.8);
+  animation: habitFailAppear 0.6s ease-out forwards;
+  z-index: 1;
+}
+
+.politeia-reading-plan-shell .habit-fail-step--1 {
+  animation-delay: 0.2s;
+}
+
+.politeia-reading-plan-shell .habit-fail-step--2 {
+  background: #cfcfcf;
+  color: #ffffff;
+  animation-delay: 1s;
+}
+
+.politeia-reading-plan-shell .habit-fail-step--3 {
+  background: #cfcfcf;
+  color: #ffffff;
+  animation-delay: 1.8s;
+}
+
+.politeia-reading-plan-shell .habit-fail-label {
+  margin-top: 0;
+  margin-bottom: 28px;
+  font-size: 1.4rem;
+  font-weight: 500;
+  opacity: 0;
+  background: linear-gradient(135deg, #783f27, #b87333, #e5aa70);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: habitFailLabel 0.6s ease-out forwards;
+  animation-delay: 2.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.politeia-reading-plan-shell .habit-fail-icon {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+@keyframes habitFailAppear {
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes habitFailLabel {
+  to { opacity: 1; }
+}
+
+.politeia-reading-plan-shell .intensity-desc {
+  font-size: 0.9rem;
+  font-weight: 300;
+  color: #aaaaaa;
+  line-height: 1.2;
+  max-width: 180px;
+}
+
+.politeia-reading-plan-shell .date-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 8px;
+  margin-top: 20px;
+  padding: 10px;
+  width: 100%;
+}
+
+.politeia-reading-plan-shell .date-cell {
+  padding: 10px 5px;
+  background: #0a0a0a;
+  border: 1px solid #222222;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 70px;
+  justify-content: center;
+  font-family: 'Poppins', sans-serif;
+}
+
+.politeia-reading-plan-shell .date-cell:hover {
+  border-color: transparent;
+  border-image: var(--gold-gradient) 1;
+}
+
+.politeia-reading-plan-shell .date-cell.selected {
+  background: var(--gold-gradient);
+  border-color: transparent;
+  color: #000000;
+}
+
+.politeia-reading-plan-shell .date-cell.selected span {
+  color: #000000 !important;
+}
+
+.politeia-reading-plan-shell .date-cell .day-name {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  color: #888888;
+  font-weight: 600;
+}
+
+.politeia-reading-plan-shell .date-cell .day-num {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+@media (max-width: 550px) {
+  .politeia-reading-plan-shell .goal-slide {
+    min-height: 90vh;
+  }
+  .politeia-reading-plan-shell .goal-option-group {
+    grid-template-columns: 1fr;
+    max-width: 260px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .politeia-reading-plan-shell .goal-title {
+    font-size: 1.8rem;
+  }
+  .politeia-reading-plan-shell .habit-slide {
+    min-height: 90vh;
+  }
+  .politeia-reading-plan-shell .habit-option-group {
+    grid-template-columns: 1fr;
+    max-width: 260px;
+  }
+  .politeia-reading-plan-shell .habit-title {
+    font-size: 1.8rem;
+  }
+  .politeia-reading-plan-shell .habit-next-btn {
+    width: 95%;
+    font-size: 1.2rem;
+    padding: 14px 20px;
+  }
+  .politeia-reading-plan-shell .progression-graph {
+    height: 200px;
+  }
+  .politeia-reading-plan-shell .date-picker-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .politeia-reading-plan-shell .habit-title-large {
+    font-size: 1.8rem;
+  }
 }
 
 
@@ -101,6 +696,136 @@
 .politeia-reading-plan-shell #form-container,
 .politeia-reading-plan-shell #form-container * {
   text-transform: none !important;
+}
+
+.politeia-reading-plan-shell .bg-\[\#F5F5F5\].p-6.rounded-custom.border.border-\[\#A8A8A8\].space-y-4 {
+  background: none;
+  border: none;
+}
+
+.politeia-reading-plan-shell .input-field {
+  width: 100%;
+  background-color: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 0 !important;
+  padding-top: 1.5rem !important;
+  padding-bottom: 1.5rem !important;
+  color: #ffffff !important;
+  font-size: 2.25rem !important;
+  text-align: center !important;
+  transition: all 0.3s ease !important;
+  box-shadow: none !important;
+}
+
+.politeia-reading-plan-shell #new-book-author {
+  font-size: 22px !important;
+}
+
+.politeia-reading-plan-shell #new-book-pages {
+  font-size: 22px !important;
+}
+
+.politeia-reading-plan-shell #next-step {
+  border: none;
+  font-size: 22px;
+}
+
+.politeia-reading-plan-shell #add-book {
+  font-size: 22px !important;
+}
+
+.politeia-reading-plan-shell input::-webkit-outer-spin-button,
+.politeia-reading-plan-shell input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.politeia-reading-plan-shell input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+.politeia-reading-plan-shell .input-field:focus {
+  outline: none !important;
+  border-color: #c79f32 !important;
+}
+
+.politeia-reading-plan-shell .gold-gradient-text {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+}
+
+.politeia-reading-plan-shell .stop-gradient-text {
+  background: linear-gradient(135deg, #783f27, #b87333, #e5aa70);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
+}
+
+.politeia-reading-plan-shell #form-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  max-width: 100%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.politeia-reading-plan-shell #form-container .p-10 {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+.politeia-reading-plan-shell #step-content {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.politeia-reading-plan-shell .goal-slide {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.politeia-reading-plan-shell .reading-plan-progress-dots {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  background: transparent;
+  pointer-events: none;
+}
+
+.politeia-reading-plan-shell .progress-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.25);
+  transition: background 0.3s ease;
+}
+
+.politeia-reading-plan-shell .progress-dot.is-active {
+  background: var(--gold-gradient);
 }
 .politeia-reading-plan-shell .reading-plan-success {
   display: flex;
@@ -138,7 +863,7 @@
   transition: background 0.2s ease, transform 0.2s ease;
 }
 .politeia-reading-plan-shell .reading-plan-success__btn:hover {
-  background: #c79f32;
+  background: var(--gold-gradient);
   color: #000000;
   transform: translateY(-1px);
 }
@@ -199,7 +924,8 @@
 }
 .politeia-reading-plan-shell h2.text-2xl.font-medium.text-black.uppercase.tracking-tight {
   font-weight: 700;
-  margin: 0;
+  margin: auto !important;
+  max-width: 500px;
 }
 .politeia-reading-plan-shell h2 {
   font-weight: 700 !important;
@@ -265,7 +991,7 @@
 .politeia-reading-plan-shell .calendar-card { background-color: var(--color-subtle-gray); border: 1px solid var(--color-light-gray); }
 .politeia-reading-plan-shell .day-cell { background-color: var(--color-off-white); border: 1px solid var(--color-light-gray); transition: all 0.2s ease; }
 .politeia-reading-plan-shell .drag-over { background-color: #fffaf0; border: 2px dashed var(--color-orange) !important; }
-.politeia-reading-plan-shell .selected-mark { background-color: var(--color-gold); cursor: grab; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+.politeia-reading-plan-shell .selected-mark { background: var(--gold-gradient); cursor: grab; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
 .politeia-reading-plan-shell .selected-mark {
   position: relative;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -275,6 +1001,16 @@
   transform: scale(1.25);
   box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.18);
   z-index: 2;
+}
+
+.politeia-reading-plan-shell .selected-mark.magnetized {
+  animation: habitMagnetPull 0.25s ease-out;
+}
+
+@keyframes habitMagnetPull {
+  0% { transform: scale(1) translateY(0); }
+  60% { transform: scale(0.9) translateY(-6px); }
+  100% { transform: scale(1) translateY(0); }
 }
 
 .politeia-reading-plan-shell .session-remove {
@@ -336,7 +1072,19 @@
 }
 
 .politeia-reading-plan-shell #summary-container {
-  background-color: var(--color-subtle-gray);
+  background-color: #000000;
+  color: #ffffff;
+  border: none;
+}
+
+.politeia-reading-plan-shell #summary-container .calendar-card {
+  background-color: #000000;
+  border: none;
+}
+
+.politeia-reading-plan-shell #summary-container .day-cell {
+  background-color: #000000;
+  border-color: #545454;
 }
 
 .politeia-reading-plan-shell #summary-container #propuesta-tipo-label {
@@ -344,7 +1092,7 @@
   font-weight: 500;
   letter-spacing: 0.25em;
   text-transform: uppercase;
-  color: #000000;
+  color: #ffffff;
   opacity: 0.8;
   margin-bottom: 4px;
 }
@@ -356,7 +1104,7 @@
   letter-spacing: 0.05em;
   margin-bottom: 12px;
   margin-top: -14px;
-  color: #000000;
+  color: #ffffff;
 }
 
 .politeia-reading-plan-shell #summary-container #propuesta-mes-label {
@@ -365,7 +1113,7 @@
   text-transform: uppercase;
   letter-spacing: -0.02em;
   line-height: 1.15;
-  color: #000000;
+  color: #ffffff;
   margin-bottom: 0;
 }
 
@@ -374,7 +1122,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.2em;
-  color: #333333;
+  color: #ffffff;
   margin-top: 2px;
   margin-bottom: 0;
 }
@@ -388,7 +1136,11 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #c79f32;
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 .politeia-reading-plan-shell #summary-container #propuesta-duracion {
@@ -396,7 +1148,7 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.08em;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   margin-top: -10px;
 }
 
@@ -426,12 +1178,15 @@
 }
 
 .politeia-reading-plan-shell #calendar-nav-controls .nav-btn-circ {
-  background: #ffffff;
+  background: #000000;
+  border-color: #ffffff;
+  color: #ffffff;
 }
 
 .politeia-reading-plan-shell #calendar-nav-controls .nav-btn-circ.disabled {
-  background: #f2f2f2;
-  border-color: #dedede;
+  background: #000000;
+  border-color: #404040;
+  color: #3e3e3e;
 }
 
 .politeia-reading-plan-shell .nav-btn-circ:focus,
@@ -443,24 +1198,55 @@
 }
 
 .politeia-reading-plan-shell .toggle-container {
-  background-color: #e5e5e5;
+  background-color: #000000;
+  border: 1px solid #ffffff;
 }
 
 .politeia-reading-plan-shell .toggle-btn {
-  color: #000000;
+  color: #ffffff;
+}
+
+.politeia-reading-plan-shell #toggle-list {
+  color: inherit;
 }
 
 .politeia-reading-plan-shell .toggle-btn.active {
-  background-color: #000000;
-  color: #c79f32;
+  background: var(--gold-gradient);
+  color: #000000;
 }
 
 .politeia-reading-plan-shell .btn-primary { background-color: var(--color-black); color: var(--color-gold); border: 1px solid var(--color-black); transition: all 0.3s ease; }
 .politeia-reading-plan-shell .btn-primary:hover:not(:disabled) { background-color: #1a1a1a; transform: translateY(-1px); }
 
-.politeia-reading-plan-shell .toggle-container { height: 24px; background-color: #e5e5e5; padding: 2px; border-radius: 6px; display: flex; align-items: center; }
-.politeia-reading-plan-shell .toggle-btn { height: 20px; padding: 0 8px; border-radius: 4px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s ease; }
-.politeia-reading-plan-shell .toggle-btn.active { background-color: var(--color-black); color: var(--color-gold); }
+.politeia-reading-plan-shell #summary-container .btn-primary {
+  background-color: #000000;
+  border-color: #000000;
+  font-size: 22px;
+  font-weight: 700;
+  background-image: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.politeia-reading-plan-shell #summary-container .btn-primary:hover:not(:disabled) {
+  background-color: #000000;
+  background-image: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
+
+.politeia-reading-plan-shell #summary-container .drag-over {
+  background-color: #000000;
+  border-color: #ffffff !important;
+}
+
+.politeia-reading-plan-shell .toggle-container { height: 24px; background-color: #000000; padding: 2px; border-radius: 6px; display: flex; align-items: center; border: 1px solid #ffffff; }
+.politeia-reading-plan-shell .toggle-btn { height: 20px; padding: 0 8px; border-radius: 4px; display: flex; align-items: center; cursor: pointer; transition: all 0.2s ease; color: #ffffff; }
+.politeia-reading-plan-shell .toggle-btn.active { background: var(--gold-gradient); color: #000000; }
 
 .politeia-reading-plan-shell .view-transition { transition: opacity 0.4s ease, transform 0.4s ease; width: 100%; }
 .politeia-reading-plan-shell .view-hidden { opacity: 0; transform: translateY(10px); pointer-events: none; position: absolute; top: 0; left: 0; }
@@ -472,7 +1258,7 @@
 
 .politeia-reading-plan-shell .nav-btn-circ {
   background: #ffffff;
-  border-color: #a8a8a8;
+  border-color: #000000;
   color: #000000;
   opacity: 1;
 }
@@ -485,9 +1271,9 @@
 }
 
 .politeia-reading-plan-shell .nav-btn-circ.disabled {
-  background: #f2f2f2;
-  border-color: #dedede;
-  color: #dedede;
+  background: #e5e5e5;
+  border-color: #999999;
+  color: #999999;
   opacity: 1;
 }
 
@@ -506,11 +1292,51 @@
   margin-bottom: 0;
   font-size: 11px;
   font-weight: 300;
+  color: #ffffff;
 }
 
 .politeia-reading-plan-shell .pagination-btn { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--color-light-gray); border-radius: 4px; transition: all 0.2s ease; cursor: pointer; background: white; }
-.politeia-reading-plan-shell .pagination-btn:hover:not(.disabled) { border-color: var(--color-black); color: var(--color-gold); background: var(--color-black); }
+.politeia-reading-plan-shell .pagination-btn { background: #ffffff; border-color: #000000; color: #000000; }
+.politeia-reading-plan-shell .pagination-btn:hover:not(.disabled) { border-color: #000000; color: #000000; background: #ffffff; }
 .politeia-reading-plan-shell .pagination-btn.disabled { opacity: 0.3; cursor: not-allowed; }
+
+.politeia-reading-plan-shell #list-next-page,
+.politeia-reading-plan-shell #list-prev-page {
+  padding: 0;
+  border-radius: 10px;
+}
+
+.politeia-reading-plan-shell #summary-container .bg-white,
+.politeia-reading-plan-shell #summary-container .bg-\[\#FEFEFF\],
+.politeia-reading-plan-shell #summary-container .bg-\[\#F5F5F5\],
+.politeia-reading-plan-shell #summary-container .bg-gray-50 {
+  background-color: #000000;
+}
+
+.politeia-reading-plan-shell #summary-container .text-black,
+.politeia-reading-plan-shell #summary-container .text-\[\#000000\] {
+  color: #ffffff;
+}
+
+.politeia-reading-plan-shell #summary-container .text-black\/40 { color: rgba(255, 255, 255, 0.4); }
+.politeia-reading-plan-shell #summary-container .text-black\/50 { color: rgba(255, 255, 255, 0.5); }
+.politeia-reading-plan-shell #summary-container .text-black\/60 { color: rgba(255, 255, 255, 0.6); }
+
+.politeia-reading-plan-shell #summary-container .border-black\/5 {
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.politeia-reading-plan-shell #summary-container .border-\[\#A8A8A8\] {
+  border-color: #333333;
+}
+
+.politeia-reading-plan-shell #summary-container .session-add {
+  color: #ffffff;
+}
+
+.politeia-reading-plan-shell #summary-container .selected-mark {
+  color: #ffffff;
+}
 
 .politeia-reading-plan-shell .step-transition { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -575,7 +1401,7 @@
 .politeia-reading-plan-shell .min-h-\[400px\] { min-height: 400px; }
 .politeia-reading-plan-shell .max-h-32 { max-height: 8rem; }
 .politeia-reading-plan-shell .max-h-\[360px\] { max-height: 360px; }
-.politeia-reading-plan-shell .max-w-xl { max-width: 36rem; }
+.politeia-reading-plan-shell .max-w-xl { max-width: 100%; }
 .politeia-reading-plan-shell .max-w-xs { max-width: 20rem; }
 .politeia-reading-plan-shell .mx-auto { margin-left: auto; margin-right: auto; }
 .politeia-reading-plan-shell .p-10 { padding: 2.5rem; }
@@ -653,12 +1479,18 @@
 .politeia-reading-plan-shell .text-black { color: #000000; }
 .politeia-reading-plan-shell .text-\[\#000000\] { color: #000000; }
 .politeia-reading-plan-shell .text-\[\#A8A8A8\] { color: #A8A8A8; }
-.politeia-reading-plan-shell .text-\[\#C79F32\] { color: #C79F32; }
+.politeia-reading-plan-shell .text-\[\#C79F32\] {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
 .politeia-reading-plan-shell .text-\[\#FF8C00\] { color: #FF8C00; }
 .politeia-reading-plan-shell .text-black\/40 { color: rgba(0, 0, 0, 0.4); }
 .politeia-reading-plan-shell .text-black\/50 { color: rgba(0, 0, 0, 0.5); }
 .politeia-reading-plan-shell .text-black\/60 { color: rgba(0, 0, 0, 0.6); }
-.politeia-reading-plan-shell .opacity-30 { opacity: 0.3; }
+.politeia-reading-plan-shell .opacity-30 { opacity: 0.8; }
 .politeia-reading-plan-shell .opacity-40 { opacity: 0.4; }
 .politeia-reading-plan-shell .opacity-50 { opacity: 0.5; }
 .politeia-reading-plan-shell .opacity-60 { opacity: 0.6; }
@@ -669,16 +1501,25 @@
 .politeia-reading-plan-shell .bg-white { background-color: #ffffff; }
 .politeia-reading-plan-shell .bg-\[\#FEFEFF\] { background-color: #FEFEFF; }
 .politeia-reading-plan-shell .bg-\[\#F5F5F5\] { background-color: #F5F5F5; }
-.politeia-reading-plan-shell .bg-\[\#C79F32\] { background-color: #C79F32; }
+.politeia-reading-plan-shell .bg-\[\#C79F32\] {
+  background-image: var(--gold-gradient);
+  background-color: transparent;
+}
 .politeia-reading-plan-shell .bg-\[\#A8A8A8\] { background-color: #A8A8A8; }
-.politeia-reading-plan-shell .bg-\[\#C79F32\]\/10 { background-color: rgba(199, 159, 50, 0.1); }
+.politeia-reading-plan-shell .bg-\[\#C79F32\]\/10 {
+  background-image: linear-gradient(280deg, rgba(138, 107, 30, 0.1), rgba(199, 159, 50, 0.1), rgba(233, 209, 138, 0.1));
+  background-color: transparent;
+}
 .politeia-reading-plan-shell .bg-black { background-color: #000000; }
 .politeia-reading-plan-shell .bg-gray-50 { background-color: #f9fafb; }
 .politeia-reading-plan-shell .border { border-width: 1px; border-style: solid; }
 .politeia-reading-plan-shell .border-2 { border-width: 2px; border-style: solid; }
 .politeia-reading-plan-shell .border-b { border-bottom-width: 1px; border-bottom-style: solid; }
 .politeia-reading-plan-shell .border-\[\#A8A8A8\] { border-color: #A8A8A8; }
-.politeia-reading-plan-shell .border-\[\#C79F32\] { border-color: #C79F32; }
+.politeia-reading-plan-shell .border-\[\#C79F32\] {
+  border-color: transparent;
+  border-image: var(--gold-gradient) 1;
+}
 .politeia-reading-plan-shell .border-black\/5 { border-color: rgba(0, 0, 0, 0.05); }
 .politeia-reading-plan-shell .rounded { border-radius: 0.25rem; }
 .politeia-reading-plan-shell .rounded-full { border-radius: 9999px; }
@@ -703,8 +1544,11 @@
 .politeia-reading-plan-shell .hover\:bg-\[\#F5F5F5\]:hover { background-color: #F5F5F5; }
 .politeia-reading-plan-shell .hover\:text-\[\#000000\]:hover { color: #000000; }
 .politeia-reading-plan-shell .hover\:text-black:hover { color: #000000; }
-.politeia-reading-plan-shell .hover\:border-\[\#C79F32\]:hover { border-color: #C79F32; }
-.politeia-reading-plan-shell .focus\:border-\[\#C79F32\]:focus { border-color: #C79F32; }
+.politeia-reading-plan-shell .hover\:border-\[\#C79F32\]:hover,
+.politeia-reading-plan-shell .focus\:border-\[\#C79F32\]:focus {
+  border-color: transparent;
+  border-image: var(--gold-gradient) 1;
+}
 .politeia-reading-plan-shell .disabled\:opacity-30:disabled { opacity: 0.3; }
 .politeia-reading-plan-shell .disabled\:grayscale:disabled { filter: grayscale(1); }
 .politeia-reading-plan-shell .md\:w-auto { width: 100%; }
@@ -720,7 +1564,7 @@
   right: 0;
   display: none;
   flex-direction: column;
-  background: #ffffff;
+  background: #000000;
   border: 1px solid #d0d0d0;
   border-radius: 6px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.12);
@@ -739,7 +1583,7 @@
   padding: 12px 16px;
   background: transparent;
   border: none;
-  text-align: left;
+  text-align: center;
   font-size: 0.95rem;
   line-height: 1.35;
   color: #1f2937;
@@ -747,14 +1591,26 @@
   white-space: normal;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 4px;
   border-bottom: 1px solid #e5e7eb;
 }
 
 .politeia-reading-plan-shell .prs-add-book__suggestion:hover,
 .politeia-reading-plan-shell .prs-add-book__suggestion:focus {
-  background: #f3f4f6;
+  background: rgba(0, 0, 0, 0.9);
   outline: none;
+}
+
+.politeia-reading-plan-shell .prs-add-book__suggestion:hover .prs-add-book__suggestion-title,
+.politeia-reading-plan-shell .prs-add-book__suggestion:focus .prs-add-book__suggestion-title,
+.politeia-reading-plan-shell .prs-add-book__suggestion:hover .prs-add-book__suggestion-author,
+.politeia-reading-plan-shell .prs-add-book__suggestion:focus .prs-add-book__suggestion-author {
+  background: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
 }
 
 .politeia-reading-plan-shell .prs-add-book__suggestion:last-child {
@@ -768,11 +1624,14 @@
   font-size: 1rem;
   font-weight: 600;
   color: #111827;
+  justify-content: center;
+  text-align: center;
 }
 
 .politeia-reading-plan-shell .prs-add-book__suggestion-author {
   font-size: 10px;
   color: #4b5563;
+  text-align: center;
 }
 
 .politeia-reading-plan-shell .reading-plan-book-display {
@@ -786,8 +1645,8 @@
 }
 
 .politeia-reading-plan-shell .book-placeholder {
-  width: 160px;
-  height: 230px;
+  width: 128px;
+  height: 184px;
   perspective: 1000px;
 }
 
@@ -926,7 +1785,8 @@
 }
 
 .politeia-reading-plan-shell .exigencia-card:hover {
-  border-color: #c79f32;
+  border-color: transparent;
+  border-image: var(--gold-gradient) 1;
   box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
 }
 
@@ -951,7 +1811,7 @@
 }
 
 .politeia-reading-plan-shell .exigencia-dot--intenso {
-  background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+  background: var(--gold-gradient);
 }
 
 .politeia-reading-plan-shell .exigencia-title {

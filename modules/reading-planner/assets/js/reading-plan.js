@@ -8,16 +8,23 @@
   const PREFILL_BOOK = RP.prefillBook || null;
   const STRINGS = RP.strings || {};
   const t = (key, fallback) => (STRINGS && STRINGS[key]) ? STRINGS[key] : fallback;
-  const format = (key, fallback, value, value2) => {
+  const format = (key, fallback, value, value2, value3, value4) => {
     const text = t(key, fallback);
     if (typeof value2 !== 'undefined') {
-      return text
-        .replace('%1$s', String(value))
-        .replace('%2$s', String(value2))
-        .replace('%1$d', String(value))
-        .replace('%2$d', String(value2));
+      const values = [value, value2, value3, value4];
+      return values.reduce((result, item, idx) => {
+        if (typeof item === 'undefined') return result;
+        const pos = idx + 1;
+        return result
+          .replace(`%${pos}$s`, String(item))
+          .replace(`%${pos}$d`, String(item));
+      }, text);
     }
     return text.replace('%s', String(value)).replace('%d', String(value));
+  };
+  const roundTo = (value, decimals) => {
+    const factor = Math.pow(10, decimals);
+    return Math.round((Number(value) + Number.EPSILON) * factor) / factor;
   };
 
   const formContainer = qs('#form-container');
@@ -231,6 +238,7 @@
       currentViewMode: 'calendar',
       listCurrentPage: 0,
       acceptedPlanId: null,
+      draggingHabitStart: false,
     };
   };
 
@@ -256,36 +264,41 @@
   }
 
   function updateProgressBar() {
-    const progress = qs('#progress-bar');
+    const progress = qs('#progress-dots');
     if (!progress) return;
-    const bars = progress.children;
-    Array.from(bars).forEach((div, i) => {
-      div.style.backgroundColor = i < state.mainStep ? '#C79F32' : '#F5F5F5';
+    const dots = progress.children;
+    Array.from(dots).forEach((dot, i) => {
+      dot.classList.toggle('is-active', i < state.mainStep);
     });
   }
 
   function renderStepGoals() {
     stepContent.innerHTML = `
-      <div class="space-y-6 step-transition h-full flex flex-col justify-center">
-        <div class="text-center mb-8">
-          <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('goal_prompt', 'What goal do you want to achieve?')}</h2>
-          <p class="text-sm font-medium">${t('goal_subtitle', 'Select your primary goal')}</p>
-        </div>
-        <div class="grid grid-cols-1 gap-4 w-full">
+      <div class="goal-slide step-transition">
+        <svg width="0" height="0" class="habit-defs" aria-hidden="true">
+          <defs>
+            <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#8A6B1E;stop-opacity:1" />
+              <stop offset="50%" style="stop-color:#C79F32;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#E9D18A;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <h2 class="goal-title">${t('goal_prompt', 'What goal do you want to achieve?')}</h2>
+        <p class="goal-subtitle">${t('goal_subtitle', 'Select your primary goal to begin.')}</p>
+        <div id="goal-option-group" class="goal-option-group">
           ${GOALS_DEF.map((goal) => {
-            const sel = state.formData.goals.includes(goal.id);
-            return `<button type="button" id="goal-${goal.id}" data-goal="${goal.id}" class="w-full p-6 text-left border-2 rounded-custom transition-all ${
-              sel
-                ? 'border-[#C79F32] bg-[#F5F5F5] ring-2 ring-[#C79F32]'
-                : 'border-[#A8A8A8] bg-[#FEFEFF] hover:border-[#C79F32]'
-            }">
-              <div class="flex items-start gap-4">
-                <i data-lucide="${goal.icon}" class="w-8 h-8 ${sel ? 'text-[#C79F32]' : 'text-[#A8A8A8]'}"></i>
-                <div>
-                  <h3 id="goal-title-${goal.id}" class="font-medium text-black uppercase text-sm">${goal.title}</h3>
-                  <p id="goal-desc-${goal.id}" class="text-xs mt-1 font-medium leading-relaxed">${goal.description}</p>
-                </div>
-              </div>
+            const icon = goal.id === 'form_habit'
+              ? `<svg width="50" height="50" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+                  <path d="M80-80v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-360v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-640v-240h520v240H80Zm560 0v-240h240v240H640ZM240-240Zm200 0h80-80Zm280 0ZM240-440v-80 80Zm240-40Zm240 40v-80 80Zm0-280ZM160-160h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80ZM160-440h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80Zm0-280h80v-80h-80v80Z"/>
+                </svg>`
+              : `<svg width="50" height="50" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+                  <path d="M270-80q-45 0-77.5-30.5T160-186v-558q0-38 23.5-68t61.5-38l395-78v640l-379 76q-9 2-15 9.5t-6 16.5q0 11 9 18.5t21 7.5h450v-640h80v720H270Zm90-233 200-39v-478l-200 39v478Zm-80 16v-478l-15 3q-11 2-18 9.5t-7 18.5v457q5-2 10.5-3.5T261-293l19-4Zm-40-472v482-482Z"/>
+                </svg>`;
+            return `<button type="button" id="goal-${goal.id}" data-goal="${goal.id}" class="goal-option-card">
+              <div class="goal-icon-circle">${icon}</div>
+              <span id="goal-title-${goal.id}" class="goal-option-text">${goal.title}</span>
+              <p id="goal-desc-${goal.id}" class="goal-option-desc">${goal.description}</p>
             </button>`;
           }).join('')}
         </div>
@@ -369,63 +382,204 @@
     }
 
     if (gid === 'form_habit') {
+      const habitDefs = `
+        <svg width="0" height="0" class="habit-defs" aria-hidden="true">
+          <defs>
+            <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#8A6B1E;stop-opacity:1" />
+              <stop offset="50%" style="stop-color:#C79F32;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#E9D18A;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>`;
       if (state.subStep === 0) {
         stepContent.innerHTML = `
-          <div class="space-y-8 text-center step-transition">
-            <h2 class="text-3xl font-medium text-black uppercase tracking-tight">${t('habit_step1_title', '48-Day Habit Challenge')}</h2>
-            <p class="text-sm font-medium text-black/70">${t('habit_step1_body', 'A short, focused plan designed to build consistency without overwhelming you.')}</p>
-            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
+          <div class="habit-slide habit-slide--intro step-transition">
+            ${habitDefs}
+            <div class="habit-icon">
+              <svg width="80" height="80" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+                <path d="M80-80v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-360v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-640v-240h520v240H80Zm560 0v-240h240v240H640ZM240-240Zm200 0h80-80Zm280 0ZM240-440v-80 80Zm240-40Zm240 40v-80 80Zm0-280ZM160-160h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80ZM160-440h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80Zm0-280h80v-80h-80v80Z"/>
+              </svg>
+            </div>
+            <h2 class="habit-title habit-highlight">${t('habit_step1_title', 'In 48 days you will complete sessions')}</h2>
+            <p class="habit-subtitle">${t('habit_step1_body', 'One session every day for 48 straight days.')}</p>
+            <button type="button" class="habit-next-btn">${t('habit_step1_cta', 'Got it!')}</button>
           </div>`;
       } else if (state.subStep === 1) {
         stepContent.innerHTML = `
-          <div class="space-y-8 text-center step-transition">
-            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step2_title', 'Gradual Difficulty')}</h2>
-            <p class="text-sm font-medium text-black/70">${t('habit_step2_body', 'Your targets grow daily to build stamina.')}</p>
-            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
+          <div class="habit-slide habit-slide--progress step-transition">
+            ${habitDefs}
+            <h2 class="habit-title">${t('habit_step2_title', 'Progressive growth')}</h2>
+            <p class="habit-subtitle">${t('habit_step2_body', 'The <span class="habit-highlight">session time</span> and the <span class="habit-highlight">number of pages</span> will increase gradually to challenge you.')}</p>
+            <div class="progression-graph habit-graph">
+              <svg class="graph-svg" viewBox="0 0 500 250" preserveAspectRatio="none">
+                <path class="path-line" d="M75,200 C150,200 175,125 250,125 C325,125 350,50 425,50" stroke="url(#gold-grad)" stroke-width="3" fill="none" stroke-linecap="round" />
+              </svg>
+              <div class="habit-step habit-step--start">
+                <div class="habit-step-icon">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="2.2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+                <span class="habit-step-label">${t('habit_graph_step1_label', '15 min')}</span>
+                <span class="habit-step-sublabel">${t('habit_graph_step1_sublabel', '5 pages')}</span>
+              </div>
+              <div class="habit-step habit-step--mid">
+                <div class="habit-step-icon">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="2.2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+                <span class="habit-step-label">${t('habit_graph_step2_label', '18 min')}</span>
+                <span class="habit-step-sublabel">${t('habit_graph_step2_sublabel', '6 pages')}</span>
+              </div>
+              <div class="habit-step habit-step--end">
+                <div class="habit-step-icon">
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="2.2">
+                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                  </svg>
+                </div>
+                <span class="habit-step-label">${t('habit_graph_step3_label', '25 min')}</span>
+                <span class="habit-step-sublabel">${t('habit_graph_step3_sublabel', '10 pages')}</span>
+              </div>
+            </div>
+            <button type="button" class="habit-next-btn">${t('habit_step2_cta', 'Next')}</button>
           </div>`;
       } else if (state.subStep === 2) {
         stepContent.innerHTML = `
-          <div class="space-y-8 text-center step-transition">
-            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step3_title', 'Two-Strike Rule')}</h2>
-            <p class="text-sm font-medium text-black/70">${t('habit_step3_body', 'Missing 2 days fails the entire plan.')}</p>
-            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
+          <div class="habit-slide habit-slide--consistency step-transition">
+            ${habitDefs}
+            <div class="habit-icon">
+              <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                <path d="m9 12 2 2 4-4"></path>
+              </svg>
+            </div>
+            <h2 class="habit-title">${t('habit_step3_title', 'Consistency is everything')}</h2>
+            <p class="habit-subtitle">${t('habit_step3_body', 'Missing one session is a warning. Missing <span class="habit-highlight">2 sessions</span> ends the plan.')}</p>
+            <div class="habit-fail-label">
+              <svg class="habit-fail-icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
+                <path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/>
+              </svg>
+              <span>${t('habit_fail_label', 'Plan Failed')}</span>
+            </div>
+            <div class="habit-fail-seq" aria-hidden="true">
+              <div class="habit-fail-step habit-fail-step--1">1</div>
+              <div class="habit-fail-step habit-fail-step--2">2</div>
+              <div class="habit-fail-step habit-fail-step--3">3</div>
+            </div>
+            <button type="button" class="habit-next-btn">${t('habit_step3_cta', 'Got it!')}</button>
           </div>`;
       } else if (state.subStep === 3) {
         stepContent.innerHTML = `
-          <div class="space-y-8 text-center step-transition">
-            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step4_title', 'Total Freedom')}</h2>
-            <p class="text-sm font-medium text-black/70">${t('habit_step4_body', 'Read any book in your library to fulfill daily goals.')}</p>
-            <button type="button" class="w-full mt-6 bg-black text-[#C79F32] py-3 rounded-custom font-bold uppercase text-[10px] tracking-widest">${t('next', 'Next')}</button>
+          <div class="habit-slide habit-slide--library step-transition">
+            ${habitDefs}
+            <div class="habit-icon">
+              <svg width="80" height="80" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+                <path d="M120-440v-320q0-33 23.5-56.5T200-840h240v400H120Zm240-80Zm160-320h240q33 0 56.5 23.5T840-760v160H520v-240Zm0 720v-400h320v320q0 33-23.5 56.5T760-120H520ZM120-360h320v240H200q-33 0-56.5-23.5T120-200v-160Zm240 80Zm240-400Zm0 240Zm-400-80h160v-240H200v240Zm400-160h160v-80H600v80Zm0 240v240h160v-240H600ZM200-280v80h160v-80H200Z"/>
+              </svg>
+            </div>
+            <h2 class="habit-title">${t('habit_step4_title', 'Your library, your rules')}</h2>
+            <p class="habit-subtitle">${t('habit_step4_body', 'Any reading session from any book in <span class="habit-highlight">My Library</span> that meets the system targets counts automatically.')}</p>
+            <button type="button" class="habit-next-btn">${t('habit_step4_cta', 'Got it!')}</button>
           </div>`;
       } else if (state.subStep === 4) {
         const currentIntensity = state.formData.baselines[gid]?.intensity || '';
+        const intensityDesc = (key) => {
+          if (key === 'intense') return t('habit_intensity_intense_desc', 'We start at 30m and 15pg. We finish at 60m and 30pg.');
+          return t('habit_intensity_light_desc', 'We start at 15m and 3pg. We finish at 30m and 10pg minimum.');
+        };
         stepContent.innerHTML = `
-          <div class="space-y-6 text-center step-transition">
-            <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('habit_step5_title', 'Choose your intensity')}</h2>
-            <div class="grid grid-cols-1 gap-4 mt-6">
+          <div class="habit-slide habit-slide--intensity step-transition">
+            ${habitDefs}
+            <h2 class="habit-title">${t('habit_step5_title', 'Select intensity')}</h2>
+            <div class="habit-option-group">
               ${Object.keys(HABIT_INTENSITY_CONFIG).map((key) => {
                 const config = HABIT_INTENSITY_CONFIG[key];
-                const minutesRange = format('habit_minutes_range', '%1$s–%2$s min', config.startMin, config.endMin);
-                const pagesRange = format('habit_pages_range', '%1$s–%2$s pages', config.startPg, config.endPg);
+                const icon = key === 'intense'
+                  ? `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                    </svg>`
+                  : `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                      <line x1="16" y1="8" x2="2" y2="22"></line>
+                    </svg>`;
                 return `
-                  <button type="button" id="habit-intensity-${key}" data-habit-intensity="${key}" class="p-5 border-2 text-left rounded-custom transition-all ${
-                    currentIntensity === key
-                      ? 'border-[#C79F32] bg-[#F5F5F5] ring-2 ring-[#C79F32]'
-                      : 'border-[#A8A8A8] bg-white hover:border-[#C79F32]'
-                  }">
-                    <div class="flex justify-between items-center mb-2">
-                      <h3 class="font-bold text-black uppercase text-sm">${config.label}</h3>
-                      <span class="text-[10px] font-black text-[#C79F32] bg-[#C79F32]/10 px-2 py-1 rounded">${minutesRange}</span>
-                    </div>
-                    <p class="text-[10px] text-black/60 font-medium leading-relaxed">${pagesRange}</p>
+                  <button type="button" id="habit-intensity-${key}" data-habit-intensity="${key}" class="habit-option-card habit-option-card--intensity${currentIntensity === key ? ' is-selected' : ''}">
+                    <span class="icon-circle-wrapper">${icon}</span>
+                    <span class="habit-option-text habit-highlight">${config.label}</span>
+                    <p class="intensity-desc">${intensityDesc(key)}</p>
                   </button>`;
               }).join('')}
             </div>
           </div>`;
+      } else if (state.subStep === 5) {
+        const startDateValue = state.formData.baselines.form_habit?.start_date;
+        stepContent.innerHTML = `
+          <div class="habit-slide habit-slide--start step-transition">
+            ${habitDefs}
+            <p class="habit-small-text">${t('habit_step6_small', 'Are you ready to dedicate the next 48 days to reading?')}</p>
+            <h2 class="habit-title-large">${t('habit_step6_title', 'Which day do you want to start?')}</h2>
+            <div class="date-picker-grid" id="habit-date-picker"></div>
+            <button type="button" class="habit-next-btn">${t('habit_step6_cta', 'Continue')}</button>
+          </div>`;
+
+        const picker = stepContent.querySelector('#habit-date-picker');
+        if (picker) {
+          const dayNames = [
+            t('habit_day_sun', 'Sun'),
+            t('habit_day_mon', 'Mon'),
+            t('habit_day_tue', 'Tue'),
+            t('habit_day_wed', 'Wed'),
+            t('habit_day_thu', 'Thu'),
+            t('habit_day_fri', 'Fri'),
+            t('habit_day_sat', 'Sat'),
+          ];
+          const today = new Date();
+          const selectedDate = startDateValue ? new Date(`${startDateValue}T00:00:00`) : today;
+          const selectedKey = [
+            selectedDate.getFullYear(),
+            pad2(selectedDate.getMonth() + 1),
+            pad2(selectedDate.getDate()),
+          ].join('-');
+          picker.innerHTML = '';
+          for (let i = 0; i < 21; i += 1) {
+            const targetDate = new Date(today);
+            targetDate.setDate(today.getDate() + i);
+            const key = [
+              targetDate.getFullYear(),
+              pad2(targetDate.getMonth() + 1),
+              pad2(targetDate.getDate()),
+            ].join('-');
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = `date-cell${key === selectedKey ? ' selected' : ''}`;
+            const dayName = document.createElement('span');
+            dayName.className = 'day-name';
+            dayName.textContent = i === 0 ? t('habit_day_today', 'Today') : dayNames[targetDate.getDay()];
+            const dayNum = document.createElement('span');
+            dayNum.className = 'day-num';
+            dayNum.textContent = String(targetDate.getDate());
+            cell.appendChild(dayName);
+            cell.appendChild(dayNum);
+            cell.addEventListener('click', () => {
+              picker.querySelectorAll('.date-cell').forEach((item) => item.classList.remove('selected'));
+              cell.classList.add('selected');
+              state.formData.baselines.form_habit = state.formData.baselines.form_habit || {};
+              state.formData.baselines.form_habit.start_date = key;
+            });
+            picker.appendChild(cell);
+          }
+        }
       }
 
-      const nextBtn = stepContent.querySelector('button[type="button"]');
+      const nextBtn = stepContent.querySelector('.habit-next-btn');
       if (nextBtn && state.subStep < 4) {
+        nextBtn.addEventListener('click', () => goToNext());
+      } else if (nextBtn && state.subStep === 5) {
         nextBtn.addEventListener('click', () => goToNext());
       }
 
@@ -439,10 +593,20 @@
             end_minutes: config?.endMin || 0,
             start_pages: config?.startPg || 0,
             end_pages: config?.endPg || 0,
+            start_date: state.formData.baselines.form_habit?.start_date || undefined,
           };
           goToNext();
         });
       });
+
+      if (state.subStep === 1) {
+        const graph = stepContent.querySelector('.habit-graph');
+        if (graph) {
+          graph.classList.remove('is-animating');
+          graph.offsetHeight;
+          graph.classList.add('is-animating');
+        }
+      }
     }
   }
 
@@ -450,88 +614,92 @@
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
     const hasBook = !!activeBook;
     const startPageValue = parseInt(state.formData.startPage, 10) || 1;
-    stepContent.innerHTML = `
-      <div class="space-y-6 step-transition">
-        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('book_prompt', 'Which book do you want to read now?')}</h2></div>
-        <div class="reading-plan-book-display">
-          <div class="book-placeholder">
-            <div id="book-display" class="book-inner text-[#A8A8A8] ${hasBook ? 'is-filled' : ''} ${activeBook?.cover ? 'has-cover' : ''}">
-              <img id="book-cover" class="book-cover${activeBook?.cover ? '' : ' hidden'}" alt="" src="${activeBook?.cover ? activeBook.cover : ''}">
-              <div id="placeholder-content" class="flex flex-column items-center flex-col${hasBook ? ' hidden' : ''}">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 opacity-50">
-                  <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
-                  <path d="M8 7h6"/><path d="M8 11h8"/>
-                </svg>
-                <span class="text-[10px] font-bold uppercase tracking-[0.2em]">${t('your_book', 'Your Book')}</span>
-              </div>
-              <div id="filled-content" class="w-full h-full flex flex-col justify-center${hasBook ? '' : ' hidden'}">
-                <div id="display-title" class="book-title-display"></div>
-                <div class="w-8 h-px bg-[#C79F32] mx-auto my-3"></div>
-                <div id="display-author" class="book-author-display"></div>
-              </div>
-            </div>
-          </div>
-          ${hasBook ? `
-            <button type="button" id="remove-book-current" class="book-remove" aria-label="${t('remove_book', 'Remove book')}">
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M3 6h18"></path>
-                <path d="M8 6V4h8v2"></path>
-                <path d="M6 6l1 14h10l1-14"></path>
-                <path d="M10 11v6"></path>
-                <path d="M14 11v6"></path>
+    const bookDisplay = hasBook ? `
+      <div class="reading-plan-book-display">
+        <div class="book-placeholder">
+          <div id="book-display" class="book-inner text-[#A8A8A8] ${hasBook ? 'is-filled' : ''} ${activeBook?.cover ? 'has-cover' : ''}">
+            <img id="book-cover" class="book-cover${activeBook?.cover ? '' : ' hidden'}" alt="" src="${activeBook?.cover ? activeBook.cover : ''}">
+            <div id="placeholder-content" class="flex flex-column items-center flex-col${hasBook ? ' hidden' : ''}">
+              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 opacity-50">
+                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
+                <path d="M8 7h6"/><path d="M8 11h8"/>
               </svg>
-            </button>
-          ` : ''}
-          <div id="book-meta-info" class="text-center${hasBook ? '' : ' hidden'}">
-            <div id="meta-text" class="text-xs font-medium text-black uppercase tracking-tight leading-relaxed"></div>
-          </div>
-          ${hasBook ? `
-            <div class="w-full max-w-xs mx-auto">
-              <label for="starting-page-input" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-black mb-2 text-center">
-                ${t('starting_page', 'Starting Page')}
-              </label>
-              <input
-                id="starting-page-input"
-                type="number"
-                min="1"
-                value="${startPageValue}"
-                class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all text-center"
-              />
+              <span class="text-[10px] font-bold uppercase tracking-[0.2em]">${t('your_book', 'Your Book')}</span>
             </div>
-          ` : ''}
+            <div id="filled-content" class="w-full h-full flex flex-col justify-center${hasBook ? '' : ' hidden'}">
+              <div id="display-title" class="book-title-display"></div>
+              <div class="w-8 h-px bg-[#C79F32] mx-auto my-3"></div>
+              <div id="display-author" class="book-author-display"></div>
+            </div>
+          </div>
         </div>
         ${hasBook ? `
-          <button type="button" id="next-step" class="w-full bg-black text-[#C79F32] py-4 rounded-custom hover:opacity-90 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest">
-            ${t('next', 'Next')}
-            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m9 18 6-6-6-6"/>
+          <button type="button" id="remove-book-current" class="book-remove" aria-label="${t('remove_book', 'Remove book')}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M3 6h18"></path>
+              <path d="M8 6V4h8v2"></path>
+              <path d="M6 6l1 14h10l1-14"></path>
+              <path d="M10 11v6"></path>
+              <path d="M14 11v6"></path>
             </svg>
           </button>
-        ` : `
-          <div class="bg-[#F5F5F5] p-6 rounded-custom border border-[#A8A8A8] space-y-4">
-            <div class="relative">
-              <input id="new-book-title" type="text" placeholder="${t('book_title', 'Book title')}" autocomplete="off" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
-              <div id="reading-plan-title-suggestions" class="prs-add-book__suggestions" aria-hidden="true"></div>
-            </div>
-            <div class="reading-plan-book-row">
-              <div class="reading-plan-author">
-                <input id="new-book-author" type="text" placeholder="${t('author', 'Author')}" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
-              </div>
-              <div class="reading-plan-pages">
-                <input id="new-book-pages" type="number" placeholder="${t('pages', 'Pages')}" class="w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
-              </div>
-            </div>
-            <div class="space-y-3">
-              <button type="button" id="add-book" class="w-full bg-[#C79F32] text-black py-4 rounded-custom hover:brightness-95 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M5 12h14"></path>
-                  <path d="M12 5v14"></path>
-                </svg>
-                ${t('add_book', 'Add book')}
-              </button>
-            </div>
-          </div>
-        `}
+        ` : ''}
+        <div id="book-meta-info" class="text-center${hasBook ? '' : ' hidden'}">
+          <div id="meta-text" class="text-xs font-medium text-black uppercase tracking-tight leading-relaxed"></div>
+        </div>
+      </div>` : '';
+    const startingPageInput = hasBook ? `
+      <div class="w-full max-w-xs mx-auto">
+        <input
+          id="starting-page-input"
+          type="number"
+          min="1"
+          value="${startPageValue}"
+          aria-label="${t('start_page_question', 'What page does the book content start on?')}"
+          class="input-field w-full"
+        />
+      </div>
+    ` : '';
+    const addBookForm = `
+      <div class="bg-[#F5F5F5] p-6 rounded-custom border border-[#A8A8A8] space-y-4">
+        <div class="relative">
+          <input id="new-book-title" type="text" placeholder="${t('book_title', 'Book title')}" autocomplete="off" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+          <div id="reading-plan-title-suggestions" class="prs-add-book__suggestions" aria-hidden="true"></div>
+        </div>
+        <div class="space-y-4">
+          <input id="new-book-author" type="text" placeholder="${t('author', 'Author')}" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+          <input id="new-book-pages" type="number" placeholder="${t('pages', 'Pages')}" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+        </div>
+        <div class="space-y-3">
+          <button type="button" id="add-book" class="w-full bg-[#C79F32] text-black py-4 rounded-custom hover:brightness-95 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest gold-gradient-text">
+            + ${t('add_book', 'Add book')}
+          </button>
+        </div>
+      </div>
+    `;
+    const nextButton = `
+      <button type="button" id="next-step" class="w-full bg-black text-[#C79F32] py-4 rounded-custom hover:opacity-90 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest gold-gradient-text">
+        ${t('next', 'Next')}
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m9 18 6-6-6-6"/>
+        </svg>
+      </button>
+    `;
+    stepContent.innerHTML = `
+      <div class="space-y-6 step-transition">
+        <svg width="0" height="0" style="position: absolute;">
+          <defs>
+            <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#8A6B1E;stop-opacity:1" />
+              <stop offset="50%" style="stop-color:#C79F32;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#E9D18A;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">${hasBook ? t('start_page_question', 'What page does the book content start on?') : t('book_prompt', 'Which book do you want to read now?')}</h2></div>
+        ${hasBook ? startingPageInput : addBookForm}
+        ${bookDisplay}
+        ${hasBook ? nextButton : ''}
       </div>`;
 
     const displayContainer = stepContent.querySelector('#book-display');
@@ -808,26 +976,45 @@
   }
 
   function renderStepExigencia() {
-    const intensityStyles = {
-      mediano: 'exigencia-dot--mediano',
-      exigente: 'exigencia-dot--exigente',
-      intenso: 'exigencia-dot--intenso',
-    };
     const intensityLabels = {
-      mediano: t('intensity_balanced_label', 'Balanced'),
-      exigente: t('intensity_challenging_label', 'Challenging'),
+      mediano: t('intensity_balanced_label', 'Intermediate'),
+      exigente: t('intensity_challenging_label', 'Light'),
       intenso: t('intensity_intense_label', 'Intense'),
     };
 
     stepContent.innerHTML = `
       <div class="exigencia-slide step-transition">
-        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">${t('intensity_prompt', 'What intensity level do you want?')}</h2></div>
-        <div class="exigencia-grid">
-          ${['mediano', 'exigente', 'intenso'].map((k) => `
-            <button type="button" id="exigencia-${k}" data-exigencia="${k}" class="exigencia-card ${state.formData.exigencia === k ? 'is-selected' : ''}">
-              <div class="exigencia-dot ${intensityStyles[k]}"></div>
-              <h3 class="exigencia-title">${intensityLabels[k] || k}</h3>
-              <p class="exigencia-meta">${format('sessions_per_week', '%d sessions<br>per week', EXIGENCIA_SESSIONS[k])}</p>
+        <svg width="0" height="0" style="position: absolute;">
+          <defs>
+            <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" style="stop-color:#8A6B1E;stop-opacity:1" />
+              <stop offset="50%" style="stop-color:#C79F32;stop-opacity:1" />
+              <stop offset="100%" style="stop-color:#E9D18A;stop-opacity:1" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div class="text-center mb-6"><h2 class="habit-title">${t('intensity_prompt', 'Select intensity')}</h2></div>
+        <div class="habit-option-group exigencia-option-group">
+          ${['exigente', 'mediano', 'intenso'].map((k) => `
+            <button type="button" id="exigencia-${k}" data-exigencia="${k}" class="habit-option-card ${state.formData.exigencia === k ? 'is-selected' : ''}">
+              <div class="icon-circle-wrapper">
+                ${k === 'exigente'
+                  ? `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                      <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                      <line x1="16" y1="8" x2="2" y2="22"></line>
+                    </svg>`
+                  : k === 'mediano'
+                    ? `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12h18"></path>
+                        <path d="M6 8h12"></path>
+                        <path d="M9 16h6"></path>
+                      </svg>`
+                    : `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                      </svg>`}
+              </div>
+              <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${intensityLabels[k] || k}</span>
+              <p class="intensity-desc">${format('sessions_per_week', '%d sessions<br>per week', EXIGENCIA_SESSIONS[k])}</p>
             </button>`).join('')}
         </div>
       </div>`;
@@ -861,9 +1048,9 @@
           state.mainStep = 2;
           state.isBaselineActive = false;
         }
-      } else if (gid === 'form_habit' && state.subStep < 4) {
+      } else if (gid === 'form_habit' && state.subStep < 5) {
         state.subStep += 1;
-      } else if (gid === 'form_habit' && state.subStep === 4) {
+      } else if (gid === 'form_habit' && state.subStep === 5) {
         state.isBaselineActive = false;
         calculatePlan();
         return;
@@ -890,14 +1077,22 @@
     const data = state.formData;
     const intensityKey = data.baselines.form_habit?.intensity || 'light';
     const config = HABIT_INTENSITY_CONFIG[intensityKey] || HABIT_INTENSITY_CONFIG.light;
+    const startDateValue = data.baselines.form_habit?.start_date;
+    const baseDate = startDateValue ? new Date(`${startDateValue}T00:00:00`) : new Date(TODAY);
     const totalDays = HABIT_CHALLENGE_DAYS;
     const steps = Math.max(1, totalDays - 1);
+    const minutesStep = (config.endMin - config.startMin) / steps;
+    const pagesStep = (config.endPg - config.startPg) / steps;
 
     const sessions = Array.from({ length: totalDays }).map((_, i) => {
-      const date = new Date(TODAY);
-      date.setDate(TODAY.getDate() + i);
-      const expectedMinutes = Math.round(config.startMin + (i * (config.endMin - config.startMin) / steps));
-      const expectedPages = Math.round(config.startPg + (i * (config.endPg - config.startPg) / steps));
+      const date = new Date(baseDate);
+      date.setDate(baseDate.getDate() + i);
+      const expectedMinutes = i === steps
+        ? config.endMin
+        : roundTo(config.startMin + (i * minutesStep), 2);
+      const expectedPages = i === steps
+        ? config.endPg
+        : roundTo(config.startPg + (i * pagesStep), 2);
       return {
         date,
         order: i + 1,
@@ -934,7 +1129,7 @@
 
     formContainer.classList.add('hidden');
     summaryContainer.classList.remove('hidden');
-    state.currentMonthOffset = 0;
+    state.currentMonthOffset = (baseDate.getFullYear() - TODAY.getFullYear()) * 12 + (baseDate.getMonth() - TODAY.getMonth());
     state.listCurrentPage = 0;
     renderCalendar();
   }
@@ -1190,11 +1385,43 @@
     return getEffectivePages(activeBook, startPage);
   }
 
+  function isHabitPlan() {
+    return state.calculatedPlan.type === 'habit';
+  }
+
+  function setHabitStartDate(targetDate) {
+    const base = new Date(targetDate);
+    base.setHours(0, 0, 0, 0);
+    const sessions = state.calculatedPlan.sessions.slice().sort((a, b) => a.order - b.order);
+    sessions.forEach((session, idx) => {
+      const date = new Date(base);
+      date.setDate(base.getDate() + idx);
+      session.date = date;
+      session.order = idx + 1;
+    });
+    state.calculatedPlan.sessions = sessions;
+    state.formData.baselines.form_habit = state.formData.baselines.form_habit || {};
+    state.formData.baselines.form_habit.start_date = base.toISOString().slice(0, 10);
+  }
+
+  function startHabitMagnet() {
+    const marks = calendarGrid.querySelectorAll('.selected-mark');
+    marks.forEach((mark) => {
+      if (mark.dataset.order !== '1') mark.classList.add('magnetized');
+    });
+  }
+
+  function stopHabitMagnet() {
+    const marks = calendarGrid.querySelectorAll('.selected-mark.magnetized');
+    marks.forEach((mark) => mark.classList.remove('magnetized'));
+  }
+
   function renderCalendar() {
     const viewDate = new Date(TODAY.getFullYear(), TODAY.getMonth() + state.currentMonthOffset, 1);
     qs('#propuesta-mes-label').innerText = `${MONTH_NAMES[viewDate.getMonth()]} ${viewDate.getFullYear()}`;
     qs('#calendar-prev-month').classList.toggle('disabled', state.currentMonthOffset <= 0);
     calendarGrid.innerHTML = '';
+    const habitMode = isHabitPlan();
     const daysInMonth = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 0).getDate();
     const startOffset = (viewDate.getDay() + 6) % 7;
     for (let i = 0; i < startOffset; i++) {
@@ -1214,35 +1441,57 @@
       if (sess) {
         const mark = document.createElement('div');
         mark.className = 'selected-mark w-8 h-8 rounded-full flex items-center justify-center text-black font-medium text-xs';
-        mark.draggable = true;
+        mark.dataset.order = String(sess.order);
+        mark.draggable = !habitMode || sess.order === 1;
         mark.innerText = sess.order;
-        const removeBtn = document.createElement('button');
-        removeBtn.type = 'button';
-        removeBtn.className = 'session-remove';
-        removeBtn.setAttribute('aria-label', t('remove_session', 'Remove session'));
-        removeBtn.innerText = '×';
-        removeBtn.addEventListener('click', (event) => {
-          event.stopPropagation();
-          removeSessionByDate(sess.date);
-          renderCalendar();
-          if (state.currentViewMode === 'list') renderList();
-        });
-        mark.appendChild(removeBtn);
+        if (!habitMode) {
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'session-remove';
+          removeBtn.setAttribute('aria-label', t('remove_session', 'Remove session'));
+          removeBtn.innerText = '×';
+          removeBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            removeSessionByDate(sess.date);
+            renderCalendar();
+            if (state.currentViewMode === 'list') renderList();
+          });
+          mark.appendChild(removeBtn);
+        }
         mark.addEventListener('dragstart', (e) => {
           if (e.target && e.target.classList.contains('session-remove')) {
             e.preventDefault();
             return;
           }
+          if (habitMode && sess.order !== 1) {
+            e.preventDefault();
+            return;
+          }
           e.dataTransfer.setData('sessionDate', sess.date.toISOString());
+          e.dataTransfer.setData('sessionOrder', String(sess.order));
           mark.classList.add('opacity-40');
+          if (habitMode && sess.order === 1) {
+            state.draggingHabitStart = true;
+            startHabitMagnet();
+          }
         });
-        mark.addEventListener('dragend', () => mark.classList.remove('opacity-40'));
+        mark.addEventListener('dragend', () => {
+          mark.classList.remove('opacity-40');
+          if (state.draggingHabitStart) {
+            state.draggingHabitStart = false;
+            stopHabitMagnet();
+          }
+        });
         cell.appendChild(mark);
       }
 
       if (!isPast) {
         cell.addEventListener('dragover', (e) => {
           e.preventDefault();
+          if (habitMode && state.draggingHabitStart) {
+            cell.classList.add('drag-over');
+            return;
+          }
           if (!state.calculatedPlan.sessions.find((s) => s.date.toDateString() === cellDate.toDateString())) {
             cell.classList.add('drag-over');
           }
@@ -1252,7 +1501,16 @@
           e.preventDefault();
           cell.classList.remove('drag-over');
           const originIso = e.dataTransfer.getData('sessionDate');
+          const originOrder = parseInt(e.dataTransfer.getData('sessionOrder'), 10);
           if (originIso) {
+            if (habitMode && originOrder === 1) {
+              setHabitStartDate(cellDate);
+              state.draggingHabitStart = false;
+              stopHabitMagnet();
+              renderCalendar();
+              if (state.currentViewMode === 'list') renderList();
+              return;
+            }
             const sessIdx = state.calculatedPlan.sessions.findIndex((s) => s.date.toISOString() === originIso);
             if (sessIdx > -1) {
               state.calculatedPlan.sessions[sessIdx].date = new Date(cellDate);
@@ -1261,7 +1519,7 @@
             }
           }
         });
-        if (!sess) {
+        if (!sess && !habitMode) {
           let hoverTimer = null;
           cell.addEventListener('mouseenter', () => {
             hoverTimer = setTimeout(() => {
@@ -1316,15 +1574,28 @@
 
     const startIdx = state.listCurrentPage * SESSIONS_PER_PAGE;
     const pageSessions = allSorted.slice(startIdx, startIdx + SESSIONS_PER_PAGE);
+    const isHabit = state.calculatedPlan.type === 'habit';
     pageSessions.forEach((s) => {
       const monthName = MONTH_NAMES[s.date.getMonth()];
+      const expectedMinutes = typeof s.expectedMinutes === 'number' ? Math.ceil(s.expectedMinutes) : null;
+      const expectedPages = typeof s.expectedPages === 'number' ? Math.ceil(s.expectedPages) : null;
+      const habitLabel = expectedMinutes !== null && expectedPages !== null
+        ? format('habit_session_meta', '%1$s min / %2$s pages', expectedMinutes, expectedPages)
+        : t('reading_session', 'Reading Session');
+      const habitDate = `${monthName} ${s.date.getDate()}`;
+      const habitDetail = expectedMinutes !== null && expectedPages !== null
+        ? format('habit_session_meta', '%1$s pages / %2$s min', expectedPages, expectedMinutes)
+        : t('reading_session', 'Reading Session');
+      const leftLabel = isHabit
+        ? `${habitDate}: ${habitDetail}`
+        : t('reading_session', 'Reading Session');
       listView.innerHTML += `
         <div class="flex items-center justify-between p-3 bg-white border border-[#A8A8A8] rounded-custom shadow-sm mb-2 step-transition">
           <div class="flex items-center space-x-3">
             <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-black bg-[#C79F32]">${s.order}</div>
-            <span class="text-xs font-medium text-black uppercase tracking-tight">${t('reading_session', 'Reading Session')}</span>
+            <span class="text-xs font-medium text-black uppercase tracking-tight">${leftLabel}</span>
           </div>
-          <span class="text-[10px] font-medium text-black opacity-60 uppercase tracking-tighter">${s.date.getDate()} ${monthName}</span>
+          <span class="text-[10px] font-medium text-black opacity-60 uppercase tracking-tighter">${isHabit ? '' : `${s.date.getDate()} ${monthName}`}</span>
         </div>`;
     });
     updateHeight();

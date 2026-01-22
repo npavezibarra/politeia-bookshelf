@@ -216,6 +216,11 @@ January 19, 2026, 19:42 UTC
 2. Passed plan_id into the recorder to derive a default start page from the first planned session, and wired plan acceptance to return plan_id for recorder loading.
 3. Fixed Session Recorder initialization to re-apply start-page defaults per book and avoid stale values across modal opens.
 
+March 9, 2026, 20:55 UTC
+1. Overhauled Reading Planner habit and finish-book flows (visual redesign, localized copy, icon swaps, and gradient styling), including modal-wide black/white theme adjustments.
+2. Updated habit plan calendar behavior (only session 1 draggable to shift start date) with magnet animation and habit-specific list view showing rounded pages/minutes.
+3. Refined finish-book inputs (invisible fields, stacked layout, centered suggestions, gradient actions) and aligned summary/list view contrast, borders, and toggles.
+
 ------
 
 TO DO:
