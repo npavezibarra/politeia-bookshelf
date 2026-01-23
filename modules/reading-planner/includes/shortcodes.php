@@ -63,14 +63,82 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 	wp_enqueue_script( 'politeia-start-reading' );
 	wp_enqueue_style( 'politeia-reading' );
 
+	$user        = wp_get_current_user();
+	$user_login  = $user && isset( $user->user_login ) ? (string) $user->user_login : '';
+	$my_plans_url = $user_login ? home_url( '/members/' . rawurlencode( $user_login ) . '/my-plans/' ) : home_url( '/my-plans/' );
+	$active_plans = array();
+
+	if ( $user_login ) {
+		global $wpdb;
+		$plans_table   = $wpdb->prefix . 'politeia_plans';
+		$goals_table   = $wpdb->prefix . 'politeia_plan_goals';
+		$books_table   = $wpdb->prefix . 'politeia_books';
+		$authors_table = $wpdb->prefix . 'politeia_authors';
+		$pivot_table   = $wpdb->prefix . 'politeia_book_authors';
+
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT p.id AS plan_id,
+				        p.name AS plan_name,
+				        b.title AS book_title,
+				        GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ') AS authors
+				 FROM {$plans_table} p
+				 LEFT JOIN {$goals_table} g ON g.plan_id = p.id
+				 LEFT JOIN {$books_table} b ON b.id = g.book_id
+				 LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
+				 LEFT JOIN {$authors_table} a ON a.id = ba.author_id
+				 WHERE p.user_id = %d
+				   AND p.status = %s
+				 GROUP BY p.id, b.id",
+				get_current_user_id(),
+				'accepted'
+			),
+			ARRAY_A
+		);
+
+		foreach ( (array) $rows as $row ) {
+			$plan_id = isset( $row['plan_id'] ) ? (int) $row['plan_id'] : 0;
+			$title = isset( $row['book_title'] ) && '' !== $row['book_title'] ? (string) $row['book_title'] : '';
+			if ( '' === $title && isset( $row['plan_name'] ) ) {
+				$title = (string) $row['plan_name'];
+			}
+			$authors = isset( $row['authors'] ) ? (string) $row['authors'] : '';
+			if ( ! $plan_id || '' === $title ) {
+				continue;
+			}
+			$normalized_title = function_exists( 'prs_normalize_title' ) ? prs_normalize_title( $title ) : $title;
+			$active_plans[] = array(
+				'plan_id' => $plan_id,
+				'title'  => $title,
+				'author' => $authors,
+				'normalized_title' => $normalized_title,
+			);
+		}
+	}
+
 	wp_localize_script(
 		$script_handle,
 		'PoliteiaReadingPlan',
 		array(
 			'restUrl' => rest_url( 'politeia/v1/reading-plan' ),
+			'bookCreateUrl' => rest_url( 'politeia/v1/reading-plan/book' ),
+			'myPlansUrl' => $my_plans_url,
+			'activePlans' => $active_plans,
+			'bookCreateAjax' => array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'prs_reading_plan_add_book' ),
+			),
+			'bookCheckAjax' => array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'prs_reading_plan_check_active' ),
+			),
 			'sessionRecorderUrl' => rest_url( 'politeia/v1/reading-plan/session-recorder' ),
 			'nonce'   => wp_create_nonce( 'wp_rest' ),
 			'userId'  => get_current_user_id(),
+			'coverUpload' => array(
+				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+				'nonce'   => wp_create_nonce( 'prs_cover_nonce' ),
+			),
 			'autocomplete' => array(
 				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
 				'nonce'   => wp_create_nonce( 'prs_canonical_title_search' ),
@@ -145,6 +213,8 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 				'intensity_intense_reason' => __( 'Ideal for those who want reading to be a central part of their identity.', 'politeia-reading' ),
 				'minutes_per_day'    => __( '%s MIN / DAY', 'politeia-reading' ),
 				'book_prompt'        => __( 'Which book do you want to read now?', 'politeia-reading' ),
+				'book_active_plan_notice' => __( 'You already have an active plan for this book.', 'politeia-reading' ),
+				'book_active_plan_link' => __( 'Go to my plans', 'politeia-reading' ),
 				'your_book'          => __( 'Your Book', 'politeia-reading' ),
 				'remove_book'        => __( 'Remove book', 'politeia-reading' ),
 				'next'               => __( 'Next', 'politeia-reading' ),
@@ -152,6 +222,12 @@ function render_reading_plan_shortcode( $atts = array() ): string {
 				'author'             => __( 'Author', 'politeia-reading' ),
 				'pages'              => __( 'Pages', 'politeia-reading' ),
 				'add_book'           => __( 'Add book', 'politeia-reading' ),
+				'cover_drop_label'   => __( 'drag drop book cover', 'politeia-reading' ),
+				'cover_upload_cta'   => __( 'upload cover', 'politeia-reading' ),
+				'cover_format_label' => __( 'JPG or PNG', 'politeia-reading' ),
+				'cover_change_label' => __( 'Change Cover', 'politeia-reading' ),
+				'cover_remove_label' => __( 'Remove cover', 'politeia-reading' ),
+				'cover_preview_alt'  => __( 'Book cover preview', 'politeia-reading' ),
 				'starting_page'      => __( 'Starting Page', 'politeia-reading' ),
 				'start_page_question' => __( 'What page does the book content start on?', 'politeia-reading' ),
 				'unknown_author'     => __( 'Unknown author', 'politeia-reading' ),

@@ -75,6 +75,24 @@ msgstr "Agregar autor"
 msgid "Add book"
 msgstr "Agregar libro"
 
+msgid "drag drop book cover"
+msgstr "arrastra la portada del libro"
+
+msgid "upload cover"
+msgstr "subir portada"
+
+msgid "JPG or PNG"
+msgstr "JPG o PNG"
+
+msgid "Change Cover"
+msgstr "Cambiar portada"
+
+msgid "Remove cover"
+msgstr "Eliminar portada"
+
+msgid "Book cover preview"
+msgstr "Vista previa de la portada"
+
 msgid "Add session"
 msgstr "Agregar sesión"
 
@@ -1677,3 +1695,9 @@ msgstr "Especialización Principal"
 
 msgid "Reading Statistics"
 msgstr "Estadísticas de Lectura"
+
+msgid "You already have an active plan for this book."
+msgstr "Ya tienes un plan activo para este libro."
+
+msgid "Go to my plans"
+msgstr "Ir a mis planes"

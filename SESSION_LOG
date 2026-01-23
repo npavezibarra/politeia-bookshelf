@@ -221,6 +221,11 @@ March 9, 2026, 20:55 UTC
 2. Updated habit plan calendar behavior (only session 1 draggable to shift start date) with magnet animation and habit-specific list view showing rounded pages/minutes.
 3. Refined finish-book inputs (invisible fields, stacked layout, centered suggestions, gradient actions) and aligned summary/list view contrast, borders, and toggles.
 
+January 22, 2026, 22:33 -03
+1. Added a reading-plan book creation endpoint with AJAX fallback, wired finish-book Add Book to create canonical/user_book records, and preserved cover uploads/URLs to user_books.
+2. Implemented active-plan detection (server + preloaded client list), blocked add when a plan exists, and added localized warning copy with a gradient link to My Plans.
+3. Improved finish-book input flow: auto-check on title/author fill, hide Add Book until fields are valid, reset author/pages when title clears, and normalize title matching.
+
 ------
 
 TO DO:

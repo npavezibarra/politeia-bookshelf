@@ -81,7 +81,7 @@
 .politeia-reading-plan-shell > :not(#summary-container) * {
   color: #ffffff;
   text-align: center;
-  border-color: transparent;
+  border-color: #5d5d5d;
   border-image: none;
   font-family: 'Poppins', sans-serif;
 }
@@ -429,7 +429,7 @@
 
 .politeia-reading-plan-shell .habit-option-group {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 12px;
   margin-top: 10px;
   justify-content: center;
@@ -735,6 +735,38 @@
   font-size: 22px !important;
 }
 
+.politeia-reading-plan-shell .reading-plan-book-error {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  background: linear-gradient(135deg, #783F27, #B87333, #E5AA70);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-align: center;
+}
+
+.politeia-reading-plan-shell .reading-plan-book-link {
+  display: inline-block;
+  margin-left: 6px;
+  font-weight: 600;
+  background: linear-gradient(135deg, #783F27, #B87333, #E5AA70);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-decoration: none;
+}
+
+.politeia-reading-plan-shell .reading-plan-book-link:hover {
+  opacity: 0.9;
+}
+
+.politeia-reading-plan-shell .habit-next-btn,
+.politeia-reading-plan-shell #next-step,
+.politeia-reading-plan-shell #accept-button {
+  font-size: 22px !important;
+  text-transform: uppercase !important;
+}
+
 .politeia-reading-plan-shell input::-webkit-outer-spin-button,
 .politeia-reading-plan-shell input::-webkit-inner-spin-button {
   -webkit-appearance: none;
@@ -743,6 +775,18 @@
 
 .politeia-reading-plan-shell input[type="number"] {
   -moz-appearance: textfield;
+}
+
+.politeia-reading-plan-shell .input-shake {
+  animation: inputShake 0.35s ease-in-out 0s 2;
+}
+
+@keyframes inputShake {
+  0% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  50% { transform: translateX(6px); }
+  75% { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
 }
 
 .politeia-reading-plan-shell .input-field:focus {
@@ -925,7 +969,7 @@
 .politeia-reading-plan-shell h2.text-2xl.font-medium.text-black.uppercase.tracking-tight {
   font-weight: 700;
   margin: auto !important;
-  max-width: 500px;
+  max-width: 440px;
 }
 .politeia-reading-plan-shell h2 {
   font-weight: 700 !important;
@@ -1644,6 +1688,62 @@
   position: relative;
 }
 
+.politeia-reading-plan-shell .book-summary-row {
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.politeia-reading-plan-shell .book-cover-frame {
+  width: 128px;
+  height: 184px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #999999;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.politeia-reading-plan-shell .book-cover-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.politeia-reading-plan-shell .book-summary-details {
+  text-align: left !important;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding-top: 8px;
+  align-items: flex-start;
+}
+
+.politeia-reading-plan-shell .book-summary-details * {
+  text-align: left !important;
+  color: #ffffff;
+  border-color: transparent;
+  border-image: none;
+  font-family: 'Poppins', sans-serif;
+  width: auto;
+}
+
+.politeia-reading-plan-shell .book-summary-title {
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.politeia-reading-plan-shell .book-summary-author {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.politeia-reading-plan-shell .book-summary-pages {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .politeia-reading-plan-shell .book-placeholder {
   width: 128px;
   height: 184px;
@@ -1674,6 +1774,127 @@
   height: 100%;
   object-fit: cover;
   border-radius: 4px 8px 8px 4px;
+}
+
+.politeia-reading-plan-shell .prs-cover-upload {
+  width: 128px;
+  height: 184px;
+  border-radius: 12px;
+  border: 1px dashed rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.3s ease, background 0.3s ease;
+  overflow: hidden;
+}
+
+.politeia-reading-plan-shell .prs-cover-upload.is-dragging,
+.politeia-reading-plan-shell .prs-cover-upload:hover {
+  border-color: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.politeia-reading-plan-shell .prs-cover-upload.has-image {
+  border-color: transparent;
+}
+
+.politeia-reading-plan-shell .prs-cover-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.politeia-reading-plan-shell .prs-cover-default {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0;
+  padding: 12px;
+  pointer-events: none;
+}
+
+.politeia-reading-plan-shell .prs-cover-hint {
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 0.04em;
+  line-height: 1;
+  margin-bottom: 4px !important;
+}
+
+.politeia-reading-plan-shell .prs-cover-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 6px 16px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: transparent;
+}
+
+.politeia-reading-plan-shell .prs-cover-note {
+  font-size: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.3);
+  margin-bottom: 0;
+}
+
+.politeia-reading-plan-shell .prs-cover-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.politeia-reading-plan-shell .prs-cover-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+}
+
+.politeia-reading-plan-shell .prs-cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.politeia-reading-plan-shell .prs-cover-upload.has-image:hover .prs-cover-overlay {
+  opacity: 1;
+}
+
+.politeia-reading-plan-shell .prs-cover-remove {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 6px;
+  cursor: pointer;
+}
+
+.politeia-reading-plan-shell .prs-cover-change {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #ffffff;
 }
 
 .politeia-reading-plan-shell .book-inner.is-filled {
@@ -1728,9 +1949,6 @@
 }
 
 .politeia-reading-plan-shell .book-remove {
-  position: absolute;
-  top: 0;
-  right: 0;
   border: none;
   background: transparent;
   color: #a8a8a8;
@@ -1749,9 +1967,29 @@
   outline: none;
 }
 
+.politeia-reading-plan-shell .book-remove--corner {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  background: #000000;
+  color: #ffffff;
+}
+
+.politeia-reading-plan-shell .book-remove--corner:hover,
+.politeia-reading-plan-shell .book-remove--corner:focus,
+.politeia-reading-plan-shell .book-remove--corner:active {
+  color: #ffffff;
+  border-color: #ffffff;
+}
+
 .politeia-reading-plan-shell #add-book,
 .politeia-reading-plan-shell #next-step {
-  font-size: 12px;
+  font-size: 22px !important;
+  text-transform: uppercase !important;
 }
 
 .politeia-reading-plan-shell #add-book {

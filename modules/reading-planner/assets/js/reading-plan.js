@@ -26,6 +26,8 @@
     const factor = Math.pow(10, decimals);
     return Math.round((Number(value) + Number.EPSILON) * factor) / factor;
   };
+  const isDataUrl = (value) => typeof value === 'string' && value.startsWith('data:image');
+  const isHttpUrl = (value) => typeof value === 'string' && /^https?:\/\//i.test(value);
 
   const formContainer = qs('#form-container');
   const summaryContainer = qs('#summary-container');
@@ -52,6 +54,40 @@
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
+
+  const normalizeKey = (value) => String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  const ACTIVE_PLANS = Array.isArray(RP.activePlans) ? RP.activePlans : [];
+  if (ACTIVE_PLANS.length) {
+    const debugList = ACTIVE_PLANS.map((item) => ({
+      plan_id: item.plan_id || null,
+      normalized_title: item.normalized_title || normalizeKey(item.title || ''),
+    }));
+    console.log('[ReadingPlan] Active plans:', debugList);
+  }
+  const splitAuthorList = (value) => String(value || '')
+    .split(',')
+    .map((item) => normalizeKey(item))
+    .filter(Boolean);
+
+  const hasActivePlanLocal = (title, author) => {
+    if (!title || !author) return false;
+    const tKey = normalizeKey(title);
+    const aKey = normalizeKey(author);
+    if (!tKey || !aKey) return false;
+    return ACTIVE_PLANS.some((item) => {
+      if (!item) return false;
+      const itemTitle = item.normalized_title || item.title || '';
+      if (normalizeKey(itemTitle) !== tKey) return false;
+      return true;
+    });
+  };
 
   const pad2 = (value) => String(value).padStart(2, '0');
   const formatDateTime = (date, hours, minutes) => {
@@ -88,6 +124,118 @@
     loading: null,
     bookId: null,
     planId: null,
+  };
+
+  const createBookRecord = (payload) => {
+    if (!RP.bookCreateUrl) return Promise.reject(new Error('missing_endpoint'));
+    return fetch(RP.bookCreateUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-WP-Nonce': RP.nonce,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload),
+    })
+      .then(async (res) => {
+        let data = {};
+        let parseFailed = false;
+        try {
+          data = await res.json();
+        } catch (err) {
+          parseFailed = true;
+          data = {};
+        }
+        if (!res.ok) {
+          const err = new Error(data.error || 'request_failed');
+          err.code = data.error || 'request_failed';
+          throw err;
+        }
+        if (!data.success && !parseFailed) {
+          console.warn('[ReadingPlan] Book create response missing success flag.', data);
+        }
+        return data.data || {};
+      });
+  };
+
+  const createBookRecordAjax = (payload) => {
+    const config = RP.bookCreateAjax || {};
+    if (!config.ajaxUrl || !config.nonce) return Promise.reject(new Error('missing_ajax'));
+    const formData = new FormData();
+    formData.append('action', 'prs_reading_plan_add_book');
+    formData.append('nonce', config.nonce);
+    formData.append('title', payload.title || '');
+    formData.append('author', payload.author || '');
+    formData.append('pages', payload.pages ? String(payload.pages) : '');
+    if (payload.cover_url) {
+      formData.append('cover_url', payload.cover_url);
+    }
+
+    return fetch(config.ajaxUrl, {
+      method: 'POST',
+      body: formData,
+      credentials: 'same-origin',
+    })
+      .then(async (res) => {
+        let data = {};
+        try {
+          data = await res.json();
+        } catch (err) {
+          data = {};
+        }
+        if (!res.ok || !data.success) {
+          const err = new Error((data && data.error) || 'request_failed');
+          err.code = (data && data.error) || 'request_failed';
+          throw err;
+        }
+        return data.data || {};
+      });
+  };
+
+  const saveCoverDataUrl = (dataUrl, mime, bookId, userBookId) => {
+    const config = RP.coverUpload || {};
+    if (!config.ajaxUrl || !config.nonce) return Promise.reject(new Error('missing_cover_config'));
+    const formData = new FormData();
+    formData.append('action', 'prs_save_cropped_cover');
+    formData.append('_wpnonce', config.nonce);
+    formData.append('book_id', String(bookId));
+    formData.append('user_book_id', String(userBookId));
+    formData.append('mime', mime || 'image/png');
+    formData.append('data', dataUrl);
+
+    return fetch(config.ajaxUrl, {
+      method: 'POST',
+      body: formData,
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data || !data.success || !data.data || !data.data.url) {
+          throw new Error('cover_save_failed');
+        }
+        return data.data.url;
+      });
+  };
+
+  const checkActivePlan = (title, author) => {
+    const config = RP.bookCheckAjax || {};
+    if (!config.ajaxUrl || !config.nonce) return Promise.resolve(false);
+    const formData = new FormData();
+    formData.append('action', 'prs_reading_plan_check_active');
+    formData.append('nonce', config.nonce);
+    formData.append('title', title || '');
+    formData.append('author', author || '');
+
+    return fetch(config.ajaxUrl, {
+      method: 'POST',
+      body: formData,
+      credentials: 'same-origin',
+    })
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        if (!data || !data.success || !data.data) return false;
+        return !!data.data.active;
+      })
+      .catch(() => false);
   };
 
   const ensureScript = (id, src) => new Promise((resolve, reject) => {
@@ -232,6 +380,9 @@
         books: prefillBook ? [prefillBook] : [],
         startPage: 1,
         exigencia: null,
+        bookError: '',
+        bookErrorLink: false,
+        bookHasActivePlan: false,
       },
       calculatedPlan: { pps: 0, durationWeeks: 0, sessions: [], type: 'ccl' },
       currentMonthOffset: 0,
@@ -614,38 +765,49 @@
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
     const hasBook = !!activeBook;
     const startPageValue = parseInt(state.formData.startPage, 10) || 1;
-    const bookDisplay = hasBook ? `
-      <div class="reading-plan-book-display">
-        <div class="book-placeholder">
-          <div id="book-display" class="book-inner text-[#A8A8A8] ${hasBook ? 'is-filled' : ''} ${activeBook?.cover ? 'has-cover' : ''}">
-            <img id="book-cover" class="book-cover${activeBook?.cover ? '' : ' hidden'}" alt="" src="${activeBook?.cover ? activeBook.cover : ''}">
-            <div id="placeholder-content" class="flex flex-column items-center flex-col${hasBook ? ' hidden' : ''}">
-              <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-2 opacity-50">
-                <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/>
-                <path d="M8 7h6"/><path d="M8 11h8"/>
-              </svg>
-              <span class="text-[10px] font-bold uppercase tracking-[0.2em]">${t('your_book', 'Your Book')}</span>
-            </div>
-            <div id="filled-content" class="w-full h-full flex flex-col justify-center${hasBook ? '' : ' hidden'}">
-              <div id="display-title" class="book-title-display"></div>
-              <div class="w-8 h-px bg-[#C79F32] mx-auto my-3"></div>
-              <div id="display-author" class="book-author-display"></div>
+    const coverBlock = hasBook && !activeBook?.cover ? `
+        <div id="cover-upload-area" class="prs-cover-upload" role="button" tabindex="0" aria-label="${t('cover_upload_cta', 'upload cover')}">
+          <input type="file" id="cover-file-input" class="prs-cover-input" accept="image/*" />
+          <div id="cover-default" class="prs-cover-default">
+            <p class="prs-cover-hint">${t('cover_drop_label', 'drag drop book cover')}</p>
+            <button type="button" class="prs-cover-btn">${t('cover_upload_cta', 'upload cover')}</button>
+            <p class="prs-cover-note">${t('cover_format_label', 'JPG or PNG')}</p>
+          </div>
+          <div id="cover-preview" class="prs-cover-preview" hidden>
+            <img id="cover-image" alt="${t('cover_preview_alt', 'Book cover preview')}" />
+            <div class="prs-cover-overlay">
+              <button id="cover-remove" type="button" class="prs-cover-remove" aria-label="${t('cover_remove_label', 'Remove cover')}">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+              <span class="prs-cover-change">${t('cover_change_label', 'Change Cover')}</span>
             </div>
           </div>
         </div>
-        ${hasBook ? `
-          <button type="button" id="remove-book-current" class="book-remove" aria-label="${t('remove_book', 'Remove book')}">
-            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 6h18"></path>
-              <path d="M8 6V4h8v2"></path>
-              <path d="M6 6l1 14h10l1-14"></path>
-              <path d="M10 11v6"></path>
-              <path d="M14 11v6"></path>
-            </svg>
-          </button>
-        ` : ''}
-        <div id="book-meta-info" class="text-center${hasBook ? '' : ' hidden'}">
-          <div id="meta-text" class="text-xs font-medium text-black uppercase tracking-tight leading-relaxed"></div>
+      ` : `
+        <div class="book-cover-frame">
+          <img class="book-cover-thumb" alt="${activeBook?.title || ''}" src="${activeBook?.cover || ''}">
+        </div>
+      `;
+
+    const bookDisplay = hasBook ? `
+      <div class="reading-plan-book-display book-summary-row">
+        <button type="button" id="remove-book-current" class="book-remove book-remove--corner" aria-label="${t('remove_book', 'Remove book')}">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 6h18"></path>
+            <path d="M8 6V4h8v2"></path>
+            <path d="M6 6l1 14h10l1-14"></path>
+            <path d="M10 11v6"></path>
+            <path d="M14 11v6"></path>
+          </svg>
+        </button>
+        ${coverBlock}
+        <div class="book-summary-details">
+          <div class="book-summary-title">${activeBook?.title || ''}</div>
+          <div class="book-summary-author">${t('by_label', 'by')} ${activeBook?.author || t('unknown_author', 'Unknown author')}</div>
+          <div class="book-summary-pages">${activeBook?.pages || ''} ${t('pages_label', 'pages')}</div>
         </div>
       </div>` : '';
     const startingPageInput = hasBook ? `
@@ -685,6 +847,16 @@
         </svg>
       </button>
     `;
+    const errorMessage = state.formData.bookError || '';
+    const showErrorLink = state.formData.bookErrorLink && RP.myPlansUrl;
+    const errorLink = showErrorLink
+      ? `<a class="reading-plan-book-link" href="${RP.myPlansUrl}">${t('book_active_plan_link', 'Go to my plans')}</a>`
+      : '';
+    const errorBlock = `
+      <p id="reading-plan-book-error" class="reading-plan-book-error${errorMessage ? '' : ' hidden'}">
+        ${errorMessage ? errorMessage : ''}${errorLink}
+      </p>
+    `;
     stepContent.innerHTML = `
       <div class="space-y-6 step-transition">
         <svg width="0" height="0" style="position: absolute;">
@@ -696,26 +868,93 @@
             </linearGradient>
           </defs>
         </svg>
-        <div class="text-center mb-6"><h2 class="text-2xl font-medium text-black uppercase tracking-tight">${hasBook ? t('start_page_question', 'What page does the book content start on?') : t('book_prompt', 'Which book do you want to read now?')}</h2></div>
+        <div class="text-center mb-6">
+          <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${hasBook ? t('start_page_question', 'What page does the book content start on?') : t('book_prompt', 'Which book do you want to read now?')}</h2>
+          ${errorBlock}
+        </div>
         ${hasBook ? startingPageInput : addBookForm}
         ${bookDisplay}
         ${hasBook ? nextButton : ''}
       </div>`;
 
-    const displayContainer = stepContent.querySelector('#book-display');
-    const displayTitle = stepContent.querySelector('#display-title');
-    const displayAuthor = stepContent.querySelector('#display-author');
-    const metaText = stepContent.querySelector('#meta-text');
-    const coverImage = stepContent.querySelector('#book-cover');
+    const coverUploadArea = stepContent.querySelector('#cover-upload-area');
+    const coverFileInput = stepContent.querySelector('#cover-file-input');
+    const coverDefault = stepContent.querySelector('#cover-default');
+    const coverPreview = stepContent.querySelector('#cover-preview');
+    const coverImageEl = stepContent.querySelector('#cover-image');
+    const coverRemoveBtn = stepContent.querySelector('#cover-remove');
 
-    if (hasBook && activeBook) {
-      if (displayTitle) displayTitle.textContent = activeBook.title || '';
-      if (displayAuthor) displayAuthor.textContent = activeBook.author || t('unknown_author', 'Unknown author');
-      if (metaText) metaText.innerHTML = `${activeBook.title || ''} ${t('by_label', 'by')} ${activeBook.author || t('unknown_author', 'Unknown author')} <br> ${activeBook.pages || ''} ${t('pages_label', 'pages')}`;
-      if (coverImage && activeBook.cover) {
-        coverImage.src = activeBook.cover;
-        coverImage.classList.remove('hidden');
-        if (displayContainer) displayContainer.classList.add('has-cover');
+    if (coverUploadArea && coverFileInput) {
+      const showPreview = (src) => {
+        if (coverImageEl) coverImageEl.src = src;
+        if (coverPreview) coverPreview.hidden = false;
+        if (coverDefault) coverDefault.classList.add('hidden');
+        coverUploadArea.classList.add('has-image');
+      };
+
+      const clearPreview = () => {
+        if (coverImageEl) coverImageEl.src = '';
+        if (coverPreview) coverPreview.hidden = true;
+        if (coverDefault) coverDefault.classList.remove('hidden');
+        coverUploadArea.classList.remove('has-image');
+        if (coverFileInput) coverFileInput.value = '';
+      };
+
+      const applyFile = (file) => {
+        if (!file || !file.type.startsWith('image/')) return;
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const src = event.target?.result;
+          if (!src) return;
+          showPreview(src);
+          const activeBook = state.formData.books[0];
+          if (activeBook) {
+            activeBook.cover = src;
+            if (activeBook.bookId && activeBook.userBookId) {
+              saveCoverDataUrl(src, file.type, activeBook.bookId, activeBook.userBookId)
+                .then((url) => {
+                  activeBook.cover = url;
+                  if (coverImageEl) coverImageEl.src = url;
+                })
+                .catch(() => {
+                  console.warn('[ReadingPlan] Cover upload failed.');
+                });
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      };
+
+      coverUploadArea.addEventListener('click', () => coverFileInput.click());
+      coverUploadArea.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          coverFileInput.click();
+        }
+      });
+      coverFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        applyFile(file);
+      });
+      coverUploadArea.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        coverUploadArea.classList.add('is-dragging');
+      });
+      coverUploadArea.addEventListener('dragleave', () => coverUploadArea.classList.remove('is-dragging'));
+      coverUploadArea.addEventListener('drop', (event) => {
+        event.preventDefault();
+        coverUploadArea.classList.remove('is-dragging');
+        const file = event.dataTransfer.files[0];
+        applyFile(file);
+      });
+      if (coverRemoveBtn) {
+        coverRemoveBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          clearPreview();
+          if (state.formData.books[0]) {
+            state.formData.books[0].cover = '';
+          }
+        });
       }
     }
 
@@ -724,6 +963,43 @@
     const pagesInput = stepContent.querySelector('#new-book-pages');
     const startPageInput = stepContent.querySelector('#starting-page-input');
     const suggestions = stepContent.querySelector('#reading-plan-title-suggestions');
+    const bookError = stepContent.querySelector('#reading-plan-book-error');
+    let activePlanTimer = null;
+
+    const updateBookError = (message, withLink) => {
+      state.formData.bookError = message || '';
+      state.formData.bookErrorLink = !!withLink;
+      state.formData.bookHasActivePlan = !!withLink;
+      if (!bookError) return;
+      if (message) {
+        const linkHtml = withLink && RP.myPlansUrl
+          ? ` <a class="reading-plan-book-link" href="${RP.myPlansUrl}">${t('book_active_plan_link', 'Go to my plans')}</a>`
+          : '';
+        bookError.innerHTML = `${message}${linkHtml}`;
+        bookError.classList.remove('hidden');
+      } else {
+        bookError.textContent = '';
+        bookError.classList.add('hidden');
+      }
+    };
+
+    const setAddButtonDisabled = (isDisabled) => {
+      if (!addButton) return;
+      addButton.disabled = isDisabled;
+      addButton.classList.toggle('opacity-60', isDisabled);
+      addButton.classList.toggle('pointer-events-none', isDisabled);
+    };
+
+    const clearBookError = () => {
+      state.formData.bookError = '';
+      state.formData.bookErrorLink = false;
+      state.formData.bookHasActivePlan = false;
+      if (bookError) {
+        bookError.textContent = '';
+        bookError.classList.add('hidden');
+      }
+      setAddButtonDisabled(false);
+    };
 
     if (!hasBook && titleInput && suggestions) {
       let lastSuggestionItems = [];
@@ -752,6 +1028,8 @@
           if (pagesValue) pagesInput.value = pagesValue;
         }
         clearSuggestions();
+        scheduleActivePlanCheck();
+        updateAddBookVisibility();
       };
 
       const renderSuggestions = (items) => {
@@ -909,6 +1187,7 @@
 
       titleInput.addEventListener('input', (e) => {
         const query = e.target.value.trim();
+        clearBookError();
         titleInput.dataset.cover = '';
         if (suggestionTimer) clearTimeout(suggestionTimer);
         suggestionTimer = setTimeout(() => runSuggestions(query), 250);
@@ -934,16 +1213,127 @@
     }
 
     const addButton = stepContent.querySelector('#add-book');
+    const updateAddBookVisibility = () => {
+      if (!addButton || !titleInput || !authorInput || !pagesInput) return;
+      const titleValue = titleInput.value.trim();
+      const authorValue = authorInput.value.trim();
+      const pagesValue = parseInt(pagesInput.value, 10);
+      const hasFields = !!titleValue && !!authorValue && !!pagesValue;
+      const shouldShow = hasFields && !state.formData.bookHasActivePlan;
+      addButton.classList.toggle('hidden', !shouldShow);
+    };
+
+    const scheduleActivePlanCheck = () => {
+      if (!titleInput || !authorInput) return;
+      const titleValue = titleInput.value.trim();
+      const authorValue = authorInput.value.trim();
+      if (!titleValue || !authorValue) {
+        updateBookError('', false);
+        updateAddBookVisibility();
+        return;
+      }
+      if (hasActivePlanLocal(titleValue, authorValue)) {
+        updateBookError(
+          t('book_active_plan_notice', 'You already have an active plan for this book.'),
+          true
+        );
+        setAddButtonDisabled(true);
+        updateAddBookVisibility();
+        return;
+      }
+      if (activePlanTimer) clearTimeout(activePlanTimer);
+      activePlanTimer = setTimeout(() => {
+        checkActivePlan(titleValue, authorValue)
+          .then((active) => {
+            if (active) {
+              updateBookError(
+                t('book_active_plan_notice', 'You already have an active plan for this book.'),
+                true
+              );
+              setAddButtonDisabled(true);
+            } else {
+              updateBookError('', false);
+            }
+            updateAddBookVisibility();
+          });
+      }, 200);
+    };
+
     if (!hasBook && addButton) {
+      updateAddBookVisibility();
       addButton.addEventListener('click', () => {
-        const t = titleInput?.value?.trim();
-        const a = authorInput?.value?.trim();
-        const p = parseInt(pagesInput?.value, 10);
+        const titleValue = titleInput?.value?.trim();
+        const authorValue = authorInput?.value?.trim();
+        const pagesValue = parseInt(pagesInput?.value, 10);
         const cover = titleInput?.dataset?.cover ? titleInput.dataset.cover : '';
-        if (t && a && p) {
-          state.formData.books = [{ id: Date.now(), title: t, author: a, pages: p, cover }];
-          state.formData.startPage = 1;
-          render();
+        const coverUrl = isHttpUrl(cover) ? cover : '';
+        if (state.formData.bookErrorLink) {
+          updateBookError(
+            t('book_active_plan_notice', 'You already have an active plan for this book.'),
+            true
+          );
+          return;
+        }
+        clearBookError();
+        const missingFields = [];
+        if (!titleValue) missingFields.push(titleInput);
+        if (!authorValue) missingFields.push(authorInput);
+        if (!pagesValue) missingFields.push(pagesInput);
+        if (missingFields.length) {
+          missingFields.forEach((field) => {
+            if (!field) return;
+            field.classList.remove('input-shake');
+            void field.offsetWidth;
+            field.classList.add('input-shake');
+          });
+          return;
+        }
+        if (titleValue && authorValue && pagesValue) {
+          addButton.disabled = true;
+          const payload = { title: titleValue, author: authorValue, pages: pagesValue, cover_url: coverUrl };
+          createBookRecord(payload)
+            .catch((err) => {
+              if (err && err.code === 'active_plan') {
+                throw err;
+              }
+              return createBookRecordAjax(payload);
+            })
+            .then((data) => {
+              const bookId = data.book_id || null;
+              const userBookId = data.user_book_id || null;
+              const resolvedCover = data.cover_url || cover;
+              state.formData.books = [{
+                id: bookId || Date.now(),
+                bookId,
+                userBookId,
+                title: titleValue,
+                author: authorValue,
+                pages: pagesValue,
+                cover: resolvedCover,
+              }];
+              state.formData.startPage = 1;
+              state.formData.bookError = '';
+              render();
+            })
+            .catch((err) => {
+              if (err && err.code === 'active_plan') {
+                updateBookError(
+                  t('book_active_plan_notice', 'You already have an active plan for this book.'),
+                  true
+                );
+                setAddButtonDisabled(true);
+                return;
+              }
+              [titleInput, authorInput, pagesInput].forEach((field) => {
+                if (!field) return;
+                field.classList.remove('input-shake');
+                void field.offsetWidth;
+                field.classList.add('input-shake');
+              });
+            })
+            .finally(() => {
+              if (addButton) addButton.disabled = false;
+            });
         }
       });
     }
@@ -958,6 +1348,8 @@
       removeBtn.addEventListener('click', () => {
         state.formData.books = [];
         state.formData.startPage = 1;
+        state.formData.bookError = '';
+        state.formData.bookErrorLink = false;
         render();
       });
     }
@@ -972,6 +1364,42 @@
         state.formData.startPage = value;
         startPageInput.value = value;
       });
+    }
+
+    if (authorInput) {
+      authorInput.addEventListener('input', () => {
+        clearBookError();
+        scheduleActivePlanCheck();
+        updateAddBookVisibility();
+      });
+    }
+    if (pagesInput) {
+      pagesInput.addEventListener('input', () => {
+        clearBookError();
+        updateAddBookVisibility();
+      });
+    }
+    if (titleInput) {
+      titleInput.addEventListener('input', () => {
+        if (titleInput.value.trim() === '') {
+          if (authorInput) authorInput.value = '';
+          if (pagesInput) pagesInput.value = '';
+          clearBookError();
+        }
+        updateAddBookVisibility();
+      });
+      titleInput.addEventListener('blur', scheduleActivePlanCheck);
+    }
+    if (authorInput) {
+      authorInput.addEventListener('blur', scheduleActivePlanCheck);
+    }
+
+    if (titleInput && authorInput) {
+      const hasPrefill = titleInput.value.trim() && authorInput.value.trim();
+      if (hasPrefill) {
+        scheduleActivePlanCheck();
+        updateAddBookVisibility();
+      }
     }
   }
 
@@ -1004,10 +1432,8 @@
                       <line x1="16" y1="8" x2="2" y2="22"></line>
                     </svg>`
                   : k === 'mediano'
-                    ? `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M3 12h18"></path>
-                        <path d="M6 8h12"></path>
-                        <path d="M9 16h6"></path>
+                    ? `<svg width="44" height="44" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+                        <path d="M80-120v-80h360v-447q-26-9-45-28t-28-45H240l120 280q0 50-41 85t-99 35q-58 0-99-35t-41-85l120-280h-80v-80h247q12-35 43-57.5t70-22.5q39 0 70 22.5t43 57.5h247v80h-80l120 280q0 50-41 85t-99 35q-58 0-99-35t-41-85l120-280H593q-9 26-28 45t-45 28v447h360v80H80Zm585-320h150l-75-174-75 174Zm-520 0h150l-75-174-75 174Zm335-280q17 0 28.5-11.5T520-760q0-17-11.5-28.5T480-800q-17 0-28.5 11.5T440-760q0 17 11.5 28.5T480-720Z"/>
                       </svg>`
                     : `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
