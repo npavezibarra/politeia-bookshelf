@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
-
 .prs-table { width:100%; border-collapse: collapse; }
 .prs-table th, .prs-table td { padding:8px 10px; border-bottom:1px solid #eee; text-align:left; }
 
@@ -73,20 +71,10 @@
         left: 50%;
         margin-left: -50vw;
         width: 100vw;
-        background: #1A1A1D;
-        z-index: 50;
+        background: #000;
+        z-index: 1000;
         box-sizing: border-box;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-        font-family: 'Poppins', sans-serif;
-}
-
-.prs-library__header * {
-        font-family: inherit;
-}
-
-button#prs-add-book-button {
-        font-weight: 700;
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
 }
 
 .prs-library__header-inner {
@@ -99,7 +87,6 @@ button#prs-add-book-button {
         margin: 0 auto;
         padding: 14px 10px;
         box-sizing: border-box;
-        font-family: 'Poppins', sans-serif;
 }
 
 .prs-library__header-center {
@@ -184,64 +171,10 @@ button#prs-add-book-button {
 .prs-library__header-fixed {
         position: fixed;
         top: var(--masthead-height, 72px);
-        z-index: 50;
+        z-index: 1000;
         left: 50%;
         margin-left: -50vw;
         width: 100vw;
-}
-
-.prs-library__no-results {
-        margin: 24px 0 0;
-        padding: 24px 20px;
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 12px;
-        color: #111111;
-        font-size: 24px;
-        font-family: 'Poppins';
-}
-
-.prs-library__no-results[hidden] {
-        display: none !important;
-}
-
-.prs-library__no-results-icon {
-        width: 32px;
-        height: 32px;
-}
-
-.prs-library__search {
-        margin-left: 0;
-        background: transparent;
-        border: none;
-        border-bottom: 2px solid #fff;
-        color: #fff;
-        padding: 6px 0;
-        font-size: 20px;
-        width: 280px;
-        outline: none;
-        caret-color: #fff;
-        border-radius: 0px;
-}
-
-input#my-library-search.prs-library__search {
-        background: #1a1a1a !important;
-}
-
-input#my-library-search.prs-library__search:focus {
-        border-bottom-color: #C79F32;
-}
-
-.prs-library__search::placeholder {
-        color: #ccc;
-        opacity: 1;
-}
-
-.prs-library__search:focus {
-        border-bottom: 2px solid #fff;
-        box-shadow: none;
 }
 
 .prs-library .prs-library__search {
@@ -276,13 +209,6 @@ input#my-library-search.prs-library__search:focus {
         color: white;
 }
 
-.prs-library__header-actions {
-	display: flex;
-	align-items: center;
-	gap: 12px;
-	flex-wrap: wrap;
-}
-
 .prs-library .prs-library__header-actions {
 	display: flex;
 	align-items: center;
@@ -300,7 +226,7 @@ input#my-library-search.prs-library__search:focus {
         gap: 8px;
         background: #000;
         color: #fff;
-        border: 0;
+        border: 1px solid #fff;
         padding: 6px 14px;
         border-radius: 6px;
         line-height: 1;
@@ -366,13 +292,6 @@ input#my-library-search.prs-library__search:focus {
 		gap: 0;
 	}
 
-	.prs-library__search {
-		font-size: 16px;
-		width: 280px;
-		margin-top: -10px;
-		text-align: center;
-	}
-
 	.prs-library .prs-library__search {
 		font-size: 16px;
 		width: 280px;
@@ -387,7 +306,7 @@ input#my-library-search.prs-library__search:focus {
 		margin-left: -50vw;
 		width: 100vw;
 		background: #000;
-		z-index: 50;
+		z-index: 1000;
 		box-sizing: border-box;
 		box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 	}
@@ -423,13 +342,6 @@ input#my-library-search.prs-library__search:focus {
 
 	.prs-library__header-actions {
 		flex-wrap: nowrap;
-	}
-
-	.prs-library__header-actions .button:not(.prs-library__filter-btn),
-	.prs-library__header-actions .prs-btn {
-		background: #fff;
-		padding: 5px 8px;
-		color: #000;
 	}
 
 	.prs-library .prs-library__header-actions .button:not(.prs-library__filter-btn),
@@ -931,7 +843,6 @@ body.prs-filter-open {
         flex-direction: column;
         gap: 6px;
         min-width: 170px;
-        max-width: 200px;
 }
 
 #prs-library .prs-library__field label {
@@ -960,10 +871,10 @@ body.prs-filter-open {
 .prs-add-book__modal-content {
         position: relative;
         width: 100%;
-        max-width: 630px;
+        max-width: 520px;
         background: #fff;
         border-radius: 12px;
-        padding: 50px;
+        padding: 32px 36px 28px;
         box-shadow: 0 18px 45px rgba(17, 24, 39, 0.25);
 }
 
@@ -977,7 +888,11 @@ body.prs-filter-open {
         justify-content: center;
         text-align: center;
         min-height: 360px;
-        max-width: 630px;
+        padding: 0;
+        max-width: 760px;
+        background: none;
+        border-radius: 0;
+        box-shadow: none;
 }
 
 .prs-add-book__heading {
@@ -989,42 +904,16 @@ body.prs-filter-open {
         color: #111;
 }
 
-.prs-add-book__auto-fill-note {
-        margin: 0 0 16px;
-        text-align: center;
-        font-size: 0.9rem;
-        font-weight: 600;
-        background: linear-gradient(135deg, #783F27, #B87333, #E5AA70) !important;
-        background-color: transparent !important;
-        -webkit-background-clip: text !important;
-        background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        color: transparent !important;
-}
-
-/* Ensure the auto-fill note stays gradient even with global background overrides. */
-.prs-add-book__modal-content .prs-add-book__auto-fill-note {
-        background: linear-gradient(135deg, #783F27, #B87333, #E5AA70) !important;
-        background-color: transparent !important;
-        -webkit-background-clip: text !important;
-        background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        color: transparent !important;
-        font-size: 19px;
-        max-width: 400px;
-        margin: auto;
-}
-
 .prs-add-book__success {
         width: 100%;
         display: none;
         position: relative;
-        background: transparent;
-        border-radius: 0;
-        padding: 0;
-        box-shadow: none;
+        background: #fff;
+        border-radius: 16px;
+        padding: 48px 56px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         font-size: 0.64em;
-        color: #fff;
+        color: #000;
 }
 
 .prs-add-book__success * {
@@ -1045,7 +934,6 @@ body.prs-filter-open {
         display: flex;
         align-items: center;
         justify-content: center;
-        flex-direction: column;
         gap: 12px;
         margin-bottom: 24px;
 }
@@ -1054,25 +942,11 @@ body.prs-filter-open {
         font-size: 36px;
 }
 
-.prs-add-book__success-icon {
-        width: 88px;
-        height: 88px;
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-        -webkit-mask: url("../svg/check_circle_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg") no-repeat center / contain;
-        mask: url("../svg/check_circle_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg") no-repeat center / contain;
-        display: inline-block;
-}
-
-.prs-add-book__modal-content .prs-add-book__success-icon {
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A) !important;
-        background-color: transparent !important;
-}
-
 .prs-add-book__success-heading {
         margin: 0;
         font-size: 28px;
-        font-weight: 500;
-        color: #fff;
+        font-weight: 800;
+        color: #111827;
 }
 
 .prs-add-book__success-rule {
@@ -1090,7 +964,7 @@ body.prs-filter-open {
 
 .prs-add-book__success-author {
         font-size: 1.25rem;
-        color: #fff;
+        color: #6b7280;
         margin-bottom: 20px;
 }
 .prs-add-book__success-action {
@@ -1100,36 +974,18 @@ body.prs-filter-open {
         margin: 8px auto 0px;
         padding: 10px 15px;
         border-radius: 6px;
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
+        background: #000;
+        color: #fff;
         font-size: 14px;
         font-weight: 700;
         text-decoration: none;
         letter-spacing: 0.02em;
         gap: 8px;
-        opacity: 1;
-        transform: translateY(0);
+        opacity: 0;
+        transform: translateY(8px);
         transition: opacity 0.2s ease, transform 0.2s ease;
-        pointer-events: auto;
-        visibility: visible;
-}
-
-/* Force the success action link to render and stay visible. */
-.prs-add-book__success-action,
-.prs-add-book__success-action.is-ready {
-        display: inline-flex !important;
-        opacity: 1 !important;
-        visibility: visible !important;
-        pointer-events: auto !important;
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A) !important;
-        -webkit-background-clip: text !important;
-        background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        color: transparent !important;
-        font-size: 20px;
+        pointer-events: none;
+        visibility: hidden;
 }
 .prs-add-book__success-action.is-ready {
         opacity: 1;
@@ -1139,11 +995,8 @@ body.prs-filter-open {
 }
 .prs-add-book__success-action:hover,
 .prs-add-book__success-action:focus-visible {
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
+        background: #C79F32;
+        color: #fff;
         text-decoration: none;
 }
 .prs-add-book__success-action-icon {
@@ -1165,10 +1018,6 @@ div#prs-add-book-success {
 .prs-add-book__submit {
         position: relative;
 }
-
-#prs-add-book-submit {
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-}
 .prs-add-book__submit-spinner {
         display: none;
         width: 14px;
@@ -1184,10 +1033,6 @@ div#prs-add-book-success {
 }
 .prs-add-book__submit.is-loading .prs-add-book__submit-text {
         opacity: 0.7;
-}
-
-span.prs-add-book__submit-text {
-        background: none !important;
 }
 @keyframes prs-spin {
         to { transform: rotate(360deg); }
@@ -1206,14 +1051,13 @@ span.prs-add-book__submit-text {
 
 .prs-add-book__success-meta-label {
         font-size: 1.25rem;
-        color: #fff;
+        color: #111827;
         margin-bottom: 12px;
 }
 
 .prs-add-book__success-meta-value {
         font-size: 20px;
         font-weight: 800;
-        color: #fff;
 }
 
 .prs-add-book__success-meta-divider {
@@ -1347,10 +1191,6 @@ span.prs-add-book__submit-text {
         white-space: nowrap;
 }
 
-span.prs-add-book__author-chip-label {
-        color: #e5e5e5;
-}
-
 .prs-add-book__author-chip-remove {
         background: transparent;
         border: 0;
@@ -1374,20 +1214,6 @@ span.prs-add-book__author-chip-label {
         display: flex;
 }
 
-.prs-add-book__field-group {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        width: 100%;
-}
-
-.prs-add-book__field-label {
-        font-size: 10px;
-        color: #b3b3b3;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-}
-
 .prs-add-book__author-input {
         flex: 1 1 auto;
         min-width: 0;
@@ -1401,10 +1227,6 @@ span.prs-add-book__author-chip-label {
         color: #6b7280;
         font-size: 0.85rem;
         margin: 0;
-}
-
-p#prs_author_hint {
-        font-size: 10px;
 }
 
 .prs-add-book__author-add,
@@ -1424,11 +1246,6 @@ p#prs_author_hint {
         line-height: 1;
         cursor: pointer;
         transition: background-color 0.2s ease, border-color 0.2s ease;
-}
-
-/* Hide inline edit buttons in the add-book modal. */
-.prs-add-book__modal-content .prs-add-book__field-edit {
-        display: none !important;
 }
 
 .prs-add-book__value-chip {
@@ -1550,39 +1367,15 @@ table.prs-form__table {
 .prs-form__table input[type="file"] {
         width: 100%;
         padding: 10px 12px;
-        border: 0;
-        border-bottom: 2px solid rgba(255, 255, 255, 0.1);
-        border-radius: 0;
+        border: 1px solid #d0d0d0;
+        border-radius: 6px;
         font-size: 0.95rem;
         color: #333;
-        background-color: transparent;
+        background-color: #fff;
 }
 
 .prs-add-book__field {
         position: relative;
-}
-
-.prs-add-book__field--title #prs_title {
-        padding-right: 110px;
-}
-
-.prs-add-book__not-that {
-        position: absolute;
-        right: 12px;
-        top: 50%;
-        transform: translateY(-50%);
-        background: transparent;
-        border: none;
-        color: #dc2626;
-        font-size: 12px;
-        font-weight: 600;
-        cursor: pointer;
-        padding: 0;
-        line-height: 1;
-}
-
-.prs-add-book__not-that:focus-visible {
-        outline: none;
 }
 
 .prs-add-book__inline-warning {
@@ -1595,33 +1388,6 @@ table.prs-form__table {
         display: flex;
         align-items: center;
         gap: 8px;
-}
-
-.prs-add-book__field-inline--split {
-        display: grid;
-        grid-template-columns: 7fr 3fr;
-        gap: 16px;
-        align-items: end;
-}
-
-.prs-add-book__field-inline--split .prs-add-book__field-group {
-        min-width: 0;
-}
-
-.prs-add-book__field-inline--split .prs-add-book__field-group input {
-        width: 100%;
-        box-sizing: border-box;
-}
-
-.prs-add-book__field-inline--split #prs_pages {
-        -moz-appearance: textfield;
-        appearance: textfield;
-}
-
-.prs-add-book__field-inline--split #prs_pages::-webkit-outer-spin-button,
-.prs-add-book__field-inline--split #prs_pages::-webkit-inner-spin-button {
-        -webkit-appearance: none;
-        margin: 0;
 }
 
 .prs-add-book__field-inline input {
@@ -1658,46 +1424,19 @@ table.prs-form__table {
         text-align: left;
         font-size: 0.95rem;
         line-height: 1.35;
-        color: #d9d9d9;
+        color: #1f2937;
         cursor: pointer;
         white-space: normal;
         display: flex;
         flex-direction: column;
         gap: 4px;
-        border-bottom: 1px solid #ffffff;
+        border-bottom: 1px solid #e5e7eb;
 }
 
 .prs-add-book__suggestion:hover,
 .prs-add-book__suggestion:focus {
-        background: rgba(0, 0, 0, 0.9);
+        background: #f3f4f6;
         outline: none;
-}
-
-.prs-add-book__suggestion:hover .prs-add-book__suggestion-title,
-.prs-add-book__suggestion:focus .prs-add-book__suggestion-title,
-.prs-add-book__suggestion:hover .prs-add-book__suggestion-author,
-.prs-add-book__suggestion:focus .prs-add-book__suggestion-author,
-.prs-add-book__suggestion:hover .prs-add-book__suggestion-year,
-.prs-add-book__suggestion:focus .prs-add-book__suggestion-year {
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-        -webkit-background-clip: text;
-        background-clip: text;
-        -webkit-text-fill-color: transparent;
-        color: transparent;
-}
-
-/* Force gold gradient on hover in the add-book modal suggestion list. */
-.prs-add-book__modal-content .prs-add-book__suggestion:hover .prs-add-book__suggestion-title,
-.prs-add-book__modal-content .prs-add-book__suggestion:hover .prs-add-book__suggestion-author,
-.prs-add-book__modal-content .prs-add-book__suggestion:hover .prs-add-book__suggestion-year,
-.prs-add-book__modal-content .prs-add-book__suggestion:focus .prs-add-book__suggestion-title,
-.prs-add-book__modal-content .prs-add-book__suggestion:focus .prs-add-book__suggestion-author,
-.prs-add-book__modal-content .prs-add-book__suggestion:focus .prs-add-book__suggestion-year {
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A) !important;
-        -webkit-background-clip: text !important;
-        background-clip: text !important;
-        -webkit-text-fill-color: transparent !important;
-        color: transparent !important;
 }
 
 .prs-add-book__suggestion:last-child {
@@ -1716,7 +1455,7 @@ table.prs-form__table {
         gap: 8px;
         font-size: 1rem;
         font-weight: 600;
-        color: #ffffff;
+        color: #111827;
 }
 
 .prs-add-book__suggestion-dot {
@@ -1731,7 +1470,7 @@ table.prs-form__table {
 .prs-add-book__suggestion-author,
 .prs-add-book__suggestion-year {
         font-size: 10px;
-        color: #b3b3b3;
+        color: #4b5563;
 }
 
 .prs-form__table input[type="file"] {
@@ -1742,19 +1481,9 @@ table.prs-form__table {
         position: relative;
         display: flex;
         align-items: center;
-        justify-content: flex-start;
+        justify-content: center;
         gap: 16px;
         flex-wrap: wrap;
-        min-height: 110px;
-        padding: 10px 0;
-}
-
-.prs-form__file-preview {
-        order: 1;
-}
-
-.prs-form__file-trigger {
-        order: 2;
 }
 
 .prs-form__file-input {
@@ -1784,10 +1513,6 @@ table.prs-form__table {
         line-height: 1;
         cursor: pointer;
         transition: transform 0.15s ease, background 0.15s ease;
-}
-
-button#prs_cover_trigger {
-        border: #3f3f3f 1px solid;
 }
 
 .prs-form__file-trigger:hover,
@@ -1831,7 +1556,6 @@ button#prs_cover_trigger {
         background: #f3f4f6;
         border: 1px dashed #cbd5f5;
         overflow: hidden;
-        position: relative;
 }
 
 .prs-form__file-preview img {
@@ -1841,42 +1565,11 @@ button#prs_cover_trigger {
         display: block;
 }
 
-.prs-add-book__modal-content .prs-form__file-preview {
-        background: transparent;
-}
-
-.prs-add-book__modal-content .prs-form__file-preview.is-placeholder::before {
-        content: "";
-        position: absolute;
-        inset: 10px;
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-        -webkit-mask: url("../svg/upload_file_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg") no-repeat center / contain;
-        mask: url("../svg/upload_file_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg") no-repeat center / contain;
-        pointer-events: none;
-}
-
-.prs-form__file-control.is-dragover {
-        border-radius: 10px;
-        box-shadow: inset 0 0 0 2px #C79F32;
-}
-
-.prs-add-book__modal-content .prs-form__file-preview.is-placeholder img {
-        opacity: 0;
-}
-
 .prs-form__table input[type="text"]:focus,
 .prs-form__table input[type="number"]:focus,
 .prs-form__table input[type="file"]:focus {
-        outline: none;
-        border-bottom-color: #C79F32;
-}
-
-/* Remove theme focus rings inside the add-book modal. */
-.prs-add-book__modal-content input:focus,
-.prs-add-book__modal-content textarea:focus,
-.prs-add-book__modal-content select:focus {
-        outline: none !important;
-        box-shadow: none !important;
+        outline: 2px solid #0073aa;
+        outline-offset: 1px;
 }
 
 .prs-form__required {
@@ -2623,11 +2316,6 @@ display:inline-block;
         line-height:1;
         }
 
-h3#prs-book-title-placeholder {
-        font-size: 18px;
-        font-weight: 800;
-}
-
         h3#prs-book-author-placeholder{
         color:black;
         }
@@ -2694,13 +2382,10 @@ h3#prs-book-title-placeholder {
         border-radius:6px !important;
         background-color:#000000 !important;
         }
-.prs-cover-btn:hover,
-.prs-cover-btn:focus-visible{
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
-        color: #111;
-        outline: none;
-        box-shadow: none;
-}
+        .prs-cover-btn:hover,
+        .prs-cover-btn:focus-visible{
+        background:#2a2a2a;
+        }
         .prs-cover-overlay{
         position:absolute;
         inset:0;
@@ -3113,83 +2798,4 @@ p#derived-location {
         background: #ffffff !important;
         color: #111827 !important;
         border: 1px solid #cbd5f5 !important;
-}
-
-/* Ensure the add-book submit button keeps its gold gradient. */
-#prs-add-book-submit {
-        background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A) !important;
-        border: none !important;
-        color: #111 !important;
-        font-weight: 700;
-        text-shadow: none !important;
-        font-size: 14px;
-}
-
-/* Force only the form area to black, keep overlay untouched. */
-.prs-add-book__modal-content,
-.prs-add-book__modal-content * {
-        background: #1a1a1a !important;
-}
-
-/* Main text white, secondary/support text light gray. */
-.prs-add-book__modal-content,
-.prs-add-book__modal-content p,
-.prs-add-book__modal-content label,
-.prs-add-book__modal-content th,
-.prs-add-book__modal-content td,
-.prs-add-book__modal-content h1,
-.prs-add-book__modal-content h2,
-.prs-add-book__modal-content h3,
-.prs-add-book__modal-content h4,
-.prs-add-book__modal-content h5,
-.prs-add-book__modal-content h6,
-.prs-add-book__modal-content button,
-.prs-add-book__modal-content .prs-add-book__heading {
-        color: #ffffff !important;
-}
-
-.prs-add-book__modal-content .prs-form__label-note,
-.prs-add-book__modal-content .prs-add-book__author-hint,
-.prs-add-book__modal-content .prs-add-book__mode-switch,
-.prs-add-book__modal-content .prs-add-book__mode-button,
-.prs-add-book__modal-content .prs-add-book__mode-switch a,
-.prs-add-book__modal-content .prs-add-book__mode-separator,
-.prs-add-book__modal-content .prs-add-book__inline-warning {
-        color: #b3b3b3 !important;
-}
-
-.prs-add-book__modal-content ::placeholder {
-        color: #b3b3b3 !important;
-        opacity: 1;
-}
-
-/* Remove left labels column in the add-book modal. */
-.prs-add-book__modal-content .prs-form__table th {
-        display: none;
-}
-
-.prs-add-book__modal-content .prs-form__table td {
-        width: 100%;
-        padding-left: 0;
-}
-
-/* Poppins in the modal, white input text. */
-.prs-add-book__modal-content,
-.prs-add-book__modal-content * {
-        font-family: 'Poppins', sans-serif !important;
-}
-
-.prs-add-book__modal-content input[type="text"],
-.prs-add-book__modal-content input[type="number"],
-.prs-add-book__modal-content input[type="file"],
-.prs-add-book__modal-content textarea {
-        color: #ffffff !important;
-}
-
-/* Remove row separators inside the add-book form. */
-.prs-add-book__modal-content .prs-form__table,
-.prs-add-book__modal-content .prs-form__table tr,
-.prs-add-book__modal-content .prs-form__table th,
-.prs-add-book__modal-content .prs-form__table td {
-        border: none !important;
 }

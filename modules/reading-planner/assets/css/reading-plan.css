@@ -56,7 +56,7 @@
   overflow: auto;
   border-radius: 12px;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.24);
-  background: #000000;
+  background: #1a1a1a;
   font-family: 'Poppins', sans-serif;
   font-weight: 500;
   color: #ffffff;
@@ -73,7 +73,7 @@
 }
 
 .politeia-reading-plan-shell > :not(#summary-container) {
-  background-color: #000000;
+  background-color: #1a1a1a;
   color: #ffffff;
   text-align: center;
 }
@@ -1116,18 +1116,18 @@
 }
 
 .politeia-reading-plan-shell #summary-container {
-  background-color: #000000;
+  background-color: #1a1a1a;
   color: #ffffff;
   border: none;
 }
 
 .politeia-reading-plan-shell #summary-container .calendar-card {
-  background-color: #000000;
+  background-color: #1a1a1a;
   border: none;
 }
 
 .politeia-reading-plan-shell #summary-container .day-cell {
-  background-color: #000000;
+  background-color: #1a1a1a;
   border-color: #545454;
 }
 

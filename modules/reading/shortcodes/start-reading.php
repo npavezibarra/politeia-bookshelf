@@ -145,6 +145,10 @@ add_shortcode(
 			$prs_sr
 		);
 
+		$check_icon_url = defined( 'POLITEIA_READING_URL' )
+			? esc_url( POLITEIA_READING_URL . 'assets/svg/check_circle_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg' )
+			: '';
+
 		ob_start();
 		?>
 	<style>
@@ -408,9 +412,10 @@ add_shortcode(
 		height: 54px;
 		margin-bottom: 6px;
 	}
-	.prs-sr-flash-icon svg {
-		width: 54px;
-		height: 54px;
+	.prs-sr-flash-icon--check {
+		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+		-webkit-mask: url('<?php echo $check_icon_url; ?>') no-repeat center / contain;
+		mask: url('<?php echo $check_icon_url; ?>') no-repeat center / contain;
 	}
 	.prs-btn {
 		display: inline-flex;
@@ -637,19 +642,7 @@ add_shortcode(
         >
                 <div class="prs-sr-flash-inner">
                 <div id="prs-sr-summary" style="font-family: 'Poppins', sans-serif;">
-						<div class="prs-sr-flash-icon" aria-hidden="true">
-							<svg viewBox="0 0 24 24">
-								<defs>
-									<linearGradient id="prs-sr-gold-check" x1="0%" y1="0%" x2="100%" y2="100%">
-										<stop offset="0%" stop-color="#8A6B1E"></stop>
-										<stop offset="50%" stop-color="#C79F32"></stop>
-										<stop offset="100%" stop-color="#E9D18A"></stop>
-									</linearGradient>
-								</defs>
-								<circle cx="12" cy="12" r="9.5" fill="url(#prs-sr-gold-check)"></circle>
-								<path d="M7 12.5l3 3 7-7" fill="none" stroke="#111111" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path>
-							</svg>
-						</div>
+						<span class="prs-sr-flash-icon prs-sr-flash-icon--check" aria-hidden="true"></span>
                         <h2><?php esc_html_e( 'Great job!', 'politeia-reading' ); ?></h2>
                         <h3>
                                 <?php

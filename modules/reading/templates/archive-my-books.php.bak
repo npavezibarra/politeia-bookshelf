@@ -4,16 +4,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 get_header();
 
+echo '<div class="wrap">';
+
 if ( is_user_logged_in() ) {
-	echo do_shortcode( '[politeia_my_books render="header"]' );
-	echo '<div class="wrap">';
 	// Reutiliza exactamente lo que ves en el shortcode [politeia_my_books]
-	echo do_shortcode( '[politeia_my_books render="content"]' );
-	echo '</div>';
+	echo do_shortcode( '[politeia_my_books]' );
 } else {
-	echo '<div class="wrap">';
 	echo '<p>' . esc_html__( 'You must be logged in to view your library.', 'politeia-reading' ) . '</p>';
-	echo '</div>';
 }
+echo '</div>';
 
 get_footer();

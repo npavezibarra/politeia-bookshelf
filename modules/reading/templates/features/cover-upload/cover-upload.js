@@ -181,14 +181,9 @@
 
             <div class="prs-file-input">
               <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
-              <label for="fileInput" class="prs-btn prs-btn--ghost">${text('choose_file', 'Choose File')}</label>
             </div>
 
-            <div class="prs-crop-controls">
-              <p class="prs-crop-instructions">${text('crop_instructions', 'Drag or resize the selection on the image to crop.')}</p>
-            </div>
-
-            <span id="statusMessage" class="prs-cover-status">${text('status_awaiting', 'Awaiting file upload.')}</span>
+            <div class="prs-crop-controls"></div>
 
             <div class="prs-btn-group">
               <button class="prs-btn prs-btn--ghost" type="button" id="prs-cover-cancel">${text('cancel', 'Cancel')}</button>
@@ -211,6 +206,39 @@
     handles = cropArea ? Array.from(cropArea.querySelectorAll('.resize-handle')) : [];
     hideCropOverlay();
     setupCropEvents();
+
+    if (fileInput) {
+      fileInput.addEventListener('change', (event) => {
+        handleFiles(event && event.target ? event.target.files : null);
+      });
+    }
+
+    if (stage && fileInput) {
+      stage.addEventListener('click', () => {
+        fileInput.click();
+      });
+
+      ['dragenter', 'dragover'].forEach((eventName) => {
+        stage.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          stage.classList.add('drag-active');
+        });
+      });
+
+      ['dragleave', 'dragend', 'drop'].forEach((eventName) => {
+        stage.addEventListener(eventName, (event) => {
+          event.preventDefault();
+          stage.classList.remove('drag-active');
+        });
+      });
+
+      stage.addEventListener('drop', (event) => {
+        if (!event.dataTransfer || !event.dataTransfer.files) {
+          return;
+        }
+        handleFiles(event.dataTransfer.files);
+      });
+    }
     document.body.appendChild(modal);
 
     modal.addEventListener('click', (e) => {

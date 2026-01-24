@@ -22,6 +22,12 @@
     }
     return text.replace('%s', String(value)).replace('%d', String(value));
   };
+  const escapeHtml = (value) => String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
   const roundTo = (value, decimals) => {
     const factor = Math.pow(10, decimals);
     return Math.round((Number(value) + Number.EPSILON) * factor) / factor;
@@ -765,6 +771,9 @@
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
     const hasBook = !!activeBook;
     const startPageValue = parseInt(state.formData.startPage, 10) || 1;
+    const safeTitle = hasBook ? escapeHtml(activeBook?.title || '') : '';
+    const safeAuthor = hasBook ? escapeHtml(activeBook?.author || '') : '';
+    const safePages = hasBook ? escapeHtml(activeBook?.pages || '') : '';
     const coverBlock = hasBook && !activeBook?.cover ? `
         <div id="cover-upload-area" class="prs-cover-upload" role="button" tabindex="0" aria-label="${t('cover_upload_cta', 'upload cover')}">
           <input type="file" id="cover-file-input" class="prs-cover-input" accept="image/*" />
@@ -788,7 +797,7 @@
         </div>
       ` : `
         <div class="book-cover-frame">
-          <img class="book-cover-thumb" alt="${activeBook?.title || ''}" src="${activeBook?.cover || ''}">
+          <img class="book-cover-thumb" alt="${safeTitle}" src="${activeBook?.cover || ''}">
         </div>
       `;
 
@@ -805,9 +814,9 @@
         </button>
         ${coverBlock}
         <div class="book-summary-details">
-          <div class="book-summary-title">${activeBook?.title || ''}</div>
-          <div class="book-summary-author">${t('by_label', 'by')} ${activeBook?.author || t('unknown_author', 'Unknown author')}</div>
-          <div class="book-summary-pages">${activeBook?.pages || ''} ${t('pages_label', 'pages')}</div>
+          <div class="book-summary-title">${safeTitle}</div>
+          <div class="book-summary-author">${t('by_label', 'by')} ${safeAuthor || escapeHtml(t('unknown_author', 'Unknown author'))}</div>
+          <div class="book-summary-pages">${safePages} ${escapeHtml(t('pages_label', 'pages'))}</div>
         </div>
       </div>` : '';
     const startingPageInput = hasBook ? `

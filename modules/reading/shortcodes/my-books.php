@@ -5,114 +5,119 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 add_shortcode(
 	'politeia_my_books',
-	function () {
+	function ( $atts ) {
+		$atts = shortcode_atts(
+			array(
+				'render' => 'full',
+			),
+			$atts,
+			'politeia_my_books'
+		);
+		$render = strtolower( (string) $atts['render'] );
+
 		if ( ! is_user_logged_in() ) {
+			if ( 'header' === $render ) {
+				return '';
+			}
 			return '<p>' . esc_html__( 'You must be logged in to view your library.', 'politeia-reading' ) . '</p>';
 		}
 
-                wp_enqueue_style( 'politeia-reading' );
-                wp_enqueue_script( 'politeia-my-book' );
+		static $context = null;
+		if ( null === $context ) {
+			wp_enqueue_style( 'politeia-reading' );
+			wp_enqueue_script( 'politeia-my-book' );
 
-                $owning_labels = prs_get_owning_labels();
+			$owning_labels = prs_get_owning_labels();
 
-                $owning_messages = array(
-                        'missing' => __( 'Please enter both name and email.', 'politeia-reading' ),
-                        'saving'  => __( 'Saving...', 'politeia-reading' ),
-                        'error'   => __( 'Error saving contact.', 'politeia-reading' ),
-                        'alert'   => __( 'Error saving contact.', 'politeia-reading' ),
-                );
+			$owning_messages = array(
+				'missing' => __( 'Please enter both name and email.', 'politeia-reading' ),
+				'saving'  => __( 'Saving...', 'politeia-reading' ),
+				'error'   => __( 'Error saving contact.', 'politeia-reading' ),
+				'alert'   => __( 'Error saving contact.', 'politeia-reading' ),
+			);
 
-                $owning_nonce = wp_create_nonce( 'save_owning_contact' );
+			$owning_nonce = wp_create_nonce( 'save_owning_contact' );
 
-                wp_localize_script(
-                        'politeia-my-book',
-                        'PRS_LIBRARY',
-                        array(
-                                'ajax_url' => admin_url( 'admin-ajax.php' ),
-                                'strings'  => array(
-                                        'book_single'         => __( 'book', 'politeia-reading' ),
-                                        'book_plural'         => __( 'books', 'politeia-reading' ),
-                                        'error_loading_results' => __( 'Error loading results', 'politeia-reading' ),
-                                        'ajax_unavailable'    => __( 'Ajax URL not available for library search.', 'politeia-reading' ),
-                                        'press_enter_to_save' => __( 'Press Enter to save', 'politeia-reading' ),
-                                        'pages_error'         => __( 'Error saving pages.', 'politeia-reading' ),
-                                        'pages_too_small'     => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
-                                        'pages_saved'         => __( 'Saved!', 'politeia-reading' ),
-                                        'saved_short'         => __( 'Saved.', 'politeia-reading' ),
-                                        'status_saving'       => __( 'Saving...', 'politeia-reading' ),
-                                        'missing_contact'     => __( 'Please enter both name and email.', 'politeia-reading' ),
-                                        'borrower_buying_title' => __( 'Borrowed person is buying this book:', 'politeia-reading' ),
-                                        'borrower_buying_confirm' => __( 'Confirm that the borrower is purchasing or compensating for the book.', 'politeia-reading' ),
-                                        'error_saving_contact' => __( 'Error saving contact.', 'politeia-reading' ),
-                                        'error_saving_date'   => __( 'Error saving date.', 'politeia-reading' ),
-                                        'error_saving_channel' => __( 'Error saving channel.', 'politeia-reading' ),
-                                        'error_saving_rating' => __( 'Error saving rating.', 'politeia-reading' ),
-                                        'error_saving_format' => __( 'Error saving format.', 'politeia-reading' ),
-                                        'saved_successfully'  => __( 'Saved successfully.', 'politeia-reading' ),
-                                        'disabled_lost'       => __( 'Disabled while this book is lost.', 'politeia-reading' ),
-                                        'disabled_borrowed'   => __( 'Disabled while this book is being borrowed.', 'politeia-reading' ),
-                                        'filter_all'          => __( 'All', 'politeia-reading' ),
-                                        'selected_count'      => __( '%d selected', 'politeia-reading' ),
-                                        'channel_online'      => __( 'Online', 'politeia-reading' ),
-                                        'channel_store'       => __( 'Store', 'politeia-reading' ),
-                                        'remove_book_confirm' => __( 'Are you sure you want to remove this book from your library?', 'politeia-reading' ),
-                                        'remove_book_removing' => __( 'Removing...', 'politeia-reading' ),
-                                        'remove_book_error'   => __( 'Error removing book.', 'politeia-reading' ),
-                                        'images_from_google'  => __( 'Images from Google Books', 'politeia-reading' ),
-                                        'no_covers_found'     => __( 'No covers found.', 'politeia-reading' ),
-                                        'cover_save_failed'   => __( 'Unable to save cover.', 'politeia-reading' ),
-                                        'error_owning_status' => __( 'Error updating owning status.', 'politeia-reading' ),
-                                ),
-                                'messages' => array(
-                                        'invalid'   => __( 'Please enter a valid number of pages.', 'politeia-reading' ),
-                                        'too_small' => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
-                                        'error'     => __( 'There was an error saving the number of pages.', 'politeia-reading' ),
-                                ),
-                                'owning'   => array(
-                                        'nonce'    => $owning_nonce,
-                                        'labels'   => $owning_labels,
-                                        'messages' => $owning_messages,
-                                ),
-                        )
-                );
+			wp_localize_script(
+				'politeia-my-book',
+				'PRS_LIBRARY',
+				array(
+					'ajax_url' => admin_url( 'admin-ajax.php' ),
+					'strings'  => array(
+						'book_single'         => __( 'book', 'politeia-reading' ),
+						'book_plural'         => __( 'books', 'politeia-reading' ),
+						'error_loading_results' => __( 'Error loading results', 'politeia-reading' ),
+						'ajax_unavailable'    => __( 'Ajax URL not available for library search.', 'politeia-reading' ),
+						'press_enter_to_save' => __( 'Press Enter to save', 'politeia-reading' ),
+						'pages_error'         => __( 'Error saving pages.', 'politeia-reading' ),
+						'pages_too_small'     => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
+						'pages_saved'         => __( 'Saved!', 'politeia-reading' ),
+						'saved_short'         => __( 'Saved.', 'politeia-reading' ),
+						'status_saving'       => __( 'Saving...', 'politeia-reading' ),
+						'missing_contact'     => __( 'Please enter both name and email.', 'politeia-reading' ),
+						'borrower_buying_title' => __( 'Borrowed person is buying this book:', 'politeia-reading' ),
+						'borrower_buying_confirm' => __( 'Confirm that the borrower is purchasing or compensating for the book.', 'politeia-reading' ),
+						'error_saving_contact' => __( 'Error saving contact.', 'politeia-reading' ),
+						'error_saving_date'   => __( 'Error saving date.', 'politeia-reading' ),
+						'error_saving_channel' => __( 'Error saving channel.', 'politeia-reading' ),
+						'error_saving_rating' => __( 'Error saving rating.', 'politeia-reading' ),
+						'error_saving_format' => __( 'Error saving format.', 'politeia-reading' ),
+						'saved_successfully'  => __( 'Saved successfully.', 'politeia-reading' ),
+						'disabled_lost'       => __( 'Disabled while this book is lost.', 'politeia-reading' ),
+						'disabled_borrowed'   => __( 'Disabled while this book is being borrowed.', 'politeia-reading' ),
+						'filter_all'          => __( 'All', 'politeia-reading' ),
+						'selected_count'      => __( '%d selected', 'politeia-reading' ),
+						'channel_online'      => __( 'Online', 'politeia-reading' ),
+						'channel_store'       => __( 'Store', 'politeia-reading' ),
+						'remove_book_confirm' => __( 'Are you sure you want to remove this book from your library?', 'politeia-reading' ),
+						'remove_book_removing' => __( 'Removing...', 'politeia-reading' ),
+						'remove_book_error'   => __( 'Error removing book.', 'politeia-reading' ),
+						'images_from_google'  => __( 'Images from Google Books', 'politeia-reading' ),
+						'no_covers_found'     => __( 'No covers found.', 'politeia-reading' ),
+						'cover_save_failed'   => __( 'Unable to save cover.', 'politeia-reading' ),
+						'error_owning_status' => __( 'Error updating owning status.', 'politeia-reading' ),
+					),
+					'messages' => array(
+						'invalid'   => __( 'Please enter a valid number of pages.', 'politeia-reading' ),
+						'too_small' => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
+						'error'     => __( 'There was an error saving the number of pages.', 'politeia-reading' ),
+					),
+					'owning'   => array(
+						'nonce'    => $owning_nonce,
+						'labels'   => $owning_labels,
+						'messages' => $owning_messages,
+					),
+				)
+			);
 
-                $label_borrowing    = $owning_labels['borrowing'];
-                $label_borrowed     = $owning_labels['borrowed'];
-                $label_sold         = $owning_labels['sold'];
-                $label_lost         = $owning_labels['lost'];
-                $label_location     = $owning_labels['location'];
-                $label_in_shelf     = $owning_labels['in_shelf'];
-                $label_not_in_shelf = $owning_labels['not_in_shelf'];
-                $label_unknown      = $owning_labels['unknown'];
+			$user_id  = get_current_user_id();
+			if ( ! $user_id ) {
+				wp_get_current_user();
+				$user_id = get_current_user_id();
+			}
+			error_log( '[PRS_MY_BOOKS] Current user: ' . $user_id );
+			$per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
+			if ( $per_page < 1 ) {
+				$per_page = 15;
+			}
 
-                $user_id  = get_current_user_id();
-                if ( ! $user_id ) {
-                        wp_get_current_user();
-                        $user_id = get_current_user_id();
-                }
-                error_log( '[PRS_MY_BOOKS] Current user: ' . $user_id );
-                $per_page = (int) apply_filters( 'politeia_my_books_per_page', 15 );
-		if ( $per_page < 1 ) {
-			$per_page = 15;
-		}
+			// Usamos un parámetro propio para no interferir con 'paged'
+			$paged  = isset( $_GET['prs_page'] ) ? max( 1, absint( $_GET['prs_page'] ) ) : 1;
+			$offset = ( $paged - 1 ) * $per_page;
+			$force_recent = ! empty( $_GET['prs_added'] ) && '1' === (string) $_GET['prs_added'];
+			if ( $force_recent ) {
+				$paged  = 1;
+				$offset = 0;
+			}
 
-		// Usamos un parámetro propio para no interferir con 'paged'
-		$paged  = isset( $_GET['prs_page'] ) ? max( 1, absint( $_GET['prs_page'] ) ) : 1;
-		$offset = ( $paged - 1 ) * $per_page;
-                $force_recent = ! empty( $_GET['prs_added'] ) && '1' === (string) $_GET['prs_added'];
-                if ( $force_recent ) {
-                        $paged  = 1;
-                        $offset = 0;
-                }
+			global $wpdb;
+			$ub = $wpdb->prefix . 'politeia_user_books';
+			$b  = $wpdb->prefix . 'politeia_books';
 
-		global $wpdb;
-                $ub = $wpdb->prefix . 'politeia_user_books';
-                $b  = $wpdb->prefix . 'politeia_books';
-
-		// Total para paginación
-               $total = (int) $wpdb->get_var(
-                       $wpdb->prepare(
-                               "
+			// Total para paginación
+			$total = (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"
         SELECT COUNT(*)
         FROM $ub ub
         JOIN $b  b ON b.id = ub.book_id
@@ -120,271 +125,321 @@ add_shortcode(
           AND ub.deleted_at IS NULL
           AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')
     ",
-                               $user_id
-                       )
-               );
+					$user_id
+				)
+			);
 
-		if ( $total === 0 ) {
+			$context = array(
+				'user_id'       => $user_id,
+				'owning_labels' => $owning_labels,
+				'total'         => $total,
+				'per_page'      => $per_page,
+				'paged'         => $paged,
+				'offset'        => $offset,
+				'force_recent'  => $force_recent,
+				'empty'         => false,
+				'books'         => array(),
+				'pagination'    => array(),
+				'add_book'      => '',
+			);
+
+			if ( $total === 0 ) {
+				$context['empty'] = true;
+			} else {
+				// Página segura (por si cambió el total)
+				$max_pages = max( 1, (int) ceil( $total / $per_page ) );
+				if ( $paged > $max_pages ) {
+					$paged  = $max_pages;
+					$offset = ( $paged - 1 ) * $per_page;
+				}
+
+				// Traer filas sólo de la página actual
+				$books = prs_get_user_books_for_library(
+					$user_id,
+					array(
+						'per_page' => $per_page,
+						'offset'   => $offset,
+						'order'    => $force_recent ? 'recent' : 'title_asc',
+					)
+				);
+
+				error_log( '[PRS_MY_BOOKS] Found ' . count( $books ) . ' books for user ' . $user_id );
+
+				// Helper de enlaces de paginación
+				$base_url = remove_query_arg(
+					array(
+						'prs_page',
+						'prs_added',
+						'prs_added_title',
+						'prs_added_author',
+						'prs_added_year',
+						'prs_added_pages',
+						'prs_added_cover',
+						'prs_added_slug',
+					)
+				);
+				$pagination_links = paginate_links(
+					array(
+						'base'      => add_query_arg( 'prs_page', '%#%', $base_url ),
+						'format'    => '',
+						'current'   => $paged,
+						'total'     => $max_pages,
+						'mid_size'  => 2,
+						'end_size'  => 1,
+						'prev_text' => '',
+						'next_text' => '',
+						'type'      => 'array',
+					)
+				);
+
+				$add_book_shortcode = '';
+				if ( shortcode_exists( 'politeia_add_book' ) ) {
+					$add_book_shortcode = do_shortcode( '[politeia_add_book]' );
+				}
+
+				$context['books']      = $books;
+				$context['pagination'] = $pagination_links;
+				$context['add_book']   = $add_book_shortcode;
+			}
+		}
+
+		if ( ! empty( $context['empty'] ) ) {
+			if ( 'header' === $render ) {
+				return '';
+			}
 			return '<p>' . esc_html__( 'Your library is empty. Add a book first.', 'politeia-reading' ) . '</p>';
 		}
 
-		// Página segura (por si cambió el total)
-		$max_pages = max( 1, (int) ceil( $total / $per_page ) );
-		if ( $paged > $max_pages ) {
-			$paged  = $max_pages;
-			$offset = ( $paged - 1 ) * $per_page;
-		}
+		$render_header = function () use ( $context ) {
+			ob_start(); ?>
+			<div class="prs-library__header">
+				<div class="prs-library__header-inner">
+					<div class="prs-library__header-center">
+						<input
+							type="text"
+							id="my-library-search"
+							class="prs-library__search"
+							placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
+							onkeyup="filterLibrary()"
+						/>
+						<span
+							id="prs-book-count"
+							class="prs-book-count"
+							data-total="<?php echo esc_attr( $context['total'] ); ?>"
+							data-filter-active="0"
+						>
+							<?php
+							echo esc_html(
+								sprintf(
+									/* translators: %d: number of books. */
+									_n( '%d book', '%d books', $context['total'], 'politeia-reading' ),
+									$context['total']
+								)
+							);
+							?>
+						</span>
+					</div>
 
-                // Traer filas sólo de la página actual
-                $books = prs_get_user_books_for_library(
-                        $user_id,
-                        array(
-                                'per_page' => $per_page,
-                                'offset'   => $offset,
-                                'order'    => $force_recent ? 'recent' : 'title_asc',
-                        )
-                );
+					<div class="prs-library__header-actions">
+						<button
+							type="button"
+							class="prs-library__filter-btn button button-secondary"
+							aria-haspopup="dialog"
+							aria-controls="prs-filter-dashboard"
+							aria-expanded="false"
+						>
+							<span class="screen-reader-text"><?php esc_html_e( 'Filter', 'politeia-reading' ); ?></span>
+						</button>
+						<?php if ( $context['add_book'] ) : ?>
+							<div class="prs-library__header-add-book">
+								<?php echo $context['add_book']; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
+							</div>
+						<?php endif; ?>
+					</div>
+				</div>
+			</div>
+			<?php
+			return ob_get_clean();
+		};
 
-                error_log( '[PRS_MY_BOOKS] Found ' . count( $books ) . ' books for user ' . $user_id );
-
-		// Helper de enlaces de paginación
-		$base_url = remove_query_arg(
-			array(
-				'prs_page',
-				'prs_added',
-				'prs_added_title',
-				'prs_added_author',
-				'prs_added_year',
-				'prs_added_pages',
-				'prs_added_cover',
-				'prs_added_slug',
-			)
-		);
-		$pagination_links = paginate_links(
-			array(
-				'base'      => add_query_arg( 'prs_page', '%#%', $base_url ),
-				'format'    => '',
-				'current'   => $paged,
-				'total'     => $max_pages,
-				'mid_size'  => 2,
-				'end_size'  => 1,
-				'prev_text' => '',
-				'next_text' => '',
-				'type'      => 'array',
-			)
-		);
-
-		$add_book_shortcode = '';
-		if ( shortcode_exists( 'politeia_add_book' ) ) {
-			$add_book_shortcode = do_shortcode( '[politeia_add_book]' );
-		}
-
-		ob_start(); ?>
-        <div class="prs-library">
-               <div class="prs-library__header">
-                       <div class="prs-library__header-inner">
-
-                               <div class="prs-library__header-center">
-                                       <input
-                                               type="text"
-                                               id="my-library-search"
-                                               class="prs-library__search"
-                                               placeholder="<?php esc_attr_e( 'Search by Title or Author…', 'politeia-reading' ); ?>"
-                                               onkeyup="filterLibrary()"
-                                       />
-                                       <span
-                                               id="prs-book-count"
-                                               class="prs-book-count"
-                                               data-total="<?php echo esc_attr( $total ); ?>"
-                                               data-filter-active="0"
-                                       >
-                                               <?php
-                                               echo esc_html(
-                                                       sprintf(
-                                                               /* translators: %d: number of books. */
-                                                               _n( '%d book', '%d books', $total, 'politeia-reading' ),
-                                                               $total
-                                                       )
-                                               );
-                                               ?>
-                                       </span>
-                               </div>
-
-                               <div class="prs-library__header-actions">
-                                       <button
-                                               type="button"
-                                               class="prs-library__filter-btn button button-secondary"
-                                               aria-haspopup="dialog"
-                                               aria-controls="prs-filter-dashboard"
-                                               aria-expanded="false"
-                                       >
-                                               <?php esc_html_e( 'Filter', 'politeia-reading' ); ?>
-                                       </button>
-                                       <?php if ( $add_book_shortcode ) : ?>
-                                               <div class="prs-library__header-add-book">
-                                                       <?php echo $add_book_shortcode; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>
-                                               </div>
-                                       <?php endif; ?>
-                               </div>
-                       </div>
-               </div>
-		<table id="prs-library" class="prs-table">
+		$render_library = function ( $include_header ) use ( $context, $render_header ) {
+			ob_start(); ?>
+			<div class="prs-library">
+				<?php
+				if ( $include_header ) {
+					echo $render_header(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
+				}
+				?>
+				<table id="prs-library" class="prs-table">
                 <tbody>
                         <?php
-                        foreach ( (array) $books as $r ) {
+                        foreach ( (array) $context['books'] as $r ) {
                                 echo prs_render_book_row(
                                         $r,
                                         array(
-                                                'user_id'       => $user_id,
-                                                'owning_labels' => $owning_labels,
+                                                'user_id'       => $context['user_id'],
+                                                'owning_labels' => $context['owning_labels'],
                                         )
                                 ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
                         }
                         ?>
                 </tbody>
                 </table>
+				<div id="prs-library-no-results" class="prs-library__no-results" hidden>
+					<?php
+					$no_results_message = ( 0 === strpos( determine_locale(), 'es' ) )
+						? 'No hay libros que coincidan con tu título o autor'
+						: 'No books matches your title or author';
+					$no_results_icon = plugins_url(
+						'modules/reading/assets/svg/no_sim_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg',
+						dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
+					);
+					?>
+					<img class="prs-library__no-results-icon" src="<?php echo esc_url( $no_results_icon ); ?>" alt="" aria-hidden="true" />
+					<span class="prs-library__no-results-text"><?php echo esc_html( $no_results_message ); ?></span>
+				</div>
 
                 <?php prs_render_owning_overlay(); ?>
 
                 <?php wp_nonce_field( 'prs_update_user_book', 'prs_update_user_book_nonce' ); ?>
-        </div>
-	<?php if ( ! empty( $pagination_links ) ) : ?>
-		<nav class="prs-pagination-sheet" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
-			<div class="prs-pagination-sheet__inner">
-				<div class="prs-pagination-sheet__numbers">
-					<?php
-					foreach ( (array) $pagination_links as $link ) {
-						$label = trim( wp_strip_all_tags( $link ) );
-						if ( ! is_numeric( $label ) ) {
-							continue;
-						}
+			</div>
+			<?php if ( ! empty( $context['pagination'] ) ) : ?>
+				<nav class="prs-pagination-sheet" aria-label="<?php esc_attr_e( 'Library pagination', 'politeia-reading' ); ?>">
+					<div class="prs-pagination-sheet__inner">
+						<div class="prs-pagination-sheet__numbers">
+							<?php
+							foreach ( (array) $context['pagination'] as $link ) {
+								$label = trim( wp_strip_all_tags( $link ) );
+								if ( ! is_numeric( $label ) ) {
+									continue;
+								}
 
-						$is_current = strpos( $link, 'current' ) !== false;
-						if ( $is_current ) {
-							printf(
-								'<span class="prs-pagination-sheet__page is-current">%1$s</span>',
-								esc_html( $label )
-							);
-							continue;
-						}
+								$is_current = strpos( $link, 'current' ) !== false;
+								if ( $is_current ) {
+									printf(
+										'<span class="prs-pagination-sheet__page is-current">%1$s</span>',
+										esc_html( $label )
+									);
+									continue;
+								}
 
-						if ( preg_match( '/href="([^"]+)"/', $link, $matches ) ) {
-							printf(
-								'<a class="prs-pagination-sheet__page" href="%1$s">%2$s</a>',
-								esc_url( $matches[1] ),
-								esc_html( $label )
-							);
-						}
-					}
-					?>
+								if ( preg_match( '/href="([^"]+)"/', $link, $matches ) ) {
+									printf(
+										'<a class="prs-pagination-sheet__page" href="%1$s">%2$s</a>',
+										esc_url( $matches[1] ),
+										esc_html( $label )
+									);
+								}
+							}
+							?>
+						</div>
+					</div>
+				</nav>
+			<?php endif; ?>
+			<div id="prs-filter-overlay" class="prs-filter-overlay" hidden></div>
+			<div
+				id="prs-filter-dashboard"
+				class="prs-filter-dashboard prs-filter-modal"
+				role="dialog"
+				aria-modal="true"
+				aria-hidden="true"
+				aria-labelledby="prs-filter-title"
+				hidden
+			>
+				<div class="prs-filter-dashboard__panel" role="document">
+					<h2 id="prs-filter-title" class="prs-filter-dashboard__title"><?php esc_html_e( 'Filter Library', 'politeia-reading' ); ?></h2>
+					<form id="prs-filter-form" class="prs-filter-dashboard__form">
+						<div class="prs-filter-dashboard__group prs-filter-dashboard__group--owning">
+							<label class="prs-filter-dashboard__label"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
+							<div class="prs-filter-multi" data-filter="owning">
+								<button type="button" id="prs-filter-owning-toggle" class="prs-filter-multi__toggle" data-default-label="<?php esc_attr_e( 'All owning statuses', 'politeia-reading' ); ?>" aria-expanded="false" aria-controls="prs-filter-owning-panel">
+									<?php esc_html_e( 'All owning statuses', 'politeia-reading' ); ?>
+								</button>
+								<div id="prs-filter-owning-panel" class="prs-filter-multi__panel" hidden>
+									<label class="prs-filter-multi__option">
+										<input type="checkbox" value="in_shelf" data-group="owning" />
+										<?php esc_html_e( 'In Shelf', 'politeia-reading' ); ?>
+									</label>
+									<label class="prs-filter-multi__option">
+										<input type="checkbox" value="lost" data-group="owning" />
+										<?php esc_html_e( 'Lost', 'politeia-reading' ); ?>
+									</label>
+									<label class="prs-filter-multi__option">
+										<input type="checkbox" value="lent_out" data-group="owning" />
+										<?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?>
+									</label>
+									<label class="prs-filter-multi__option">
+										<input type="checkbox" value="sold" data-group="owning" />
+										<?php esc_html_e( 'Sold', 'politeia-reading' ); ?>
+									</label>
+								</div>
+							</div>
+						</div>
+						<div class="prs-filter-dashboard__group prs-filter-dashboard__group--reading">
+							<label class="prs-filter-dashboard__label"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
+							<div class="prs-filter-multi" data-filter="reading">
+								<button type="button" id="prs-filter-reading-toggle" class="prs-filter-multi__toggle" data-default-label="<?php esc_attr_e( 'All reading statuses', 'politeia-reading' ); ?>" aria-expanded="false" aria-controls="prs-filter-reading-panel">
+									<?php esc_html_e( 'All reading statuses', 'politeia-reading' ); ?>
+								</button>
+								<div id="prs-filter-reading-panel" class="prs-filter-multi__panel" hidden>
+									<label class="prs-filter-multi__option">
+										<input type="checkbox" value="not_started" data-group="reading" />
+										<?php esc_html_e( 'Not Started', 'politeia-reading' ); ?>
+									</label>
+									<label class="prs-filter-multi__option">
+										<input type="checkbox" value="started" data-group="reading" />
+										<?php esc_html_e( 'Started', 'politeia-reading' ); ?>
+									</label>
+									<label class="prs-filter-multi__option">
+										<input type="checkbox" value="finished" data-group="reading" />
+										<?php esc_html_e( 'Finished', 'politeia-reading' ); ?>
+									</label>
+								</div>
+							</div>
+						</div>
+						<div class="prs-filter-dashboard__group prs-filter-dashboard__group--progress">
+							<label for="prs-filter-progress-min" class="prs-filter-dashboard__label"><?php esc_html_e( 'Progress Range', 'politeia-reading' ); ?></label>
+							<div class="prs-filter-range prs-filter-range--custom" data-min="0" data-max="100">
+								<div class="prs-filter-range__track" id="prs-filter-progress-track">
+									<span class="prs-filter-range__edge prs-filter-range__edge--left" aria-hidden="true"></span>
+									<span class="prs-filter-range__edge prs-filter-range__edge--right" aria-hidden="true"></span>
+									<span class="prs-filter-range__fill" id="prs-filter-progress-fill" aria-hidden="true"></span>
+									<div class="prs-filter-range__thumb" id="prs-filter-progress-thumb-min" data-thumb="min" role="slider" aria-label="<?php esc_attr_e( 'Minimum progress', 'politeia-reading' ); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+										<span class="prs-filter-range__label">
+											<span class="prs-filter-range__tick" aria-hidden="true"></span>
+											<span class="prs-filter-range__value" data-display-for="prs-filter-progress-min">0%</span>
+										</span>
+									</div>
+									<div class="prs-filter-range__thumb" id="prs-filter-progress-thumb-max" data-thumb="max" role="slider" aria-label="<?php esc_attr_e( 'Maximum progress', 'politeia-reading' ); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" tabindex="0">
+										<span class="prs-filter-range__label">
+											<span class="prs-filter-range__tick" aria-hidden="true"></span>
+											<span class="prs-filter-range__value" data-display-for="prs-filter-progress-max">100%</span>
+										</span>
+									</div>
+								</div>
+								<input id="prs-filter-progress-min" class="prs-filter-range__input" type="hidden" value="0" />
+								<input id="prs-filter-progress-max" class="prs-filter-range__input" type="hidden" value="100" />
+							</div>
+						</div>
+						<div class="prs-filter-dashboard__group prs-filter-dashboard__group--order">
+							<label for="prs-filter-order" class="prs-filter-dashboard__label"><?php esc_html_e( 'Order By', 'politeia-reading' ); ?></label>
+							<select id="prs-filter-order" class="prs-filter-dashboard__select">
+								<option value="title_asc"><?php esc_html_e( 'Title (A → Z)', 'politeia-reading' ); ?></option>
+								<option value="title_desc"><?php esc_html_e( 'Title (Z → A)', 'politeia-reading' ); ?></option>
+								<option value="author_asc"><?php esc_html_e( 'Author (A → Z)', 'politeia-reading' ); ?></option>
+								<option value="author_desc"><?php esc_html_e( 'Author (Z → A)', 'politeia-reading' ); ?></option>
+								<option value="progress_asc"><?php esc_html_e( 'Progress (Low → High)', 'politeia-reading' ); ?></option>
+								<option value="progress_desc"><?php esc_html_e( 'Progress (High → Low)', 'politeia-reading' ); ?></option>
+							</select>
+						</div>
+						<div class="prs-filter-dashboard__actions">
+							<button type="submit" id="prs-filter-apply" class="button button-primary"><?php esc_html_e( 'Apply', 'politeia-reading' ); ?></button>
+							<button type="button" id="prs-filter-reset" class="button button-secondary"><?php esc_html_e( 'Reset Filters', 'politeia-reading' ); ?></button>
+						</div>
+					</form>
 				</div>
 			</div>
-		</nav>
-	<?php endif; ?>
-        <div id="prs-filter-overlay" class="prs-filter-overlay" hidden></div>
-        <div
-                id="prs-filter-dashboard"
-                class="prs-filter-dashboard prs-filter-modal"
-                role="dialog"
-                aria-modal="true"
-                aria-hidden="true"
-                aria-labelledby="prs-filter-title"
-                hidden
-        >
-                <div class="prs-filter-dashboard__panel" role="document">
-                        <h2 id="prs-filter-title" class="prs-filter-dashboard__title"><?php esc_html_e( 'Filter Library', 'politeia-reading' ); ?></h2>
-                        <form id="prs-filter-form" class="prs-filter-dashboard__form">
-                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--owning">
-                                        <label class="prs-filter-dashboard__label"><?php esc_html_e( 'Owning Status', 'politeia-reading' ); ?></label>
-                                        <div class="prs-filter-multi" data-filter="owning">
-                                                <button type="button" id="prs-filter-owning-toggle" class="prs-filter-multi__toggle" data-default-label="<?php esc_attr_e( 'All owning statuses', 'politeia-reading' ); ?>" aria-expanded="false" aria-controls="prs-filter-owning-panel">
-                                                        <?php esc_html_e( 'All owning statuses', 'politeia-reading' ); ?>
-                                                </button>
-                                                <div id="prs-filter-owning-panel" class="prs-filter-multi__panel" hidden>
-                                                        <label class="prs-filter-multi__option">
-                                                                <input type="checkbox" value="in_shelf" data-group="owning" />
-                                                                <?php esc_html_e( 'In Shelf', 'politeia-reading' ); ?>
-                                                        </label>
-                                                        <label class="prs-filter-multi__option">
-                                                                <input type="checkbox" value="lost" data-group="owning" />
-                                                                <?php esc_html_e( 'Lost', 'politeia-reading' ); ?>
-                                                        </label>
-                                                        <label class="prs-filter-multi__option">
-                                                                <input type="checkbox" value="lent_out" data-group="owning" />
-                                                                <?php esc_html_e( 'Lent Out', 'politeia-reading' ); ?>
-                                                        </label>
-                                                        <label class="prs-filter-multi__option">
-                                                                <input type="checkbox" value="sold" data-group="owning" />
-                                                                <?php esc_html_e( 'Sold', 'politeia-reading' ); ?>
-                                                        </label>
-                                                </div>
-                                        </div>
-                                </div>
-                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--reading">
-                                        <label class="prs-filter-dashboard__label"><?php esc_html_e( 'Reading Status', 'politeia-reading' ); ?></label>
-                                        <div class="prs-filter-multi" data-filter="reading">
-                                                <button type="button" id="prs-filter-reading-toggle" class="prs-filter-multi__toggle" data-default-label="<?php esc_attr_e( 'All reading statuses', 'politeia-reading' ); ?>" aria-expanded="false" aria-controls="prs-filter-reading-panel">
-                                                        <?php esc_html_e( 'All reading statuses', 'politeia-reading' ); ?>
-                                                </button>
-                                                <div id="prs-filter-reading-panel" class="prs-filter-multi__panel" hidden>
-                                                        <label class="prs-filter-multi__option">
-                                                                <input type="checkbox" value="not_started" data-group="reading" />
-                                                                <?php esc_html_e( 'Not Started', 'politeia-reading' ); ?>
-                                                        </label>
-                                                        <label class="prs-filter-multi__option">
-                                                                <input type="checkbox" value="started" data-group="reading" />
-                                                                <?php esc_html_e( 'Started', 'politeia-reading' ); ?>
-                                                        </label>
-                                                        <label class="prs-filter-multi__option">
-                                                                <input type="checkbox" value="finished" data-group="reading" />
-                                                                <?php esc_html_e( 'Finished', 'politeia-reading' ); ?>
-                                                        </label>
-                                                </div>
-                                        </div>
-                                </div>
-                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--progress">
-                                        <label for="prs-filter-progress-min" class="prs-filter-dashboard__label"><?php esc_html_e( 'Progress Range', 'politeia-reading' ); ?></label>
-                                        <div class="prs-filter-range prs-filter-range--custom" data-min="0" data-max="100">
-                                                <div class="prs-filter-range__track" id="prs-filter-progress-track">
-                                                        <span class="prs-filter-range__edge prs-filter-range__edge--left" aria-hidden="true"></span>
-                                                        <span class="prs-filter-range__edge prs-filter-range__edge--right" aria-hidden="true"></span>
-                                                        <span class="prs-filter-range__fill" id="prs-filter-progress-fill" aria-hidden="true"></span>
-                                                        <div class="prs-filter-range__thumb" id="prs-filter-progress-thumb-min" data-thumb="min" role="slider" aria-label="<?php esc_attr_e( 'Minimum progress', 'politeia-reading' ); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
-                                                                <span class="prs-filter-range__label">
-                                                                        <span class="prs-filter-range__tick" aria-hidden="true"></span>
-                                                                        <span class="prs-filter-range__value" data-display-for="prs-filter-progress-min">0%</span>
-                                                                </span>
-                                                        </div>
-                                                        <div class="prs-filter-range__thumb" id="prs-filter-progress-thumb-max" data-thumb="max" role="slider" aria-label="<?php esc_attr_e( 'Maximum progress', 'politeia-reading' ); ?>" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" tabindex="0">
-                                                                <span class="prs-filter-range__label">
-                                                                        <span class="prs-filter-range__tick" aria-hidden="true"></span>
-                                                                        <span class="prs-filter-range__value" data-display-for="prs-filter-progress-max">100%</span>
-                                                                </span>
-                                                        </div>
-                                                </div>
-                                                <input id="prs-filter-progress-min" class="prs-filter-range__input" type="hidden" value="0" />
-                                                <input id="prs-filter-progress-max" class="prs-filter-range__input" type="hidden" value="100" />
-                                        </div>
-                                </div>
-                                <div class="prs-filter-dashboard__group prs-filter-dashboard__group--order">
-                                        <label for="prs-filter-order" class="prs-filter-dashboard__label"><?php esc_html_e( 'Order By', 'politeia-reading' ); ?></label>
-                                        <select id="prs-filter-order" class="prs-filter-dashboard__select">
-                                                <option value="title_asc"><?php esc_html_e( 'Title (A → Z)', 'politeia-reading' ); ?></option>
-                                                <option value="title_desc"><?php esc_html_e( 'Title (Z → A)', 'politeia-reading' ); ?></option>
-                                                <option value="author_asc"><?php esc_html_e( 'Author (A → Z)', 'politeia-reading' ); ?></option>
-                                                <option value="author_desc"><?php esc_html_e( 'Author (Z → A)', 'politeia-reading' ); ?></option>
-                                                <option value="progress_asc"><?php esc_html_e( 'Progress (Low → High)', 'politeia-reading' ); ?></option>
-                                                <option value="progress_desc"><?php esc_html_e( 'Progress (High → Low)', 'politeia-reading' ); ?></option>
-                                        </select>
-                                </div>
-                                <div class="prs-filter-dashboard__actions">
-                                        <button type="submit" id="prs-filter-apply" class="button button-primary"><?php esc_html_e( 'Apply', 'politeia-reading' ); ?></button>
-                                        <button type="button" id="prs-filter-reset" class="button button-secondary"><?php esc_html_e( 'Reset Filters', 'politeia-reading' ); ?></button>
-                                </div>
-                        </form>
-                </div>
-        </div>
-        <script>
+			<script>
         (function() {
                 function getStrings() {
                         return (window.PRS_LIBRARY && window.PRS_LIBRARY.strings) ? window.PRS_LIBRARY.strings : {};
@@ -477,10 +532,30 @@ add_shortcode(
                                         tbody.innerHTML = data;
                                 }
 
+                                updateNoResultsMessage('');
                                 updateBookCount();
                         } catch (err) {
                                 console.error('Error loading library page:', err);
                         }
+                }
+
+                function updateNoResultsMessage(query) {
+                        var message = document.getElementById('prs-library-no-results');
+                        var tbody = document.querySelector('#prs-library tbody');
+                        if (!message || !tbody) {
+                                return;
+                        }
+                        if (!query) {
+                                message.hidden = true;
+                                return;
+                        }
+                        var visibleRows = Array.from(tbody.querySelectorAll('tr')).filter(function(row) {
+                                if (row.style.display === 'none' || row.hidden || row.getAttribute('data-empty') === '1') {
+                                        return false;
+                                }
+                                return true;
+                        });
+                        message.hidden = visibleRows.length !== 0;
                 }
 
                 async function filterLibrary() {
@@ -494,6 +569,7 @@ add_shortcode(
                                         counter.removeAttribute('data-filtered-count');
                                 }
                                 await loadLibraryPage(1);
+                                updateNoResultsMessage('');
                                 updateBookCount({ filterActive: false });
                                 return;
                         }
@@ -519,6 +595,7 @@ add_shortcode(
                                         });
                                 }
 
+                                updateNoResultsMessage(query);
                                 updateBookCount({ filterActive: true });
                         } catch (err) {
                                 console.error('Error fetching all books:', err);
@@ -560,7 +637,17 @@ add_shortcode(
                 }
         })();
         </script>
-                <?php
-                return ob_get_clean();
-        }
+			<?php
+			return ob_get_clean();
+		};
+
+		if ( 'header' === $render ) {
+			return $render_header();
+		}
+		if ( 'content' === $render ) {
+			return $render_library( false );
+		}
+
+		return $render_library( true );
+	}
 );

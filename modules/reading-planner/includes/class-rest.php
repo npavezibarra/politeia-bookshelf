@@ -186,9 +186,17 @@ class Rest {
 			return new WP_REST_Response( array( 'error' => 'missing_required_fields' ), 400 );
 		}
 
+		$allowed_goal_kinds = array( 'complete_books', 'habit' );
+		$allowed_metrics    = array( 'pages_total', 'pages_per_session', 'daily_threshold' );
+		$allowed_periods    = array( 'plan', 'session', 'day' );
+		$max_sessions       = 400;
+		if ( $planned_sessions && count( $planned_sessions ) > $max_sessions ) {
+			return new WP_REST_Response( array( 'error' => 'too_many_sessions' ), 400 );
+		}
+
 		$plan_name = isset( $payload['name'] ) ? sanitize_text_field( (string) $payload['name'] ) : 'Reading Plan';
 		$plan_type = isset( $payload['plan_type'] ) ? sanitize_text_field( (string) $payload['plan_type'] ) : 'custom';
-		$status    = isset( $payload['status'] ) ? sanitize_text_field( (string) $payload['status'] ) : 'accepted';
+		$status    = 'accepted';
 
 		global $wpdb;
 		$plans_table    = $wpdb->prefix . 'politeia_plans';
@@ -250,6 +258,15 @@ class Rest {
 				error_log( '[ReadingPlanner] Invalid goal payload.' );
 				return new WP_REST_Response( array( 'error' => 'invalid_goal' ), 400 );
 			}
+			if ( ! in_array( $goal_kind, $allowed_goal_kinds, true )
+				|| ! in_array( $metric, $allowed_metrics, true )
+				|| ! in_array( $period, $allowed_periods, true ) ) {
+				if ( $transaction_started ) {
+					$wpdb->query( 'ROLLBACK' );
+				}
+				error_log( '[ReadingPlanner] Goal payload failed validation.' );
+				return new WP_REST_Response( array( 'error' => 'invalid_goal' ), 400 );
+			}
 
 			$goal_inserted = $wpdb->insert(
 				$goals_table,
@@ -292,10 +309,16 @@ class Rest {
 				}
 
 				$start_dt = date_create_immutable( $planned_start, wp_timezone() );
-				if ( $start_dt ) {
-					$planned_start = $start_dt->setTime( 0, 0, 0 )->format( 'Y-m-d H:i:s' );
-					$planned_end   = $start_dt->setTime( 23, 59, 59 )->format( 'Y-m-d H:i:s' );
+				if ( ! $start_dt ) {
+					if ( $transaction_started ) {
+						$wpdb->query( 'ROLLBACK' );
+					}
+					error_log( '[ReadingPlanner] Invalid planned session date.' );
+					return new WP_REST_Response( array( 'error' => 'invalid_session' ), 400 );
 				}
+
+				$planned_start = $start_dt->setTime( 0, 0, 0 )->format( 'Y-m-d H:i:s' );
+				$planned_end   = $start_dt->setTime( 23, 59, 59 )->format( 'Y-m-d H:i:s' );
 
 				$session_inserted = $wpdb->insert(
 					$sessions_table,
@@ -348,6 +371,11 @@ class Rest {
 			return new WP_REST_Response( array( 'error' => 'not_logged_in' ), 401 );
 		}
 
+		$can_create = apply_filters( 'prs_reading_plan_can_create_book', current_user_can( 'edit_posts' ), get_current_user_id() );
+		if ( ! $can_create ) {
+			return new WP_REST_Response( array( 'error' => 'forbidden' ), 403 );
+		}
+
 		$nonce = $request->get_header( 'X-WP-Nonce' ) ?: ( $request['nonce'] ?? '' );
 		if ( ! wp_verify_nonce( $nonce, 'wp_rest' ) ) {
 			return new WP_REST_Response( array( 'error' => 'invalid_nonce' ), 403 );
@@ -379,6 +407,11 @@ class Rest {
 	public static function ajax_create_book() {
 		if ( ! is_user_logged_in() ) {
 			wp_send_json_error( array( 'error' => 'not_logged_in' ), 401 );
+		}
+
+		$can_create = apply_filters( 'prs_reading_plan_can_create_book', current_user_can( 'edit_posts' ), get_current_user_id() );
+		if ( ! $can_create ) {
+			wp_send_json_error( array( 'error' => 'forbidden' ), 403 );
 		}
 
 		check_ajax_referer( 'prs_reading_plan_add_book', 'nonce' );

@@ -78,6 +78,9 @@ January 1st, 2026, 20:56 UTC
 3. Guarded ISBN writes in the ChatGPT DB handler when the column is present.
 
 January 1st, 2026, 21:08 UTC
+1. Restyled the add-book modal to the dark Poppins UI, updated fields/placeholders, suggestions, and success screen visuals.
+2. Added drag-and-drop cover upload, placeholder icon swap, and fixed local cover uploads to persist alongside API covers.
+3. Refined library search UX (no-results messaging, header styling) and aligned ISBN/Pages layout and cover upload modal styling.
 1. Attempted multiple fixes to ISBN-based autocomplete selection; ISBN suggestions still do not populate Title/Author/Year/Pages/Cover fields.
 2. Deferred final resolution and documented follow-up needed.
 

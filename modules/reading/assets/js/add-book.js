@@ -175,6 +175,11 @@
 
                 successActive = false;
 
+                if (form) {
+                        form.reset();
+                        form.dispatchEvent(new Event('reset', { bubbles: true }));
+                }
+
                 if (successContainer) {
                         successContainer.hidden = true;
                 }
@@ -184,6 +189,15 @@
                 }
 
                 setMode('single');
+
+        };
+
+        var closeModal = function () {
+                resetToForm(true);
+                if (modal) {
+                        modal.style.display = 'none';
+                        modal.setAttribute('data-success', '0');
+                }
         };
 
         var activateSuccess = function () {
@@ -213,14 +227,25 @@
                 modal.setAttribute('data-success', '0');
         };
 
-        if (closeButton) {
-                closeButton.addEventListener('click', resetToForm);
+        var closeButtons = modal ? modal.querySelectorAll('.prs-add-book__close') : null;
+        if (closeButtons && closeButtons.length) {
+                for (var cb = 0; cb < closeButtons.length; cb++) {
+                        closeButtons[cb].addEventListener('click', function (event) {
+                                if (event && typeof event.preventDefault === 'function') {
+                                        event.preventDefault();
+                                }
+                                if (event && typeof event.stopPropagation === 'function') {
+                                        event.stopPropagation();
+                                }
+                                closeModal();
+                        });
+                }
         }
 
         if (modal) {
                 modal.addEventListener('click', function (event) {
                         if (event.target === modal) {
-                                resetToForm();
+                                closeModal();
                         }
                 });
         }
@@ -245,18 +270,7 @@
         activateSuccess();
 
         if (successAction) {
-                var revealAction = function () {
-                        successAction.classList.add('is-ready');
-                };
-
-                if (document.fonts && typeof document.fonts.load === 'function') {
-                        Promise.race([
-                                document.fonts.load('24px "Material Symbols Outlined"'),
-                                new Promise(function (resolve) { setTimeout(resolve, 1200); })
-                        ]).then(revealAction).catch(revealAction);
-                } else {
-                        setTimeout(revealAction, 300);
-                }
+                successAction.classList.add('is-ready');
         }
 
         var authorContainer = document.getElementById('prs_author_fields');
@@ -266,6 +280,7 @@
         var authorInputWrapper = authorContainer ? authorContainer.querySelector('.prs-add-book__author-input-wrapper') : null;
         var authorHiddenContainer = document.getElementById('prs_author_hidden');
         var authorHint = document.getElementById('prs_author_hint');
+        var autoFillNote = document.getElementById('prs-add-book-auto-fill-note');
         var titleInput = document.getElementById('prs_title');
         var yearInput = document.getElementById('prs_year');
         var yearDisplay = document.getElementById('prs_year_display');
@@ -291,19 +306,33 @@
                 return String(input.value || '').trim();
         };
 
+        var toggleFieldLabel = function (input) {
+                if (!input) {
+                        return;
+                }
+                var id = input.id || '';
+                if (!id) {
+                        return;
+                }
+                var label = document.querySelector('.prs-add-book__field-label[data-for="' + id + '"]');
+                if (!label) {
+                        return;
+                }
+                label.hidden = getFieldValue(input) === '';
+        };
+
         var updateEditFieldState = function (input, editButton, editMode, display) {
                 if (!input) {
                         return;
                 }
                 var hasValue = getFieldValue(input) !== '';
-                var hideInput = hasValue && !editMode;
-                input.hidden = hideInput;
+                input.hidden = false;
                 if (display) {
                         display.textContent = getFieldValue(input);
-                        display.hidden = !hasValue || editMode;
+                        display.hidden = true;
                 }
                 if (editButton) {
-                        editButton.hidden = !(hasValue && !editMode);
+                        editButton.hidden = true;
                 }
         };
 
@@ -584,6 +613,10 @@
                 refreshAuthors();
         }
 
+        toggleFieldLabel(yearInput);
+        toggleFieldLabel(isbnInput);
+        toggleFieldLabel(pagesInput);
+
         if (yearInput) {
                 updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
                 yearInput.addEventListener('input', function () {
@@ -591,12 +624,14 @@
                                 yearEditMode = true;
                                 updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
                         }
+                        toggleFieldLabel(yearInput);
                 });
                 yearInput.addEventListener('blur', function () {
                         if (getFieldValue(yearInput)) {
                                 yearEditMode = false;
                                 updateEditFieldState(yearInput, yearEditButton, yearEditMode, yearDisplay);
                         }
+                        toggleFieldLabel(yearInput);
                 });
         }
 
@@ -621,12 +656,14 @@
                                 isbnEditMode = true;
                                 updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
                         }
+                        toggleFieldLabel(isbnInput);
                 });
                 isbnInput.addEventListener('blur', function () {
                         if (getFieldValue(isbnInput)) {
                                 isbnEditMode = false;
                                 updateEditFieldState(isbnInput, isbnEditButton, isbnEditMode, isbnDisplay);
                         }
+                        toggleFieldLabel(isbnInput);
                 });
         }
 
@@ -651,12 +688,14 @@
                                 pagesEditMode = true;
                                 updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
                         }
+                        toggleFieldLabel(pagesInput);
                 });
                 pagesInput.addEventListener('blur', function () {
                         if (getFieldValue(pagesInput)) {
                                 pagesEditMode = false;
                                 updateEditFieldState(pagesInput, pagesEditButton, pagesEditMode, pagesDisplay);
                         }
+                        toggleFieldLabel(pagesInput);
                 });
         }
 
@@ -680,6 +719,7 @@
 
         var authorInput = getPrimaryAuthorInput();
         var suggestionContainer = document.getElementById('prs_title_suggestions');
+        var notThatButton = document.getElementById('prs_title_not_that');
         var isbnSuggestionContainer = document.getElementById('prs_isbn_suggestions');
         var autocompleteConfig = typeof window !== 'undefined' ? window.PRS_ADD_BOOK_AUTOCOMPLETE : null;
         var canonicalEndpoint = autocompleteConfig && autocompleteConfig.ajax_url ? autocompleteConfig.ajax_url : '';
@@ -700,6 +740,15 @@
                 if (titleInput.parentNode) {
                         titleInput.parentNode.appendChild(suggestionContainer);
                 }
+        }
+
+        if (notThatButton) {
+                notThatButton.addEventListener('click', function () {
+                        resetSuggestions();
+                        if (titleInput) {
+                                titleInput.focus();
+                        }
+                });
         }
 
         titleInput.setAttribute('role', 'combobox');
@@ -730,6 +779,9 @@
                 suggestionContainer.classList.remove('is-visible');
                 suggestionContainer.setAttribute('aria-hidden', 'true');
                 titleInput.setAttribute('aria-expanded', 'false');
+                if (notThatButton) {
+                        notThatButton.hidden = true;
+                }
         };
 
         var cancelPendingRequest = function () {
@@ -1011,20 +1063,31 @@
                 if (!coverPreviewWrapper || !coverPreviewImage) {
                         return;
                 }
+                var updateCoverPlaceholderState = function () {
+                        if (!coverPreviewWrapper || !coverPreviewImage) {
+                                return;
+                        }
+                        var src = coverPreviewImage.getAttribute('src') || '';
+                        var isPlaceholder = coverPlaceholder && src === coverPlaceholder;
+                        coverPreviewWrapper.classList.toggle('is-placeholder', !!isPlaceholder);
+                };
                 if (coverUrlInput) {
                         coverUrlInput.value = url || '';
                 }
                 if (!url) {
-                        coverPreviewWrapper.hidden = true;
                         if (coverPlaceholder) {
                                 coverPreviewImage.src = coverPlaceholder;
+                                coverPreviewWrapper.hidden = false;
                         } else {
                                 coverPreviewImage.removeAttribute('src');
+                                coverPreviewWrapper.hidden = true;
                         }
+                        updateCoverPlaceholderState();
                         return;
                 }
                 coverPreviewImage.src = url;
                 coverPreviewWrapper.hidden = false;
+                updateCoverPlaceholderState();
         };
 
         var checkUserBookStatus = function (item) {
@@ -1254,6 +1317,14 @@
                 if (item.cover) {
                         setCoverPreview(item.cover);
                 }
+
+                if (autoFillNote) {
+                        autoFillNote.hidden = !(item.title || item.author || (item.authors && item.authors.length) || item.year || item.isbn || item.pages);
+                }
+
+                toggleFieldLabel(yearInput);
+                toggleFieldLabel(isbnInput);
+                toggleFieldLabel(pagesInput);
         };
 
         var selectSuggestion = function (item) {
@@ -1310,6 +1381,40 @@
                         if (coverFileInput.files && coverFileInput.files.length) {
                                 coverUrlInput.value = '';
                         }
+                });
+        }
+
+        var coverDropZone = coverFileInput ? coverFileInput.closest('.prs-form__file-control') : null;
+        if (coverDropZone && coverFileInput) {
+                var setDragState = function (active) {
+                        coverDropZone.classList.toggle('is-dragover', !!active);
+                };
+                ['dragenter', 'dragover'].forEach(function (eventName) {
+                        coverDropZone.addEventListener(eventName, function (event) {
+                                event.preventDefault();
+                                setDragState(true);
+                        });
+                });
+                ['dragleave', 'dragend', 'drop'].forEach(function (eventName) {
+                        coverDropZone.addEventListener(eventName, function () {
+                                setDragState(false);
+                        });
+                });
+                coverDropZone.addEventListener('drop', function (event) {
+                        event.preventDefault();
+                        if (!event.dataTransfer || !event.dataTransfer.files || !event.dataTransfer.files.length) {
+                                return;
+                        }
+                        if (typeof DataTransfer !== 'undefined') {
+                                var dt = new DataTransfer();
+                                for (var i = 0; i < event.dataTransfer.files.length; i++) {
+                                        dt.items.add(event.dataTransfer.files[i]);
+                                }
+                                coverFileInput.files = dt.files;
+                        } else {
+                                coverFileInput.files = event.dataTransfer.files;
+                        }
+                        coverFileInput.dispatchEvent(new Event('change', { bubbles: true }));
                 });
         }
 
@@ -1392,12 +1497,15 @@
                                         selectSuggestion(suggestion);
                                 };
                         })(item));
-                        suggestionContainer.appendChild(button);
-                }
+                suggestionContainer.appendChild(button);
+        }
 
-                suggestionContainer.classList.add('is-visible');
-                suggestionContainer.setAttribute('aria-hidden', 'false');
-                titleInput.setAttribute('aria-expanded', 'true');
+        suggestionContainer.classList.add('is-visible');
+        suggestionContainer.setAttribute('aria-hidden', 'false');
+        titleInput.setAttribute('aria-expanded', 'true');
+        if (notThatButton) {
+                notThatButton.hidden = false;
+        }
         };
 
         var parseYear = function (publishedDate) {
