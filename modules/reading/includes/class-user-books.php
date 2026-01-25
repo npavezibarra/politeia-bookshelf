@@ -15,6 +15,7 @@ class Politeia_Reading_User_Books {
                 add_action( 'wp_ajax_prs_update_user_book', array( __CLASS__, 'ajax_update_user_book' ) );
                 add_action( 'wp_ajax_prs_update_user_book_meta', array( __CLASS__, 'ajax_update_user_book_meta' ) );
                 add_action( 'wp_ajax_prs_update_pages', array( __CLASS__, 'ajax_update_pages' ) );
+                add_action( 'wp_ajax_prs_update_isbn', array( __CLASS__, 'ajax_update_isbn' ) );
                 add_action( 'wp_ajax_save_owning_contact', array( __CLASS__, 'ajax_save_owning_contact' ) );
                 add_action( 'wp_ajax_mark_as_returned', array( __CLASS__, 'ajax_mark_as_returned' ) );
                 add_action( 'wp_ajax_politeia_bookshelf_search_cover', array( __CLASS__, 'ajax_search_cover' ) );
@@ -662,6 +663,80 @@ class Politeia_Reading_User_Books {
                 self::json_success(
                         array(
                                 'pages' => $pages,
+                        )
+                );
+        }
+
+        /**
+         * AJAX: inline update for ISBN field.
+         */
+        public static function ajax_update_isbn() {
+                if ( ! is_user_logged_in() ) {
+                        self::json_error( 'auth', 401 );
+                }
+
+                if ( ! self::verify_nonce_multi(
+                        array(
+                                array(
+                                        'action' => 'prs_update_user_book_meta',
+                                        'keys'   => array( 'nonce' ),
+                                ),
+                                array(
+                                        'action' => 'prs_update_user_book',
+                                        'keys'   => array( 'prs_update_user_book_nonce' ),
+                                ),
+                        )
+                ) ) {
+                        self::json_error( __( 'Error saving ISBN.', 'politeia-reading' ), 403 );
+                }
+
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+                $raw_isbn     = isset( $_POST['isbn'] ) ? sanitize_text_field( wp_unslash( $_POST['isbn'] ) ) : '';
+
+                if ( ! $user_book_id ) {
+                        self::json_error( __( 'Error saving ISBN.', 'politeia-reading' ), 400 );
+                }
+
+                $row = self::get_user_book_row( $user_book_id, get_current_user_id() );
+                if ( ! $row ) {
+                        self::json_error( 'forbidden', 403 );
+                }
+
+                if ( ! function_exists( 'prs_books_has_isbn_column' ) || ! prs_books_has_isbn_column() ) {
+                        self::json_error( __( 'Error saving ISBN.', 'politeia-reading' ), 400 );
+                }
+
+                $normalized = prs_normalize_isbn( $raw_isbn );
+                if ( '' !== $raw_isbn && '' === $normalized ) {
+                        self::json_error( __( 'Invalid ISBN.', 'politeia-reading' ), 400 );
+                }
+                if ( '' !== $normalized && ! in_array( strlen( $normalized ), array( 10, 13 ), true ) ) {
+                        self::json_error( __( 'Invalid ISBN.', 'politeia-reading' ), 400 );
+                }
+
+                global $wpdb;
+                $books_table = $wpdb->prefix . 'politeia_books';
+
+                if ( '' === $normalized ) {
+                        $wpdb->query(
+                                $wpdb->prepare(
+                                        "UPDATE {$books_table} SET isbn = NULL WHERE id = %d",
+                                        (int) $row->book_id
+                                )
+                        );
+                } else {
+                        $wpdb->query(
+                                $wpdb->prepare(
+                                        "UPDATE {$books_table} SET isbn = %s WHERE id = %d",
+                                        $normalized,
+                                        (int) $row->book_id
+                                )
+                        );
+                }
+
+                self::json_success(
+                        array(
+                                'isbn' => $normalized,
                         )
                 );
         }

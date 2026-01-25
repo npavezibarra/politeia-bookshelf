@@ -268,6 +268,8 @@ wp_localize_script(
 			'pages_error'           => __( 'Error saving pages.', 'politeia-reading' ),
 			'pages_too_small'       => __( 'Please enter a number greater than zero.', 'politeia-reading' ),
 			'pages_saved'           => __( 'Saved!', 'politeia-reading' ),
+			'isbn_error'            => __( 'Error saving ISBN.', 'politeia-reading' ),
+			'isbn_invalid'          => __( 'Invalid ISBN.', 'politeia-reading' ),
 			'saved_short'           => __( 'Saved.', 'politeia-reading' ),
 			'status_saving'         => __( 'Saving...', 'politeia-reading' ),
 			'missing_contact'       => __( 'Please enter both name and email.', 'politeia-reading' ),
@@ -1130,9 +1132,14 @@ wp_add_inline_script(
 							<?php esc_html_e( 'Press Enter to save', 'politeia-reading' ); ?>
 						</div>
 					</li>
-					<li>
+					<li id="fld-isbn" class="prs-field">
 						<strong><?php esc_html_e( 'ISBN:', 'politeia-reading' ); ?></strong>
-						<?php echo $book_isbn ? esc_html( $book_isbn ) : '—'; ?>
+						<span id="isbn-view"><?php echo $book_isbn ? esc_html( $book_isbn ) : '—'; ?></span>
+						<a href="#" id="isbn-edit" class="prs-inline-actions" aria-label="<?php echo esc_attr__( 'Edit ISBN', 'politeia-reading' ); ?>"><?php esc_html_e( 'edit', 'politeia-reading' ); ?></a>
+						<input type="text" id="isbn-input" class="prs-inline-input" inputmode="text" value="<?php echo $book_isbn ? esc_attr( $book_isbn ) : ''; ?>" style="display:none;width:140px;" />
+						<div id="isbn-hint" class="prs-help" style="display:none;margin-top:4px;">
+							<?php esc_html_e( 'Press Enter to save', 'politeia-reading' ); ?>
+						</div>
 					</li>
 					<li>
 						<strong><?php esc_html_e( 'Published Date:', 'politeia-reading' ); ?></strong>

@@ -700,23 +700,15 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
         .done(response => {
           if (response && response.success) {
             window.alert(prsText("note_saved", "✅ Note saved successfully!"));
-            clearEditor();
-            applyEditorPlaceholder(defaultPlaceholder);
-            if (flash && flash.dataset && flash.dataset.sessionId) {
-              const currentSessionId = String(flash.dataset.sessionId || "");
-              if (currentSessionId) {
-                qsa('.prs-sr-read-note-btn').forEach(btn => {
-                  if (String(btn.dataset.sessionId || "") === currentSessionId) {
-                    btn.dataset.note = encodeNoteDataAttr(noteContent);
-                    const readLabel = btn.dataset.noteLabelRead;
-                    if (readLabel) {
-                      btn.textContent = readLabel;
-                    }
-                  }
-                });
-              }
+            
+            // Hide the session recorder
+            const sessionRecorder = document.querySelector('.prs-sr');
+            if (sessionRecorder) {
+              sessionRecorder.style.display = 'none';
             }
-            showSummary({ userAction: true });
+            
+            // Refresh the page to show updated data
+            window.location.reload();
           } else {
             const errorData = response && response.data ? response.data : null;
             const message = typeof errorData === "string"
@@ -1397,6 +1389,196 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
 
     input.addEventListener("blur", () => {
       if (normalizeValue(input.value) === originalValue) {
+        closeEditor();
+      }
+    });
+  }
+
+  // ---------- Edición: ISBN ----------
+  function setupIsbn() {
+    const wrap = qs("#fld-isbn");
+    if (!wrap) return;
+
+    const view = qs("#isbn-view", wrap);
+    const editBtn = qs("#isbn-edit", wrap);
+    const input = qs("#isbn-input", wrap);
+    const hint = qs("#isbn-hint", wrap);
+
+    if (!view || !editBtn || !input) {
+      return;
+    }
+
+    const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
+      || (window.PRS_BOOK && PRS_BOOK.ajax_url)
+      || "";
+    const nonce = (window.PRS_BOOK && PRS_BOOK.nonce) || "";
+    const userBookId = (window.PRS_BOOK && PRS_BOOK.user_book_id) ? parseInt(PRS_BOOK.user_book_id, 10) : 0;
+    const defaultHint = hint ? hint.textContent.trim() : "";
+
+    function normalizeValue(raw) {
+      const trimmed = (raw || "").trim();
+      return trimmed === "—" ? "" : trimmed;
+    }
+
+    function normalizeIsbn(raw) {
+      return String(raw || "").replace(/[^0-9Xx]/g, "").toUpperCase();
+    }
+
+    function displayValue(val) {
+      return val ? String(val) : "—";
+    }
+
+    function openEditor() {
+      view.style.display = "none";
+      editBtn.style.display = "none";
+      input.style.display = "inline-block";
+      input.value = originalValue || "";
+      if (hint) {
+        hint.style.display = "none";
+        hint.textContent = defaultHint;
+      }
+      setTimeout(() => {
+        input.focus();
+        input.select && input.select();
+      }, 0);
+    }
+
+    function closeEditor() {
+      view.style.display = "";
+      editBtn.style.display = "";
+      input.style.display = "none";
+      if (hint) {
+        hint.style.display = "none";
+        hint.textContent = defaultHint;
+      }
+    }
+
+    function setHint(message, autoHideDelay) {
+      if (!hint) return;
+      hint.textContent = message;
+      hint.style.display = "block";
+      if (autoHideDelay) {
+        setTimeout(() => {
+          hint.style.display = "none";
+          hint.textContent = defaultHint;
+        }, autoHideDelay);
+      }
+    }
+
+    function toggleHintForChange() {
+      if (!hint) return;
+      const current = normalizeIsbn(input.value);
+      if (current !== originalNormalized) {
+        hint.textContent = defaultHint || prsText("press_enter_to_save", "Press Enter to save");
+        hint.style.display = "block";
+      } else {
+        hint.style.display = "none";
+        hint.textContent = defaultHint;
+      }
+    }
+
+    function handleError(msg) {
+      setHint(msg || prsText("isbn_error", "Error saving ISBN."));
+    }
+
+    function saveValue(newValue) {
+      if (!ajaxUrl || !userBookId) {
+        handleError(prsText("isbn_error", "Error saving ISBN."));
+        return;
+      }
+
+      const normalized = normalizeIsbn(newValue);
+      if (newValue && !normalized) {
+        handleError(prsText("isbn_invalid", "Invalid ISBN."));
+        return;
+      }
+      if (normalized && normalized.length !== 10 && normalized.length !== 13) {
+        handleError(prsText("isbn_invalid", "Invalid ISBN."));
+        return;
+      }
+
+      const payload = {
+        action: "prs_update_isbn",
+        user_book_id: String(userBookId),
+        isbn: normalized,
+      };
+      if (nonce) {
+        payload.nonce = nonce;
+      }
+
+      setHint(prsText("status_saving", "Saving..."));
+      input.disabled = true;
+
+      const jq = window.jQuery;
+      const onDone = (json) => {
+        const resp = (json && typeof json === "object" && Object.prototype.hasOwnProperty.call(json, "success")) ? json : null;
+
+        if (!resp || !resp.success) {
+          const message = resp && resp.data && resp.data.message ? resp.data.message : prsText("isbn_error", "Error saving ISBN.");
+          handleError(message);
+          input.disabled = false;
+          return;
+        }
+
+        const savedValue = resp && resp.data && typeof resp.data.isbn !== "undefined" ? String(resp.data.isbn) : normalized;
+        originalValue = savedValue;
+        originalNormalized = normalizeIsbn(originalValue);
+        view.textContent = displayValue(originalValue);
+        closeEditor();
+        setHint(prsText("saved_short", "Saved."), 1200);
+        input.disabled = false;
+      };
+
+      const onFail = () => {
+        handleError(prsText("isbn_error", "Error saving ISBN."));
+        input.disabled = false;
+      };
+
+      if (jq && typeof jq.post === "function") {
+        jq.post(ajaxUrl, payload)
+          .done(onDone)
+          .fail(onFail);
+      } else {
+        const fd = new FormData();
+        Object.keys(payload).forEach(key => fd.append(key, payload[key]));
+        ajaxPost(ajaxUrl, fd)
+          .then(onDone)
+          .catch(onFail);
+      }
+    }
+
+    let originalValue = normalizeValue(view.textContent);
+    let originalNormalized = normalizeIsbn(originalValue);
+    if (!input.value) {
+      input.value = originalValue || "";
+    }
+
+    editBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      openEditor();
+    });
+
+    input.addEventListener("input", () => {
+      toggleHintForChange();
+    });
+
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        const candidate = normalizeIsbn(input.value);
+        if (candidate === originalNormalized) {
+          return;
+        }
+        e.preventDefault();
+        saveValue(input.value);
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        input.value = originalValue || "";
+        closeEditor();
+      }
+    });
+
+    input.addEventListener("blur", () => {
+      if (normalizeIsbn(input.value) === originalNormalized) {
         closeEditor();
       }
     });
@@ -4800,6 +4982,7 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
     setupReadingDensityBar();
     setupCoverPlaceholder();
     setupPages();
+    setupIsbn();
     setupLibraryPagesInlineEdit();
     setupLibraryReadingStatus();
     setupPurchaseDate();

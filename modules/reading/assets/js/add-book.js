@@ -244,8 +244,8 @@
 
         if (modal) {
                 modal.addEventListener('click', function (event) {
-                        if (event.target === modal) {
-                                closeModal();
+                        if (event.target === modal && event && typeof event.preventDefault === 'function') {
+                                event.preventDefault();
                         }
                 });
         }
@@ -503,22 +503,29 @@
                 }
 
                 var remainder = segments.pop();
+                var changed = false;
 
                 for (var i = 0; i < segments.length; i++) {
-                        addAuthorValue(segments[i]);
+                        if (addAuthorValue(segments[i])) {
+                                changed = true;
+                        }
                 }
 
                 if (commitRemainder) {
-                        addAuthorValue(remainder);
+                        if (addAuthorValue(remainder)) {
+                                changed = true;
+                        }
                         remainder = '';
-                        if (authorValues.length) {
+                        if (authorValues.length && document.activeElement !== authorInputField) {
                                 authorEditMode = false;
                         }
                 }
 
                 authorInputField.value = remainder ? remainder.replace(/^\s+/, '') : '';
 
-                refreshAuthors();
+                if (changed || commitRemainder) {
+                        refreshAuthors();
+                }
         };
 
         var getPrimaryAuthorInput = function () {
@@ -581,6 +588,7 @@
 
         if (authorInputField) {
                 authorInputField.addEventListener('input', function (event) {
+                        authorEditMode = true;
                         processAuthorInputValue(event.target.value, false);
                 });
 
@@ -1063,6 +1071,7 @@
                 if (!coverPreviewWrapper || !coverPreviewImage) {
                         return;
                 }
+                var controlWrap = coverPreviewWrapper.closest('.prs-form__file-control');
                 var updateCoverPlaceholderState = function () {
                         if (!coverPreviewWrapper || !coverPreviewImage) {
                                 return;
@@ -1082,11 +1091,17 @@
                                 coverPreviewImage.removeAttribute('src');
                                 coverPreviewWrapper.hidden = true;
                         }
+                        if (controlWrap) {
+                                controlWrap.classList.remove('is-has-preview');
+                        }
                         updateCoverPlaceholderState();
                         return;
                 }
                 coverPreviewImage.src = url;
                 coverPreviewWrapper.hidden = false;
+                if (controlWrap) {
+                        controlWrap.classList.add('is-has-preview');
+                }
                 updateCoverPlaceholderState();
         };
 

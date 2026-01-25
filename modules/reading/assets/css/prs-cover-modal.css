@@ -19,6 +19,34 @@
   margin-bottom: 20px;
 }
 
+#prs-cover-save.is-loading {
+  cursor: wait;
+  opacity: 0.85;
+}
+
+#prs-cover-save.is-loading::after {
+  content: "";
+  width: 14px;
+  height: 14px;
+  margin-left: 10px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  display: inline-block;
+  vertical-align: middle;
+  animation: prs-cover-spin 0.8s linear infinite;
+}
+
+button#prs-cover-save:hover {
+  border: none;
+}
+
+@keyframes prs-cover-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 
 .prs-cover-modal__grid {
   display: flex;

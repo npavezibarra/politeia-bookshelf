@@ -15,7 +15,7 @@ class PRS_Cover_Upload_Feature {
 	 */
 	private static $bootstrapped = false;
 
-	public static function init() {
+        public static function init() {
 		if ( self::$bootstrapped ) {
 			return;
 		}
@@ -23,6 +23,7 @@ class PRS_Cover_Upload_Feature {
 		self::$bootstrapped = true;
                 add_action( 'wp_enqueue_scripts', array( __CLASS__, 'assets' ) );
                 add_shortcode( 'prs_cover_button', array( __CLASS__, 'shortcode_button' ) );
+                add_action( 'wp_ajax_prs_cover_upload_file', array( __CLASS__, 'ajax_upload_file' ) );
                 add_action( 'wp_ajax_prs_save_cropped_cover', array( __CLASS__, 'ajax_save_cropped_cover' ) );
                 add_action( 'wp_ajax_nopriv_prs_save_cropped_cover', array( __CLASS__, 'ajax_save_cropped_cover' ) );
                 add_action( 'wp_ajax_prs_cover_save_crop', array( __CLASS__, 'ajax_save_crop' ) );
@@ -276,6 +277,95 @@ class PRS_Cover_Upload_Feature {
                 self::cleanup_cover_attachments( $user_id, (int) $row->id, 0 );
 
                 wp_send_json_success( array( 'removed' => true ) );
+        }
+
+        /**
+         * Upload cover file without cropping (same flow as Add Book).
+         */
+        public static function ajax_upload_file() {
+                if ( ! is_user_logged_in() ) {
+                        wp_send_json_error( array( 'message' => 'auth' ), 401 );
+                }
+
+                $nonce = isset( $_POST['nonce'] ) ? wp_unslash( $_POST['nonce'] ) : '';
+                if ( ! wp_verify_nonce( $nonce, 'prs_cover_nonce' ) ) {
+                        wp_send_json_error( array( 'message' => 'bad_nonce' ), 403 );
+                }
+
+                $user_id      = get_current_user_id();
+                $user_book_id = isset( $_POST['user_book_id'] ) ? absint( $_POST['user_book_id'] ) : 0;
+                $book_id      = isset( $_POST['book_id'] ) ? absint( $_POST['book_id'] ) : 0;
+
+                if ( ! $user_book_id && ! $book_id ) {
+                        wp_send_json_error( array( 'message' => 'invalid_payload' ), 400 );
+                }
+
+                global $wpdb;
+                $table = $wpdb->prefix . 'politeia_user_books';
+
+                if ( $user_book_id ) {
+                        $row = $wpdb->get_row(
+                                $wpdb->prepare(
+                                        "SELECT id, book_id FROM {$table} WHERE id=%d AND user_id=%d AND deleted_at IS NULL LIMIT 1",
+                                        $user_book_id,
+                                        $user_id
+                                )
+                        );
+                } else {
+                        $row = $wpdb->get_row(
+                                $wpdb->prepare(
+                                        "SELECT id, book_id FROM {$table} WHERE book_id=%d AND user_id=%d AND deleted_at IS NULL LIMIT 1",
+                                        $book_id,
+                                        $user_id
+                                )
+                        );
+                }
+
+                if ( ! $row ) {
+                        wp_send_json_error( array( 'message' => 'not_found' ), 404 );
+                }
+
+                $attachment_id = function_exists( 'prs_handle_cover_upload' )
+                        ? (int) prs_handle_cover_upload( 'prs_cover' )
+                        : 0;
+
+                if ( ! $attachment_id ) {
+                        wp_send_json_error( array( 'message' => 'invalid_payload' ), 400 );
+                }
+
+                $cover_url = wp_get_attachment_image_url( $attachment_id, 'large' );
+                if ( ! $cover_url ) {
+                        $cover_url = wp_get_attachment_url( $attachment_id );
+                }
+
+                $updated = $wpdb->update(
+                        $table,
+                        array(
+                                'cover_attachment_id_user' => $attachment_id,
+                                'cover_reference'          => (string) $attachment_id,
+                                'cover_url'                => $cover_url,
+                                'updated_at'               => current_time( 'mysql', true ),
+                        ),
+                        array( 'id' => (int) $row->id ),
+                        array( '%d', '%s', '%s', '%s' ),
+                        array( '%d' )
+                );
+
+                if ( false === $updated ) {
+                        wp_delete_attachment( $attachment_id, true );
+                        wp_send_json_error( array( 'message' => 'db_error' ), 500 );
+                }
+
+                self::cleanup_cover_attachments( $user_id, (int) $row->id, $attachment_id );
+
+                wp_send_json_success(
+                        array(
+                                'attachment_id' => $attachment_id,
+                                'url'           => $cover_url,
+                                'user_book_id'  => (int) $row->id,
+                                'book_id'       => (int) $row->book_id,
+                        )
+                );
         }
 
         public static function ajax_save_cropped_cover() {

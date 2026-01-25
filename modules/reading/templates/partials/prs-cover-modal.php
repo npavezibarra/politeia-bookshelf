@@ -26,16 +26,6 @@ if ( ! defined( 'ABSPATH' ) ) {
                                                 <span><?php esc_html_e( 'or click upload', 'politeia-reading' ); ?></span>
                                         </div>
                                         <img id="previewImage" src="" alt="<?php echo esc_attr__( 'Book Cover Preview', 'politeia-reading' ); ?>" style="display:none;">
-                                        <div id="cropArea" class="prs-crop-area" style="display:none;">
-                                                <div class="resize-handle corner nw"></div>
-                                                <div class="resize-handle corner ne"></div>
-                                                <div class="resize-handle corner sw"></div>
-                                                <div class="resize-handle corner se"></div>
-                                                <div class="resize-handle side n"></div>
-                                                <div class="resize-handle side s"></div>
-                                                <div class="resize-handle side e"></div>
-                                                <div class="resize-handle side w"></div>
-                                        </div>
                                 </div>
                         </div>
 
@@ -44,10 +34,6 @@ if ( ! defined( 'ABSPATH' ) ) {
                                <div class="prs-file-input">
                                        <input type="file" id="fileInput" accept="image/jpeg, image/png" class="prs-hidden-input">
                                        <label for="fileInput" class="prs-btn prs-btn--ghost"><?php esc_html_e( 'Choose File', 'politeia-reading' ); ?></label>
-                               </div>
-
-                               <div class="prs-crop-controls">
-                                       <p class="prs-crop-instructions"><?php esc_html_e( 'Drag or resize the selection on the image to crop.', 'politeia-reading' ); ?></p>
                                </div>
 
                                <span id="statusMessage" class="prs-cover-status"><?php esc_html_e( 'Awaiting file upload.', 'politeia-reading' ); ?></span>

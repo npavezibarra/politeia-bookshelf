@@ -186,40 +186,39 @@ add_shortcode(
         									</label>
         								</th>
         								<td>
-        									<div class="prs-form__file-control">
-        										<input
-        											type="file"
-        											id="prs_cover"
-        											name="prs_cover"
-        											accept=".jpg,.jpeg,.png,.webp"
-        											class="prs-form__file-input"
-        										/>
-        										<button
-        											type="button"
-        											id="prs_cover_trigger"
-        											class="prs-form__file-trigger"
-        											data-default-label="<?php echo esc_attr__( 'Upload Book Cover', 'politeia-reading' ); ?>"
-        											data-change-label="<?php echo esc_attr__( 'Change Book Cover', 'politeia-reading' ); ?>"
-        											onclick="document.getElementById('prs_cover').click();"
-        										>
-        											<span class="prs-form__file-icon" aria-hidden="true"></span>
-        											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
-        										</button>
-        										<?php
-        										$prs_cover_placeholder = plugins_url(
-        											'modules/reading/assets/svg/upload_file_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg',
-        											dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
-        										);
-        										?>
-        										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
+									<label class="prs-form__file-control" for="prs_cover">
+										<input
+											type="file"
+											id="prs_cover"
+											name="prs_cover"
+											accept=".jpg,.jpeg,.png,.webp"
+											class="prs-form__file-input"
+										/>
+										<div
+											id="prs_cover_prompt"
+											class="prs-form__file-prompt"
+											data-default-label="<?php echo esc_attr__( 'Upload Book Cover', 'politeia-reading' ); ?>"
+											data-change-label="<?php echo esc_attr__( 'Change Book Cover', 'politeia-reading' ); ?>"
+										>
+											<span class="prs-form__file-icon" aria-hidden="true"></span>
+											<span class="prs-form__file-text"><?php esc_html_e( 'Upload Book Cover', 'politeia-reading' ); ?></span>
+											<span class="prs-form__file-subtext"><?php esc_html_e( 'Drag photo here', 'politeia-reading' ); ?></span>
+										</div>
+										<?php
+										$prs_cover_placeholder = plugins_url(
+											'modules/reading/assets/svg/upload_file_24dp_1F1F1F_FILL0_wght400_GRAD0_opsz24.svg',
+											dirname( __DIR__, 3 ) . '/politeia-bookshelf.php'
+										);
+										?>
+										<div id="prs_cover_preview" class="prs-form__file-preview" hidden>
 											<img src="<?php echo esc_url( $prs_cover_placeholder ); ?>"
 												decoding="async"
 												alt="<?php echo esc_attr__( 'Selected book cover preview', 'politeia-reading' ); ?>"
 												data-placeholder-src="<?php echo esc_attr( $prs_cover_placeholder ); ?>" />
-        										</div>
-        									</div>
-        								</td>
-        							</tr>
+										</div>
+									</label>
+								</td>
+							</tr>
         							<tr>
         								<th scope="row" aria-hidden="true"></th>
         								<td>
@@ -439,14 +438,15 @@ add_shortcode(
         									return;
         								}
         
-        								var trigger = document.getElementById('prs_cover_trigger');
-        								var triggerText = trigger ? trigger.querySelector('.prs-form__file-text') : null;
-        								var previewWrapper = document.getElementById('prs_cover_preview');
-        								var previewImage = previewWrapper ? previewWrapper.querySelector('img') : null;
-        								var previewPlaceholder = previewImage ? previewImage.getAttribute('data-placeholder-src') : '';
-        								var defaultLabel = trigger ? trigger.getAttribute('data-default-label') : '';
-        								var changeLabel = trigger ? trigger.getAttribute('data-change-label') : '';
-        								var form = fileInput.form;
+								var trigger = document.getElementById('prs_cover_prompt');
+								var triggerText = trigger ? trigger.querySelector('.prs-form__file-text') : null;
+								var previewWrapper = document.getElementById('prs_cover_preview');
+								var previewImage = previewWrapper ? previewWrapper.querySelector('img') : null;
+								var previewPlaceholder = previewImage ? previewImage.getAttribute('data-placeholder-src') : '';
+								var defaultLabel = trigger ? trigger.getAttribute('data-default-label') : '';
+								var changeLabel = trigger ? trigger.getAttribute('data-change-label') : '';
+								var form = fileInput.form;
+								var controlWrap = previewWrapper ? previewWrapper.closest('.prs-form__file-control') : null;
         
         									var resetPreview = function () {
         										if (previewWrapper) {
@@ -460,10 +460,13 @@ add_shortcode(
         												previewImage.removeAttribute('src');
         											}
         										}
-        										if (triggerText && defaultLabel) {
-        											triggerText.textContent = defaultLabel;
-        										}
-        									};
+										if (triggerText && defaultLabel) {
+											triggerText.textContent = defaultLabel;
+										}
+										if (controlWrap) {
+											controlWrap.classList.remove('is-has-preview');
+										}
+									};
         
         								if (form) {
         									form.addEventListener('reset', function () {
@@ -482,13 +485,16 @@ add_shortcode(
         											}
         										};
         										reader.readAsDataURL(this.files[0]);
-        										if (triggerText && changeLabel) {
-        											triggerText.textContent = changeLabel;
-        										}
-        									} else {
-        										resetPreview();
-        									}
-        								});
+										if (triggerText && changeLabel) {
+											triggerText.textContent = changeLabel;
+										}
+										if (controlWrap) {
+											controlWrap.classList.add('is-has-preview');
+										}
+									} else {
+										resetPreview();
+									}
+								});
         
         								resetPreview();
         							}() );

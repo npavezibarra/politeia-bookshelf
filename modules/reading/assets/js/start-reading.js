@@ -288,7 +288,13 @@ const prsStartReadingInit = (options = {}) => {
       $startBtn.disabled = !ok;
       $startBtn.setAttribute('aria-disabled', $startBtn.disabled ? 'true' : 'false');
     }
-    toggleRow($rowNeedsPages, !hasPages());
+    const needsPages = !hasPages();
+    toggleRow($rowNeedsPages, needsPages);
+    if (needsPages) {
+      toggle($startBtn, false);
+    } else if ($startBtn && $rowActions && $rowActions.style.display !== 'none' && (!$stopBtn || $stopBtn.style.display === 'none')) {
+      toggle($startBtn, true);
+    }
     applyStartTitle();
   }
 

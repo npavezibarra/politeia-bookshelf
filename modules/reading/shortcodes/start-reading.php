@@ -364,8 +364,14 @@ add_shortcode(
 		align-items: center;
 		justify-content: center;
 		gap: 10px;
+		padding: 12px 14px;
+		border-radius: 10px;
+		background: linear-gradient(135deg, #783F27, #B87333, #E5AA70);
 		font-size: 13px;
-		color: rgba(255, 255, 255, 0.7);
+		color: #fff;
+	}
+	.prs-sr-row-needs-pages .prs-warning-icon {
+		stroke: #fff;
 	}
 
 	.prs-sr-flash-block {

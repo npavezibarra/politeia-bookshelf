@@ -738,9 +738,17 @@ function prs_promote_candidate_to_canonical( $candidate_id, $user_id, $year_over
                 }
         }
 
-        $raw_payload   = isset( $raw_response['raw_payload'] ) && is_array( $raw_response['raw_payload'] )
-                ? $raw_response['raw_payload']
-                : array();
+        $raw_payload = array();
+        if ( isset( $raw_response['raw_payload'] ) ) {
+                if ( is_array( $raw_response['raw_payload'] ) ) {
+                        $raw_payload = $raw_response['raw_payload'];
+                } elseif ( is_string( $raw_response['raw_payload'] ) && $raw_response['raw_payload'] !== '' ) {
+                        $decoded = json_decode( $raw_response['raw_payload'], true );
+                        if ( is_array( $decoded ) ) {
+                                $raw_payload = $decoded;
+                        }
+                }
+        }
         $original      = isset( $raw_response['original_input'] ) && is_array( $raw_response['original_input'] )
                 ? $raw_response['original_input']
                 : array();

@@ -49,7 +49,14 @@ function politeia_chatgpt_queue_confirm_items( $arg1, $arg2 = null, $arg3 = null
 		$input_type  = isset($meta['input_type'])   ? sanitize_text_field($meta['input_type']) : 'text';
 		$source_note = isset($meta['source_note'])  ? sanitize_text_field($meta['source_note']) : '';
 		if ( array_key_exists('raw_response', $meta) ) {
-			$raw_payload = is_string($meta['raw_response']) ? $meta['raw_response'] : wp_json_encode($meta['raw_response']);
+			if ( is_array( $meta['raw_response'] ) ) {
+				$raw_payload = $meta['raw_response'];
+			} elseif ( is_string( $meta['raw_response'] ) ) {
+				$decoded = json_decode( $meta['raw_response'], true );
+				$raw_payload = is_array( $decoded ) ? $decoded : $meta['raw_response'];
+			} else {
+				$raw_payload = $meta['raw_response'];
+			}
 		}
 	} else {
 		// Firma A: ($user_id, $candidates, $input_type, $source_note)
