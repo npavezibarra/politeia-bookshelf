@@ -1,0 +1,157 @@
+/* Chart View Styles */
+#chart-view-wrapper {
+    position: relative;
+    width: 100%;
+}
+
+#chart-stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+#chart-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 300px;
+}
+
+#chart-container h3 {
+    color: white !important;
+}
+
+.chart-stats-card {
+    background-color: #1a1a1a;
+    border: 1px solid #333333;
+    border-radius: 8px;
+    padding: 12px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.chart-stats-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.chart-stats-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.chart-stats-label {
+    font-size: 9px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: rgba(255, 255, 255, 0.4);
+    margin-bottom: 2px;
+}
+
+.chart-stats-value {
+    font-size: 13px;
+    font-weight: 700;
+    color: #ffffff;
+}
+
+/* SVG Chart */
+.chart-svg {
+    width: 100%;
+    flex: 1;
+    /* Take remaining space */
+    min-height: 0;
+    display: block;
+    overflow: visible;
+}
+
+.chart-grid-line {
+    stroke: #2a2a2a;
+    stroke-width: 1;
+    stroke-dasharray: 4, 4;
+}
+
+.chart-axis-text {
+    fill: #64748b;
+    font-size: 10px;
+    font-weight: 500;
+}
+
+.chart-axis-title {
+    fill: #94a3b8;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* Updated Line Style: Gold Dashed */
+.chart-line-path {
+    fill: none;
+    stroke: #FBBF24;
+    /* Amber-400 */
+    stroke-width: 2;
+    stroke-dasharray: 6, 4;
+    /* Dashed */
+    stroke-linecap: round;
+}
+
+.chart-point {
+    fill: #FBBF24;
+    /* Match line */
+    stroke: #1a1a1a;
+    /* Dark border */
+    stroke-width: 1;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.chart-point:hover {
+    stroke: #ffffff;
+    stroke-width: 2;
+    r: 5;
+}
+
+.chart-point.active {
+    fill: #FCD34D;
+    /* Lighter gold */
+    stroke: #ffffff;
+}
+
+.chart-tooltip {
+    position: absolute;
+    background-color: #0f172a;
+    /* Darker bg */
+    border: 1px solid #334155;
+    border-radius: 6px;
+    padding: 8px 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    pointer-events: none;
+    z-index: 20;
+    transform: translate(-50%, -100%);
+    margin-top: -10px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.chart-tooltip.visible {
+    opacity: 1;
+}
+
+.chart-tooltip-label {
+    font-size: 10px;
+    color: #94a3b8;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.chart-tooltip-value {
+    font-size: 12px;
+    font-weight: 700;
+    color: #ffffff;
+}

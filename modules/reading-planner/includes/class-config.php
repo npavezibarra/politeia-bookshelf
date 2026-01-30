@@ -24,7 +24,22 @@ class Config
             'sessions_per_week_options' => array(3, 5, 7),
             'default_pages_per_session' => 30,
             'default_sessions_per_week' => 5,
+            'habit_light_start_pages' => 3,
+            'habit_light_end_pages' => 10,
+            'habit_intense_start_pages' => 15,
+            'habit_intense_end_pages' => 30,
+            'habit_days_duration' => 48,
         );
+    }
+
+    /**
+     * Get default configuration (public)
+     *
+     * @return array
+     */
+    public static function get_defaults_public(): array
+    {
+        return self::get_defaults();
     }
 
     /**
@@ -81,6 +96,19 @@ class Config
         return isset($config['default_pages_per_session']) && is_int($config['default_pages_per_session'])
             ? $config['default_pages_per_session']
             : 30;
+    }
+
+    /**
+     * Get habit configuration value
+     *
+     * @param string $key Config key.
+     * @param mixed  $default Default value.
+     * @return mixed
+     */
+    public static function get_habit_config(string $key, $default)
+    {
+        $config = self::get_config();
+        return isset($config[$key]) ? $config[$key] : $default;
     }
 
     /**

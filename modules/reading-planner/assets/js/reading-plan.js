@@ -116,7 +116,7 @@
   };
 
   const formatSessionDate = (date) => {
-    if (!date) return t('next_session_tbd', 'To be scheduled');
+    if (!date) return t('next_session_tbd', 'Por programar');
     const monthName = MONTH_NAMES[date.getMonth()];
     return `${date.getDate()} ${monthName} ${date.getFullYear()}`;
   };
@@ -315,20 +315,20 @@
   const MIN_PPS = 15;
   const SESSIONS_PER_PAGE = 10;
   const BENCHMARK_MIN_PER_PAGE = 1.5;
-  const HABIT_CHALLENGE_DAYS = 48;
+  const HABIT_CHALLENGE_DAYS = parseInt(RP.habitDaysDuration, 10) || 48;
 
   const PAGE_RANGES_MAP = { "<100": 80, "200~": 200, "400~": 400, "600~": 600, "1000~": 1000 };
 
   const HABIT_INTENSITY_CONFIG = {
     light: {
-      label: t('habit_light_label', 'Light'),
+      label: t('habit_light_label', 'Ligero'),
       startMin: 15,
       endMin: 30,
       startPg: 3,
       endPg: 10,
     },
     intense: {
-      label: t('habit_intense_label', 'Intense'),
+      label: t('habit_intense_label', 'Intenso'),
       startMin: 30,
       endMin: 60,
       startPg: 15,
@@ -370,8 +370,8 @@
     ];
 
   const GOALS_DEF = [
-    { id: 'complete_books', title: t('goal_complete_title', 'Finish a book'), description: t('goal_complete_desc', 'Finish specific books within a set time frame.'), icon: 'book-open' },
-    { id: 'form_habit', title: t('goal_habit_title', 'Build a habit'), description: t('goal_habit_desc', 'Increase the frequency and consistency of your reading.'), icon: 'calendar' },
+    { id: 'complete_books', title: t('goal_complete_title', 'Terminar un libro'), description: t('goal_complete_desc', 'Terminar un libro específico en un tiempo definido.'), icon: 'book-open' },
+    { id: 'form_habit', title: t('goal_habit_title', 'Crear un hábito'), description: t('goal_habit_desc', 'Aumentar la frecuencia y consistencia de tu lectura.'), icon: 'calendar' },
   ];
 
   const normalizePrefillBook = (data) => {
@@ -457,8 +457,8 @@
             </linearGradient>
           </defs>
         </svg>
-        <h2 class="goal-title">${t('goal_prompt', 'What goal do you want to achieve?')}</h2>
-        <p class="goal-subtitle">${t('goal_subtitle', 'Select your primary goal to begin.')}</p>
+        <h2 class="goal-title">${t('goal_prompt', '¿Qué objetivo quieres lograr?')}</h2>
+        <p class="goal-subtitle">${t('goal_subtitle', 'Selecciona tu objetivo principal.')}</p>
         <div id="goal-option-group" class="goal-option-group">
           ${GOALS_DEF.map((goal) => {
       const icon = goal.id === 'form_habit'
@@ -493,8 +493,8 @@
       if (state.subStep === 0) {
         stepContent.innerHTML = `
           <div id="finish_book_slide_books_finished" class="finish_book_slide space-y-8 text-center step-transition">
-            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('baseline_label', 'Baseline')}</span>
-            <h2 id="finish_book_baseline_title" class="text-2xl font-medium text-black mt-2 uppercase">${t('baseline_books_year', 'How many books did you finish in the last year?')}</h2>
+            <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('baseline_label', 'Línea Base')}</span>
+            <h2 id="finish_book_baseline_title" class="text-2xl font-medium text-black mt-2 uppercase">${t('baseline_books_year', '¿Cuántos libros terminaste el año pasado?')}</h2>
             <div id="finish_book_baseline_options" class="grid grid-cols-5 gap-3">
               ${['0', '1', '2', '3', '4+'].map((n) => `
                 <button type="button" id="finish_book_baseline_${toId(n)}" data-baseline="${n}" class="finish_book_baseline_btn aspect-square rounded-custom border-2 font-medium text-xl transition-all ${state.formData.baselines[gid]?.value === n
@@ -517,12 +517,12 @@
         stepContent.innerHTML = `
           <div id="finish_book_slide_book_pages" class="finish_book_slide space-y-6 step-transition">
             <div class="text-center">
-              <h2 id="finish_book_pages_title" class="text-xl font-medium text-black uppercase">${t('baseline_book_pages', 'How many pages did the book have?')}</h2>
+              <h2 id="finish_book_pages_title" class="text-xl font-medium text-black uppercase">${t('baseline_book_pages', '¿Cuántas páginas tenía el libro?')}</h2>
             </div>
             <div id="finish_book_details_container" class="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
               ${Array.from({ length: slots }).map((_, i) => `
                 <div class="finish_book_detail_card p-5 bg-[#F5F5F5] rounded-custom border border-[#A8A8A8]">
-                  <p class="text-[10px] font-medium text-[#A8A8A8] mb-3 uppercase tracking-widest">${format('book_number', 'Book #%d', i + 1)}</p>
+                  <p class="text-[10px] font-medium text-[#A8A8A8] mb-3 uppercase tracking-widest">${format('book_number', 'Libro #%d', i + 1)}</p>
                   <div class="flex flex-wrap gap-2">
                     ${Object.keys(PAGE_RANGES_MAP).map((r) => `
                       <button type="button" id="finish_book_book_${i}_${toId(r)}" data-book-detail="${r}" data-book-index="${i}" class="finish_book_page_btn px-3 py-2 rounded-custom text-[10px] font-medium border-2 transition-all uppercase text-black ${state.formData.baselines[gid]?.details?.[i] === r
@@ -572,16 +572,16 @@
                 <path d="M80-80v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-360v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-640v-240h520v240H80Zm560 0v-240h240v240H640ZM240-240Zm200 0h80-80Zm280 0ZM240-440v-80 80Zm240-40Zm240 40v-80 80Zm0-280ZM160-160h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80ZM160-440h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80Zm0-280h80v-80h-80v80Z"/>
               </svg>
             </div>
-            <h2 id="form_habit_intro_title" class="habit-title habit-highlight">${t('habit_step1_title', 'In 48 days you will complete sessions')}</h2>
-            <p id="form_habit_intro_subtitle" class="habit-subtitle">${t('habit_step1_body', 'One session every day for 48 straight days.')}</p>
-            <button type="button" id="form_habit_intro_next_btn" class="habit-next-btn">${t('habit_step1_cta', 'Got it!')}</button>
+            <h2 id="form_habit_intro_title" class="habit-title habit-highlight">${t('habit_step1_title', `En ${HABIT_CHALLENGE_DAYS} días completarás las sesiones`)}</h2>
+            <p id="form_habit_intro_subtitle" class="habit-subtitle">${t('habit_step1_body', `Una sesión cada día por ${HABIT_CHALLENGE_DAYS} días seguidos.`)}</p>
+            <button type="button" id="form_habit_intro_next_btn" class="habit-next-btn">${t('habit_step1_cta', '¡Entendido!')}</button>
           </div>`;
       } else if (state.subStep === 1) {
         stepContent.innerHTML = `
           <div id="form_habit_slide_progress" class="form_habit_slide habit-slide habit-slide--progress step-transition">
             ${habitDefs}
-            <h2 id="form_habit_progress_title" class="habit-title">${t('habit_step2_title', 'Progressive growth')}</h2>
-            <p id="form_habit_progress_subtitle" class="habit-subtitle">${t('habit_step2_body', 'The <span class="habit-highlight">session time</span> and the <span class="habit-highlight">number of pages</span> will increase gradually to challenge you.')}</p>
+            <h2 id="form_habit_progress_title" class="habit-title">${t('habit_step2_title', 'Crecimiento progresivo')}</h2>
+            <p id="form_habit_progress_subtitle" class="habit-subtitle">${t('habit_step2_body', 'El <span class="habit-highlight">tiempo de sesión</span> y el <span class="habit-highlight">número de páginas</span> aumentarán gradualmente para desafiarte.')}</p>
             <div id="form_habit_progress_graph" class="progression-graph habit-graph">
               <svg class="graph-svg" viewBox="0 0 500 250" preserveAspectRatio="none">
                 <path class="path-line" d="M75,200 C150,200 175,125 250,125 C325,125 350,50 425,50" stroke="url(#gold-grad)" stroke-width="3" fill="none" stroke-linecap="round" />
@@ -594,7 +594,7 @@
                   </svg>
                 </div>
                 <span class="habit-step-label">${t('habit_graph_step1_label', '15 min')}</span>
-                <span class="habit-step-sublabel">${t('habit_graph_step1_sublabel', '5 pages')}</span>
+                <span class="habit-step-sublabel">${t('habit_graph_step1_sublabel', '5 páginas')}</span>
               </div>
               <div class="habit-step habit-step--mid">
                 <div class="habit-step-icon">
@@ -604,7 +604,7 @@
                   </svg>
                 </div>
                 <span class="habit-step-label">${t('habit_graph_step2_label', '18 min')}</span>
-                <span class="habit-step-sublabel">${t('habit_graph_step2_sublabel', '6 pages')}</span>
+                <span class="habit-step-sublabel">${t('habit_graph_step2_sublabel', '6 páginas')}</span>
               </div>
               <div class="habit-step habit-step--end">
                 <div class="habit-step-icon">
@@ -614,10 +614,10 @@
                   </svg>
                 </div>
                 <span class="habit-step-label">${t('habit_graph_step3_label', '25 min')}</span>
-                <span class="habit-step-sublabel">${t('habit_graph_step3_sublabel', '10 pages')}</span>
+                <span class="habit-step-sublabel">${t('habit_graph_step3_sublabel', '10 páginas')}</span>
               </div>
             </div>
-            <button type="button" id="form_habit_progress_next_btn" class="habit-next-btn">${t('habit_step2_cta', 'Next')}</button>
+            <button type="button" id="form_habit_progress_next_btn" class="habit-next-btn">${t('habit_step2_cta', 'Siguiente')}</button>
           </div>`;
       } else if (state.subStep === 2) {
         stepContent.innerHTML = `
@@ -629,20 +629,15 @@
                 <path d="m9 12 2 2 4-4"></path>
               </svg>
             </div>
-            <h2 id="form_habit_consistency_title" class="habit-title">${t('habit_step3_title', 'Consistency is everything')}</h2>
-            <p id="form_habit_consistency_subtitle" class="habit-subtitle">${t('habit_step3_body', 'Missing one session is a warning. Missing <span class="habit-highlight">2 sessions</span> ends the plan.')}</p>
-            <div class="habit-fail-label">
-              <svg class="habit-fail-icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
-                <path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/>
-              </svg>
-              <span>${t('habit_fail_label', 'Plan Failed')}</span>
-            </div>
+            <h2 id="form_habit_consistency_title" class="habit-title">${t('habit_step3_title', 'La constancia es todo')}</h2>
+            <p id="form_habit_consistency_subtitle" class="habit-subtitle">${t('habit_step3_body', 'Perder una sesión es una advertencia. Perder <span class="habit-highlight">2 sesiones</span> termina el plan.')}</p>
+
             <div id="form_habit_fail_sequence" class="habit-fail-seq" aria-hidden="true">
               <div class="habit-fail-step habit-fail-step--1">1</div>
               <div class="habit-fail-step habit-fail-step--2">2</div>
               <div class="habit-fail-step habit-fail-step--3">3</div>
             </div>
-            <button type="button" id="form_habit_consistency_next_btn" class="habit-next-btn">${t('habit_step3_cta', 'Got it!')}</button>
+            <button type="button" id="form_habit_consistency_next_btn" class="habit-next-btn">${t('habit_step3_cta', '¡Entendido!')}</button>
           </div>`;
       } else if (state.subStep === 3) {
         stepContent.innerHTML = `
@@ -653,20 +648,21 @@
                 <path d="M120-440v-320q0-33 23.5-56.5T200-840h240v400H120Zm240-80Zm160-320h240q33 0 56.5 23.5T840-760v160H520v-240Zm0 720v-400h320v320q0 33-23.5 56.5T760-120H520ZM120-360h320v240H200q-33 0-56.5-23.5T120-200v-160Zm240 80Zm240-400Zm0 240Zm-400-80h160v-240H200v240Zm400-160h160v-80H600v80Zm0 240v240h160v-240H600ZM200-280v80h160v-80H200Z"/>
               </svg>
             </div>
-            <h2 id="form_habit_library_title" class="habit-title">${t('habit_step4_title', 'Your library, your rules')}</h2>
-            <p id="form_habit_library_subtitle" class="habit-subtitle">${t('habit_step4_body', 'Any reading session from any book in <span class="habit-highlight">My Library</span> that meets the system targets counts automatically.')}</p>
-            <button type="button" id="form_habit_library_next_btn" class="habit-next-btn">${t('habit_step4_cta', 'Got it!')}</button>
+            <h2 id="form_habit_library_title" class="habit-title">${t('habit_step4_title', 'Tu biblioteca, tus reglas')}</h2>
+            <p id="form_habit_library_subtitle" class="habit-subtitle">${t('habit_step4_body', 'Cualquier sesión de lectura de un libro en <span class="habit-highlight">Mi Biblioteca</span> que cumpla los objetivos cuenta automáticamente.')}</p>
+            <button type="button" id="form_habit_library_next_btn" class="habit-next-btn">${t('habit_step4_cta', '¡Entendido!')}</button>
           </div>`;
       } else if (state.subStep === 4) {
         const currentIntensity = state.formData.baselines[gid]?.intensity || '';
         const intensityDesc = (key) => {
-          if (key === 'intense') return t('habit_intensity_intense_desc', 'We start at 30m and 15pg. We finish at 60m and 30pg.');
-          return t('habit_intensity_light_desc', 'We start at 15m and 3pg. We finish at 30m and 10pg minimum.');
+          const conf = HABIT_INTENSITY_CONFIG[key];
+          if (!conf) return '';
+          return `${t('habit_start_label', 'Inicio')}: ${conf.startPg}pg<br>${t('habit_end_label', 'Final')}: ${conf.endPg}pg`;
         };
         stepContent.innerHTML = `
           <div id="form_habit_slide_intensity" class="form_habit_slide habit-slide habit-slide--intensity step-transition">
             ${habitDefs}
-            <h2 id="form_habit_intensity_title" class="habit-title">${t('habit_step5_title', 'Select intensity')}</h2>
+            <h2 id="form_habit_intensity_title" class="habit-title">${t('habit_step5_title', 'Seleccionar intensidad')}</h2>
             <div id="form_habit_intensity_group" class="habit-option-group">
               ${Object.keys(HABIT_INTENSITY_CONFIG).map((key) => {
           const config = HABIT_INTENSITY_CONFIG[key];
@@ -692,22 +688,22 @@
         stepContent.innerHTML = `
           <div id="form_habit_slide_start_date" class="form_habit_slide habit-slide habit-slide--start step-transition">
             ${habitDefs}
-            <p id="form_habit_start_small_text" class="habit-small-text">${t('habit_step6_small', 'Are you ready to dedicate the next 48 days to reading?')}</p>
-            <h2 id="form_habit_start_title" class="habit-title-large">${t('habit_step6_title', 'Which day do you want to start?')}</h2>
+            <p id="form_habit_start_small_text" class="habit-small-text">${t('habit_step6_small', `¿Estás listo para dedicar los próximos ${HABIT_CHALLENGE_DAYS} días a la lectura?`)}</p>
+            <h2 id="form_habit_start_title" class="habit-title-large">${t('habit_step6_title', '¿Qué día quieres comenzar?')}</h2>
             <div class="date-picker-grid" id="form_habit_date_picker"></div>
-            <button type="button" id="form_habit_start_next_btn" class="habit-next-btn">${t('habit_step6_cta', 'Continue')}</button>
+            <button type="button" id="form_habit_start_next_btn" class="habit-next-btn">${t('habit_step6_cta', 'Continuar')}</button>
           </div>`;
 
         const picker = stepContent.querySelector('#form_habit_date_picker');
         if (picker) {
           const dayNames = [
-            t('habit_day_sun', 'Sun'),
-            t('habit_day_mon', 'Mon'),
-            t('habit_day_tue', 'Tue'),
-            t('habit_day_wed', 'Wed'),
-            t('habit_day_thu', 'Thu'),
-            t('habit_day_fri', 'Fri'),
-            t('habit_day_sat', 'Sat'),
+            t('habit_day_sun', 'Dom'),
+            t('habit_day_mon', 'Lun'),
+            t('habit_day_tue', 'Mar'),
+            t('habit_day_wed', 'Mié'),
+            t('habit_day_thu', 'Jue'),
+            t('habit_day_fri', 'Vie'),
+            t('habit_day_sat', 'Sáb'),
           ];
           const today = new Date();
           const selectedDate = startDateValue ? new Date(`${startDateValue}T00:00:00`) : today;
@@ -730,7 +726,7 @@
             cell.className = `date-cell${key === selectedKey ? ' selected' : ''}`;
             const dayName = document.createElement('span');
             dayName.className = 'day-name';
-            dayName.textContent = i === 0 ? t('habit_day_today', 'Today') : dayNames[targetDate.getDay()];
+            dayName.textContent = i === 0 ? t('habit_day_today', 'Hoy') : dayNames[targetDate.getDay()];
             const dayNum = document.createElement('span');
             dayNum.className = 'day-num';
             dayNum.textContent = String(targetDate.getDate());
@@ -789,23 +785,23 @@
     const safeAuthor = hasBook ? escapeHtml(activeBook?.author || '') : '';
     const safePages = hasBook ? escapeHtml(activeBook?.pages || '') : '';
     const coverBlock = hasBook && !activeBook?.cover ? `
-        <div id="cover-upload-area" class="prs-cover-upload" role="button" tabindex="0" aria-label="${t('cover_upload_cta', 'upload cover')}">
+        <div id="cover-upload-area" class="prs-cover-upload" role="button" tabindex="0" aria-label="${t('cover_upload_cta', 'subir portada')}">
           <input type="file" id="cover-file-input" class="prs-cover-input" accept="image/*" />
           <div id="cover-default" class="prs-cover-default">
-            <p class="prs-cover-hint">${t('cover_drop_label', 'drag drop book cover')}</p>
-            <button type="button" class="prs-cover-btn">${t('cover_upload_cta', 'upload cover')}</button>
-            <p class="prs-cover-note">${t('cover_format_label', 'JPG or PNG')}</p>
+            <p class="prs-cover-hint">${t('cover_drop_label', 'arrastra portada aquí')}</p>
+            <button type="button" class="prs-cover-btn">${t('cover_upload_cta', 'subir portada')}</button>
+            <p class="prs-cover-note">${t('cover_format_label', 'JPG o PNG')}</p>
           </div>
           <div id="cover-preview" class="prs-cover-preview" hidden>
-            <img id="cover-image" alt="${t('cover_preview_alt', 'Book cover preview')}" />
+            <img id="cover-image" alt="${t('cover_preview_alt', 'Vista previa')}" />
             <div class="prs-cover-overlay">
-              <button id="cover-remove" type="button" class="prs-cover-remove" aria-label="${t('cover_remove_label', 'Remove cover')}">
+              <button id="cover-remove" type="button" class="prs-cover-remove" aria-label="${t('cover_remove_label', 'Quitar portada')}">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                   <line x1="18" y1="6" x2="6" y2="18"></line>
                   <line x1="6" y1="6" x2="18" y2="18"></line>
                 </svg>
               </button>
-              <span class="prs-cover-change">${t('cover_change_label', 'Change Cover')}</span>
+              <span class="prs-cover-change">${t('cover_change_label', 'Cambiar Portada')}</span>
             </div>
           </div>
         </div>
@@ -817,7 +813,7 @@
 
     const bookDisplay = hasBook ? `
       <div class="reading-plan-book-display book-summary-row">
-        <button type="button" id="remove-book-current" class="book-remove book-remove--corner" aria-label="${t('remove_book', 'Remove book')}">
+        <button type="button" id="remove-book-current" class="book-remove book-remove--corner" aria-label="${t('remove_book', 'Quitar libro')}">
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round">
             <path d="M3 6h18"></path>
             <path d="M8 6V4h8v2"></path>
@@ -828,8 +824,8 @@
         </button>
         <div id="book_info_section" class="book-summary-details">
           <div class="book-summary-title">${safeTitle}</div>
-          <div class="book-summary-author">${t('by_label', 'by')} ${safeAuthor || escapeHtml(t('unknown_author', 'Unknown author'))}</div>
-          <div class="book-summary-pages">${safePages} ${escapeHtml(t('pages_label', 'pages'))}</div>
+          <div class="book-summary-author">${t('by_label', 'por')} ${safeAuthor || escapeHtml(t('unknown_author', 'Autor desconocido'))}</div>
+          <div class="book-summary-pages">${safePages} ${escapeHtml(t('pages_label', 'páginas'))}</div>
         </div>
         <div id="book_cover_section">
           ${coverBlock}
@@ -842,7 +838,7 @@
           type="number"
           min="1"
           value="${startPageValue}"
-          aria-label="${t('start_page_question', 'What page does the book content start on?')}"
+          aria-label="${t('start_page_question', '¿En qué página comienza el contenido?')}"
           class="input-field w-full"
         />
       </div>
@@ -850,23 +846,23 @@
     const addBookForm = `
       <div class="bg-[#F5F5F5] p-6 rounded-custom border border-[#A8A8A8] space-y-4">
         <div class="relative">
-          <input id="new-book-title" type="text" placeholder="${t('book_title', 'Book title')}" autocomplete="off" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+          <input id="new-book-title" type="text" placeholder="${t('book_title', 'Título del libro')}" autocomplete="off" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
           <div id="reading-plan-title-suggestions" class="prs-add-book__suggestions" aria-hidden="true"></div>
         </div>
         <div class="space-y-4">
-          <input id="new-book-author" type="text" placeholder="${t('author', 'Author')}" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
-          <input id="new-book-pages" type="number" placeholder="${t('pages', 'Pages')}" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+          <input id="new-book-author" type="text" placeholder="${t('author', 'Autor')}" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
+          <input id="new-book-pages" type="number" placeholder="${t('pages', 'Páginas')}" class="input-field w-full p-3 border border-[#A8A8A8] rounded-custom outline-none text-sm bg-white font-medium focus:ring-1 focus:ring-[#C79F32] transition-all">
         </div>
         <div class="space-y-3">
           <button type="button" id="add-book" class="w-full bg-[#C79F32] text-black py-4 rounded-custom hover:brightness-95 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest gold-gradient-text">
-            + ${t('add_book', 'Add book')}
+            + ${t('add_book', 'Añadir libro')}
           </button>
         </div>
       </div>
     `;
     const nextButton = `
       <button type="button" id="next-step" class="w-full bg-black text-[#C79F32] py-4 rounded-custom hover:opacity-90 transition-all flex items-center justify-center gap-2 text-[10px] font-bold uppercase tracking-widest gold-gradient-text">
-        ${t('next', 'Next')}
+        ${t('next', 'Siguiente')}
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="m9 18 6-6-6-6"/>
         </svg>
@@ -875,7 +871,7 @@
     const errorMessage = state.formData.bookError || '';
     const showErrorLink = state.formData.bookErrorLink && RP.myPlansUrl;
     const errorLink = showErrorLink
-      ? `<a class="reading-plan-book-link" href="${RP.myPlansUrl}">${t('book_active_plan_link', 'Go to my plans')}</a>`
+      ? `<a class="reading-plan-book-link" href="${RP.myPlansUrl}">${t('book_active_plan_link', 'Ir a mis planes')}</a>`
       : '';
     const errorBlock = `
       <p id="reading-plan-book-error" class="reading-plan-book-error${errorMessage ? '' : ' hidden'}">
@@ -894,7 +890,7 @@
           </defs>
         </svg>
         <div class="text-center mb-6">
-          <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${hasBook ? t('start_page_question', 'What page does the book content start on?') : t('book_prompt', 'Which book do you want to read now?')}</h2>
+          <h2 class="text-2xl font-medium text-black uppercase tracking-tight">${hasBook ? t('start_page_question', '¿En qué página comienza el contenido?') : t('book_prompt', '¿Qué libro quieres leer ahora?')}</h2>
           ${errorBlock}
         </div>
         ${hasBook ? startingPageInput : addBookForm}
@@ -998,7 +994,7 @@
       if (!bookError) return;
       if (message) {
         const linkHtml = withLink && RP.myPlansUrl
-          ? ` <a class="reading-plan-book-link" href="${RP.myPlansUrl}">${t('book_active_plan_link', 'Go to my plans')}</a>`
+          ? ` <a class="reading-plan-book-link" href="${RP.myPlansUrl}">${t('book_active_plan_link', 'Ir a mis planes')}</a>`
           : '';
         bookError.innerHTML = `${message}${linkHtml}`;
         bookError.classList.remove('hidden');
@@ -1259,7 +1255,7 @@
       }
       if (hasActivePlanLocal(titleValue, authorValue)) {
         updateBookError(
-          t('book_active_plan_notice', 'You already have an active plan for this book.'),
+          t('book_active_plan_notice', 'Ya tienes un plan activo para este libro.'),
           true
         );
         setAddButtonDisabled(true);
@@ -1272,7 +1268,7 @@
           .then((active) => {
             if (active) {
               updateBookError(
-                t('book_active_plan_notice', 'You already have an active plan for this book.'),
+                t('book_active_plan_notice', 'Ya tienes un plan activo para este libro.'),
                 true
               );
               setAddButtonDisabled(true);
@@ -1294,7 +1290,7 @@
         const coverUrl = isHttpUrl(cover) ? cover : '';
         if (state.formData.bookErrorLink) {
           updateBookError(
-            t('book_active_plan_notice', 'You already have an active plan for this book.'),
+            t('book_active_plan_notice', 'Ya tienes un plan activo para este libro.'),
             true
           );
           return;
@@ -1346,7 +1342,7 @@
             .catch((err) => {
               if (err && err.code === 'active_plan') {
                 updateBookError(
-                  t('book_active_plan_notice', 'You already have an active plan for this book.'),
+                  t('book_active_plan_notice', 'Ya tienes un plan activo para este libro.'),
                   true
                 );
                 setAddButtonDisabled(true);
@@ -1440,10 +1436,10 @@
       const currentPages = state.formData.pages_per_session;
 
       const getDesc = (pages) => {
-        if (pages === 15) return t('pages_per_session_15_desc', 'Light reading load');
-        if (pages === 30) return t('pages_per_session_30_desc', 'Moderate reading load');
-        if (pages === 60) return t('pages_per_session_60_desc', 'Intensive reading load');
-        return `${pages} ${t('pages_label_short', 'pages')}`;
+        if (pages === 15) return t('pages_per_session_15_desc', 'Carga de lectura ligera');
+        if (pages === 30) return t('pages_per_session_30_desc', 'Carga de lectura moderada');
+        if (pages === 60) return t('pages_per_session_60_desc', 'Carga de lectura intensiva');
+        return `${pages} ${t('pages_label_short', 'páginas')}`;
       };
 
       stepContent.innerHTML = `
@@ -1458,7 +1454,7 @@
             </defs>
           </svg>
           <div class="text-center mb-6">
-            <h2 id="finish_book_pages_per_session_title" class="habit-title">${t('pages_per_session_prompt', 'How many pages do you want to read per session?')}</h2>
+            <h2 id="finish_book_pages_per_session_title" class="habit-title">${t('pages_per_session_prompt', '¿Cuántas páginas quieres leer por sesión?')}</h2>
           </div>
           <div id="finish_book_pages_per_session_group" class="habit-option-group">
             ${pagesOptions.map((pages) => `
@@ -1471,7 +1467,7 @@
                     <path d="M270-80q-45 0-77.5-30.5T160-186v-558q0-38 23.5-68t61.5-38l395-78v640l-379 76q-9 2-15 9.5t-6 16.5q0 11 9 18.5t21 7.5h450v-640h80v720H270Zm90-233 200-39v-478l-200 39v478Zm-80 16v-478l-15 3q-11 2-18 9.5t-7 18.5v457q5-2 10.5-3.5T261-293l19-4Zm-40-472v482-482Z"/>
                   </svg>
                 </div>
-                <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${pages} ${t('pages_label_short', 'pages')}</span>
+                <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${pages} ${t('pages_label_short', 'páginas')}</span>
                 <p class="intensity-desc">${getDesc(pages)}</p>
               </button>`).join('')}
           </div>
@@ -1492,10 +1488,10 @@
       const currentSessions = state.formData.sessions_per_week;
 
       const getDesc = (sessions) => {
-        if (sessions === 3) return t('sessions_per_week_3_desc', '3 days per week');
-        if (sessions === 5) return t('sessions_per_week_5_desc', '5 days per week');
-        if (sessions === 7) return t('sessions_per_week_7_desc', 'Daily reading');
-        return `${sessions} ${t('days_label', 'days')}`;
+        if (sessions === 3) return t('sessions_per_week_3_desc', '3 días por semana');
+        if (sessions === 5) return t('sessions_per_week_5_desc', '5 días por semana');
+        if (sessions === 7) return t('sessions_per_week_7_desc', 'Lectura diaria');
+        return `${sessions} ${t('days_label', 'días')}`;
       };
 
       stepContent.innerHTML = `
@@ -1510,7 +1506,7 @@
             </defs>
           </svg>
           <div class="text-center mb-6">
-            <h2 id="finish_book_sessions_per_week_title" class="habit-title">${t('sessions_per_week_prompt', 'How many days per week do you want to read?')}</h2>
+            <h2 id="finish_book_sessions_per_week_title" class="habit-title">${t('sessions_per_week_prompt', '¿Cuántos días a la semana quieres leer?')}</h2>
           </div>
           <div id="finish_book_sessions_per_week_group" class="habit-option-group">
             ${sessionsOptions.map((sessions) => `
@@ -1523,7 +1519,7 @@
                     <path d="M80-80v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-360v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-640v-240h520v240H80Zm560 0v-240h240v240H640Z"/>
                   </svg>
                 </div>
-                <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${sessions} ${t('days_label', 'days')}</span>
+                <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${sessions} ${t('days_label', 'días')}</span>
                 <p class="intensity-desc">${getDesc(sessions)}</p>
               </button>`).join('')}
           </div>
@@ -1610,7 +1606,7 @@
         : roundTo(config.startMin + (i * minutesStep), 2);
       const expectedPages = i === steps
         ? config.endPg
-        : roundTo(config.startPg + (i * pagesStep), 2);
+        : Math.round(config.startPg + (i * pagesStep));
       return {
         date,
         order: i + 1,
@@ -1632,21 +1628,23 @@
       },
     };
 
-    qs('#propuesta-tipo-label').innerText = t('habit_48_title', '48-DAY HABIT CHALLENGE');
-    qs('#propuesta-plan-titulo').innerText = format('habit_intensity_label', 'Intensity: %s', config.label);
-    qs('#propuesta-sub-label').innerText = t('habit_growth_label', 'Daily targets grow linearly.');
-    qs('#propuesta-carga').innerText = format(
-      'habit_range_label',
-      'Targets: %1$s–%2$s min / %3$s–%4$s pages',
-      config.startMin,
-      config.endMin,
-      config.startPg,
-      config.endPg
-    );
-    qs('#propuesta-duracion').innerText = format('habit_duration_days', 'Duration: %s days', totalDays);
+    const totalPages = sessions.reduce((sum, s) => sum + (s.expectedPages || 0), 0);
+
+    qs('#propuesta-tipo-label').innerText = t('habit_48_title', `${HABIT_CHALLENGE_DAYS}-DAY HABIT CHALLENGE`);
+    qs('#propuesta-plan-titulo').innerText = format('habit_intensity_label', 'Intensidad: %s', config.label);
+    qs('#propuesta-sub-label').innerText = t('habit_growth_label', 'Los objetivos diarios crecen linealmente.');
+    // Two rows layout: START | FINISH <br> TOTAL PAGES | DURATION
+    const startText = `${t('habit_start_label', 'INICIO')}: ${config.startPg}`;
+    const endText = `${t('habit_end_label', 'FINAL')}: ${config.endPg}`;
+    const totalPagesText = `${t('total_pages_label', 'TOTAL PÁGINAS')}: ${totalPages.toLocaleString()}`;
+    const durationText = `${t('duration_label', 'DURACIÓN')}: ${totalDays}`;
+
+    qs('#propuesta-carga').innerHTML = `${startText} | ${endText}<br>${totalPagesText} | ${durationText} ${t('days_label_short', 'Días')}`;
+    qs('#propuesta-duracion').innerText = '';
 
     formContainer.classList.add('hidden');
     summaryContainer.classList.remove('hidden');
+    qs('#toggle-chart').classList.remove('hidden'); // Show chart toggle for habit
     state.currentMonthOffset = (baseDate.getFullYear() - TODAY.getFullYear()) * 12 + (baseDate.getMonth() - TODAY.getMonth());
     state.listCurrentPage = 0;
     renderCalendar();
@@ -1674,14 +1672,15 @@
       totalPages: pagesToRead,
     };
 
-    qs('#propuesta-tipo-label').innerText = t('realistic_plan', 'REALISTIC READING PLAN');
+    qs('#propuesta-tipo-label').innerText = t('realistic_plan', 'PLAN DE LECTURA REALISTA');
     qs('#propuesta-plan-titulo').innerText = targetBook.title;
-    qs('#propuesta-sub-label').innerText = t('monthly_plan', 'MONTHLY PLAN');
-    qs('#propuesta-carga').innerText = format('suggested_load', 'Suggested Load: %s PAGES / SESSION', pagesPerSession);
-    qs('#propuesta-duracion').innerText = format('estimated_duration', 'Estimated duration: %s weeks', totalWeeks);
+    qs('#propuesta-sub-label').innerText = t('monthly_plan', 'PLAN MENSUAL');
+    qs('#propuesta-carga').innerText = format('suggested_load', 'Carga Sugerida: %s PÁGINAS / SESIÓN', pagesPerSession);
+    qs('#propuesta-duracion').innerText = format('estimated_duration', 'Duración estimada: %s semanas', totalWeeks);
 
     formContainer.classList.add('hidden');
     summaryContainer.classList.remove('hidden');
+    qs('#toggle-chart').classList.add('hidden'); // Hide chart toggle for CCL
     state.currentMonthOffset = 0;
     state.listCurrentPage = 0;
     renderCalendar();
@@ -1848,9 +1847,9 @@
 
   function updateCargaLabel() {
     if (state.calculatedPlan.type === 'ccl') {
-      qs('#propuesta-carga').innerText = format('suggested_load', 'Suggested Load: %s PAGES / SESSION', state.calculatedPlan.pps);
+      qs('#propuesta-carga').innerText = format('suggested_load', 'Carga Sugerida: %s PÁGINAS / SESIÓN', state.calculatedPlan.pps);
     } else {
-      qs('#propuesta-carga').innerText = format('estimated_load', 'Estimated Load: %s PAGES / SESSION', state.calculatedPlan.pps);
+      qs('#propuesta-carga').innerText = format('estimated_load', 'Carga Estimada: %s PÁGINAS / SESIÓN', state.calculatedPlan.pps);
     }
   }
 
@@ -1968,7 +1967,7 @@
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'session-remove';
-          removeBtn.setAttribute('aria-label', t('remove_session', 'Remove session'));
+          removeBtn.setAttribute('aria-label', t('remove_session', 'Quitar sesión'));
           removeBtn.innerText = '×';
           removeBtn.addEventListener('click', (event) => {
             event.stopPropagation();
@@ -2047,7 +2046,7 @@
               const addBtn = document.createElement('button');
               addBtn.type = 'button';
               addBtn.className = 'session-add';
-              addBtn.setAttribute('aria-label', t('add_session', 'Add session'));
+              addBtn.setAttribute('aria-label', t('add_session', 'Añadir sesión'));
               addBtn.textContent = '+';
               addBtn.addEventListener('click', (event) => {
                 event.stopPropagation();
@@ -2081,7 +2080,7 @@
     const pagination = qs('#list-pagination');
 
     if (totalSessions === 0) {
-      listView.innerHTML = `<p class="text-center text-[10px] uppercase font-medium opacity-40 py-8 tracking-widest">${t('no_sessions', 'No sessions')}</p>`;
+      listView.innerHTML = `<p class="text-center text-[10px] uppercase font-medium opacity-40 py-8 tracking-widest">${t('no_sessions', 'Sin sesiones')}</p>`;
       pagination.classList.add('hidden');
       return;
     }
@@ -2097,32 +2096,219 @@
     const isHabit = state.calculatedPlan.type === 'habit';
     pageSessions.forEach((s) => {
       const monthName = MONTH_NAMES[s.date.getMonth()];
-      const expectedMinutes = typeof s.expectedMinutes === 'number' ? Math.ceil(s.expectedMinutes) : null;
-      const expectedPages = typeof s.expectedPages === 'number' ? Math.ceil(s.expectedPages) : null;
-      const habitLabel = expectedMinutes !== null && expectedPages !== null
-        ? format('habit_session_meta', '%1$s min / %2$s pages', expectedMinutes, expectedPages)
-        : t('reading_session', 'Reading Session');
+      const expectedPages = typeof s.expectedPages === 'number' ? s.expectedPages : null;
+      let habitLabel = t('reading_session', 'Sesión de Lectura');
+
+      if (expectedPages !== null) {
+        habitLabel = `${expectedPages} ${t('pages_label', 'Páginas').toUpperCase()}`;
+      }
+
       const habitDate = `${monthName} ${s.date.getDate()}`;
-      const habitDetail = expectedMinutes !== null && expectedPages !== null
-        ? format('habit_session_meta', '%1$s pages / %2$s min', expectedPages, expectedMinutes)
-        : t('reading_session', 'Reading Session');
-      const leftLabel = isHabit
-        ? `${habitDate}: ${habitDetail}`
-        : t('reading_session', 'Reading Session');
-      listView.innerHTML += `
-        <div class="flex items-center justify-between p-3 bg-white border border-[#A8A8A8] rounded-custom shadow-sm mb-2 step-transition">
-          <div class="flex items-center space-x-3">
-            <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-black bg-[#C79F32]">${s.order}</div>
-            <span class="text-xs font-medium text-black uppercase tracking-tight">${leftLabel}</span>
+      const habitDetail = expectedPages !== null
+        ? `${expectedPages} ${t('pages_label', 'Páginas').toUpperCase()}`
+        : '';
+
+      const item = document.createElement('div');
+      item.className = 'flex items-center justify-between p-3 bg-[#1a1a1a] border border-[#333333] rounded-lg mb-2';
+      item.innerHTML = `
+        <div class="flex items-center gap-3">
+          <div class="flex items-center justify-center w-6 h-6 rounded-full bg-[#C79F32] text-black text-xs font-bold">
+            ${s.order}
           </div>
-          <span class="text-[10px] font-medium text-black opacity-60 uppercase tracking-tighter">${isHabit ? '' : `${s.date.getDate()} ${monthName}`}</span>
-        </div>`;
+          <div class="flex flex-col">
+            <span class="text-[11px] font-bold text-white uppercase tracking-wider">${habitDate}: ${habitLabel}</span>
+          </div>
+        </div>
+      `;
+      listView.appendChild(item);
     });
     updateHeight();
   }
 
+  function renderChart() {
+    const container = qs('#chart-container');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const sessions = state.calculatedPlan.sessions;
+    if (!sessions || sessions.length === 0) return;
+
+    // --- CHART SVG ---
+    // Title
+    const title = document.createElement('h3');
+    title.className = 'text-white font-bold text-sm mb-4';
+    title.style.fontFamily = "'Poppins', sans-serif";
+    title.innerText = t('daily_page_target', 'Objetivo Diario de Páginas');
+    container.appendChild(title);
+
+    const width = container.clientWidth;
+    // Adjust height for title offset
+    const height = container.clientHeight - 40;
+    const padding = { top: 10, right: 30, left: 50, bottom: 40 };
+    const chartW = width - padding.left - padding.right;
+    const chartH = height - padding.top - padding.bottom;
+
+    const data = sessions.map((s, i) => ({
+      day: i + 1,
+      pages: s.expectedPages || 0
+    }));
+
+    const maxPages = Math.ceil(Math.max(...data.map(d => d.pages)) * 1.05);
+    const minPages = Math.floor(Math.min(...data.map(d => d.pages)) * 0.95);
+    const maxDays = data.length;
+
+    // Scales
+    const xScale = (day) => (day - 1) / (maxDays - 1) * chartW;
+    const yScale = (p) => chartH - ((p - minPages) / (maxPages - minPages) * chartH);
+
+    const svgNs = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(svgNs, 'svg');
+    svg.setAttribute('class', 'chart-svg');
+    svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
+    svg.setAttribute('preserveAspectRatio', 'none');
+
+    const g = document.createElementNS(svgNs, 'g');
+    g.setAttribute('transform', `translate(${padding.left}, ${padding.top})`);
+    svg.appendChild(g);
+
+    // Y Axis Label (Rotated)
+    const yLabel = document.createElementNS(svgNs, 'text');
+    yLabel.setAttribute('x', -chartH / 2);
+    yLabel.setAttribute('y', -35);
+    yLabel.setAttribute('transform', 'rotate(-90)');
+    yLabel.setAttribute('text-anchor', 'middle');
+    yLabel.setAttribute('class', 'chart-axis-title');
+    yLabel.textContent = t('pages_label', 'Páginas');
+    g.appendChild(yLabel);
+
+    // X Axis Label
+    const xLabel = document.createElementNS(svgNs, 'text');
+    xLabel.setAttribute('x', chartW / 2);
+    xLabel.setAttribute('y', chartH + 35);
+    xLabel.setAttribute('text-anchor', 'middle');
+    xLabel.setAttribute('class', 'chart-axis-title');
+    xLabel.textContent = t('day_label', 'Día');
+    g.appendChild(xLabel);
+
+    // Y Axis & Grid
+    const yTicks = 5;
+    for (let i = 0; i <= yTicks; i++) {
+      const val = minPages + (i / yTicks) * (maxPages - minPages);
+      const y = yScale(Math.round(val));
+
+      // Grid line
+      const line = document.createElementNS(svgNs, 'line');
+      line.setAttribute('x1', 0);
+      line.setAttribute('x2', chartW);
+      line.setAttribute('y1', y);
+      line.setAttribute('y2', y);
+      line.setAttribute('class', 'chart-grid-line');
+      g.appendChild(line);
+
+      // Text
+      const text = document.createElementNS(svgNs, 'text');
+      text.setAttribute('x', -10);
+      text.setAttribute('y', y + 4);
+      text.setAttribute('text-anchor', 'end');
+      text.setAttribute('class', 'chart-axis-text');
+      text.textContent = Math.round(val);
+      g.appendChild(text);
+    }
+
+    // X Axis Labels - Logic to match screenshot 1, 2, 3... but sparse if many
+    const xStep = maxDays > 30 ? 2 : 1;
+
+    for (let i = 0; i < maxDays; i += xStep) {
+      const day = i + 1;
+      const x = xScale(day);
+
+      // Tiny tick
+      const tick = document.createElementNS(svgNs, 'line');
+      tick.setAttribute('x1', x);
+      tick.setAttribute('x2', x);
+      tick.setAttribute('y1', chartH);
+      tick.setAttribute('y2', chartH + 5);
+      tick.setAttribute('stroke', '#334155');
+      g.appendChild(tick);
+
+      const text = document.createElementNS(svgNs, 'text');
+      text.setAttribute('x', x);
+      text.setAttribute('y', chartH + 15);
+      text.setAttribute('text-anchor', 'middle');
+      text.setAttribute('class', 'chart-axis-text');
+      text.textContent = day;
+      g.appendChild(text);
+    }
+
+    // Line Path
+    if (data.length > 0) {
+      let pathD = `M ${xScale(data[0].day)} ${yScale(data[0].pages)}`;
+      for (let i = 1; i < data.length; i++) {
+        pathD += ` L ${xScale(data[i].day)} ${yScale(data[i].pages)}`;
+      }
+
+      const path = document.createElementNS(svgNs, 'path');
+      path.setAttribute('d', pathD);
+      path.setAttribute('class', 'chart-line-path'); // CSS handles dash and style now
+      g.appendChild(path);
+    }
+
+    // Tooltip
+    let tooltip = container.querySelector('.chart-tooltip');
+    if (!tooltip) {
+      tooltip = document.createElement('div');
+      tooltip.className = 'chart-tooltip';
+      container.appendChild(tooltip);
+    }
+
+    // Points
+    data.forEach((d) => {
+      const cx = xScale(d.day);
+      const cy = yScale(d.pages);
+      const circle = document.createElementNS(svgNs, 'circle');
+      circle.setAttribute('cx', cx);
+      circle.setAttribute('cy', cy);
+      circle.setAttribute('r', 3);
+      circle.setAttribute('class', 'chart-point');
+
+      // Interaction
+      circle.addEventListener('mouseenter', () => {
+        circle.setAttribute('r', 5);
+        circle.classList.add('active');
+
+        tooltip.innerHTML = `
+                <div class="chart-tooltip-label">Day ${d.day}</div>
+                <div class="chart-tooltip-value">${d.pages} ${t('pages_label', 'Pages')}</div>
+            `;
+        // Position
+        const leftPos = cx + padding.left;
+        const topPos = cy + padding.top + 40; // +40 for title offset
+
+        tooltip.style.left = `${leftPos}px`;
+        tooltip.style.top = `${topPos - 10}px`;
+        tooltip.classList.add('visible');
+      });
+
+      circle.addEventListener('mouseleave', () => {
+        circle.setAttribute('r', 3);
+        circle.classList.remove('active');
+        tooltip.classList.remove('visible');
+      });
+
+      g.appendChild(circle);
+    });
+
+    container.appendChild(svg);
+    updateHeight();
+  }
+
+
   function updateHeight() {
-    const active = state.currentViewMode === 'calendar' ? qs('#calendar-view-wrapper') : qs('#list-view-wrapper');
+    let active = qs('#calendar-view-wrapper');
+    if (state.currentViewMode === 'list') active = qs('#list-view-wrapper');
+    if (state.currentViewMode === 'chart') active = qs('#chart-view-wrapper');
+
     setTimeout(() => {
       const container = qs('#main-view-container');
       if (container) container.style.height = `${active.offsetHeight}px`;
@@ -2246,8 +2432,10 @@
     state.currentViewMode = 'calendar';
     qs('#toggle-calendar').classList.add('active');
     qs('#toggle-list').classList.remove('active');
+    qs('#toggle-chart').classList.remove('active');
     qs('#calendar-view-wrapper').classList.replace('view-hidden', 'view-visible');
     qs('#list-view-wrapper').classList.replace('view-visible', 'view-hidden');
+    qs('#chart-view-wrapper').classList.replace('view-visible', 'view-hidden');
     qs('#calendar-nav-controls').classList.remove('hidden');
     qs('#list-pagination').classList.add('hidden');
     renderCalendar();
@@ -2257,10 +2445,29 @@
     state.currentViewMode = 'list';
     qs('#toggle-list').classList.add('active');
     qs('#toggle-calendar').classList.remove('active');
+    qs('#toggle-chart').classList.remove('active');
     qs('#list-view-wrapper').classList.replace('view-hidden', 'view-visible');
     qs('#calendar-view-wrapper').classList.replace('view-visible', 'view-hidden');
+    qs('#chart-view-wrapper').classList.replace('view-visible', 'view-hidden');
     qs('#calendar-nav-controls').classList.add('hidden');
+    qs('#list-pagination').classList.remove('hidden');
     renderList();
+  });
+
+  qs('#toggle-chart')?.addEventListener('click', () => {
+    state.currentViewMode = 'chart';
+    qs('#toggle-chart').classList.add('active');
+    qs('#toggle-calendar').classList.remove('active');
+    qs('#toggle-list').classList.remove('active');
+    qs('#chart-view-wrapper').classList.replace('view-hidden', 'view-visible');
+    qs('#calendar-view-wrapper').classList.replace('view-visible', 'view-hidden');
+    qs('#list-view-wrapper').classList.replace('view-visible', 'view-hidden');
+    qs('#calendar-nav-controls').classList.add('hidden');
+    qs('#list-pagination').classList.add('hidden');
+    // Allow DOM to update visibility before calculating dimensions
+    setTimeout(() => {
+      renderChart();
+    }, 50);
   });
 
   qs('#list-prev-page')?.addEventListener('click', () => {

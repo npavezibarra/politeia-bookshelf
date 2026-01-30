@@ -1,3 +1,5 @@
+@import 'reading-plan-chart.css';
+
 #politeia-reading-plan-overlay {
   position: fixed;
   inset: 0;
@@ -249,7 +251,7 @@
 .politeia-reading-plan-shell .habit-title {
   font-size: 2.15rem;
   font-weight: 700;
-  margin-bottom: 6px;
+  margin-bottom: 40px;
   line-height: 1.1;
   text-transform: none;
 }
@@ -286,7 +288,7 @@
   display: inline-block;
 }
 
-.politeia-reading-plan-shell .habit-next-btn {
+.politeia-reading-plan-shell #form-container .habit-next-btn {
   position: absolute;
   bottom: 0;
   left: 50%;
@@ -298,8 +300,8 @@
   border: none;
   font-family: 'Poppins', sans-serif;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 1px;
+  text-transform: uppercase !important;
+  letter-spacing: 4px;
   cursor: pointer;
   font-size: 1.4rem;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

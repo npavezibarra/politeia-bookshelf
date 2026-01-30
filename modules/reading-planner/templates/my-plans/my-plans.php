@@ -3,60 +3,7 @@ if (!defined('ABSPATH')) {
 	exit;
 }
 
-// AJAX handler for desisting a reading plan
-add_action('wp_ajax_desist_reading_plan', 'prs_handle_desist_plan');
-function prs_handle_desist_plan()
-{
-	// Verify nonce
-	if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'desist_plan_nonce')) {
-		wp_send_json_error('Invalid nonce');
-		return;
-	}
 
-	// Get plan ID
-	$plan_id = isset($_POST['plan_id']) ? intval($_POST['plan_id']) : 0;
-	if (!$plan_id) {
-		wp_send_json_error('Invalid plan ID');
-		return;
-	}
-
-	global $wpdb;
-	$table_name = $wpdb->prefix . 'politeia_plans';
-
-	// Get the plan to verify ownership
-	$plan = $wpdb->get_row($wpdb->prepare(
-		"SELECT user_id, status FROM {$table_name} WHERE id = %d",
-		$plan_id
-	));
-
-	if (!$plan) {
-		wp_send_json_error('Plan not found');
-		return;
-	}
-
-	// Verify user owns the plan
-	$current_user_id = get_current_user_id();
-	if ($plan->user_id != $current_user_id) {
-		wp_send_json_error('You do not have permission to modify this plan');
-		return;
-	}
-
-	// Update plan status to 'desisted'
-	$updated = $wpdb->update(
-		$table_name,
-		array('status' => 'desisted'),
-		array('id' => $plan_id),
-		array('%s'),
-		array('%d')
-	);
-
-	if ($updated === false) {
-		wp_send_json_error('Failed to update plan status');
-		return;
-	}
-
-	wp_send_json_success('Plan desisted successfully');
-}
 
 get_header();
 $enqueue_my_book_assets = function () {
@@ -913,6 +860,20 @@ $is_owner = $requested_user
 		color: #10b981;
 		font-weight: 600;
 	}
+	
+	.prs-upcoming-bold {
+		font-weight: 700;
+	}
+	
+	.prs-upcoming-gold {
+		font-weight: 700;
+		font-size: 0.85em; /* Smaller as requested */
+		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		color: #C79F32; /* Fallback */
+	}
 </style>
 
 <div class="wrap prs-plans-wrap">
@@ -943,7 +904,7 @@ $is_owner = $requested_user
 		if ($plans) {
 			foreach ($plans as $plan) {
 				$plan_id = (int) $plan['id'];
-				$cache_key = 'prs_plan_view_' . $plan_id;
+				$cache_key = 'prs_plan_view_v2_' . $plan_id;
 				$cached_card = get_transient($cache_key);
 				if (false !== $cached_card) {
 					$cards[] = $cached_card;
@@ -1223,6 +1184,53 @@ $is_owner = $requested_user
 				}
 				$session_items = array_values($session_items_map);
 
+				// 5. Find next upcoming session for widget toggle
+				$next_session_label = '';
+				$next_session_sublabel = '';
+				$found_next = false;
+				
+				// Ensure items are sorted by date
+				usort($session_items, function($a, $b) {
+					return strcmp($a['date'], $b['date']);
+				});
+
+				$today_ts = strtotime($today_key);
+				$tomorrow_key = date('Y-m-d', strtotime('+1 day', $today_ts));
+				
+				foreach ($session_items as $item) {
+					if ($item['date'] >= $today_key) {
+						$found_next = true;
+						
+						// Date Label
+						$s_ts = strtotime($item['date']);
+						$date_part = '';
+						
+						if ($item['date'] === $today_key) {
+							$date_part = __('TODAY', 'politeia-reading');
+						} elseif ($item['date'] === $tomorrow_key) {
+							$date_part = __('TOMORROW', 'politeia-reading');
+						} else {
+							$date_part = date_i18n('F j', $s_ts);
+						}
+						
+						$next_session_label = sprintf(__('UPCOMING SESSION: %s', 'politeia-reading'), $date_part);
+						
+						// Pages Label
+						$p_count = 0;
+						if (isset($item['planned_end_page']) && isset($item['planned_start_page'])) {
+							$p_count = max(0, $item['planned_end_page'] - $item['planned_start_page'] + 1);
+						}
+						$next_session_sublabel = sprintf(_n('%d Page', '%d Pages', $p_count, 'politeia-reading'), $p_count);
+						
+						break;
+					}
+				}
+				
+				if (!$found_next) {
+					$next_session_label = __('See Session Calendar', 'politeia-reading');
+					$next_session_sublabel = $month_range_label;
+				}
+
 				// --- END BACKEND DERIVATION ---
 	
 				$badge = 'ccl' === (string) $plan['plan_type']
@@ -1276,6 +1284,9 @@ $is_owner = $requested_user
 					'actual_sessions' => $actual_sessions_payload,
 					'today_key' => $today_key,
 					'plan_status' => $plan['status'],
+					'toggle_label' => $next_session_label,
+					'toggle_sublabel' => $next_session_sublabel,
+					'has_upcoming' => $found_next,
 				);
 				set_transient($cache_key, $card_data, DAY_IN_SECONDS);
 				$cards[] = $card_data;
@@ -1436,9 +1447,8 @@ $is_owner = $requested_user
 								</svg>
 							</div>
 							<div>
-								<span
-									class="prs-plan-toggle-label"><?php esc_html_e('See Session Calendar', 'politeia-reading'); ?></span><br>
-								<span class="prs-plan-toggle-date"><?php echo esc_html($card['month_range']); ?></span>
+								<span class="prs-plan-toggle-label <?php echo $card['has_upcoming'] ? 'prs-upcoming-bold' : ''; ?>"><?php echo esc_html($card['toggle_label']); ?></span><br>
+								<span class="prs-plan-toggle-date <?php echo $card['has_upcoming'] ? 'prs-upcoming-gold' : ''; ?>"><?php echo esc_html($card['toggle_sublabel']); ?></span>
 							</div>
 							<svg class="prs-chevron" data-role="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" />
