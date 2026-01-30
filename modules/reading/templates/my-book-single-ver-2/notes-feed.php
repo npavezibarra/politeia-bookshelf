@@ -101,7 +101,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	}
 
 	.prs-note__rate-button,
-	.prs-note__edit-button {
+	.prs-note__edit-button,
+	.prs-note__delete-button {
 		font-size: 0.75rem;
 		padding: 4px 8px;
 		border-radius: 999px;
@@ -109,6 +110,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 		background: #ffffff;
 		color: var(--prs-notes-muted);
 		cursor: pointer;
+	}
+
+	.prs-note__delete-button:hover {
+		background: #fee2e2;
+		color: #dc2626;
+		border-color: #fca5a5;
 	}
 
 	.prs-note__composition {
@@ -449,6 +456,14 @@ $other_readers = $wpdb->get_results(
 								>
 									<?php esc_html_e( 'Rate', 'politeia-reading' ); ?>
 								</button>
+								<button
+									class="prs-note__delete-button"
+									type="button"
+									data-note-id="<?php echo esc_attr( (string) $note->id ); ?>"
+									data-rs-id="<?php echo esc_attr( (string) $note->rs_id ); ?>"
+								>
+									<?php esc_html_e( 'Delete', 'politeia-reading' ); ?>
+								</button>
 							</div>
 						</footer>
 					</article>
@@ -507,6 +522,9 @@ $other_readers = $wpdb->get_results(
 			'note_required'        => __( 'Please enter a note before saving.', 'politeia-reading' ),
 			'note_unavailable'     => __( 'Unable to save note right now.', 'politeia-reading' ),
 			'save_failed'          => __( 'Save failed.', 'politeia-reading' ),
+			'delete_confirm'       => __( 'If you delete this session note, you will not be able to recover it. Are you sure you want to proceed?', 'politeia-reading' ),
+			'delete_failed'        => __( 'Failed to delete note.', 'politeia-reading' ),
+			'deleting'             => __( 'Deleting...', 'politeia-reading' ),
 		) ); ?>;
 		const t = (key, fallback) => (I18N && I18N[key]) ? I18N[key] : fallback;
 		const modal = document.getElementById("prs-note-modal");
@@ -515,6 +533,7 @@ $other_readers = $wpdb->get_results(
 		const saveBtn = document.getElementById("prs-note-save");
 		const noteButtons = document.querySelectorAll(".prs-note__rate-button");
 		const editButtons = document.querySelectorAll(".prs-note__edit-button");
+		const deleteButtons = document.querySelectorAll(".prs-note__delete-button");
 		if (!modal || !rowsWrap || !resetBtn || !saveBtn || !noteButtons.length) return;
 
 		const EMOTIONS = [
@@ -744,6 +763,57 @@ $other_readers = $wpdb->get_results(
 					})
 					.finally(() => {
 						button.disabled = false;
+					});
+			});
+		});
+
+		deleteButtons.forEach((button) => {
+			button.addEventListener("click", () => {
+				const noteId = button.dataset.noteId;
+				if (!noteId) return;
+
+				const confirmMessage = t("delete_confirm", "If you delete this session note, you will not be able to recover it. Are you sure you want to proceed?");
+				if (!window.confirm(confirmMessage)) {
+					return;
+				}
+
+				const ajaxUrl = (typeof window.ajaxurl === "string" && window.ajaxurl)
+					? window.ajaxurl
+					: (window.PRS_BOOK && PRS_BOOK.ajax_url) || (window.PRS_SR && PRS_SR.ajax_url) || "";
+				const nonce = (window.PRS_SR && PRS_SR.nonce) || (window.PRS_BOOK && window.PRS_BOOK.reading_nonce) || "";
+				if (!ajaxUrl || !nonce) {
+					window.alert(t("note_unavailable", "Unable to delete note right now."));
+					return;
+				}
+
+				const originalText = button.textContent;
+				button.disabled = true;
+				button.textContent = t("deleting", "Deleting...");
+
+				const payload = new FormData();
+				payload.append("action", "politeia_delete_session_note");
+				payload.append("nonce", nonce);
+				payload.append("note_id", String(noteId));
+
+				fetch(ajaxUrl, { method: "POST", body: payload, credentials: "same-origin" })
+					.then((resp) => resp.json())
+					.then((data) => {
+						if (!data || !data.success) {
+							throw new Error(data && data.data ? data.data : t("delete_failed", "Failed to delete note."));
+						}
+						const note = button.closest(".prs-note");
+						if (note) {
+							note.style.transition = "opacity 0.3s ease";
+							note.style.opacity = "0";
+							setTimeout(() => {
+								note.remove();
+							}, 300);
+						}
+					})
+					.catch((err) => {
+						window.alert(err && err.message ? err.message : t("delete_failed", "Failed to delete note."));
+						button.disabled = false;
+						button.textContent = originalText;
 					});
 			});
 		});

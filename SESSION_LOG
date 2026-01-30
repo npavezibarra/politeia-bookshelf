@@ -229,6 +229,11 @@ January 22, 2026, 22:33 -03
 2. Implemented active-plan detection (server + preloaded client list), blocked add when a plan exists, and added localized warning copy with a gradient link to My Plans.
 3. Improved finish-book input flow: auto-check on title/author fill, hide Add Book until fields are valid, reset author/pages when title clears, and normalize title matching.
 
+January 30, 2026, 13:08 UTC
+1. Fixed persistent "Empty Calendar" issue by correcting invalid SQL queries (removing non-existent columns) in both `class-rest.php` (API) and `my-plans.php` (initial load / upcoming sessions).
+2. Implemented cache busting for frontend API calls (`fetchPlanDetails`) to prevent stale empty responses and cleared existing transient caches.
+3. Verified fix: Plan calendar now reliably populates on load and updates immediately after session changes.
+
 ------
 
 TO DO:

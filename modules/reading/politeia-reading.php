@@ -7,30 +7,30 @@
  * Text Domain: politeia-reading
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
 	exit; // Exit if accessed directly
 }
 
 // ===== Constants =====
-if ( ! defined( 'POLITEIA_READING_VERSION' ) ) {
-        // ⬆️ Incrementa esta versión cuando cambies estructuras/flujo global del plugin
-        define( 'POLITEIA_READING_VERSION', '0.2.3' );
+if (!defined('POLITEIA_READING_VERSION')) {
+	// ⬆️ Incrementa esta versión cuando cambies estructuras/flujo global del plugin
+	define('POLITEIA_READING_VERSION', '0.2.3');
 }
-if ( ! defined( 'POLITEIA_READING_DB_VERSION' ) ) {
-        define( 'POLITEIA_READING_DB_VERSION', '1.12.0' );
+if (!defined('POLITEIA_READING_DB_VERSION')) {
+	define('POLITEIA_READING_DB_VERSION', '1.13.0');
 }
-if ( ! defined( 'POLITEIA_READING_PATH' ) ) {
-	define( 'POLITEIA_READING_PATH', plugin_dir_path( __FILE__ ) );
+if (!defined('POLITEIA_READING_PATH')) {
+	define('POLITEIA_READING_PATH', plugin_dir_path(__FILE__));
 }
-if ( ! defined( 'POLITEIA_READING_URL' ) ) {
-	define( 'POLITEIA_READING_URL', plugin_dir_url( __FILE__ ) );
+if (!defined('POLITEIA_READING_URL')) {
+	define('POLITEIA_READING_URL', plugin_dir_url(__FILE__));
 }
 
 // ===== i18n =====
 add_action(
 	'plugins_loaded',
 	function () {
-		load_plugin_textdomain( 'politeia-reading', false, dirname( plugin_basename( __FILE__ ) ) . '/languages' );
+		load_plugin_textdomain('politeia-reading', false, dirname(plugin_basename(__FILE__)) . '/languages');
 	}
 );
 
@@ -55,21 +55,21 @@ require_once POLITEIA_READING_PATH . 'includes/class-routes.php';
 require_once POLITEIA_READING_PATH . 'modules/post-reading/init.php';
 
 // ===== Activation Hooks =====
-register_activation_hook( __FILE__, array( '\\Politeia\\Reading\\Activator', 'activate' ) );
+register_activation_hook(__FILE__, array('\\Politeia\\Reading\\Activator', 'activate'));
 
 // Asegura la migración del módulo post-reading al activar el plugin
 register_activation_hook(
-        __FILE__,
-        function () {
-                if ( class_exists( 'Politeia_Post_Reading_Schema' ) ) {
-                        Politeia_Post_Reading_Schema::migrate();
-                }
-        }
+	__FILE__,
+	function () {
+		if (class_exists('Politeia_Post_Reading_Schema')) {
+			Politeia_Post_Reading_Schema::migrate();
+		}
+	}
 );
 
 // ===== Upgrade / Migrations on load =====
 // Ejecuta migraciones idempotentes cuando cambies POLITEIA_READING_VERSION (core)
-add_action( 'plugins_loaded', array( '\\Politeia\\Reading\\Upgrader', 'maybe_upgrade' ) );
+add_action('plugins_loaded', array('\\Politeia\\Reading\\Upgrader', 'maybe_upgrade'));
 // Nota: el módulo post-reading ya registra su propio maybe_upgrade en su init.php.
 // No lo repetimos aquí para evitar dobles llamadas.
 
@@ -82,32 +82,32 @@ add_action(
 	function () {
 
 		// Estilos base del plugin
-                wp_register_style(
-                        'politeia-reading',
-                        POLITEIA_READING_URL . 'assets/css/politeia.css',
-                        array(),
-                        POLITEIA_READING_VERSION
-                );
+		wp_register_style(
+			'politeia-reading',
+			POLITEIA_READING_URL . 'assets/css/politeia.css',
+			array(),
+			POLITEIA_READING_VERSION
+		);
 
-                wp_register_style(
-                        'politeia-my-book',
-                        POLITEIA_READING_URL . 'assets/css/my-book.css',
-                        array( 'politeia-reading' ),
-                        POLITEIA_READING_VERSION
-                );
+		wp_register_style(
+			'politeia-my-book',
+			POLITEIA_READING_URL . 'assets/css/my-book.css',
+			array('politeia-reading'),
+			POLITEIA_READING_VERSION
+		);
 
-                wp_register_style(
-                        'prs-cover-modal',
-                        POLITEIA_READING_URL . 'assets/css/prs-cover-modal.css',
-                        array(),
-                        POLITEIA_READING_VERSION
-                );
+		wp_register_style(
+			'prs-cover-modal',
+			POLITEIA_READING_URL . 'assets/css/prs-cover-modal.css',
+			array(),
+			POLITEIA_READING_VERSION
+		);
 
 		// Scripts varios del plugin
 		wp_register_script(
 			'politeia-add-book',
 			POLITEIA_READING_URL . 'assets/js/add-book.js',
-			array( 'jquery' ),
+			array('jquery'),
 			POLITEIA_READING_VERSION,
 			true
 		);
@@ -115,52 +115,52 @@ add_action(
 		wp_register_script(
 			'politeia-start-reading',
 			POLITEIA_READING_URL . 'assets/js/start-reading.js',
-			array( 'jquery' ),
+			array('jquery'),
 			POLITEIA_READING_VERSION,
 			true
 		);
 
 		// Script de la página “Mi Libro”
-                wp_register_script(
-                        'politeia-my-book',
-                        POLITEIA_READING_URL . 'assets/js/my-book.js',
-                        array( 'jquery' ),
-                        POLITEIA_READING_VERSION,
-                        true
-                );
+		wp_register_script(
+			'politeia-my-book',
+			POLITEIA_READING_URL . 'assets/js/my-book.js',
+			array('jquery'),
+			POLITEIA_READING_VERSION,
+			true
+		);
 
-                wp_register_script(
-                        'prs-cover-modal',
-                        POLITEIA_READING_URL . 'assets/js/prs-cover-modal.js',
-                        array(),
-                        POLITEIA_READING_VERSION,
-                        true
-                );
+		wp_register_script(
+			'prs-cover-modal',
+			POLITEIA_READING_URL . 'assets/js/prs-cover-modal.js',
+			array(),
+			POLITEIA_READING_VERSION,
+			true
+		);
 
-                // Carga condicional en la vista de un libro individual (manteniendo tu lógica)
-                if ( get_query_var( 'prs_book_slug' ) ) {
-                        wp_enqueue_style( 'politeia-reading' );
-                        wp_enqueue_style( 'politeia-my-book' );
-                        wp_enqueue_style( 'prs-cover-modal' );
-                        wp_enqueue_script( 'politeia-my-book' );
-                        wp_enqueue_script( 'prs-cover-modal' );
-                }
+		// Carga condicional en la vista de un libro individual (manteniendo tu lógica)
+		if (get_query_var('prs_book_slug')) {
+			wp_enqueue_style('politeia-reading');
+			wp_enqueue_style('politeia-my-book');
+			wp_enqueue_style('prs-cover-modal');
+			wp_enqueue_script('politeia-my-book');
+			wp_enqueue_script('prs-cover-modal');
+		}
 
 		// Importante: los assets del módulo Post Reading (post-reading.css/js)
 		// los encola automáticamente Politeia_Post_Reading_Render solo en single posts.
-        }
+	}
 );
 
 // ===== Admin notices =====
 add_action(
 	'admin_notices',
 	static function () {
-		if ( ! current_user_can( 'manage_options' ) ) {
+		if (!current_user_can('manage_options')) {
 			return;
 		}
 
 		global $wpdb;
-		$schema = defined( 'DB_NAME' ) ? DB_NAME : $wpdb->dbname;
+		$schema = defined('DB_NAME') ? DB_NAME : $wpdb->dbname;
 		$tables = array(
 			$wpdb->prefix . 'politeia_books',
 			$wpdb->prefix . 'politeia_user_books',
@@ -169,7 +169,7 @@ add_action(
 		);
 
 		$missing = array();
-		foreach ( $tables as $table ) {
+		foreach ($tables as $table) {
 			$exists = $wpdb->get_var(
 				$wpdb->prepare(
 					'SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=%s AND TABLE_NAME=%s',
@@ -178,22 +178,22 @@ add_action(
 				)
 			);
 
-			if ( ! $exists ) {
+			if (!$exists) {
 				$missing[] = $table;
 			}
 		}
 
-		if ( empty( $missing ) ) {
+		if (empty($missing)) {
 			return;
 		}
 
-		$missing_list = implode( ', ', array_map( 'esc_html', $missing ) );
-		$message      = sprintf(
-			__( 'Politeia Reading is missing the following database tables: %s. Reactivate the plugin to recreate them.', 'politeia-reading' ),
+		$missing_list = implode(', ', array_map('esc_html', $missing));
+		$message = sprintf(
+			__('Politeia Reading is missing the following database tables: %s. Reactivate the plugin to recreate them.', 'politeia-reading'),
 			$missing_list
 		);
 
-		echo '<div class="notice notice-error"><p>' . esc_html( $message ) . '</p></div>';
+		echo '<div class="notice notice-error"><p>' . esc_html($message) . '</p></div>';
 	}
 );
 

@@ -1,4 +1,4 @@
-(function(){
+(function () {
   const overlay = document.getElementById('politeia-reading-plan-overlay');
   const openBtn = document.getElementById('politeia-open-reading-plan');
   if (!overlay || !openBtn) return;
@@ -318,7 +318,6 @@
   const HABIT_CHALLENGE_DAYS = 48;
 
   const PAGE_RANGES_MAP = { "<100": 80, "200~": 200, "400~": 400, "600~": 600, "1000~": 1000 };
-  const EXIGENCIA_SESSIONS = { liviano: 3, mediano: 3, exigente: 5, intenso: 7 };
 
   const HABIT_INTENSITY_CONFIG = {
     light: {
@@ -336,6 +335,22 @@
       endPg: 30,
     },
   };
+
+  // Update with database values if available
+  if (RP.intensityConfig) {
+    if (RP.intensityConfig.light) {
+      HABIT_INTENSITY_CONFIG.light.startMin = RP.intensityConfig.light.start_minutes || HABIT_INTENSITY_CONFIG.light.startMin;
+      HABIT_INTENSITY_CONFIG.light.endMin = RP.intensityConfig.light.end_minutes || HABIT_INTENSITY_CONFIG.light.endMin;
+      HABIT_INTENSITY_CONFIG.light.startPg = RP.intensityConfig.light.start_pages || HABIT_INTENSITY_CONFIG.light.startPg;
+      HABIT_INTENSITY_CONFIG.light.endPg = RP.intensityConfig.light.end_pages || HABIT_INTENSITY_CONFIG.light.endPg;
+    }
+    if (RP.intensityConfig.intense) {
+      HABIT_INTENSITY_CONFIG.intense.startMin = RP.intensityConfig.intense.start_minutes || HABIT_INTENSITY_CONFIG.intense.startMin;
+      HABIT_INTENSITY_CONFIG.intense.endMin = RP.intensityConfig.intense.end_minutes || HABIT_INTENSITY_CONFIG.intense.endMin;
+      HABIT_INTENSITY_CONFIG.intense.startPg = RP.intensityConfig.intense.start_pages || HABIT_INTENSITY_CONFIG.intense.startPg;
+      HABIT_INTENSITY_CONFIG.intense.endPg = RP.intensityConfig.intense.end_pages || HABIT_INTENSITY_CONFIG.intense.endPg;
+    }
+  }
 
   const MONTH_NAMES = (STRINGS.month_names && STRINGS.month_names.length)
     ? STRINGS.month_names
@@ -385,7 +400,8 @@
         baselines: {},
         books: prefillBook ? [prefillBook] : [],
         startPage: 1,
-        exigencia: null,
+        pages_per_session: null,
+        sessions_per_week: null,
         bookError: '',
         bookErrorLink: false,
         bookHasActivePlan: false,
@@ -412,7 +428,7 @@
     } else if (state.mainStep === 2) {
       renderStepBooks();
     } else if (state.mainStep === 3) {
-      renderStepExigencia();
+      renderStepStrategy();
     }
 
     if (window.lucide && typeof window.lucide.createIcons === 'function') {
@@ -445,19 +461,19 @@
         <p class="goal-subtitle">${t('goal_subtitle', 'Select your primary goal to begin.')}</p>
         <div id="goal-option-group" class="goal-option-group">
           ${GOALS_DEF.map((goal) => {
-            const icon = goal.id === 'form_habit'
-              ? `<svg width="50" height="50" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+      const icon = goal.id === 'form_habit'
+        ? `<svg width="50" height="50" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
                   <path d="M80-80v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-360v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-640v-240h520v240H80Zm560 0v-240h240v240H640ZM240-240Zm200 0h80-80Zm280 0ZM240-440v-80 80Zm240-40Zm240 40v-80 80Zm0-280ZM160-160h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80ZM160-440h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80Zm0-280h80v-80h-80v80Z"/>
                 </svg>`
-              : `<svg width="50" height="50" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+        : `<svg width="50" height="50" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
                   <path d="M270-80q-45 0-77.5-30.5T160-186v-558q0-38 23.5-68t61.5-38l395-78v640l-379 76q-9 2-15 9.5t-6 16.5q0 11 9 18.5t21 7.5h450v-640h80v720H270Zm90-233 200-39v-478l-200 39v478Zm-80 16v-478l-15 3q-11 2-18 9.5t-7 18.5v457q5-2 10.5-3.5T261-293l19-4Zm-40-472v482-482Z"/>
                 </svg>`;
-            return `<button type="button" id="goal-${goal.id}" data-goal="${goal.id}" class="goal-option-card">
+      return `<button type="button" id="goal-${goal.id}" data-goal="${goal.id}" class="goal-option-card">
               <div class="goal-icon-circle">${icon}</div>
               <span id="goal-title-${goal.id}" class="goal-option-text">${goal.title}</span>
               <p id="goal-desc-${goal.id}" class="goal-option-desc">${goal.description}</p>
             </button>`;
-          }).join('')}
+    }).join('')}
         </div>
       </div>`;
 
@@ -476,16 +492,15 @@
     if (gid === 'complete_books') {
       if (state.subStep === 0) {
         stepContent.innerHTML = `
-          <div class="space-y-8 text-center step-transition">
+          <div id="finish_book_slide_books_finished" class="finish_book_slide space-y-8 text-center step-transition">
             <span class="text-[#C79F32] font-medium text-[10px] uppercase tracking-widest">${t('baseline_label', 'Baseline')}</span>
-            <h2 class="text-2xl font-medium text-black mt-2 uppercase">${t('baseline_books_year', 'How many books did you finish in the last year?')}</h2>
-            <div class="grid grid-cols-5 gap-3">
+            <h2 id="finish_book_baseline_title" class="text-2xl font-medium text-black mt-2 uppercase">${t('baseline_books_year', 'How many books did you finish in the last year?')}</h2>
+            <div id="finish_book_baseline_options" class="grid grid-cols-5 gap-3">
               ${['0', '1', '2', '3', '4+'].map((n) => `
-                <button type="button" id="baseline-${gid}-${toId(n)}" data-baseline="${n}" class="aspect-square rounded-custom border-2 font-medium text-xl transition-all ${
-                  state.formData.baselines[gid]?.value === n
-                    ? 'bg-[#C79F32] border-[#C79F32] text-black'
-                    : 'border-[#A8A8A8] bg-[#F5F5F5] text-[#A8A8A8]'
-                }">${n}</button>`).join('')}
+                <button type="button" id="finish_book_baseline_${toId(n)}" data-baseline="${n}" class="finish_book_baseline_btn aspect-square rounded-custom border-2 font-medium text-xl transition-all ${state.formData.baselines[gid]?.value === n
+            ? 'bg-[#C79F32] border-[#C79F32] text-black'
+            : 'border-[#A8A8A8] bg-[#F5F5F5] text-[#A8A8A8]'
+          }">${n}</button>`).join('')}
             </div>
           </div>`;
 
@@ -500,21 +515,20 @@
         const count = parseInt(state.formData.baselines[gid]?.value, 10) || 0;
         const slots = count >= 4 ? 4 : count;
         stepContent.innerHTML = `
-          <div class="space-y-6 step-transition">
+          <div id="finish_book_slide_book_pages" class="finish_book_slide space-y-6 step-transition">
             <div class="text-center">
-              <h2 class="text-xl font-medium text-black uppercase">${t('baseline_book_pages', 'How many pages did the book have?')}</h2>
+              <h2 id="finish_book_pages_title" class="text-xl font-medium text-black uppercase">${t('baseline_book_pages', 'How many pages did the book have?')}</h2>
             </div>
-            <div class="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
+            <div id="finish_book_details_container" class="space-y-4 max-h-[360px] overflow-y-auto pr-2 custom-scrollbar">
               ${Array.from({ length: slots }).map((_, i) => `
-                <div class="p-5 bg-[#F5F5F5] rounded-custom border border-[#A8A8A8]">
+                <div class="finish_book_detail_card p-5 bg-[#F5F5F5] rounded-custom border border-[#A8A8A8]">
                   <p class="text-[10px] font-medium text-[#A8A8A8] mb-3 uppercase tracking-widest">${format('book_number', 'Book #%d', i + 1)}</p>
                   <div class="flex flex-wrap gap-2">
                     ${Object.keys(PAGE_RANGES_MAP).map((r) => `
-                      <button type="button" id="book-detail-${i}-${toId(r)}" data-book-detail="${r}" data-book-index="${i}" class="px-3 py-2 rounded-custom text-[10px] font-medium border-2 transition-all uppercase text-black ${
-                        state.formData.baselines[gid]?.details?.[i] === r
-                          ? 'bg-[#C79F32] border-[#C79F32] text-black'
-                          : 'bg-white border-[#A8A8A8]'
-                      }">${r}</button>`).join('')}
+                      <button type="button" id="finish_book_book_${i}_${toId(r)}" data-book-detail="${r}" data-book-index="${i}" class="finish_book_page_btn px-3 py-2 rounded-custom text-[10px] font-medium border-2 transition-all uppercase text-black ${state.formData.baselines[gid]?.details?.[i] === r
+            ? 'bg-[#C79F32] border-[#C79F32] text-black'
+            : 'bg-white border-[#A8A8A8]'
+          }">${r}</button>`).join('')}
                   </div>
                 </div>`).join('')}
             </div>
@@ -551,24 +565,24 @@
         </svg>`;
       if (state.subStep === 0) {
         stepContent.innerHTML = `
-          <div class="habit-slide habit-slide--intro step-transition">
+          <div id="form_habit_slide_intro" class="form_habit_slide habit-slide habit-slide--intro step-transition">
             ${habitDefs}
             <div class="habit-icon">
               <svg width="80" height="80" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
                 <path d="M80-80v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-360v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-640v-240h520v240H80Zm560 0v-240h240v240H640ZM240-240Zm200 0h80-80Zm280 0ZM240-440v-80 80Zm240-40Zm240 40v-80 80Zm0-280ZM160-160h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80ZM160-440h80v-80h-80v80Zm280 0h80v-80h-80v80Zm280 0h80v-80h-80v80Zm0-280h80v-80h-80v80Z"/>
               </svg>
             </div>
-            <h2 class="habit-title habit-highlight">${t('habit_step1_title', 'In 48 days you will complete sessions')}</h2>
-            <p class="habit-subtitle">${t('habit_step1_body', 'One session every day for 48 straight days.')}</p>
-            <button type="button" class="habit-next-btn">${t('habit_step1_cta', 'Got it!')}</button>
+            <h2 id="form_habit_intro_title" class="habit-title habit-highlight">${t('habit_step1_title', 'In 48 days you will complete sessions')}</h2>
+            <p id="form_habit_intro_subtitle" class="habit-subtitle">${t('habit_step1_body', 'One session every day for 48 straight days.')}</p>
+            <button type="button" id="form_habit_intro_next_btn" class="habit-next-btn">${t('habit_step1_cta', 'Got it!')}</button>
           </div>`;
       } else if (state.subStep === 1) {
         stepContent.innerHTML = `
-          <div class="habit-slide habit-slide--progress step-transition">
+          <div id="form_habit_slide_progress" class="form_habit_slide habit-slide habit-slide--progress step-transition">
             ${habitDefs}
-            <h2 class="habit-title">${t('habit_step2_title', 'Progressive growth')}</h2>
-            <p class="habit-subtitle">${t('habit_step2_body', 'The <span class="habit-highlight">session time</span> and the <span class="habit-highlight">number of pages</span> will increase gradually to challenge you.')}</p>
-            <div class="progression-graph habit-graph">
+            <h2 id="form_habit_progress_title" class="habit-title">${t('habit_step2_title', 'Progressive growth')}</h2>
+            <p id="form_habit_progress_subtitle" class="habit-subtitle">${t('habit_step2_body', 'The <span class="habit-highlight">session time</span> and the <span class="habit-highlight">number of pages</span> will increase gradually to challenge you.')}</p>
+            <div id="form_habit_progress_graph" class="progression-graph habit-graph">
               <svg class="graph-svg" viewBox="0 0 500 250" preserveAspectRatio="none">
                 <path class="path-line" d="M75,200 C150,200 175,125 250,125 C325,125 350,50 425,50" stroke="url(#gold-grad)" stroke-width="3" fill="none" stroke-linecap="round" />
               </svg>
@@ -603,11 +617,11 @@
                 <span class="habit-step-sublabel">${t('habit_graph_step3_sublabel', '10 pages')}</span>
               </div>
             </div>
-            <button type="button" class="habit-next-btn">${t('habit_step2_cta', 'Next')}</button>
+            <button type="button" id="form_habit_progress_next_btn" class="habit-next-btn">${t('habit_step2_cta', 'Next')}</button>
           </div>`;
       } else if (state.subStep === 2) {
         stepContent.innerHTML = `
-          <div class="habit-slide habit-slide--consistency step-transition">
+          <div id="form_habit_slide_consistency" class="form_habit_slide habit-slide habit-slide--consistency step-transition">
             ${habitDefs}
             <div class="habit-icon">
               <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -615,33 +629,33 @@
                 <path d="m9 12 2 2 4-4"></path>
               </svg>
             </div>
-            <h2 class="habit-title">${t('habit_step3_title', 'Consistency is everything')}</h2>
-            <p class="habit-subtitle">${t('habit_step3_body', 'Missing one session is a warning. Missing <span class="habit-highlight">2 sessions</span> ends the plan.')}</p>
+            <h2 id="form_habit_consistency_title" class="habit-title">${t('habit_step3_title', 'Consistency is everything')}</h2>
+            <p id="form_habit_consistency_subtitle" class="habit-subtitle">${t('habit_step3_body', 'Missing one session is a warning. Missing <span class="habit-highlight">2 sessions</span> ends the plan.')}</p>
             <div class="habit-fail-label">
               <svg class="habit-fail-icon" viewBox="0 -960 960 960" fill="currentColor" aria-hidden="true">
                 <path d="m40-120 440-760 440 760H40Zm138-80h604L480-720 178-200Zm302-40q17 0 28.5-11.5T520-280q0-17-11.5-28.5T480-320q-17 0-28.5 11.5T440-280q0 17 11.5 28.5T480-240Zm-40-120h80v-200h-80v200Zm40-100Z"/>
               </svg>
               <span>${t('habit_fail_label', 'Plan Failed')}</span>
             </div>
-            <div class="habit-fail-seq" aria-hidden="true">
+            <div id="form_habit_fail_sequence" class="habit-fail-seq" aria-hidden="true">
               <div class="habit-fail-step habit-fail-step--1">1</div>
               <div class="habit-fail-step habit-fail-step--2">2</div>
               <div class="habit-fail-step habit-fail-step--3">3</div>
             </div>
-            <button type="button" class="habit-next-btn">${t('habit_step3_cta', 'Got it!')}</button>
+            <button type="button" id="form_habit_consistency_next_btn" class="habit-next-btn">${t('habit_step3_cta', 'Got it!')}</button>
           </div>`;
       } else if (state.subStep === 3) {
         stepContent.innerHTML = `
-          <div class="habit-slide habit-slide--library step-transition">
+          <div id="form_habit_slide_library" class="form_habit_slide habit-slide habit-slide--library step-transition">
             ${habitDefs}
             <div class="habit-icon">
               <svg width="80" height="80" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
                 <path d="M120-440v-320q0-33 23.5-56.5T200-840h240v400H120Zm240-80Zm160-320h240q33 0 56.5 23.5T840-760v160H520v-240Zm0 720v-400h320v320q0 33-23.5 56.5T760-120H520ZM120-360h320v240H200q-33 0-56.5-23.5T120-200v-160Zm240 80Zm240-400Zm0 240Zm-400-80h160v-240H200v240Zm400-160h160v-80H600v80Zm0 240v240h160v-240H600ZM200-280v80h160v-80H200Z"/>
               </svg>
             </div>
-            <h2 class="habit-title">${t('habit_step4_title', 'Your library, your rules')}</h2>
-            <p class="habit-subtitle">${t('habit_step4_body', 'Any reading session from any book in <span class="habit-highlight">My Library</span> that meets the system targets counts automatically.')}</p>
-            <button type="button" class="habit-next-btn">${t('habit_step4_cta', 'Got it!')}</button>
+            <h2 id="form_habit_library_title" class="habit-title">${t('habit_step4_title', 'Your library, your rules')}</h2>
+            <p id="form_habit_library_subtitle" class="habit-subtitle">${t('habit_step4_body', 'Any reading session from any book in <span class="habit-highlight">My Library</span> that meets the system targets counts automatically.')}</p>
+            <button type="button" id="form_habit_library_next_btn" class="habit-next-btn">${t('habit_step4_cta', 'Got it!')}</button>
           </div>`;
       } else if (state.subStep === 4) {
         const currentIntensity = state.formData.baselines[gid]?.intensity || '';
@@ -650,41 +664,41 @@
           return t('habit_intensity_light_desc', 'We start at 15m and 3pg. We finish at 30m and 10pg minimum.');
         };
         stepContent.innerHTML = `
-          <div class="habit-slide habit-slide--intensity step-transition">
+          <div id="form_habit_slide_intensity" class="form_habit_slide habit-slide habit-slide--intensity step-transition">
             ${habitDefs}
-            <h2 class="habit-title">${t('habit_step5_title', 'Select intensity')}</h2>
-            <div class="habit-option-group">
+            <h2 id="form_habit_intensity_title" class="habit-title">${t('habit_step5_title', 'Select intensity')}</h2>
+            <div id="form_habit_intensity_group" class="habit-option-group">
               ${Object.keys(HABIT_INTENSITY_CONFIG).map((key) => {
-                const config = HABIT_INTENSITY_CONFIG[key];
-                const icon = key === 'intense'
-                  ? `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          const config = HABIT_INTENSITY_CONFIG[key];
+          const icon = key === 'intense'
+            ? `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
                     </svg>`
-                  : `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+            : `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                       <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
                       <line x1="16" y1="8" x2="2" y2="22"></line>
                     </svg>`;
-                return `
-                  <button type="button" id="habit-intensity-${key}" data-habit-intensity="${key}" class="habit-option-card habit-option-card--intensity${currentIntensity === key ? ' is-selected' : ''}">
+          return `
+                  <button type="button" id="form_habit_intensity_${key}" data-habit-intensity="${key}" class="form_habit_intensity_card habit-option-card habit-option-card--intensity${currentIntensity === key ? ' is-selected' : ''}">
                     <span class="icon-circle-wrapper">${icon}</span>
                     <span class="habit-option-text habit-highlight">${config.label}</span>
                     <p class="intensity-desc">${intensityDesc(key)}</p>
                   </button>`;
-              }).join('')}
+        }).join('')}
             </div>
           </div>`;
       } else if (state.subStep === 5) {
         const startDateValue = state.formData.baselines.form_habit?.start_date;
         stepContent.innerHTML = `
-          <div class="habit-slide habit-slide--start step-transition">
+          <div id="form_habit_slide_start_date" class="form_habit_slide habit-slide habit-slide--start step-transition">
             ${habitDefs}
-            <p class="habit-small-text">${t('habit_step6_small', 'Are you ready to dedicate the next 48 days to reading?')}</p>
-            <h2 class="habit-title-large">${t('habit_step6_title', 'Which day do you want to start?')}</h2>
-            <div class="date-picker-grid" id="habit-date-picker"></div>
-            <button type="button" class="habit-next-btn">${t('habit_step6_cta', 'Continue')}</button>
+            <p id="form_habit_start_small_text" class="habit-small-text">${t('habit_step6_small', 'Are you ready to dedicate the next 48 days to reading?')}</p>
+            <h2 id="form_habit_start_title" class="habit-title-large">${t('habit_step6_title', 'Which day do you want to start?')}</h2>
+            <div class="date-picker-grid" id="form_habit_date_picker"></div>
+            <button type="button" id="form_habit_start_next_btn" class="habit-next-btn">${t('habit_step6_cta', 'Continue')}</button>
           </div>`;
 
-        const picker = stepContent.querySelector('#habit-date-picker');
+        const picker = stepContent.querySelector('#form_habit_date_picker');
         if (picker) {
           const dayNames = [
             t('habit_day_sun', 'Sun'),
@@ -812,11 +826,13 @@
             <path d="M14 11v6"></path>
           </svg>
         </button>
-        ${coverBlock}
-        <div class="book-summary-details">
+        <div id="book_info_section" class="book-summary-details">
           <div class="book-summary-title">${safeTitle}</div>
           <div class="book-summary-author">${t('by_label', 'by')} ${safeAuthor || escapeHtml(t('unknown_author', 'Unknown author'))}</div>
           <div class="book-summary-pages">${safePages} ${escapeHtml(t('pages_label', 'pages'))}</div>
+        </div>
+        <div id="book_cover_section">
+          ${coverBlock}
         </div>
       </div>` : '';
     const startingPageInput = hasBook ? `
@@ -1320,7 +1336,10 @@
                 pages: pagesValue,
                 cover: resolvedCover,
               }];
-              state.formData.startPage = 1;
+              // Only set default startPage if not already set
+              if (!state.formData.startPage || state.formData.startPage < 1) {
+                state.formData.startPage = 1;
+              }
               state.formData.bookError = '';
               render();
             })
@@ -1412,54 +1431,112 @@
     }
   }
 
-  function renderStepExigencia() {
-    const intensityLabels = {
-      mediano: t('intensity_balanced_label', 'Intermediate'),
-      exigente: t('intensity_challenging_label', 'Light'),
-      intenso: t('intensity_intense_label', 'Intense'),
-    };
+  function renderStepStrategy() {
+    const subStep = state.subStep || 0;
 
-    stepContent.innerHTML = `
-      <div class="exigencia-slide step-transition">
-        <svg width="0" height="0" style="position: absolute;">
-          <defs>
-            <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#8A6B1E;stop-opacity:1" />
-              <stop offset="50%" style="stop-color:#C79F32;stop-opacity:1" />
-              <stop offset="100%" style="stop-color:#E9D18A;stop-opacity:1" />
-            </linearGradient>
-          </defs>
-        </svg>
-        <div class="text-center mb-6"><h2 class="habit-title">${t('intensity_prompt', 'Select intensity')}</h2></div>
-        <div class="habit-option-group exigencia-option-group">
-          ${['exigente', 'mediano', 'intenso'].map((k) => `
-            <button type="button" id="exigencia-${k}" data-exigencia="${k}" class="habit-option-card ${state.formData.exigencia === k ? 'is-selected' : ''}">
-              <div class="icon-circle-wrapper">
-                ${k === 'exigente'
-                  ? `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                      <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
-                      <line x1="16" y1="8" x2="2" y2="22"></line>
-                    </svg>`
-                  : k === 'mediano'
-                    ? `<svg width="44" height="44" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
-                        <path d="M80-120v-80h360v-447q-26-9-45-28t-28-45H240l120 280q0 50-41 85t-99 35q-58 0-99-35t-41-85l120-280h-80v-80h247q12-35 43-57.5t70-22.5q39 0 70 22.5t43 57.5h247v80h-80l120 280q0 50-41 85t-99 35q-58 0-99-35t-41-85l120-280H593q-9 26-28 45t-45 28v447h360v80H80Zm585-320h150l-75-174-75 174Zm-520 0h150l-75-174-75 174Zm335-280q17 0 28.5-11.5T520-760q0-17-11.5-28.5T480-800q-17 0-28.5 11.5T440-760q0 17 11.5 28.5T480-720Z"/>
-                      </svg>`
-                    : `<svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="url(#gold-grad)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
-                      </svg>`}
-              </div>
-              <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${intensityLabels[k] || k}</span>
-              <p class="intensity-desc">${format('sessions_per_week', '%d sessions<br>per week', EXIGENCIA_SESSIONS[k])}</p>
-            </button>`).join('')}
-        </div>
-      </div>`;
+    // Sub-step 0: Pages per session
+    if (subStep === 0) {
+      const pagesOptions = RP.pagesPerSessionOptions || [15, 30, 60];
+      const currentPages = state.formData.pages_per_session;
 
-    stepContent.querySelectorAll('[data-exigencia]').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        state.formData.exigencia = btn.getAttribute('data-exigencia');
-        goToNext();
+      const getDesc = (pages) => {
+        if (pages === 15) return t('pages_per_session_15_desc', 'Light reading load');
+        if (pages === 30) return t('pages_per_session_30_desc', 'Moderate reading load');
+        if (pages === 60) return t('pages_per_session_60_desc', 'Intensive reading load');
+        return `${pages} ${t('pages_label_short', 'pages')}`;
+      };
+
+      stepContent.innerHTML = `
+        <div id="finish_book_slide_pages_per_session" class="finish_book_slide pages-per-session-slide step-transition">
+          <svg width="0" height="0" style="position: absolute;">
+            <defs>
+              <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#8A6B1E;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#C79F32;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#E9D18A;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="text-center mb-6">
+            <h2 id="finish_book_pages_per_session_title" class="habit-title">${t('pages_per_session_prompt', 'How many pages do you want to read per session?')}</h2>
+          </div>
+          <div id="finish_book_pages_per_session_group" class="habit-option-group">
+            ${pagesOptions.map((pages) => `
+              <button type="button" 
+                      id="finish_book_pages_${pages}" 
+                      data-pages-per-session="${pages}" 
+                      class="pages-per-session-card habit-option-card ${currentPages === pages ? 'is-selected' : ''}">
+                <div class="icon-circle-wrapper">
+                  <svg width="44" height="44" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+                    <path d="M270-80q-45 0-77.5-30.5T160-186v-558q0-38 23.5-68t61.5-38l395-78v640l-379 76q-9 2-15 9.5t-6 16.5q0 11 9 18.5t21 7.5h450v-640h80v720H270Zm90-233 200-39v-478l-200 39v478Zm-80 16v-478l-15 3q-11 2-18 9.5t-7 18.5v457q5-2 10.5-3.5T261-293l19-4Zm-40-472v482-482Z"/>
+                  </svg>
+                </div>
+                <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${pages} ${t('pages_label_short', 'pages')}</span>
+                <p class="intensity-desc">${getDesc(pages)}</p>
+              </button>`).join('')}
+          </div>
+        </div>`;
+
+      stepContent.querySelectorAll('[data-pages-per-session]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const pages = parseInt(btn.getAttribute('data-pages-per-session'));
+          state.formData.pages_per_session = pages;
+          state.subStep = 1;
+          render();
+        });
       });
-    });
+    }
+    // Sub-step 1: Sessions per week
+    else if (subStep === 1) {
+      const sessionsOptions = RP.sessionsPerWeekOptions || [3, 5, 7];
+      const currentSessions = state.formData.sessions_per_week;
+
+      const getDesc = (sessions) => {
+        if (sessions === 3) return t('sessions_per_week_3_desc', '3 days per week');
+        if (sessions === 5) return t('sessions_per_week_5_desc', '5 days per week');
+        if (sessions === 7) return t('sessions_per_week_7_desc', 'Daily reading');
+        return `${sessions} ${t('days_label', 'days')}`;
+      };
+
+      stepContent.innerHTML = `
+        <div id="finish_book_slide_sessions_per_week" class="finish_book_slide sessions-per-week-slide step-transition">
+          <svg width="0" height="0" style="position: absolute;">
+            <defs>
+              <linearGradient id="gold-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#8A6B1E;stop-opacity:1" />
+                <stop offset="50%" style="stop-color:#C79F32;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#E9D18A;stop-opacity:1" />
+              </linearGradient>
+            </defs>
+          </svg>
+          <div class="text-center mb-6">
+            <h2 id="finish_book_sessions_per_week_title" class="habit-title">${t('sessions_per_week_prompt', 'How many days per week do you want to read?')}</h2>
+          </div>
+          <div id="finish_book_sessions_per_week_group" class="habit-option-group">
+            ${sessionsOptions.map((sessions) => `
+              <button type="button" 
+                      id="finish_book_sessions_${sessions}" 
+                      data-sessions-per-week="${sessions}" 
+                      class="sessions-per-week-card habit-option-card ${currentSessions === sessions ? 'is-selected' : ''}">
+                <div class="icon-circle-wrapper">
+                  <svg width="44" height="44" viewBox="0 -960 960 960" fill="url(#gold-grad)" aria-hidden="true">
+                    <path d="M80-80v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-360v-240h240v240H80Zm280 0v-240h240v240H360Zm280 0v-240h240v240H640ZM80-640v-240h520v240H80Zm560 0v-240h240v240H640Z"/>
+                  </svg>
+                </div>
+                <span class="habit-highlight" style="font-size: 1.3rem; margin-bottom: 4px;">${sessions} ${t('days_label', 'days')}</span>
+                <p class="intensity-desc">${getDesc(sessions)}</p>
+              </button>`).join('')}
+          </div>
+        </div>`;
+
+      stepContent.querySelectorAll('[data-sessions-per-week]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const sessions = parseInt(btn.getAttribute('data-sessions-per-week'));
+          state.formData.sessions_per_week = sessions;
+          goToNext();
+        });
+      });
+    }
   }
 
   function goToNext() {
@@ -1493,8 +1570,14 @@
         state.mainStep = 2;
         state.isBaselineActive = false;
       }
-    } else if (state.mainStep < 3) {
-      state.mainStep += 1;
+    } else if (state.mainStep === 2) {
+      state.mainStep = 3;
+      state.subStep = 0; // Reset substep for strategy selection
+    } else if (state.mainStep === 3) {
+      // Strategy step has substeps (0: pages_per_session, 1: sessions_per_week)
+      // When sessions_per_week is selected, goToNext is called and we calculate
+      calculatePlan();
+      return;
     } else {
       calculatePlan();
       return;
@@ -1573,30 +1656,28 @@
     const data = state.formData;
     const targetBook = data.books[0];
     const startingPage = getStartingPage(targetBook);
-    const effectivePages = getEffectivePages(targetBook, startingPage);
-    let avgPages = 100;
-    const bBooks = data.baselines.complete_books;
-    if (bBooks && bBooks.value !== '0') {
-      const sum = (bBooks.details || []).reduce((acc, r) => acc + PAGE_RANGES_MAP[r], 0);
-      avgPages = sum / (bBooks.details?.length || 1);
-    }
-    const pps = Math.ceil(Math.max((avgPages / 10) * K_GROWTH, MIN_PPS));
-    const sessionsPerWeek = EXIGENCIA_SESSIONS[data.exigencia];
-    const totalSessions = effectivePages > 0 ? Math.ceil(effectivePages / pps) : 0;
-    const totalWeeks = Math.ceil(totalSessions / sessionsPerWeek);
+    const totalPages = parseInt(targetBook?.pages, 10) || 0;
+
+    // Simple, direct calculation based on user's selections
+    const pagesToRead = totalPages - (startingPage - 1);
+    const pagesPerSession = data.pages_per_session || 30; // User's selection
+    const sessionsPerWeek = data.sessions_per_week || 5;  // User's selection
+
+    const totalSessions = pagesToRead > 0 ? Math.ceil(pagesToRead / pagesPerSession) : 0;
+    const totalWeeks = totalSessions > 0 ? Math.ceil(totalSessions / sessionsPerWeek) : 0;
 
     state.calculatedPlan = {
-      pps,
+      pps: pagesPerSession,
       durationWeeks: totalWeeks,
       sessions: generateSessions(totalSessions, sessionsPerWeek),
       type: 'ccl',
-      totalPages: effectivePages,
+      totalPages: pagesToRead,
     };
 
     qs('#propuesta-tipo-label').innerText = t('realistic_plan', 'REALISTIC READING PLAN');
     qs('#propuesta-plan-titulo').innerText = targetBook.title;
     qs('#propuesta-sub-label').innerText = t('monthly_plan', 'MONTHLY PLAN');
-    qs('#propuesta-carga').innerText = format('suggested_load', 'Suggested Load: %s PAGES / SESSION', pps);
+    qs('#propuesta-carga').innerText = format('suggested_load', 'Suggested Load: %s PAGES / SESSION', pagesPerSession);
     qs('#propuesta-duracion').innerText = format('estimated_duration', 'Estimated duration: %s weeks', totalWeeks);
 
     formContainer.classList.add('hidden');
@@ -1692,10 +1773,13 @@
     const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
 
     if (selectedGoals.includes('complete_books')) {
-      const totalPages = getEffectiveTotalPages(activeBook);
-      const targetValue = totalPages > 0 ? totalPages : (parseInt(state.calculatedPlan.pps, 10) || 0);
-      const metric = totalPages > 0 ? 'pages_total' : 'pages_per_session';
-      const period = totalPages > 0 ? 'plan' : 'session';
+      const startingPage = getStartingPage(activeBook);
+      const bookTotalPages = parseInt(activeBook?.pages, 10) || 0;
+      // Calculate pages to read in the plan (not book's total pages)
+      const pagesToRead = bookTotalPages > 0 ? (bookTotalPages - (startingPage - 1)) : 0;
+      const targetValue = pagesToRead > 0 ? pagesToRead : (parseInt(state.calculatedPlan.pps, 10) || 0);
+      const metric = pagesToRead > 0 ? 'pages_total' : 'pages_per_session';
+      const period = pagesToRead > 0 ? 'plan' : 'session';
       if (targetValue > 0) {
         goals.push({
           goal_kind: 'complete_books',
@@ -1703,6 +1787,7 @@
           target_value: targetValue,
           period,
           book_id: activeBook?.bookId || null,
+          starting_page: startingPage,
         });
       }
     }
@@ -2275,6 +2360,8 @@
       goals,
       baselines,
       planned_sessions: buildPlannedSessions(),
+      pages_per_session: state.formData.pages_per_session || null,
+      sessions_per_week: state.formData.sessions_per_week || null,
     };
 
     acceptBtn.disabled = true;

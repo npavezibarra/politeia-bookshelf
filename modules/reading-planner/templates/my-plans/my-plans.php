@@ -1,19 +1,74 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
 	exit;
+}
+
+// AJAX handler for desisting a reading plan
+add_action('wp_ajax_desist_reading_plan', 'prs_handle_desist_plan');
+function prs_handle_desist_plan()
+{
+	// Verify nonce
+	if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'desist_plan_nonce')) {
+		wp_send_json_error('Invalid nonce');
+		return;
+	}
+
+	// Get plan ID
+	$plan_id = isset($_POST['plan_id']) ? intval($_POST['plan_id']) : 0;
+	if (!$plan_id) {
+		wp_send_json_error('Invalid plan ID');
+		return;
+	}
+
+	global $wpdb;
+	$table_name = $wpdb->prefix . 'politeia_plans';
+
+	// Get the plan to verify ownership
+	$plan = $wpdb->get_row($wpdb->prepare(
+		"SELECT user_id, status FROM {$table_name} WHERE id = %d",
+		$plan_id
+	));
+
+	if (!$plan) {
+		wp_send_json_error('Plan not found');
+		return;
+	}
+
+	// Verify user owns the plan
+	$current_user_id = get_current_user_id();
+	if ($plan->user_id != $current_user_id) {
+		wp_send_json_error('You do not have permission to modify this plan');
+		return;
+	}
+
+	// Update plan status to 'desisted'
+	$updated = $wpdb->update(
+		$table_name,
+		array('status' => 'desisted'),
+		array('id' => $plan_id),
+		array('%s'),
+		array('%d')
+	);
+
+	if ($updated === false) {
+		wp_send_json_error('Failed to update plan status');
+		return;
+	}
+
+	wp_send_json_success('Plan desisted successfully');
 }
 
 get_header();
 $enqueue_my_book_assets = function () {
-	if ( function_exists( 'wp_enqueue_style' ) && function_exists( 'wp_enqueue_script' ) ) {
-		wp_enqueue_style( 'politeia-my-book' );
-		wp_enqueue_script( 'politeia-my-book' );
+	if (function_exists('wp_enqueue_style') && function_exists('wp_enqueue_script')) {
+		wp_enqueue_style('politeia-my-book');
+		wp_enqueue_script('politeia-my-book');
 	}
 };
 $enqueue_my_book_assets();
-$requested_user = (string) get_query_var( 'prs_my_plans_user' );
-$current_user   = wp_get_current_user();
-$is_owner       = $requested_user
+$requested_user = (string) get_query_var('prs_my_plans_user');
+$current_user = wp_get_current_user();
+$is_owner = $requested_user
 	&& $current_user
 	&& $current_user->exists()
 	&& $current_user->user_login === $requested_user;
@@ -63,7 +118,109 @@ $is_owner       = $requested_user
 
 	.prs-plan-header {
 		padding: 16px 32px 16px;
+		display: flex;
+		gap: 16px;
 	}
+
+	#plan_book_info {
+		flex: 0 0 75%;
+		width: 75%;
+	}
+
+	#politeia_plan_result {
+		flex: 0 0 25%;
+		width: 25%;
+		display: flex;
+		flex-direction: column;
+		justify-content: flex-start;
+		align-items: flex-end;
+	}
+
+	#politeia_plan_result img {
+		width: 70px;
+		height: auto;
+	}
+
+	#politeia_plan_result img.plan-in-progress,
+	#politeia_plan_result img.plan-desisted {
+		filter: grayscale(100%);
+	}
+
+	/* Today's calendar cell - golden gradient border */
+	.prs-day-cell.is-today {
+		border: 2px solid;
+		border-image: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A) 1;
+	}
+
+	/* Weekday label above today - golden gradient text */
+	.prs-weekdays div.is-today-weekday {
+		background: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+		opacity: 1;
+	}
+
+	/* Plan menu button and dropdown */
+	.plan-menu-container {
+		position: relative;
+		margin-top: 8px;
+		text-align: center;
+	}
+
+	.plan-menu-button {
+		background: none;
+		border: none;
+		padding: 4px 8px;
+		cursor: pointer;
+		font-size: 20px;
+		color: #999;
+		line-height: 1;
+	}
+
+	.plan-menu-button:hover,
+	.plan-menu-button:active,
+	.plan-menu-button:focus {
+		background: none;
+		color: #999;
+		outline: none;
+	}
+
+	.plan-menu-dots {
+		display: inline-block;
+		letter-spacing: 2px;
+	}
+
+	.plan-menu-dropdown {
+		position: absolute;
+		top: 100%;
+		right: 0;
+		background: white;
+		border: 1px solid #ddd;
+		border-radius: 4px;
+		box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+		min-width: 120px;
+		z-index: 1000;
+		margin-top: 4px;
+	}
+
+	.plan-menu-item {
+		display: block;
+		width: 100%;
+		padding: 10px 16px;
+		background: none;
+		border: none;
+		text-align: left;
+		cursor: pointer;
+		font-size: 14px;
+		color: #333;
+		transition: background-color 0.2s;
+	}
+
+	.plan-menu-item:hover {
+		background-color: #f5f5f5;
+	}
+
 
 	.prs-plan-badge {
 		display: inline-block;
@@ -135,6 +292,7 @@ $is_owner       = $requested_user
 		line-height: 1;
 		font-variation-settings: "FILL" 1, "wght" 600, "opsz" 24;
 	}
+
 	.prs-session-recorder-trigger:hover,
 	.prs-session-recorder-trigger:focus {
 		color: #E9D18A;
@@ -758,8 +916,8 @@ $is_owner       = $requested_user
 </style>
 
 <div class="wrap prs-plans-wrap">
-	<?php echo do_shortcode( '[politeia_reading_plan]' ); ?>
-	<?php if ( $is_owner ) : ?>
+	<?php echo do_shortcode('[politeia_reading_plan]'); ?>
+	<?php if ($is_owner): ?>
 		<?php
 		global $wpdb;
 		$cards = array();
@@ -770,8 +928,8 @@ $is_owner       = $requested_user
 		$sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
 		$reading_sessions_table = $wpdb->prefix . 'politeia_reading_sessions';
 		$books_table = $wpdb->prefix . 'politeia_books';
-			$authors_table = $wpdb->prefix . 'politeia_authors';
-			$book_authors_table = $wpdb->prefix . 'politeia_book_authors';
+		$authors_table = $wpdb->prefix . 'politeia_authors';
+		$book_authors_table = $wpdb->prefix . 'politeia_book_authors';
 
 		$plans = $wpdb->get_results(
 			$wpdb->prepare(
@@ -782,9 +940,15 @@ $is_owner       = $requested_user
 			ARRAY_A
 		);
 
-		if ( $plans ) {
-			foreach ( $plans as $plan ) {
+		if ($plans) {
+			foreach ($plans as $plan) {
 				$plan_id = (int) $plan['id'];
+				$cache_key = 'prs_plan_view_' . $plan_id;
+				$cached_card = get_transient($cache_key);
+				if (false !== $cached_card) {
+					$cards[] = $cached_card;
+					continue;
+				}
 				$goal = $wpdb->get_row(
 					$wpdb->prepare(
 						"SELECT * FROM {$goals_table}
@@ -795,12 +959,19 @@ $is_owner       = $requested_user
 					),
 					ARRAY_A
 				);
-				$goal_kind = $goal && ! empty( $goal['goal_kind'] ) ? (string) $goal['goal_kind'] : '';
-				$goal_book_id = $goal && ! empty( $goal['book_id'] ) ? (int) $goal['book_id'] : 0;
-				$goal_target = $goal && ! empty( $goal['target_value'] ) ? (int) $goal['target_value'] : 0;
-				if ( ! $goal_book_id && ! empty( $plan['name'] ) ) {
-					$normalized = function_exists( 'prs_normalize_title' )
-						? prs_normalize_title( (string) $plan['name'] )
+				$goal_kind = $goal && !empty($goal['goal_kind']) ? (string) $goal['goal_kind'] : '';
+				$goal_book_id = $goal && !empty($goal['book_id']) ? (int) $goal['book_id'] : 0;
+				$goal_target = $goal && !empty($goal['target_value']) ? (int) $goal['target_value'] : 0;
+				$goal_starting_page = $goal && !empty($goal['starting_page']) ? (int) $goal['starting_page'] : 1;
+
+				// Ensure starting_page is at least 1
+				if ($goal_starting_page < 1) {
+					$goal_starting_page = 1;
+				}
+
+				if (!$goal_book_id && !empty($plan['name'])) {
+					$normalized = function_exists('prs_normalize_title')
+						? prs_normalize_title((string) $plan['name'])
 						: '';
 					$book_row = $wpdb->get_row(
 						$wpdb->prepare(
@@ -810,10 +981,10 @@ $is_owner       = $requested_user
 						),
 						ARRAY_A
 					);
-					if ( $book_row && ! empty( $book_row['id'] ) ) {
+					if ($book_row && !empty($book_row['id'])) {
 						$goal_book_id = (int) $book_row['id'];
 					}
-					if ( ! $goal_book_id ) {
+					if (!$goal_book_id) {
 						$params = array(
 							$user_id,
 							(string) $plan['name'],
@@ -823,36 +994,24 @@ $is_owner       = $requested_user
 							INNER JOIN {$books_table} b ON b.id = ub.book_id
 							WHERE ub.user_id = %d AND ub.deleted_at IS NULL
 							AND (b.title = %s OR b.normalized_title = %s";
-						if ( '' !== $normalized ) {
-							$params[] = '%' . $wpdb->esc_like( $normalized ) . '%';
+						if ('' !== $normalized) {
+							$params[] = '%' . $wpdb->esc_like($normalized) . '%';
 							$sql .= ' OR b.normalized_title LIKE %s';
 						}
 						$sql .= ') ORDER BY ub.id DESC LIMIT 1';
 						$book_row = $wpdb->get_row(
-							$wpdb->prepare( $sql, $params ),
+							$wpdb->prepare($sql, $params),
 							ARRAY_A
 						);
-						if ( $book_row && ! empty( $book_row['id'] ) ) {
+						if ($book_row && !empty($book_row['id'])) {
 							$goal_book_id = (int) $book_row['id'];
 						}
 					}
 				}
 				$total_pages = $goal_target;
-				if ( $goal_book_id ) {
-					$ub_pages = $wpdb->get_var(
-						$wpdb->prepare(
-							"SELECT pages FROM {$wpdb->prefix}politeia_user_books WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
-							$user_id,
-							$goal_book_id
-						)
-					);
-					if ( $ub_pages ) {
-						$total_pages = (int) $ub_pages;
-					}
-				}
-				$today_key = current_time( 'Y-m-d' );
+				$today_key = current_time('Y-m-d');
 
-				if ( 'complete_books' === $goal_kind ) {
+				if ('complete_books' === $goal_kind) {
 					$wpdb->query(
 						$wpdb->prepare(
 							"UPDATE {$sessions_table}
@@ -868,7 +1027,7 @@ $is_owner       = $requested_user
 
 				$sessions = $wpdb->get_results(
 					$wpdb->prepare(
-						"SELECT planned_start_datetime, planned_start_page, planned_end_page, status
+						"SELECT planned_start_datetime, status
 						FROM {$sessions_table}
 						WHERE plan_id = %d
 						ORDER BY planned_start_datetime ASC",
@@ -877,222 +1036,264 @@ $is_owner       = $requested_user
 					ARRAY_A
 				);
 
-			$start_ts = null;
-			$end_ts = null;
-			if ( $sessions ) {
-				$first_session = reset( $sessions );
-				$last_session = end( $sessions );
-				$start_dt = $first_session && ! empty( $first_session['planned_start_datetime'] )
-					? date_create_immutable( $first_session['planned_start_datetime'], $timezone )
-					: null;
-				$end_dt = $last_session && ! empty( $last_session['planned_start_datetime'] )
-					? date_create_immutable( $last_session['planned_start_datetime'], $timezone )
-					: null;
-				$start_ts = $start_dt ? $start_dt->getTimestamp() : null;
-				$end_ts = $end_dt ? $end_dt->getTimestamp() : $start_ts;
-			}
-			if ( ! $start_ts && ! empty( $plan['created_at'] ) ) {
-				$start_ts = strtotime( $plan['created_at'] );
-				$end_ts = $start_ts;
-			}
-			if ( ! $start_ts ) {
-				$start_ts = time();
-				$end_ts = $start_ts;
-			}
-
-			$month_ts = $start_ts;
-			$month_label = date_i18n( 'F', $month_ts );
-			$month_year = date_i18n( 'F Y', $month_ts );
-			$month_range_label = $month_year;
-			if ( $start_ts && $end_ts ) {
-				$start_month = date_i18n( 'F', $start_ts );
-				$start_year = date_i18n( 'Y', $start_ts );
-				$end_month = date_i18n( 'F', $end_ts );
-				$end_year = date_i18n( 'Y', $end_ts );
-				if ( $start_year === $end_year ) {
-					if ( $start_month === $end_month ) {
-						$month_range_label = sprintf( '%1$s %2$s', $start_month, $start_year );
-					} else {
-						$month_range_label = sprintf( '%1$s - %2$s %3$s', $start_month, $end_month, $start_year );
-					}
-				} else {
-					$month_range_label = sprintf( '%1$s %2$s - %3$s %4$s', $start_month, $start_year, $end_month, $end_year );
+				$start_ts = null;
+				$end_ts = null;
+				if ($sessions) {
+					$first_session = reset($sessions);
+					$last_session = end($sessions);
+					$start_dt = $first_session && !empty($first_session['planned_start_datetime'])
+						? date_create_immutable($first_session['planned_start_datetime'], $timezone)
+						: null;
+					$end_dt = $last_session && !empty($last_session['planned_start_datetime'])
+						? date_create_immutable($last_session['planned_start_datetime'], $timezone)
+						: null;
+					$start_ts = $start_dt ? $start_dt->getTimestamp() : null;
+					$end_ts = $end_dt ? $end_dt->getTimestamp() : $start_ts;
 				}
-			}
-			$days_count = (int) date( 't', $month_ts );
-			$month_start_ts = strtotime( wp_date( 'Y-m-01', $month_ts, $timezone ) );
-			$start_offset = (int) wp_date( 'w', $month_start_ts, $timezone );
+				if (!$start_ts && !empty($plan['created_at'])) {
+					$start_ts = strtotime($plan['created_at']);
+					$end_ts = $start_ts;
+				}
+				if (!$start_ts) {
+					$start_ts = time();
+					$end_ts = $start_ts;
+				}
 
-			$actual_sessions_payload = array();
-			$actual_session_dates = array();
-			if ( $goal_book_id ) {
-				$actual_sessions = $wpdb->get_results(
-					$wpdb->prepare(
-						"SELECT start_time, start_page, end_page
+				$month_ts = $start_ts;
+				$month_label = date_i18n('F', $month_ts);
+				$month_year = date_i18n('F Y', $month_ts);
+				$month_range_label = $month_year;
+				if ($start_ts && $end_ts) {
+					$start_month = date_i18n('F', $start_ts);
+					$start_year = date_i18n('Y', $start_ts);
+					$end_month = date_i18n('F', $end_ts);
+					$end_year = date_i18n('Y', $end_ts);
+					if ($start_year === $end_year) {
+						if ($start_month === $end_month) {
+							$month_range_label = sprintf('%1$s %2$s', $start_month, $start_year);
+						} else {
+							$month_range_label = sprintf('%1$s - %2$s %3$s', $start_month, $end_month, $start_year);
+						}
+					} else {
+						$month_range_label = sprintf('%1$s %2$s - %3$s %4$s', $start_month, $start_year, $end_month, $end_year);
+					}
+				}
+				$days_count = (int) date('t', $month_ts);
+				$month_start_ts = strtotime(wp_date('Y-m-01', $month_ts, $timezone));
+				$start_offset = (int) wp_date('w', $month_start_ts, $timezone);
+
+				$actual_sessions_payload = array();
+				$actual_session_dates = array();
+				if ($goal_book_id) {
+					$actual_sessions = $wpdb->get_results(
+						$wpdb->prepare(
+							"SELECT start_time, start_page, end_page
 						FROM {$reading_sessions_table}
 						WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL",
-						$user_id,
-						$goal_book_id
-					),
-					ARRAY_A
-				);
-				if ( $actual_sessions ) {
-					foreach ( $actual_sessions as $actual_session ) {
-						if ( empty( $actual_session['start_time'] ) ) {
-							continue;
+							$user_id,
+							$goal_book_id
+						),
+						ARRAY_A
+					);
+					if ($actual_sessions) {
+						foreach ($actual_sessions as $actual_session) {
+							if (empty($actual_session['start_time'])) {
+								continue;
+							}
+							$start_page = isset($actual_session['start_page']) ? (int) $actual_session['start_page'] : 0;
+							$end_page = isset($actual_session['end_page']) ? (int) $actual_session['end_page'] : 0;
+							if ($start_page <= 0 || $end_page <= 0 || $end_page < $start_page) {
+								continue;
+							}
+							$date_key = get_date_from_gmt($actual_session['start_time'], 'Y-m-d');
+							if ('' === $date_key) {
+								continue;
+							}
+							$actual_session_dates[] = $date_key;
+							$actual_sessions_payload[] = array(
+								'date' => $date_key,
+								'start' => $start_page,
+								'end' => $end_page,
+								'start_time' => (string) $actual_session['start_time'],
+							);
 						}
-						$start_page = isset( $actual_session['start_page'] ) ? (int) $actual_session['start_page'] : 0;
-						$end_page = isset( $actual_session['end_page'] ) ? (int) $actual_session['end_page'] : 0;
-						if ( $start_page <= 0 || $end_page <= 0 || $end_page < $start_page ) {
-							continue;
-						}
-						$date_key = get_date_from_gmt( $actual_session['start_time'], 'Y-m-d' );
-						if ( '' === $date_key ) {
-							continue;
-						}
-						$actual_session_dates[] = $date_key;
-						$actual_sessions_payload[] = array(
-							'date' => $date_key,
-							'start' => $start_page,
-							'end' => $end_page,
-							'start_time' => (string) $actual_session['start_time'],
-						);
 					}
 				}
-			}
 
-			if ( $actual_session_dates ) {
-				$actual_session_dates = array_values( array_unique( $actual_session_dates ) );
-				$placeholders = implode( ',', array_fill( 0, count( $actual_session_dates ), '%s' ) );
-				$wpdb->query(
-					$wpdb->prepare(
-						"UPDATE {$sessions_table}
+				if ($actual_session_dates) {
+					$actual_session_dates = array_values(array_unique($actual_session_dates));
+					$placeholders = implode(',', array_fill(0, count($actual_session_dates), '%s'));
+					$wpdb->query(
+						$wpdb->prepare(
+							"UPDATE {$sessions_table}
 						SET status = 'accomplished'
 						WHERE plan_id = %d
 						AND status != 'accomplished'
 						AND DATE(planned_start_datetime) IN ({$placeholders})",
-						array_merge( array( $plan_id ), $actual_session_dates )
-					)
-				);
-			}
-
-			$selected = array();
-			$session_dates = array();
-			$session_items = array();
-			if ( $sessions ) {
-				$month_key = wp_date( 'Y-m', $month_ts, $timezone );
-				foreach ( $sessions as $session ) {
-					if ( empty( $session['planned_start_datetime'] ) ) {
-						continue;
-					}
-					$session_dt = date_create_immutable( $session['planned_start_datetime'], $timezone );
-					$session_ts = $session_dt ? $session_dt->getTimestamp() : null;
-					if ( $session_ts && wp_date( 'Y-m', $session_ts, $timezone ) === $month_key ) {
-						$selected[] = (int) wp_date( 'j', $session_ts, $timezone );
-					}
-					$date_key = $session_ts ? wp_date( 'Y-m-d', $session_ts, $timezone ) : '';
-					if ( '' === $date_key ) {
-						continue;
-					}
-					$session_dates[] = $date_key;
-					$session_items[] = array(
-						'date' => $date_key,
-						'status' => ! empty( $session['status'] ) ? (string) $session['status'] : 'planned',
-						'planned_start_page' => isset( $session['planned_start_page'] ) ? (int) $session['planned_start_page'] : null,
-						'planned_end_page' => isset( $session['planned_end_page'] ) ? (int) $session['planned_end_page'] : null,
-						'actual_start_page' => null,
-						'actual_end_page' => null,
+							array_merge(array($plan_id), $actual_session_dates)
+						)
 					);
 				}
-			}
-			$selected = array_values( array_unique( $selected ) );
-			sort( $selected );
-			$session_dates = array_values( array_unique( $session_dates ) );
 
-			$badge = 'ccl' === (string) $plan['plan_type']
-				? __( 'Plan: More Pages', 'politeia-reading' )
-				: __( 'Reading Plan', 'politeia-reading' );
-			$progress = 0;
+				// --- BACKEND DERIVATION IMPLEMENTATION ---
+	
+				// 1. Calculate actual reading progress
+				$highest_page_read = 0;
+				if ($goal_book_id) {
+					$highest_page_read = (int) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT MAX(end_page) FROM {$reading_sessions_table}
+							 WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL AND end_page IS NOT NULL",
+							$user_id,
+							$goal_book_id
+						)
+					);
+				}
+				$pages_read_in_plan = \Politeia\ReadingPlanner\PlanSessionDeriver::calculate_pages_read($highest_page_read, $goal_starting_page);
+				$progress = \Politeia\ReadingPlanner\PlanSessionDeriver::calculate_progress($pages_read_in_plan, $total_pages);
 
-			if ( 'complete_books' === $goal_kind ) {
-				$badge = sprintf(
-					/* translators: 1: goal label, 2: page count, 3: pages label. */
-					__( 'Goal: %1$s %2$s %3$s', 'politeia-reading' ),
-					__( 'Finish Book', 'politeia-reading' ),
-					(int) $total_pages,
-					__( 'pages', 'politeia-reading' )
+				// 2. Prepare dates for derivation
+				$future_session_dates = array();
+				$session_dates = array();
+				$selected = array();
+				$session_items_map = array();
+
+				if ($sessions) {
+					$month_key_current = wp_date('Y-m', $month_ts, $timezone);
+					foreach ($sessions as $session) {
+						if (empty($session['planned_start_datetime'])) {
+							continue;
+						}
+						$session_dt = date_create_immutable($session['planned_start_datetime'], $timezone);
+						$session_ts = $session_dt ? $session_dt->getTimestamp() : null;
+						$date_key = $session_ts ? wp_date('Y-m-d', $session_ts, $timezone) : '';
+
+						if ('' === $date_key) {
+							continue;
+						}
+
+						$session_dates[] = $date_key;
+						$s_status = !empty($session['status']) ? (string) $session['status'] : 'planned';
+
+						// Populate future dates for derivation (only 'planned' sessions in the future)
+						if ($s_status === 'planned' && $date_key >= $today_key) {
+							$future_session_dates[] = $date_key;
+						}
+
+						// Store non-planned sessions directly (accomplished/missed)
+						// Planned sessions will be overwritten by derivation below
+						$session_items_map[$date_key] = array(
+							'date' => $date_key,
+							'status' => $s_status,
+							'planned_start_page' => 0,
+							'planned_end_page' => 0,
+							'actual_start_page' => null,
+							'actual_end_page' => null,
+						);
+
+						// Calendar dots logic
+						if ($session_ts && wp_date('Y-m', $session_ts, $timezone) === $month_key_current) {
+							$selected[] = (int) wp_date('j', $session_ts, $timezone);
+						}
+					}
+				}
+
+				$session_dates = array_values(array_unique($session_dates));
+				$selected = array_values(array_unique($selected));
+				sort($selected);
+
+				// 3. Derive projections for future sessions
+				$derived_projections = \Politeia\ReadingPlanner\PlanSessionDeriver::derive_sessions(
+					$total_pages,
+					$goal_starting_page,
+					$pages_read_in_plan,
+					$future_session_dates,
+					$today_key
 				);
-			}
-			$subtitle = '';
-			if ( $goal_book_id ) {
-				$subtitle = (string) $wpdb->get_var(
-					$wpdb->prepare(
-						"SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
+
+				// 4. Merge derived projections into session items
+				foreach ($derived_projections as $projection) {
+					$d = $projection['date'];
+					if (isset($session_items_map[$d])) {
+						$session_items_map[$d]['planned_start_page'] = $projection['start_page'];
+						$session_items_map[$d]['planned_end_page'] = $projection['end_page'];
+						$session_items_map[$d]['order'] = $projection['order'];
+						// Status remains 'planned' as set in derivation
+					}
+				}
+				$session_items = array_values($session_items_map);
+
+				// --- END BACKEND DERIVATION ---
+	
+				$badge = 'ccl' === (string) $plan['plan_type']
+					? __('Plan: More Pages', 'politeia-reading')
+					: __('Reading Plan', 'politeia-reading');
+
+				if ('complete_books' === $goal_kind) {
+					$badge = sprintf(
+						/* translators: 1: goal label, 2: page count, 3: pages label. */
+						__('Goal: %1$s %2$s %3$s', 'politeia-reading'),
+						__('Finish Book', 'politeia-reading'),
+						(int) $total_pages,
+						__('pages', 'politeia-reading')
+					);
+				}
+				$subtitle = '';
+				if ($goal_book_id) {
+					$subtitle = (string) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ')
 						FROM {$book_authors_table} ba
 						LEFT JOIN {$authors_table} a ON a.id = ba.author_id
 						WHERE ba.book_id = %d",
-						$goal_book_id
-					)
-				);
-				if ( '' === $subtitle ) {
-					$subtitle = __( 'Unknown author', 'politeia-reading' );
-				}
-			}
-			if ( $goal_book_id && $total_pages > 0 ) {
-				$total_read = (int) $wpdb->get_var(
-					$wpdb->prepare(
-						"SELECT SUM(
-							CASE
-								WHEN end_page IS NULL OR start_page IS NULL THEN 0
-								WHEN end_page >= start_page THEN end_page - start_page
-								ELSE 0
-							END
+							$goal_book_id
 						)
-						FROM {$reading_sessions_table}
-						WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL",
-						$user_id,
-						$goal_book_id
-					)
-				);
-				$progress = min( 100, (int) floor( ( $total_read / $total_pages ) * 100 ) );
-			}
+					);
+					if ('' === $subtitle) {
+						$subtitle = __('Unknown author', 'politeia-reading');
+					}
+				}
 
-				$cards[] = array(
-					'plan_id'      => $plan_id,
-					'book_id'      => $goal_book_id,
-					'badge'        => $badge,
-					'title'        => $plan['name'],
-					'subtitle'     => $subtitle,
-					'month_label'  => $month_label,
-					'month_year'   => $month_year,
-					'month_range'  => $month_range_label,
-					'initial_month' => date( 'Y-m', $month_ts ),
-					'days_count'   => $days_count,
+				$card_data = array(
+					'plan_id' => $plan_id,
+					'book_id' => $goal_book_id,
+					'badge' => $badge,
+					'title' => $plan['name'],
+					'subtitle' => $subtitle,
+					'month_label' => $month_label,
+					'month_year' => $month_year,
+					'month_range' => $month_range_label,
+					'initial_month' => date('Y-m', $month_ts),
+					'days_count' => $days_count,
 					'start_offset' => $start_offset,
-					'selected'     => $selected,
+					'selected' => $selected,
 					'session_dates' => $session_dates,
-					'total_pages'  => $total_pages,
-					'progress'     => $progress,
-					'goal_kind'    => $goal_kind,
+					'total_pages' => $total_pages,
+					'progress' => $progress,
+					'pages_read' => $pages_read_in_plan,
+					'goal_kind' => $goal_kind,
 					'session_items' => $session_items,
 					'actual_sessions' => $actual_sessions_payload,
-					'today_key'    => $today_key,
+					'today_key' => $today_key,
+					'plan_status' => $plan['status'],
 				);
+				set_transient($cache_key, $card_data, DAY_IN_SECONDS);
+				$cards[] = $card_data;
 			}
 		}
 
 		$baseline_metrics = array();
-		if ( function_exists( 'get_latest_user_baseline' ) ) {
-			$baseline = get_latest_user_baseline( $user_id );
-			if ( ! empty( $baseline['metrics'] ) ) {
+		if (function_exists('get_latest_user_baseline')) {
+			$baseline = get_latest_user_baseline($user_id);
+			if (!empty($baseline['metrics'])) {
 				$baseline_metrics = (array) $baseline['metrics'];
 			}
 		}
 
-		$today_key = current_time( 'Y-m-d' );
+		$today_key = current_time('Y-m-d');
 		$upcoming_sessions = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT s.plan_id, s.planned_start_datetime, s.planned_start_page, s.planned_end_page,
+				"SELECT s.plan_id, s.planned_start_datetime,
 				        p.name AS plan_name, g.goal_kind, g.book_id
 				 FROM {$sessions_table} s
 				 INNER JOIN {$plans_table} p ON p.id = s.plan_id
@@ -1112,16 +1313,16 @@ $is_owner       = $requested_user
 
 		$book_titles = array();
 		$book_slugs = array();
-		if ( $upcoming_sessions ) {
+		if ($upcoming_sessions) {
 			$book_ids = array();
-			foreach ( $upcoming_sessions as $session_row ) {
-				if ( ! empty( $session_row['book_id'] ) ) {
+			foreach ($upcoming_sessions as $session_row) {
+				if (!empty($session_row['book_id'])) {
 					$book_ids[] = (int) $session_row['book_id'];
 				}
 			}
-			$book_ids = array_values( array_unique( $book_ids ) );
-			if ( $book_ids ) {
-				$placeholders = implode( ',', array_fill( 0, count( $book_ids ), '%d' ) );
+			$book_ids = array_values(array_unique($book_ids));
+			if ($book_ids) {
+				$placeholders = implode(',', array_fill(0, count($book_ids), '%d'));
 				$book_rows = $wpdb->get_results(
 					$wpdb->prepare(
 						"SELECT id, title FROM {$books_table} WHERE id IN ({$placeholders})",
@@ -1129,270 +1330,305 @@ $is_owner       = $requested_user
 					),
 					ARRAY_A
 				);
-				foreach ( $book_rows as $book_row ) {
-					$book_titles[ (int) $book_row['id'] ] = (string) $book_row['title'];
+				foreach ($book_rows as $book_row) {
+					$book_titles[(int) $book_row['id']] = (string) $book_row['title'];
 				}
-				if ( function_exists( 'prs_get_primary_slug_for_book' ) ) {
-					foreach ( $book_ids as $book_id ) {
-						$slug = prs_get_primary_slug_for_book( $book_id );
-						if ( $slug ) {
-							$book_slugs[ $book_id ] = $slug;
+				if (function_exists('prs_get_primary_slug_for_book')) {
+					foreach ($book_ids as $book_id) {
+						$slug = prs_get_primary_slug_for_book($book_id);
+						if ($slug) {
+							$book_slugs[$book_id] = $slug;
 						}
 					}
 				}
 			}
 		}
 		?>
-		<?php if ( $cards ) : ?>
-			<?php $cards_count = count( $cards ); ?>
+		<?php if ($cards): ?>
+			<?php $cards_count = count($cards); ?>
 			<div class="prs-plan-grid">
-				<?php foreach ( $cards as $card ) : ?>
-					<div
-						class="prs-plan-card"
-						data-days-count="<?php echo esc_attr( (string) $card['days_count'] ); ?>"
-						data-start-offset="<?php echo esc_attr( (string) $card['start_offset'] ); ?>"
-						data-selected-days="<?php echo esc_attr( wp_json_encode( $card['selected'] ) ); ?>"
-						data-session-label="<?php echo esc_attr__( 'Scheduled Session', 'politeia-reading' ); ?>"
-						data-day-format="<?php echo esc_attr__( 'Day %1$s of %2$s', 'politeia-reading' ); ?>"
-						data-month-label="<?php echo esc_attr( $card['month_label'] ); ?>"
-						data-remove-label="<?php echo esc_attr__( 'Remove session', 'politeia-reading' ); ?>"
-						data-total-pages="<?php echo esc_attr( (string) $card['total_pages'] ); ?>"
-						data-sessions-label="<?php echo esc_attr__( 'sessions', 'politeia-reading' ); ?>"
-						data-pages-label="<?php echo esc_attr__( 'pages', 'politeia-reading' ); ?>"
-						data-missed-label="<?php echo esc_attr__( 'Missed', 'politeia-reading' ); ?>"
-						data-completed-label="<?php echo esc_attr__( 'Completed', 'politeia-reading' ); ?>"
-						data-session-dates="<?php echo esc_attr( wp_json_encode( $card['session_dates'] ) ); ?>"
-						data-session-items="<?php echo esc_attr( wp_json_encode( $card['session_items'] ) ); ?>"
-						data-actual-sessions="<?php echo esc_attr( wp_json_encode( $card['actual_sessions'] ) ); ?>"
-						data-initial-month="<?php echo esc_attr( $card['initial_month'] ); ?>"
-						data-goal-kind="<?php echo esc_attr( $card['goal_kind'] ); ?>"
-						data-today-key="<?php echo esc_attr( $card['today_key'] ); ?>"
-						data-confirm-text="<?php echo esc_attr__( 'Accept Proposal', 'politeia-reading' ); ?>"
-						data-confirmed-text="<?php echo esc_attr__( 'Plan saved!', 'politeia-reading' ); ?>"
-					>
-					<div class="prs-plan-header">
-						<span class="prs-plan-badge"><?php echo esc_html( $card['badge'] ); ?></span>
-							<h2 class="prs-plan-title">
-								<span class="prs-plan-title-row">
-									<?php if ( ! empty( $card['book_id'] ) && function_exists( 'prs_get_primary_slug_for_book' ) ) : ?>
-										<?php
-										$book_slug = prs_get_primary_slug_for_book( (int) $card['book_id'] );
-										$book_url = $book_slug ? home_url( '/my-books/my-book-' . $book_slug . '/' ) : '';
-										?>
-										<?php if ( $book_url ) : ?>
-											<a href="<?php echo esc_url( $book_url ); ?>"><?php echo esc_html( $card['title'] ); ?></a>
-										<?php else : ?>
-											<span><?php echo esc_html( $card['title'] ); ?></span>
+				<?php foreach ($cards as $card): ?>
+					<div class="prs-plan-card" data-plan-id="<?php echo esc_attr((string) $card['plan_id']); ?>"
+						data-days-count="<?php echo esc_attr((string) $card['days_count']); ?>"
+						data-start-offset="<?php echo esc_attr((string) $card['start_offset']); ?>"
+						data-selected-days="<?php echo esc_attr(wp_json_encode($card['selected'])); ?>"
+						data-session-label="<?php echo esc_attr__('Scheduled Session', 'politeia-reading'); ?>"
+						data-day-format="<?php echo esc_attr__('Day %1$s of %2$s', 'politeia-reading'); ?>"
+						data-month-label="<?php echo esc_attr($card['month_label']); ?>"
+						data-remove-label="<?php echo esc_attr__('Remove session', 'politeia-reading'); ?>"
+						data-total-pages="<?php echo esc_attr((string) $card['total_pages']); ?>"
+						data-pages-read="<?php echo esc_attr(isset($card['pages_read']) ? (string) $card['pages_read'] : '0'); ?>"
+						data-sessions-label="<?php echo esc_attr__('sessions', 'politeia-reading'); ?>"
+						data-pages-label="<?php echo esc_attr__('pages', 'politeia-reading'); ?>"
+						data-missed-label="<?php echo esc_attr__('Missed', 'politeia-reading'); ?>"
+						data-completed-label="<?php echo esc_attr__('Completed', 'politeia-reading'); ?>"
+						data-session-dates="<?php echo esc_attr(wp_json_encode($card['session_dates'])); ?>"
+						data-session-items="<?php echo esc_attr(wp_json_encode($card['session_items'])); ?>"
+						data-actual-sessions="<?php echo esc_attr(wp_json_encode($card['actual_sessions'])); ?>"
+						data-initial-month="<?php echo esc_attr($card['initial_month']); ?>"
+						data-goal-kind="<?php echo esc_attr($card['goal_kind']); ?>"
+						data-today-key="<?php echo esc_attr($card['today_key']); ?>"
+						data-confirm-text="<?php echo esc_attr__('Accept Proposal', 'politeia-reading'); ?>"
+						data-confirmed-text="<?php echo esc_attr__('Plan saved!', 'politeia-reading'); ?>">
+						<div class="prs-plan-header">
+							<div id="plan_book_info">
+								<span class="prs-plan-badge"><?php echo esc_html($card['badge']); ?></span>
+								<h2 class="prs-plan-title">
+									<span class="prs-plan-title-row">
+										<?php if (!empty($card['book_id']) && function_exists('prs_get_primary_slug_for_book')): ?>
+											<?php
+											$book_slug = prs_get_primary_slug_for_book((int) $card['book_id']);
+											$book_url = $book_slug ? home_url('/my-books/my-book-' . $book_slug . '/') : '';
+											?>
+											<?php if ($book_url): ?>
+												<a href="<?php echo esc_url($book_url); ?>"><?php echo esc_html($card['title']); ?></a>
+											<?php else: ?>
+												<span><?php echo esc_html($card['title']); ?></span>
+											<?php endif; ?>
+										<?php else: ?>
+											<span><?php echo esc_html($card['title']); ?></span>
 										<?php endif; ?>
-									<?php else : ?>
-										<span><?php echo esc_html( $card['title'] ); ?></span>
-									<?php endif; ?>
-									<?php if ( ! empty( $card['book_id'] ) ) : ?>
-										<span
-											role="button"
-											tabindex="0"
-											class="prs-session-recorder-trigger material-symbols-outlined"
-											data-role="session-open"
-											aria-label="<?php esc_attr_e( 'Open session recorder', 'politeia-reading' ); ?>"
-											aria-controls="prs-session-modal-<?php echo esc_attr( (string) $card['plan_id'] ); ?>"
-											aria-expanded="false"
-										>play_circle</span>
-									<?php endif; ?>
-								</span>
-								<br>
-								<span class="prs-plan-subtitle"><?php echo esc_html( $card['subtitle'] ); ?></span>
-							</h2>
+										<?php if (!empty($card['book_id'])): ?>
+											<span role="button" tabindex="0"
+												class="prs-session-recorder-trigger material-symbols-outlined" data-role="session-open"
+												aria-label="<?php esc_attr_e('Open session recorder', 'politeia-reading'); ?>"
+												aria-controls="prs-session-modal-<?php echo esc_attr((string) $card['plan_id']); ?>"
+												aria-expanded="false">play_circle</span>
+										<?php endif; ?>
+									</span>
+									<br>
+									<span class="prs-plan-subtitle"><?php echo esc_html($card['subtitle']); ?></span>
+								</h2>
+							</div>
+							<div id="politeia_plan_result">
+								<img src="<?php echo esc_url(plugins_url('politeia-bookshelf/modules/reading/assets/svg/PoliteiaGoldMedal.svg')); ?>"
+									alt="<?php esc_attr_e('Plan Result', 'politeia-reading'); ?>" class="<?php
+									   $status_class = '';
+									   if ($card['plan_status'] === 'accepted') {
+										   $status_class = 'plan-in-progress';
+									   } elseif ($card['plan_status'] === 'desisted') {
+										   $status_class = 'plan-desisted';
+									   }
+									   echo $status_class;
+									   ?>" />
+								<div class="plan-menu-container">
+									<button type="button" class="plan-menu-button"
+										aria-label="<?php esc_attr_e('Plan options', 'politeia-reading'); ?>"
+										data-plan-id="<?php echo esc_attr($card['plan_id']); ?>">
+										<span class="plan-menu-dots">⋯</span>
+									</button>
+									<div class="plan-menu-dropdown" style="display: none;">
+										<button type="button" class="plan-menu-item plan-desist-btn"
+											data-plan-id="<?php echo esc_attr($card['plan_id']); ?>">
+											<?php esc_html_e('Desist', 'politeia-reading'); ?>
+										</button>
+									</div>
+								</div>
+							</div>
 						</div>
 
-					<button type="button" class="prs-plan-toggle" data-role="toggle">
-						<div class="prs-plan-toggle-icon" aria-hidden="true">
-							<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+						<button type="button" class="prs-plan-toggle" data-role="toggle">
+							<div class="prs-plan-toggle-icon" aria-hidden="true">
+								<svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" fill="none" viewBox="0 0 24 24"
+									stroke="currentColor">
+									<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+										d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+								</svg>
+							</div>
+							<div>
+								<span
+									class="prs-plan-toggle-label"><?php esc_html_e('See Session Calendar', 'politeia-reading'); ?></span><br>
+								<span class="prs-plan-toggle-date"><?php echo esc_html($card['month_range']); ?></span>
+							</div>
+							<svg class="prs-chevron" data-role="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+								<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" />
 							</svg>
-						</div>
-						<div>
-							<span class="prs-plan-toggle-label"><?php esc_html_e( 'See Session Calendar', 'politeia-reading' ); ?></span><br>
-							<span class="prs-plan-toggle-date"><?php echo esc_html( $card['month_range'] ); ?></span>
-						</div>
-						<svg class="prs-chevron" data-role="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" />
-						</svg>
-					</button>
+						</button>
 
-					<div class="prs-collapsible" data-role="collapsible">
-						<div class="prs-calendar-card">
-							<div class="prs-calendar-header">
-								<div>
-									<div class="prs-calendar-title-row">
-										<h3 class="prs-calendar-title" data-role="calendar-title"><?php echo esc_html( $card['month_year'] ); ?></h3>
-										<div class="prs-calendar-nav">
-											<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-prev" aria-label="<?php esc_attr_e( 'Previous Month', 'politeia-reading' ); ?>">
-												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-													<path d="M15 6l-6 6 6 6" />
+						<div class="prs-collapsible" data-role="collapsible">
+							<div class="prs-calendar-card">
+								<div class="prs-calendar-header">
+									<div>
+										<div class="prs-calendar-title-row">
+											<h3 class="prs-calendar-title" data-role="calendar-title">
+												<?php echo esc_html($card['month_year']); ?>
+											</h3>
+											<div class="prs-calendar-nav">
+												<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-prev"
+													aria-label="<?php esc_attr_e('Previous Month', 'politeia-reading'); ?>">
+													<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+														viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
+														stroke-linecap="round" stroke-linejoin="round">
+														<path d="M15 6l-6 6 6 6" />
+													</svg>
+												</a>
+												<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-next"
+													aria-label="<?php esc_attr_e('Next Month', 'politeia-reading'); ?>">
+													<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+														viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
+														stroke-linecap="round" stroke-linejoin="round">
+														<path d="M9 6l6 6-6 6" />
+													</svg>
+												</a>
+											</div>
+										</div>
+										<div class="prs-calendar-meta" data-role="calendar-meta"></div>
+									</div>
+									<div>
+										<div class="prs-toggle-group" role="tablist">
+											<a href="#" class="prs-toggle-button is-active" role="button" data-role="view-cal"
+												aria-label="<?php esc_attr_e('Calendar', 'politeia-reading'); ?>">
+												<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+													viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
+													stroke-linecap="round" stroke-linejoin="round">
+													<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+													<line x1="16" y1="2" x2="16" y2="6"></line>
+													<line x1="8" y1="2" x2="8" y2="6"></line>
+													<line x1="3" y1="10" x2="21" y2="10"></line>
 												</svg>
 											</a>
-											<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-next" aria-label="<?php esc_attr_e( 'Next Month', 'politeia-reading' ); ?>">
-												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-													<path d="M9 6l6 6-6 6" />
+											<a href="#" class="prs-toggle-button" role="button" data-role="view-list"
+												aria-label="<?php esc_attr_e('List', 'politeia-reading'); ?>">
+												<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+													viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
+													stroke-linecap="round" stroke-linejoin="round">
+													<line x1="8" y1="6" x2="21" y2="6"></line>
+													<line x1="8" y1="12" x2="21" y2="12"></line>
+													<line x1="8" y1="18" x2="21" y2="18"></line>
+													<line x1="3" y1="6" x2="3.01" y2="6"></line>
+													<line x1="3" y1="12" x2="3.01" y2="12"></line>
+													<line x1="3" y1="18" x2="3.01" y2="18"></line>
 												</svg>
 											</a>
 										</div>
 									</div>
-									<div class="prs-calendar-meta" data-role="calendar-meta"></div>
 								</div>
-								<div>
-									<div class="prs-toggle-group" role="tablist">
-										<a href="#" class="prs-toggle-button is-active" role="button" data-role="view-cal" aria-label="<?php esc_attr_e( 'Calendar', 'politeia-reading' ); ?>">
-											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-												<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-												<line x1="16" y1="2" x2="16" y2="6"></line>
-												<line x1="8" y1="2" x2="8" y2="6"></line>
-												<line x1="3" y1="10" x2="21" y2="10"></line>
-											</svg>
-										</a>
-										<a href="#" class="prs-toggle-button" role="button" data-role="view-list" aria-label="<?php esc_attr_e( 'List', 'politeia-reading' ); ?>">
-											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-												<line x1="8" y1="6" x2="21" y2="6"></line>
-												<line x1="8" y1="12" x2="21" y2="12"></line>
-												<line x1="8" y1="18" x2="21" y2="18"></line>
-												<line x1="3" y1="6" x2="3.01" y2="6"></line>
-												<line x1="3" y1="12" x2="3.01" y2="12"></line>
-												<line x1="3" y1="18" x2="3.01" y2="18"></line>
-											</svg>
-										</a>
+
+								<div class="prs-view" data-role="calendar-view">
+									<div class="prs-weekdays">
+										<div><?php esc_html_e('Mon', 'politeia-reading'); ?></div>
+										<div><?php esc_html_e('Tue', 'politeia-reading'); ?></div>
+										<div><?php esc_html_e('Wed', 'politeia-reading'); ?></div>
+										<div><?php esc_html_e('Thu', 'politeia-reading'); ?></div>
+										<div><?php esc_html_e('Fri', 'politeia-reading'); ?></div>
+										<div><?php esc_html_e('Sat', 'politeia-reading'); ?></div>
+										<div><?php esc_html_e('Sun', 'politeia-reading'); ?></div>
 									</div>
+									<div class="prs-calendar-grid" data-role="calendar-grid"></div>
+								</div>
+
+								<div class="prs-view is-hidden" data-role="list-view">
+									<div data-role="list"></div>
+								</div>
+
+							</div>
+						</div>
+
+						<div class="prs-progress">
+							<div class="prs-progress-row">
+								<span
+									class="prs-progress-label"><?php esc_html_e('Reading Completed', 'politeia-reading'); ?></span>
+								<span class="prs-progress-value"><?php echo esc_html($card['progress']); ?>%</span>
+							</div>
+							<div class="prs-progress-bar" role="progressbar"
+								aria-valuenow="<?php echo esc_attr((string) $card['progress']); ?>" aria-valuemin="0"
+								aria-valuemax="100">
+								<div class="prs-progress-bar-fill"
+									style="width: <?php echo esc_attr((string) $card['progress']); ?>%;"></div>
+							</div>
+						</div>
+						<?php if (!empty($card['book_id'])): ?>
+							<div id="prs-session-modal-<?php echo esc_attr((string) $card['plan_id']); ?>" class="prs-session-modal"
+								role="dialog" aria-modal="true" aria-hidden="true"
+								aria-label="<?php esc_attr_e('Session recorder', 'politeia-reading'); ?>" data-role="session-modal">
+								<div class="prs-session-modal__content">
+									<button type="button" class="prs-session-modal__close"
+										aria-label="<?php esc_attr_e('Close session recorder', 'politeia-reading'); ?>"
+										data-role="session-close">
+										×
+									</button>
+									<?php echo do_shortcode('[politeia_start_reading book_id="' . (int) $card['book_id'] . '" plan_id="' . (int) $card['plan_id'] . '"]'); ?>
 								</div>
 							</div>
-
-							<div class="prs-view" data-role="calendar-view">
-								<div class="prs-weekdays">
-									<div><?php esc_html_e( 'Mon', 'politeia-reading' ); ?></div>
-									<div><?php esc_html_e( 'Tue', 'politeia-reading' ); ?></div>
-									<div><?php esc_html_e( 'Wed', 'politeia-reading' ); ?></div>
-									<div><?php esc_html_e( 'Thu', 'politeia-reading' ); ?></div>
-									<div><?php esc_html_e( 'Fri', 'politeia-reading' ); ?></div>
-									<div><?php esc_html_e( 'Sat', 'politeia-reading' ); ?></div>
-									<div><?php esc_html_e( 'Sun', 'politeia-reading' ); ?></div>
-								</div>
-								<div class="prs-calendar-grid" data-role="calendar-grid"></div>
-							</div>
-
-							<div class="prs-view is-hidden" data-role="list-view">
-								<div data-role="list"></div>
-							</div>
-
-						</div>
-					</div>
-
-					<div class="prs-progress">
-						<div class="prs-progress-row">
-							<span class="prs-progress-label"><?php esc_html_e( 'Reading Completed', 'politeia-reading' ); ?></span>
-							<span class="prs-progress-value"><?php echo esc_html( $card['progress'] ); ?>%</span>
-						</div>
-						<div class="prs-progress-bar" role="progressbar" aria-valuenow="<?php echo esc_attr( (string) $card['progress'] ); ?>" aria-valuemin="0" aria-valuemax="100">
-							<div class="prs-progress-bar-fill" style="width: <?php echo esc_attr( (string) $card['progress'] ); ?>%;"></div>
-						</div>
-					</div>
-					<?php if ( ! empty( $card['book_id'] ) ) : ?>
-						<div
-							id="prs-session-modal-<?php echo esc_attr( (string) $card['plan_id'] ); ?>"
-							class="prs-session-modal"
-							role="dialog"
-							aria-modal="true"
-							aria-hidden="true"
-							aria-label="<?php esc_attr_e( 'Session recorder', 'politeia-reading' ); ?>"
-							data-role="session-modal"
-						>
-							<div class="prs-session-modal__content">
-								<button
-									type="button"
-									class="prs-session-modal__close"
-									aria-label="<?php esc_attr_e( 'Close session recorder', 'politeia-reading' ); ?>"
-									data-role="session-close"
-								>
-									×
-								</button>
-								<?php echo do_shortcode( '[politeia_start_reading book_id="' . (int) $card['book_id'] . '" plan_id="' . (int) $card['plan_id'] . '"]' ); ?>
-							</div>
-						</div>
-					<?php endif; ?>
+						<?php endif; ?>
 					</div>
 				<?php endforeach; ?>
-				<?php if ( 1 === $cards_count ) : ?>
+				<?php if (1 === $cards_count): ?>
 					<div class="prs-upcoming-wrap">
 						<div class="prs-upcoming-card">
-							<h2 class="prs-upcoming-title"><?php esc_html_e( 'Upcoming Reading Sessions', 'politeia-reading' ); ?></h2>
+							<h2 class="prs-upcoming-title"><?php esc_html_e('Upcoming Reading Sessions', 'politeia-reading'); ?>
+							</h2>
 							<div class="prs-upcoming-list">
-								<?php if ( $upcoming_sessions ) : ?>
-									<?php foreach ( $upcoming_sessions as $session_row ) : ?>
+								<?php if ($upcoming_sessions): ?>
+									<?php foreach ($upcoming_sessions as $session_row): ?>
 										<?php
 										$session_title = $session_row['plan_name'] ?? '';
-										$book_id = isset( $session_row['book_id'] ) ? (int) $session_row['book_id'] : 0;
+										$book_id = isset($session_row['book_id']) ? (int) $session_row['book_id'] : 0;
 										$book_url = '';
-										if ( $book_id && isset( $book_titles[ $book_id ] ) ) {
-											$session_title = $book_titles[ $book_id ];
-											if ( isset( $book_slugs[ $book_id ] ) && $book_slugs[ $book_id ] ) {
-												$book_url = home_url( '/my-books/my-book-' . $book_slugs[ $book_id ] . '/' );
+										if ($book_id && isset($book_titles[$book_id])) {
+											$session_title = $book_titles[$book_id];
+											if (isset($book_slugs[$book_id]) && $book_slugs[$book_id]) {
+												$book_url = home_url('/my-books/my-book-' . $book_slugs[$book_id] . '/');
 											}
 										}
-										$session_title = $session_title ? $session_title : __( 'Reading Session', 'politeia-reading' );
+										$session_title = $session_title ? $session_title : __('Reading Session', 'politeia-reading');
 
-										$goal_kind = isset( $session_row['goal_kind'] ) ? (string) $session_row['goal_kind'] : '';
+										$goal_kind = isset($session_row['goal_kind']) ? (string) $session_row['goal_kind'] : '';
 										$meta_label = '';
-										if ( in_array( $goal_kind, array( 'form_habit', 'habit' ), true ) ) {
-											$minutes = isset( $baseline_metrics['minutes_per_session'] ) ? (int) $baseline_metrics['minutes_per_session'] : 0;
-											if ( $minutes <= 0 ) {
+										if (in_array($goal_kind, array('form_habit', 'habit'), true)) {
+											$minutes = isset($baseline_metrics['minutes_per_session']) ? (int) $baseline_metrics['minutes_per_session'] : 0;
+											if ($minutes <= 0) {
 												$minutes = 30;
 											}
-											$meta_label = sprintf( __( '%d min', 'politeia-reading' ), $minutes );
+											$meta_label = sprintf(__('%d min', 'politeia-reading'), $minutes);
 										} else {
-											$start_page = isset( $session_row['planned_start_page'] ) ? (int) $session_row['planned_start_page'] : 0;
-											$end_page = isset( $session_row['planned_end_page'] ) ? (int) $session_row['planned_end_page'] : 0;
-											$page_count = $end_page >= $start_page && $start_page > 0 ? ( $end_page - $start_page + 1 ) : 0;
+											$start_page = isset($session_row['planned_start_page']) ? (int) $session_row['planned_start_page'] : 0;
+											$end_page = isset($session_row['planned_end_page']) ? (int) $session_row['planned_end_page'] : 0;
+											$page_count = $end_page >= $start_page && $start_page > 0 ? ($end_page - $start_page + 1) : 0;
 											$meta_label = $page_count > 0
-												? sprintf( _n( '%d página', '%d páginas', $page_count, 'politeia-reading' ), $page_count )
-												: __( 'Páginas', 'politeia-reading' );
+												? sprintf(_n('%d página', '%d páginas', $page_count, 'politeia-reading'), $page_count)
+												: __('Páginas', 'politeia-reading');
 										}
 
 										$date_label = '';
 										$is_today = false;
 										$is_tomorrow = false;
-										if ( ! empty( $session_row['planned_start_datetime'] ) ) {
-											$session_dt = date_create_immutable( $session_row['planned_start_datetime'], $timezone );
+										if (!empty($session_row['planned_start_datetime'])) {
+											$session_dt = date_create_immutable($session_row['planned_start_datetime'], $timezone);
 											$session_ts = $session_dt ? $session_dt->getTimestamp() : null;
-											if ( $session_ts ) {
-												$session_key = wp_date( 'Y-m-d', $session_ts, $timezone );
-												$today_dt = new DateTimeImmutable( $today_key . ' 00:00:00', $timezone );
-												$tomorrow_key = $today_dt->modify( '+1 day' )->format( 'Y-m-d' );
+											if ($session_ts) {
+												$session_key = wp_date('Y-m-d', $session_ts, $timezone);
+												$today_dt = new DateTimeImmutable($today_key . ' 00:00:00', $timezone);
+												$tomorrow_key = $today_dt->modify('+1 day')->format('Y-m-d');
 												$is_today = $session_key === $today_key;
 												$is_tomorrow = $session_key === $tomorrow_key;
-												$date_label = wp_date( 'j F', $session_ts, $timezone );
+												$date_label = wp_date('j F', $session_ts, $timezone);
 											}
 										}
 										?>
 										<div class="prs-upcoming-item">
 											<div class="prs-upcoming-row">
 												<div class="prs-upcoming-info">
-													<?php if ( $book_url ) : ?>
-														<a class="prs-upcoming-book" href="<?php echo esc_url( $book_url ); ?>">
-															<?php echo esc_html( $session_title ); ?>
+													<?php if ($book_url): ?>
+														<a class="prs-upcoming-book" href="<?php echo esc_url($book_url); ?>">
+															<?php echo esc_html($session_title); ?>
 														</a>
-													<?php else : ?>
-														<div class="prs-upcoming-book"><?php echo esc_html( $session_title ); ?></div>
+													<?php else: ?>
+														<div class="prs-upcoming-book"><?php echo esc_html($session_title); ?></div>
 													<?php endif; ?>
-													<?php if ( $meta_label ) : ?>
-														<div class="prs-upcoming-meta"><?php echo esc_html( $meta_label ); ?></div>
+													<?php if ($meta_label): ?>
+														<div class="prs-upcoming-meta"><?php echo esc_html($meta_label); ?></div>
 													<?php endif; ?>
 												</div>
-												<?php if ( $date_label ) : ?>
+												<?php if ($date_label): ?>
 													<div class="prs-upcoming-date <?php echo $is_today ? 'prs-upcoming-date--today' : ''; ?>">
 														<?php
-														if ( $is_today ) {
-															echo esc_html( __( 'Today', 'politeia-reading' ) );
-														} elseif ( $is_tomorrow ) {
-															echo esc_html( __( 'Tomorrow', 'politeia-reading' ) );
+														if ($is_today) {
+															echo esc_html(__('Today', 'politeia-reading'));
+														} elseif ($is_tomorrow) {
+															echo esc_html(__('Tomorrow', 'politeia-reading'));
 														} else {
-															echo esc_html( $date_label );
+															echo esc_html($date_label);
 														}
 														?>
 													</div>
@@ -1400,24 +1636,26 @@ $is_owner       = $requested_user
 											</div>
 										</div>
 									<?php endforeach; ?>
-								<?php else : ?>
-									<div class="prs-upcoming-empty"><?php esc_html_e( 'No upcoming sessions yet.', 'politeia-reading' ); ?></div>
+								<?php else: ?>
+									<div class="prs-upcoming-empty">
+										<?php esc_html_e('No upcoming sessions yet.', 'politeia-reading'); ?>
+									</div>
 								<?php endif; ?>
 							</div>
 						</div>
 					</div>
 				<?php endif; ?>
 			</div>
-		<?php else : ?>
-			<p><?php esc_html_e( 'No plans yet.', 'politeia-reading' ); ?></p>
+		<?php else: ?>
+			<p><?php esc_html_e('No plans yet.', 'politeia-reading'); ?></p>
 		<?php endif; ?>
-	<?php else : ?>
-		<p><?php esc_html_e( 'Access denied.', 'politeia-reading' ); ?></p>
+	<?php else: ?>
+		<p><?php esc_html_e('Access denied.', 'politeia-reading'); ?></p>
 	<?php endif; ?>
 </div>
 
 <script>
-	(function() {
+	(function () {
 		const cards = document.querySelectorAll('.prs-plan-card');
 		if (!cards.length) {
 			return;
@@ -1441,8 +1679,12 @@ $is_owner       = $requested_user
 			const sessionOpen = card.querySelector('[data-role="session-open"]');
 			const sessionModal = card.querySelector('[data-role="session-modal"]');
 			const sessionClose = card.querySelector('[data-role="session-close"]');
+			const planMenuButton = card.querySelector('.plan-menu-button');
+			const planMenuDropdown = card.querySelector('.plan-menu-dropdown');
+			const planDesistBtn = card.querySelector('.plan-desist-btn');
 
-			const totalPages = parseInt(card.dataset.totalPages, 10) || 0;
+			let totalPages = parseInt(card.dataset.totalPages, 10) || 0;
+			let pagesRead = parseInt(card.dataset.pagesRead, 10) || 0;
 			const goalKind = card.dataset.goalKind || '';
 			const todayKey = card.dataset.todayKey || '';
 			let sessionDates = [];
@@ -1556,97 +1798,68 @@ $is_owner       = $requested_user
 				return item.planned_end_page - item.planned_start_page + 1;
 			};
 
-			const buildDerivedPlan = () => {
-				const actualPages = actualSessions.reduce((sum, entry) => {
-					const start = typeof entry.start === 'number' ? entry.start : 0;
-					const end = typeof entry.end === 'number' ? entry.end : 0;
-					if (!start || !end || end < start) {
-						return sum;
+			const fetchPlanDetails = () => {
+				const planId = card.dataset.planId;
+				if (!planId) return;
+
+				const timestamp = new Date().getTime();
+				fetch(`/wp-json/politeia/v1/reading-plan/${planId}?t=${timestamp}`, {
+					headers: {
+						'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
 					}
-					return sum + (end - start + 1);
-				}, 0);
-				const allDates = sessionDates.slice().sort();
-				const orderAll = new Map();
-				allDates.forEach((dateStr, index) => {
-					orderAll.set(dateStr, index + 1);
-				});
-				const nonMissedDates = sessionDates
-					.filter((dateStr) => getStatusByDate(dateStr) !== 'missed')
-					.sort();
-				const orderByDate = new Map();
-				nonMissedDates.forEach((dateStr, index) => {
-					orderByDate.set(dateStr, index + 1);
-				});
+				})
+					.then(res => res.json())
+					.then(data => {
+						if (data.success) {
+							console.log('Fetched Plan Details:', data);
+							totalPages = data.total_pages;
+							pagesRead = data.pages_read;
+							// Update derived session data
+							sessionDates = data.session_dates || [];
+							sessionItems = data.session_items || [];
+							actualSessions = data.actual_sessions || [];
 
-				if (!isCompleteBooks) {
-					return {
-						derivedByDate: new Map(),
-						remainingItems: [],
-						remainingPages: totalPages,
-						remainingCount: sessionDates.length,
-						orderAll,
-						orderByDate,
-						actualPages,
-					};
-				}
+							// Update card datasets for consistency
+							card.dataset.totalPages = totalPages;
+							card.dataset.pagesRead = pagesRead;
+							// We don't necessarily need to update the big JSON strings in dataset if we use vars
 
-				const completedPages = Math.min(totalPages, actualPages);
+							// Update progress bar
+							const progressVal = data.progress || 0;
+							const progressBar = card.querySelector('.prs-progress-bar-fill');
+							const progressText = card.querySelector('.prs-progress-value');
+							if (progressBar) progressBar.style.width = `${progressVal}%`;
+							if (progressText) progressText.textContent = `${progressVal}%`;
+							const progressBarContainer = card.querySelector('.prs-progress-bar');
+							if (progressBarContainer) progressBarContainer.setAttribute('aria-valuenow', progressVal);
 
-				const remainingDates = sessionDates
-					.filter((dateStr) => {
-						const status = sessionItems.find((item) => item.date === dateStr)?.status || 'planned';
-						if (status !== 'planned') {
-							return false;
+							// Re-render views
+							renderCalendar();
+							renderList();
 						}
-						if (todayKey && dateStr < todayKey) {
-							return false;
-						}
-						return true;
 					})
-					.sort();
-
-				const remainingPages = Math.max(0, totalPages - completedPages);
-				const remainingCount = remainingDates.length;
-				const basePages = remainingCount > 0 ? Math.floor(remainingPages / remainingCount) : 0;
-				const extraPages = remainingCount > 0 ? remainingPages % remainingCount : 0;
-				const derivedByDate = new Map();
-
-				let cursor = 1;
-				remainingDates.forEach((dateStr, index) => {
-					const pages = basePages + (index < extraPages ? 1 : 0);
-					const startPage = pages > 0 ? cursor : 0;
-					const endPage = pages > 0 ? cursor + pages - 1 : 0;
-					if (pages > 0) {
-						cursor = endPage + 1;
-					}
-					derivedByDate.set(dateStr, {
-						start: startPage,
-						end: endPage,
-						order: index + 1,
-					});
-				});
-
-				return {
-					derivedByDate,
-					remainingItems: remainingDates,
-					remainingPages,
-					remainingCount,
-					orderAll,
-					orderByDate,
-					actualPages,
-				};
+					.catch(err => console.error('Error fetching plan details:', err));
 			};
+
+			// buildDerivedPlan removed - using backend authoritative data
 
 			const updateMeta = () => {
 				if (!metaLabel) return;
-				const derived = buildDerivedPlan();
 				const monthSessions = getMonthSessions(currentMonthKey);
-				const sessionCount = isCompleteBooks
-					? monthSessions.filter((dateStr) => derived.remainingItems.includes(dateStr)).length
-					: monthSessions.length;
-				const pagesPerSession = isCompleteBooks
-					? (derived.remainingCount > 0 ? Math.ceil(derived.remainingPages / derived.remainingCount) : 0)
-					: (sessionCount > 0 && totalPages > 0 ? Math.ceil(totalPages / sessionCount) : 0);
+				const sessionCount = monthSessions.length;
+
+				let pagesPerSession = 0;
+				if (isCompleteBooks) {
+					const remainingPages = Math.max(0, totalPages - pagesRead);
+					const remainingSessionsCount = sessionDates.filter(d => {
+						const s = getStatusByDate(d);
+						return s === 'planned' && d >= (todayKey || '');
+					}).length;
+					pagesPerSession = remainingSessionsCount > 0 ? Math.ceil(remainingPages / remainingSessionsCount) : 0;
+				} else {
+					if (sessionCount > 0 && totalPages > 0) pagesPerSession = Math.ceil(totalPages / sessionCount);
+				}
+
 				metaLabel.textContent = `${sessionCount} ${strings.sessionsLabel} | ${pagesPerSession} ${strings.pagesLabel}`;
 			};
 
@@ -1670,7 +1883,15 @@ $is_owner       = $requested_user
 				const startOffset = (new Date(viewDate.getFullYear(), viewDate.getMonth(), 1).getDay() + 6) % 7;
 				grid.innerHTML = '';
 				const monthSessions = getMonthSessions(currentMonthKey);
-				const derived = buildDerivedPlan();
+
+				const nonMissedDates = sessionDates
+					.filter((dateStr) => getStatusByDate(dateStr) !== 'missed')
+					.sort();
+				const orderByDate = new Map();
+				nonMissedDates.forEach((dateStr, index) => {
+					orderByDate.set(dateStr, index + 1);
+				});
+
 				const sortedDays = monthSessions.map((dateStr) => parseInt(dateStr.split('-')[2], 10));
 				updateMeta();
 				updateTitle();
@@ -1687,6 +1908,13 @@ $is_owner       = $requested_user
 					cell.className = 'prs-day-cell';
 					cell.dataset.day = String(day);
 
+					// Check if this day is today
+					const currentDate = `${currentMonthKey}-${pad2(day)}`;
+					const isToday = todayKey && currentDate === todayKey;
+					if (isToday) {
+						cell.classList.add('is-today');
+					}
+
 					const label = document.createElement('span');
 					label.className = 'prs-day-number';
 					label.textContent = String(day);
@@ -1699,7 +1927,7 @@ $is_owner       = $requested_user
 						const isAccomplished = status === 'accomplished';
 						const isLocked = status !== 'planned';
 						const order = isCompleteBooks
-							? (derived.orderByDate.get(targetDate) || sortedDays.indexOf(day) + 1)
+							? (orderByDate.get(targetDate) || sortedDays.indexOf(day) + 1)
 							: (sortedDays.indexOf(day) + 1);
 
 						const mark = document.createElement('div');
@@ -1736,11 +1964,27 @@ $is_owner       = $requested_user
 							removeBtn.textContent = '×';
 							removeBtn.addEventListener('click', (event) => {
 								event.stopPropagation();
-								sessionDates = sessionDates.filter((dateStr) => dateStr !== targetDate);
-								renderCalendar();
-								if (currentView === 'list') {
-									renderList();
-								}
+								const planId = card.dataset.planId;
+								if (!planId) return;
+
+								if (!confirm(strings.removeLabel || 'Remove session?')) return;
+
+								fetch(`/wp-json/politeia/v1/reading-plan/${planId}/session/${targetDate}`, {
+									method: 'DELETE',
+									headers: {
+										'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+									}
+								})
+									.then(res => res.json())
+
+									.then(data => {
+										if (data.success) {
+											fetchPlanDetails();
+										} else {
+											alert(data.message || 'Error removing session');
+										}
+									})
+									.catch(err => console.error(err));
 							});
 							mark.appendChild(removeBtn);
 
@@ -1753,10 +1997,10 @@ $is_owner       = $requested_user
 								setTimeout(() => mark.classList.add('opacity-0'), 0);
 							});
 
-								mark.addEventListener('dragend', () => {
-									mark.classList.remove('opacity-0');
-									renderCalendar();
-								});
+							mark.addEventListener('dragend', () => {
+								mark.classList.remove('opacity-0');
+								renderCalendar();
+							});
 						}
 
 						cell.appendChild(mark);
@@ -1775,13 +2019,41 @@ $is_owner       = $requested_user
 								addBtn.addEventListener('click', (event) => {
 									event.stopPropagation();
 									const newDate = `${currentMonthKey}-${pad2(day)}`;
-									if (!sessionDates.includes(newDate)) {
-										sessionDates.push(newDate);
-									}
-									renderCalendar();
-									if (currentView === 'list') {
-										renderList();
-									}
+
+									// Add session via API
+									const planId = card.dataset.planId;
+									if (!planId) return;
+
+									addBtn.disabled = true;
+									addBtn.style.cursor = 'wait';
+
+									fetch(`/wp-json/politeia/v1/reading-plan/${planId}/session`, {
+										method: 'POST',
+										headers: {
+											'Content-Type': 'application/json',
+											'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+										},
+										body: JSON.stringify({ session_date: newDate })
+									})
+										.then(res => res.json())
+										.then(data => {
+											if (data.success || data.session) {
+												fetchPlanDetails();
+												addBtn.disabled = false;
+												addBtn.style.cursor = '';
+												// Remove the add button immediately so it doesn't get stuck
+												addBtn.remove();
+											} else {
+												alert(data.message || 'Error adding session');
+												addBtn.disabled = false;
+												addBtn.style.cursor = '';
+											}
+										})
+										.catch(err => {
+											console.error(err);
+											addBtn.disabled = false;
+											addBtn.style.cursor = '';
+										});
 								});
 								cell.appendChild(addBtn);
 							}, 300);
@@ -1812,29 +2084,54 @@ $is_owner       = $requested_user
 						cell.classList.remove('is-drag-over');
 						const origin = parseInt(event.dataTransfer.getData('text/plain'), 10);
 						const target = day;
+						const planId = card.dataset.planId;
 
-						if (target && !sortedDays.includes(target)) {
+						if (target && !sortedDays.includes(target) && planId) {
 							const originDate = `${currentMonthKey}-${pad2(origin)}`;
 							const targetDate = `${currentMonthKey}-${pad2(target)}`;
-							sessionDates = sessionDates.filter((dateStr) => dateStr !== originDate);
-							if (!sessionDates.includes(targetDate)) {
-								sessionDates.push(targetDate);
-							}
-							renderCalendar();
-							if (currentView === 'list') {
-								renderList();
-							}
+
+							// Optimistic UI could happen here, but reloading is safer for now
+							fetch(`/wp-json/politeia/v1/reading-plan/${planId}/session/${originDate}`, {
+								method: 'PUT',
+								headers: {
+									'Content-Type': 'application/json',
+									'X-WP-Nonce': '<?php echo wp_create_nonce('wp_rest'); ?>'
+								},
+								body: JSON.stringify({ new_date: targetDate })
+							})
+								.then(res => res.json())
+								.then(data => {
+									if (data.success) {
+										fetchPlanDetails();
+									} else {
+										alert(data.message || 'Error moving session');
+									}
+								})
+								.catch(err => console.error(err));
 						}
 					});
 
 					grid.appendChild(cell);
+				}
+
+				// Mark the weekday label above today's date
+				if (todayKey && todayKey.startsWith(currentMonthKey)) {
+					const todayDay = parseInt(todayKey.split('-')[2], 10);
+					const todayDate = new Date(viewDate.getFullYear(), viewDate.getMonth(), todayDay);
+					const todayWeekday = (todayDate.getDay() + 6) % 7; // Convert Sunday=0 to Monday=0
+					const weekdayLabels = card.querySelectorAll('.prs-weekdays div');
+					weekdayLabels.forEach((label, index) => {
+						label.classList.remove('is-today-weekday');
+						if (index === todayWeekday) {
+							label.classList.add('is-today-weekday');
+						}
+					});
 				}
 			};
 
 			const renderList = () => {
 				listContainer.innerHTML = '';
 				const monthSessions = getMonthSessions(currentMonthKey);
-				const derived = buildDerivedPlan();
 				const listDates = monthSessions;
 				const sorted = listDates.map((dateStr) => parseInt(dateStr.split('-')[2], 10));
 				const sessionCount = sorted.length;
@@ -1906,10 +2203,10 @@ $is_owner       = $requested_user
 					title.className = 'prs-list-title';
 					if (status === 'planned') {
 						let expectedPages = 0;
-						if (isCompleteBooks && derived.derivedByDate.has(dateKey)) {
-							const range = derived.derivedByDate.get(dateKey);
-							if (range.start > 0 && range.end > 0) {
-								expectedPages = range.end - range.start + 1;
+						if (isCompleteBooks) {
+							const item = sessionItems.find(i => i.date === dateKey);
+							if (item && item.planned_start_page > 0 && item.planned_end_page > 0) {
+								expectedPages = item.planned_end_page - item.planned_start_page + 1;
 							}
 						} else if (pagesPerSession > 0) {
 							expectedPages = pagesPerSession;
@@ -2030,6 +2327,69 @@ $is_owner       = $requested_user
 						event.preventDefault();
 					}
 				});
+
+				// Plan menu toggle
+				if (planMenuButton && planMenuDropdown) {
+					planMenuButton.addEventListener('click', (event) => {
+						event.stopPropagation();
+						const isVisible = planMenuDropdown.style.display === 'block';
+						// Close all other dropdowns first
+						document.querySelectorAll('.plan-menu-dropdown').forEach(dropdown => {
+							dropdown.style.display = 'none';
+						});
+						planMenuDropdown.style.display = isVisible ? 'none' : 'block';
+					});
+
+					// Close dropdown when clicking outside
+					document.addEventListener('click', (event) => {
+						if (!card.contains(event.target)) {
+							planMenuDropdown.style.display = 'none';
+						}
+					});
+				}
+
+				// Desist plan handler
+				if (planDesistBtn) {
+					planDesistBtn.addEventListener('click', function () {
+						const planId = this.dataset.planId;
+						if (!planId) return;
+
+						if (!confirm('¿Estás seguro de que deseas desistir de este plan? Esta acción no se puede deshacer.')) {
+							return;
+						}
+
+						// Close the dropdown
+						if (planMenuDropdown) {
+							planMenuDropdown.style.display = 'none';
+						}
+
+						// Send AJAX request
+						fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+							method: 'POST',
+							headers: {
+								'Content-Type': 'application/x-www-form-urlencoded',
+							},
+							body: new URLSearchParams({
+								action: 'desist_reading_plan',
+								plan_id: planId,
+								nonce: '<?php echo wp_create_nonce('desist_plan_nonce'); ?>'
+							})
+						})
+							.then(response => response.json())
+							.then(data => {
+								if (data.success) {
+									alert('Plan desistido exitosamente.');
+									location.reload();
+								} else {
+									alert('Error: ' + (data.data || 'No se pudo desistir del plan.'));
+								}
+							})
+							.catch(error => {
+								console.error('Error:', error);
+								alert('Ocurrió un error al desistir del plan.');
+							});
+					});
+				}
 
 				document.addEventListener('prs-session-modal:open', (event) => {
 					const detail = event?.detail || {};

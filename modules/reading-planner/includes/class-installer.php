@@ -1,25 +1,28 @@
 <?php
 namespace Politeia\ReadingPlanner;
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
 	exit;
 }
 
-class Installer {
+class Installer
+{
 	/**
 	 * Return schema definitions for Reading Plan tables.
 	 *
 	 * @return array<string,string>
 	 */
-	public static function get_schema_sql(): array {
+	public static function get_schema_sql(): array
+	{
 		global $wpdb;
 
 		$charset_collate = $wpdb->get_charset_collate();
-		$plans_table     = $wpdb->prefix . 'politeia_plans';
+		$plans_table = $wpdb->prefix . 'politeia_plans';
 		$plan_goals_table = $wpdb->prefix . 'politeia_plan_goals';
 		$plan_subjects_table = $wpdb->prefix . 'politeia_plan_subjects';
 		$plan_participants_table = $wpdb->prefix . 'politeia_plan_participants';
 		$planned_sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
+		$session_events_table = $wpdb->prefix . 'politeia_planned_session_events';
 
 		return array(
 			$plans_table => sprintf(
@@ -29,6 +32,8 @@ class Installer {
 			name VARCHAR(255) NOT NULL,
 			plan_type VARCHAR(50) NOT NULL,
 			status VARCHAR(50) NOT NULL,
+			pages_per_session INT UNSIGNED NULL,
+			sessions_per_week INT UNSIGNED NULL,
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
@@ -48,6 +53,7 @@ class Installer {
 			period VARCHAR(50) NOT NULL,
 			book_id BIGINT UNSIGNED NULL,
 			subject_id BIGINT UNSIGNED NULL,
+			starting_page INT UNSIGNED NULL DEFAULT 1,
 			PRIMARY KEY  (id),
 			KEY idx_plan (plan_id),
 			KEY idx_book (book_id),
@@ -88,10 +94,8 @@ class Installer {
 			plan_id BIGINT UNSIGNED NOT NULL,
 			planned_start_datetime DATETIME NOT NULL,
 			planned_end_datetime DATETIME NOT NULL,
-			planned_start_page INT UNSIGNED NULL,
-			planned_end_page INT UNSIGNED NULL,
-			expected_number_of_pages INT UNSIGNED NULL,
-			expected_duration_minutes INT UNSIGNED NULL,
+			-- DEPRECATED FIELDS planned_start_page, planned_end_page removed in 1.13.0
+			-- END DEPRECATED FIELDS
 			status VARCHAR(50) NOT NULL,
 			previous_session_id BIGINT UNSIGNED NULL,
 			comment TEXT NULL,
@@ -103,21 +107,46 @@ class Installer {
 				$planned_sessions_table,
 				$charset_collate
 			),
+			/**
+			 * Session events table — stores user intent for session CRUD operations.
+			 * This table records WHAT the user did (add/remove/move session),
+			 * not derived values like page ranges.
+			 *
+			 * @since 1.5.0
+			 * @see INVARIANTS.php for design principles
+			 */
+			$session_events_table => sprintf(
+				'CREATE TABLE %s (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			plan_id BIGINT UNSIGNED NOT NULL,
+			session_date DATE NOT NULL,
+			action VARCHAR(20) NOT NULL,
+			previous_date DATE NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			KEY idx_plan (plan_id),
+			KEY idx_session_date (session_date),
+			KEY idx_action (action)
+		) ENGINE=InnoDB %s;',
+				$session_events_table,
+				$charset_collate
+			),
 		);
 	}
 
 	/**
 	 * Install or update the Reading Plan schema.
 	 */
-	public static function install(): void {
+	public static function install(): void
+	{
 		require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
-		foreach ( self::get_schema_sql() as $table => $sql ) {
-			dbDelta( $sql );
+		foreach (self::get_schema_sql() as $table => $sql) {
+			dbDelta($sql);
 		}
 
-		if ( defined( 'POLITEIA_READING_PLAN_DB_VERSION' ) ) {
-			update_option( 'politeia_reading_plan_db_version', POLITEIA_READING_PLAN_DB_VERSION );
+		if (defined('POLITEIA_READING_DB_VERSION')) {
+			update_option('politeia_reading_db_version', POLITEIA_READING_DB_VERSION);
 		}
 	}
 }
