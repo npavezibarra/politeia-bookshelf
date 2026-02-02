@@ -59,27 +59,31 @@ add_shortcode(
 		);
 		$book_author = $book_author ? (string) $book_author : __('Unknown author', 'politeia-reading');
 
-		// Última página de la última sesión (si existe)
-		$last_end_page = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT end_page FROM {$tbl_rs}
-     WHERE user_id = %d AND book_id = %d AND end_time IS NOT NULL AND deleted_at IS NULL
-     ORDER BY end_time DESC LIMIT 1",
-				$user_id,
-				$book_id
-			)
-		);
-
 		// Owning status y pages actuales del usuario para este libro
 		$row_ub = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT owning_status, pages FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
+				"SELECT id, owning_status, pages FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
 				$user_id,
 				$book_id
 			)
 		);
 		$owning_status = $row_ub && $row_ub->owning_status ? (string) $row_ub->owning_status : 'in_shelf';
 		$total_pages = $row_ub && $row_ub->pages ? (int) $row_ub->pages : 0;
+		$user_book_id = $row_ub ? (int) $row_ub->id : 0;
+
+		// Última página de la última sesión (si existe)
+		$last_end_page = 0;
+		if ($user_book_id > 0) {
+			$last_end_page = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT end_page FROM {$tbl_rs}
+					 WHERE user_id = %d AND user_book_id = %d AND end_time IS NOT NULL AND deleted_at IS NULL
+					 ORDER BY end_time DESC LIMIT 1",
+					$user_id,
+					$user_book_id
+				)
+			);
+		}
 
 		// No se puede iniciar si está prestado a otro, perdido o vendido
 		$can_start = !in_array($owning_status, array('borrowed', 'lost', 'sold'), true);
@@ -773,7 +777,8 @@ add_shortcode(
 							?>
 					</h3>
 					<div class="prs-sr-flash-sub">
-						<?php esc_html_e('See you soon to keep reading this book.', 'politeia-reading'); ?></div>
+						<?php esc_html_e('See you soon to keep reading this book.', 'politeia-reading'); ?>
+					</div>
 					<button type="button" id="prs-add-note-btn" class="prs-btn prs-add-note-btn"
 						aria-controls="prs-note-panel" aria-expanded="false">
 						<span class="prs-add-note-text"><?php esc_html_e('Add Note', 'politeia-reading'); ?></span>
@@ -826,8 +831,7 @@ add_shortcode(
 				<input type="text" id="prs-sr-chapter" class="prs-sr-input"
 					placeholder="<?php esc_attr_e('Chapter', 'politeia-reading'); ?>" />
 				<span id="prs-sr-chapter-view" class="prs-sr-view"></span>
-				<label for="prs-sr-chapter"
-					class="prs-sr-label"><?php esc_html_e('Chapter', 'politeia-reading'); ?></label>
+				<label for="prs-sr-chapter" class="prs-sr-label"><?php esc_html_e('Chapter', 'politeia-reading'); ?></label>
 			</div>
 
 			<div id="prs-sr-row-timer" class="prs-sr-timer-row">

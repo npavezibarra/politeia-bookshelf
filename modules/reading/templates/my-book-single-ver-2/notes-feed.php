@@ -1,5 +1,5 @@
 <?php
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
 	exit;
 }
 ?>
@@ -132,13 +132,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 		opacity: 0.45;
 	}
 
-	.prs-note__composition-seg--joy { background: #facc15; }
-	.prs-note__composition-seg--sorrow { background: #60a5fa; }
-	.prs-note__composition-seg--fear { background: #a855f7; }
-	.prs-note__composition-seg--fascination { background: #818cf8; }
-	.prs-note__composition-seg--anger { background: #f87171; }
-	.prs-note__composition-seg--serenity { background: #34d399; }
-	.prs-note__composition-seg--enlightenment { background: #fbbf24; }
+	.prs-note__composition-seg--joy {
+		background: #facc15;
+	}
+
+	.prs-note__composition-seg--sorrow {
+		background: #60a5fa;
+	}
+
+	.prs-note__composition-seg--fear {
+		background: #a855f7;
+	}
+
+	.prs-note__composition-seg--fascination {
+		background: #818cf8;
+	}
+
+	.prs-note__composition-seg--anger {
+		background: #f87171;
+	}
+
+	.prs-note__composition-seg--serenity {
+		background: #34d399;
+	}
+
+	.prs-note__composition-seg--enlightenment {
+		background: #fbbf24;
+	}
 
 	.prs-note-modal {
 		position: fixed;
@@ -216,13 +236,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 		transform: scaleY(1.2);
 	}
 
-	.prs-note-modal__segment--joy.is-active { background: #facc15; }
-	.prs-note-modal__segment--sorrow.is-active { background: #60a5fa; }
-	.prs-note-modal__segment--fear.is-active { background: #a855f7; }
-	.prs-note-modal__segment--fascination.is-active { background: #818cf8; }
-	.prs-note-modal__segment--anger.is-active { background: #f87171; }
-	.prs-note-modal__segment--serenity.is-active { background: #34d399; }
-	.prs-note-modal__segment--enlightenment.is-active { background: #fbbf24; }
+	.prs-note-modal__segment--joy.is-active {
+		background: #facc15;
+	}
+
+	.prs-note-modal__segment--sorrow.is-active {
+		background: #60a5fa;
+	}
+
+	.prs-note-modal__segment--fear.is-active {
+		background: #a855f7;
+	}
+
+	.prs-note-modal__segment--fascination.is-active {
+		background: #818cf8;
+	}
+
+	.prs-note-modal__segment--anger.is-active {
+		background: #f87171;
+	}
+
+	.prs-note-modal__segment--serenity.is-active {
+		background: #34d399;
+	}
+
+	.prs-note-modal__segment--enlightenment.is-active {
+		background: #fbbf24;
+	}
 
 	.prs-note-modal__actions {
 		display: flex;
@@ -270,6 +310,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 		position: sticky;
 		top: 24px;
 	}
+
 	.prs-notes-feed__sidebar h2 {
 		font-size: 18px;
 		margin-bottom: 10px;
@@ -316,43 +357,48 @@ if ( ! defined( 'ABSPATH' ) ) {
 <?php
 global $wpdb, $book, $user_id, $tbl_session_notes, $tbl_sessions;
 
-if ( empty( $tbl_session_notes ) ) {
+if (empty($tbl_session_notes)) {
 	$tbl_session_notes = $wpdb->prefix . 'politeia_read_ses_notes';
 }
-if ( empty( $tbl_sessions ) ) {
+if (empty($tbl_sessions)) {
 	$tbl_sessions = $wpdb->prefix . 'politeia_reading_sessions';
 }
 $tbl_ub = $wpdb->prefix . 'politeia_user_books';
 
 $notes = array();
-if ( ! empty( $book->id ) && ! empty( $user_id ) ) {
+// Ensure $ub is available (it should be from the parent template)
+if (!isset($ub) || !is_object($ub)) {
+	// Fallback if accessed directly or $ub missing
+	$ub = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d LIMIT 1", $user_id, $book->id));
+}
+
+if (!empty($ub) && !empty($user_id)) {
 	$notes = $wpdb->get_results(
 		$wpdb->prepare(
 			"SELECT n.*, s.start_time, s.end_time, s.start_page, s.end_page
 			 FROM {$tbl_session_notes} n
 			 LEFT JOIN {$tbl_sessions} s
 			   ON s.id = n.rs_id
-			  AND s.book_id = n.book_id
 			  AND s.user_id = n.user_id
-			 WHERE n.book_id = %d
+			 WHERE n.user_book_id = %d
 			   AND n.user_id = %d
 			 ORDER BY n.created_at DESC
 			 LIMIT 50",
-			(int) $book->id,
+			(int) $ub->id,
 			(int) $user_id
 		)
 	);
 }
 
 $note_index_map = array();
-if ( ! empty( $notes ) ) {
+if (!empty($notes)) {
 	$ordered_notes = $notes;
 	usort(
 		$ordered_notes,
-		static function ( $a, $b ) {
-			$a_time = ! empty( $a->created_at ) ? strtotime( (string) $a->created_at ) : 0;
-			$b_time = ! empty( $b->created_at ) ? strtotime( (string) $b->created_at ) : 0;
-			if ( $a_time === $b_time ) {
+		static function ($a, $b) {
+			$a_time = !empty($a->created_at) ? strtotime((string) $a->created_at) : 0;
+			$b_time = !empty($b->created_at) ? strtotime((string) $b->created_at) : 0;
+			if ($a_time === $b_time) {
 				return (int) $a->id <=> (int) $b->id;
 			}
 			return $a_time <=> $b_time;
@@ -360,8 +406,8 @@ if ( ! empty( $notes ) ) {
 	);
 
 	$index = 1;
-	foreach ( $ordered_notes as $ordered_note ) {
-		$note_index_map[ (int) $ordered_note->id ] = $index;
+	foreach ($ordered_notes as $ordered_note) {
+		$note_index_map[(int) $ordered_note->id] = $index;
 		$index++;
 	}
 }
@@ -385,106 +431,107 @@ $other_readers = $wpdb->get_results(
 	<div class="prs-notes-feed__app">
 		<main class="prs-notes-feed__layout">
 			<section class="prs-notes-feed__notes">
-				<?php if ( ! empty( $notes ) ) : ?>
-				<?php foreach ( $notes as $note ) : ?>
-					<?php
-					$emotion_keys = array( 'joy', 'sorrow', 'fear', 'fascination', 'anger', 'serenity', 'enlightenment' );
-					$emotion_values = array();
-					$total_emotion = 0;
-					$decoded_emotions = $note->emotions ? json_decode( (string) $note->emotions, true ) : array();
-					if ( ! is_array( $decoded_emotions ) ) {
-						$decoded_emotions = array();
-					}
-					foreach ( $emotion_keys as $key ) {
-						$value = isset( $decoded_emotions[ $key ] ) ? (int) $decoded_emotions[ $key ] : 0;
-						if ( $value < 0 ) {
-							$value = 0;
-						} elseif ( $value > 5 ) {
-							$value = 5;
+				<?php if (!empty($notes)): ?>
+					<?php foreach ($notes as $note): ?>
+						<?php
+						$emotion_keys = array('joy', 'sorrow', 'fear', 'fascination', 'anger', 'serenity', 'enlightenment');
+						$emotion_values = array();
+						$total_emotion = 0;
+						$decoded_emotions = $note->emotions ? json_decode((string) $note->emotions, true) : array();
+						if (!is_array($decoded_emotions)) {
+							$decoded_emotions = array();
 						}
-						$emotion_values[ $key ] = $value;
-						$total_emotion += $value;
-					}
-					?>
-					<article class="prs-note" data-note-id="<?php echo esc_attr( (string) $note->id ); ?>" data-rs-id="<?php echo esc_attr( (string) $note->rs_id ); ?>">
-					<?php
-					$session_start_page = isset( $note->start_page ) ? (int) $note->start_page : 0;
-					$session_end_page   = isset( $note->end_page ) ? (int) $note->end_page : 0;
-					$note_index = isset( $note_index_map[ (int) $note->id ] ) ? (int) $note_index_map[ (int) $note->id ] : 0;
-					$session_label      = $note_index
-						? sprintf( __( 'Session #%d', 'politeia-reading' ), $note_index )
-						: __( 'Session', 'politeia-reading' );
-					$page_range         = ( $session_start_page || $session_end_page )
-						? sprintf( __( 'pages %1$s - %2$s', 'politeia-reading' ), $session_start_page ?: '—', $session_end_page ?: '—' )
-						: '';
-					?>
-					<header class="prs-note__header">
-						<div class="prs-note__session">
+						foreach ($emotion_keys as $key) {
+							$value = isset($decoded_emotions[$key]) ? (int) $decoded_emotions[$key] : 0;
+							if ($value < 0) {
+								$value = 0;
+							} elseif ($value > 5) {
+								$value = 5;
+							}
+							$emotion_values[$key] = $value;
+							$total_emotion += $value;
+						}
+						?>
+						<article class="prs-note" data-note-id="<?php echo esc_attr((string) $note->id); ?>"
+							data-rs-id="<?php echo esc_attr((string) $note->rs_id); ?>">
 							<?php
-							echo esc_html( $session_label . ( $page_range ? ', ' . $page_range : '' ) );
+							$session_start_page = isset($note->start_page) ? (int) $note->start_page : 0;
+							$session_end_page = isset($note->end_page) ? (int) $note->end_page : 0;
+							$note_index = isset($note_index_map[(int) $note->id]) ? (int) $note_index_map[(int) $note->id] : 0;
+							$session_label = $note_index
+								? sprintf(__('Session #%d', 'politeia-reading'), $note_index)
+								: __('Session', 'politeia-reading');
+							$page_range = ($session_start_page || $session_end_page)
+								? sprintf(__('pages %1$s - %2$s', 'politeia-reading'), $session_start_page ?: '—', $session_end_page ?: '—')
+								: '';
 							?>
-						</div>
-						<time class="prs-note__date">
-							<?php
-							$note_date = ! empty( $note->created_at ) ? strtotime( $note->created_at ) : 0;
-							echo $note_date ? esc_html( date_i18n( 'M j, Y', $note_date ) ) : esc_html__( 'Date', 'politeia-reading' );
-							?>
-						</time>
-					</header>
-						<div class="prs-note__body">
-							<textarea class="prs-note__text" readonly="readonly"><?php echo esc_textarea( (string) $note->note ); ?></textarea>
-						</div>
-						<footer class="prs-note__footer">
-							<div class="prs-note__composition<?php echo $total_emotion > 0 ? '' : ' is-empty'; ?>" aria-label="<?php esc_attr_e( 'Emotional composition', 'politeia-reading' ); ?>">
-								<?php if ( $total_emotion > 0 ) : ?>
-									<?php foreach ( $emotion_values as $key => $value ) : ?>
-										<?php if ( $value > 0 ) : ?>
-											<div class="prs-note__composition-seg--<?php echo esc_attr( $key ); ?>" style="width: <?php echo esc_attr( number_format( ( $value / $total_emotion ) * 100, 2, '.', '' ) ); ?>%;"></div>
-										<?php endif; ?>
-									<?php endforeach; ?>
-								<?php endif; ?>
+							<header class="prs-note__header">
+								<div class="prs-note__session">
+									<?php
+									echo esc_html($session_label . ($page_range ? ', ' . $page_range : ''));
+									?>
+								</div>
+								<time class="prs-note__date">
+									<?php
+									$note_date = !empty($note->created_at) ? strtotime($note->created_at) : 0;
+									echo $note_date ? esc_html(date_i18n('M j, Y', $note_date)) : esc_html__('Date', 'politeia-reading');
+									?>
+								</time>
+							</header>
+							<div class="prs-note__body">
+								<textarea class="prs-note__text"
+									readonly="readonly"><?php echo esc_textarea((string) $note->note); ?></textarea>
 							</div>
-							<div class="prs-note__actions">
-								<button class="prs-note__edit-button" type="button">
-									<?php esc_html_e( 'Edit', 'politeia-reading' ); ?>
-								</button>
-								<button
-									class="prs-note__rate-button"
-									type="button"
-									data-note-id="<?php echo esc_attr( (string) $note->id ); ?>"
-									data-emotions="<?php echo esc_attr( $note->emotions ? (string) $note->emotions : '' ); ?>"
-								>
-									<?php esc_html_e( 'Rate', 'politeia-reading' ); ?>
-								</button>
-								<button
-									class="prs-note__delete-button"
-									type="button"
-									data-note-id="<?php echo esc_attr( (string) $note->id ); ?>"
-									data-rs-id="<?php echo esc_attr( (string) $note->rs_id ); ?>"
-								>
-									<?php esc_html_e( 'Delete', 'politeia-reading' ); ?>
-								</button>
-							</div>
-						</footer>
-					</article>
-				<?php endforeach; ?>
-				<?php else : ?>
-					<p class="prs-note__empty"><?php esc_html_e( 'You have not taken any notes on this book yet', 'politeia-reading' ); ?></p>
+							<footer class="prs-note__footer">
+								<div class="prs-note__composition<?php echo $total_emotion > 0 ? '' : ' is-empty'; ?>"
+									aria-label="<?php esc_attr_e('Emotional composition', 'politeia-reading'); ?>">
+									<?php if ($total_emotion > 0): ?>
+										<?php foreach ($emotion_values as $key => $value): ?>
+											<?php if ($value > 0): ?>
+												<div class="prs-note__composition-seg--<?php echo esc_attr($key); ?>"
+													style="width: <?php echo esc_attr(number_format(($value / $total_emotion) * 100, 2, '.', '')); ?>%;">
+												</div>
+											<?php endif; ?>
+										<?php endforeach; ?>
+									<?php endif; ?>
+								</div>
+								<div class="prs-note__actions">
+									<button class="prs-note__edit-button" type="button">
+										<?php esc_html_e('Edit', 'politeia-reading'); ?>
+									</button>
+									<button class="prs-note__rate-button" type="button"
+										data-note-id="<?php echo esc_attr((string) $note->id); ?>"
+										data-emotions="<?php echo esc_attr($note->emotions ? (string) $note->emotions : ''); ?>">
+										<?php esc_html_e('Rate', 'politeia-reading'); ?>
+									</button>
+									<button class="prs-note__delete-button" type="button"
+										data-note-id="<?php echo esc_attr((string) $note->id); ?>"
+										data-rs-id="<?php echo esc_attr((string) $note->rs_id); ?>">
+										<?php esc_html_e('Delete', 'politeia-reading'); ?>
+									</button>
+								</div>
+							</footer>
+						</article>
+					<?php endforeach; ?>
+				<?php else: ?>
+					<p class="prs-note__empty">
+						<?php esc_html_e('You have not taken any notes on this book yet', 'politeia-reading'); ?></p>
 				<?php endif; ?>
 			</section>
 
 			<aside class="prs-notes-feed__sidebar">
-				<h2><?php esc_html_e( 'Other Readers', 'politeia-reading' ); ?></h2>
+				<h2><?php esc_html_e('Other Readers', 'politeia-reading'); ?></h2>
 				<div class="prs-notes-feed__readers">
-					<?php foreach ( $other_readers as $reader ) : ?>
+					<?php foreach ($other_readers as $reader): ?>
 						<?php
-						$avatar_url = get_avatar_url( (int) $reader->user_id, array( 'size' => 48 ) );
-						$reader_user = get_userdata( (int) $reader->user_id );
-						$profile_url = $reader_user ? home_url( '/members/' . $reader_user->user_login . '/' ) : '';
+						$avatar_url = get_avatar_url((int) $reader->user_id, array('size' => 48));
+						$reader_user = get_userdata((int) $reader->user_id);
+						$profile_url = $reader_user ? home_url('/members/' . $reader_user->user_login . '/') : '';
 						?>
-						<?php if ( $avatar_url && $profile_url ) : ?>
-							<a class="prs-notes-feed__reader-avatar" href="<?php echo esc_url( $profile_url ); ?>">
-								<img src="<?php echo esc_url( $avatar_url ); ?>" alt="<?php esc_attr_e( 'Reader avatar', 'politeia-reading' ); ?>">
+						<?php if ($avatar_url && $profile_url): ?>
+							<a class="prs-notes-feed__reader-avatar" href="<?php echo esc_url($profile_url); ?>">
+								<img src="<?php echo esc_url($avatar_url); ?>"
+									alt="<?php esc_attr_e('Reader avatar', 'politeia-reading'); ?>">
 							</a>
 						<?php endif; ?>
 					<?php endforeach; ?>
@@ -495,11 +542,14 @@ $other_readers = $wpdb->get_results(
 </section>
 
 <div class="prs-note-modal" id="prs-note-modal" aria-hidden="true">
-	<div class="prs-note-modal__panel" role="dialog" aria-modal="true" aria-label="<?php esc_attr_e( 'Rate emotions', 'politeia-reading' ); ?>">
+	<div class="prs-note-modal__panel" role="dialog" aria-modal="true"
+		aria-label="<?php esc_attr_e('Rate emotions', 'politeia-reading'); ?>">
 		<div class="prs-note-modal__rows" id="prs-note-rows"></div>
 		<div class="prs-note-modal__actions">
-			<button class="prs-note-modal__reset" type="button" id="prs-note-reset"><?php esc_html_e( 'Reset', 'politeia-reading' ); ?></button>
-			<button class="prs-note-modal__save is-disabled" type="button" id="prs-note-save" disabled="disabled"><?php esc_html_e( 'Save Emotional Rating', 'politeia-reading' ); ?></button>
+			<button class="prs-note-modal__reset" type="button"
+				id="prs-note-reset"><?php esc_html_e('Reset', 'politeia-reading'); ?></button>
+			<button class="prs-note-modal__save is-disabled" type="button" id="prs-note-save"
+				disabled="disabled"><?php esc_html_e('Save Emotional Rating', 'politeia-reading'); ?></button>
 		</div>
 	</div>
 </div>
@@ -507,25 +557,25 @@ $other_readers = $wpdb->get_results(
 <script>
 	(function () {
 		if (typeof window === "undefined") return;
-		const I18N = <?php echo wp_json_encode( array(
-			'emotion_joy'          => __( 'Joy', 'politeia-reading' ),
-			'emotion_sorrow'       => __( 'Sorrow', 'politeia-reading' ),
-			'emotion_fear'         => __( 'Fear', 'politeia-reading' ),
-			'emotion_fascination'  => __( 'Fascination', 'politeia-reading' ),
-			'emotion_anger'        => __( 'Anger', 'politeia-reading' ),
-			'emotion_serenity'     => __( 'Serenity', 'politeia-reading' ),
-			'emotion_enlightenment'=> __( 'Enlightenment', 'politeia-reading' ),
-			'logged_impression'    => __( 'Logged Impression', 'politeia-reading' ),
-			'save_rating'          => __( 'Save Emotional Rating', 'politeia-reading' ),
-			'save_label'           => __( 'Save', 'politeia-reading' ),
-			'edit_label'           => __( 'Edit', 'politeia-reading' ),
-			'note_required'        => __( 'Please enter a note before saving.', 'politeia-reading' ),
-			'note_unavailable'     => __( 'Unable to save note right now.', 'politeia-reading' ),
-			'save_failed'          => __( 'Save failed.', 'politeia-reading' ),
-			'delete_confirm'       => __( 'If you delete this session note, you will not be able to recover it. Are you sure you want to proceed?', 'politeia-reading' ),
-			'delete_failed'        => __( 'Failed to delete note.', 'politeia-reading' ),
-			'deleting'             => __( 'Deleting...', 'politeia-reading' ),
-		) ); ?>;
+		const I18N = <?php echo wp_json_encode(array(
+			'emotion_joy' => __('Joy', 'politeia-reading'),
+			'emotion_sorrow' => __('Sorrow', 'politeia-reading'),
+			'emotion_fear' => __('Fear', 'politeia-reading'),
+			'emotion_fascination' => __('Fascination', 'politeia-reading'),
+			'emotion_anger' => __('Anger', 'politeia-reading'),
+			'emotion_serenity' => __('Serenity', 'politeia-reading'),
+			'emotion_enlightenment' => __('Enlightenment', 'politeia-reading'),
+			'logged_impression' => __('Logged Impression', 'politeia-reading'),
+			'save_rating' => __('Save Emotional Rating', 'politeia-reading'),
+			'save_label' => __('Save', 'politeia-reading'),
+			'edit_label' => __('Edit', 'politeia-reading'),
+			'note_required' => __('Please enter a note before saving.', 'politeia-reading'),
+			'note_unavailable' => __('Unable to save note right now.', 'politeia-reading'),
+			'save_failed' => __('Save failed.', 'politeia-reading'),
+			'delete_confirm' => __('If you delete this session note, you will not be able to recover it. Are you sure you want to proceed?', 'politeia-reading'),
+			'delete_failed' => __('Failed to delete note.', 'politeia-reading'),
+			'deleting' => __('Deleting...', 'politeia-reading'),
+		)); ?>;
 		const t = (key, fallback) => (I18N && I18N[key]) ? I18N[key] : fallback;
 		const modal = document.getElementById("prs-note-modal");
 		const rowsWrap = document.getElementById("prs-note-rows");
@@ -733,9 +783,10 @@ $other_readers = $wpdb->get_results(
 
 				const rsId = note.dataset.rsId;
 				const bookId = window.PRS_BOOK && window.PRS_BOOK.book_id ? window.PRS_BOOK.book_id : null;
+				const userBookId = window.PRS_BOOK && window.PRS_BOOK.user_book_id ? window.PRS_BOOK.user_book_id : null;
 				const nonce = window.PRS_BOOK && window.PRS_BOOK.reading_nonce ? window.PRS_BOOK.reading_nonce : null;
 				const ajaxUrl = window.PRS_BOOK && window.PRS_BOOK.ajax_url ? window.PRS_BOOK.ajax_url : null;
-				if (!rsId || !bookId || !nonce || !ajaxUrl) {
+				if (!rsId || !userBookId || !nonce || !ajaxUrl) {
 					window.alert(t("note_unavailable", "Unable to save note right now."));
 					return;
 				}
@@ -745,6 +796,7 @@ $other_readers = $wpdb->get_results(
 				payload.append("nonce", nonce);
 				payload.append("rs_id", String(rsId));
 				payload.append("book_id", String(bookId));
+				payload.append("user_book_id", String(userBookId));
 				payload.append("note", textarea.value);
 
 				button.disabled = true;

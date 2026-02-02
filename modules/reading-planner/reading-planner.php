@@ -6,7 +6,7 @@ if (!defined('ABSPATH')) {
 }
 
 if (!defined('POLITEIA_READING_PLAN_DB_VERSION')) {
-	define('POLITEIA_READING_PLAN_DB_VERSION', '1.5.0');
+	define('POLITEIA_READING_PLAN_DB_VERSION', '1.16.3');
 }
 
 if (!defined('POLITEIA_READING_PLAN_PATH')) {
@@ -22,6 +22,8 @@ add_action('plugins_loaded', array('\\Politeia\\ReadingPlanner\\Upgrader', 'mayb
 require_once POLITEIA_READING_PLAN_PATH . 'includes/class-config.php';
 require_once POLITEIA_READING_PLAN_PATH . 'includes/class-habit-validator.php';
 require_once POLITEIA_READING_PLAN_PATH . 'includes/class-plan-session-deriver.php';
+require_once POLITEIA_READING_PLAN_PATH . 'includes/class-plan-settlement-engine.php';
+require_once POLITEIA_READING_PLAN_PATH . 'includes/class-habit-settlement-engine.php';
 
 // Admin functionality
 if (is_admin()) {

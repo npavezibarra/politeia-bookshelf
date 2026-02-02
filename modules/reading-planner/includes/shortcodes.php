@@ -73,7 +73,7 @@ function render_reading_plan_shortcode($atts = array()): string
 	if ($user_login) {
 		global $wpdb;
 		$plans_table = $wpdb->prefix . 'politeia_plans';
-		$goals_table = $wpdb->prefix . 'politeia_plan_goals';
+		$finish_book_table = $wpdb->prefix . 'politeia_plan_finish_book';
 		$books_table = $wpdb->prefix . 'politeia_books';
 		$authors_table = $wpdb->prefix . 'politeia_authors';
 		$pivot_table = $wpdb->prefix . 'politeia_book_authors';
@@ -85,8 +85,8 @@ function render_reading_plan_shortcode($atts = array()): string
 				        b.title AS book_title,
 				        GROUP_CONCAT(a.display_name ORDER BY ba.sort_order ASC SEPARATOR ', ') AS authors
 				 FROM {$plans_table} p
-				 LEFT JOIN {$goals_table} g ON g.plan_id = p.id
-				 LEFT JOIN {$books_table} b ON b.id = g.book_id
+				 LEFT JOIN {$finish_book_table} pfb ON pfb.plan_id = p.id
+				 LEFT JOIN {$books_table} b ON b.id = pfb.book_id
 				 LEFT JOIN {$pivot_table} ba ON ba.book_id = b.id
 				 LEFT JOIN {$authors_table} a ON a.id = ba.author_id
 				 WHERE p.user_id = %d
@@ -125,6 +125,7 @@ function render_reading_plan_shortcode($atts = array()): string
 			'restUrl' => rest_url('politeia/v1/reading-plan'),
 			'bookCreateUrl' => rest_url('politeia/v1/reading-plan/book'),
 			'myPlansUrl' => $my_plans_url,
+			'myBooksUrl' => home_url('/my-books/'),
 			'activePlans' => $active_plans,
 			'bookCreateAjax' => array(
 				'ajaxUrl' => admin_url('admin-ajax.php'),
@@ -143,7 +144,7 @@ function render_reading_plan_shortcode($atts = array()): string
 			),
 			'autocomplete' => array(
 				'ajaxUrl' => admin_url('admin-ajax.php'),
-				'nonce' => wp_create_nonce('prs_canonical_title_search'),
+				'nonce' => wp_create_nonce('prs_user_book_search'),
 			),
 			'prefillBook' => $prefill_book,
 			'pagesPerSessionOptions' => Config::get_pages_per_session_options(),
@@ -337,6 +338,8 @@ function render_reading_plan_shortcode($atts = array()): string
 				'daily_page_target' => __('OBJETIVO DIARIO DE PÁGINAS', 'politeia-reading'),
 				'days_count_label' => __('%s Días', 'politeia-reading'),
 				'start_end_label' => __('INICIO/FINAL', 'politeia-reading'),
+				'habit_success_note' => __('Cualquier sesión de lectura que cumpla con el número de páginas por día cuenta.', 'politeia-reading'),
+				'go_to_library' => __('Ir a Mi Librería', 'politeia-reading'),
 			),
 		)
 	);

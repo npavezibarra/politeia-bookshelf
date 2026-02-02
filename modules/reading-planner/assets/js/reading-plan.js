@@ -1032,6 +1032,8 @@
 
       const selectSuggestion = (item) => {
         titleInput.value = item.title || '';
+        titleInput.dataset.userBookId = item.user_book_id || '';
+        titleInput.dataset.bookId = item.book_id || '';
         if (authorInput) authorInput.value = item.author || '';
         titleInput.dataset.cover = item.cover || '';
         if (pagesInput) {
@@ -1079,11 +1081,11 @@
         suggestions.setAttribute('aria-hidden', 'false');
       };
 
-      const fetchCanonicalSuggestions = (query, controller) => {
+      const fetchUserBookSuggestions = (query, controller) => {
         const config = window.PoliteiaReadingPlan && window.PoliteiaReadingPlan.autocomplete ? window.PoliteiaReadingPlan.autocomplete : null;
         if (!config || !config.ajaxUrl || !config.nonce) return Promise.resolve([]);
         const params = new URLSearchParams();
-        params.append('action', 'prs_canonical_title_search');
+        params.append('action', 'prs_user_book_search');
         params.append('nonce', config.nonce);
         params.append('query', query);
         const fetchOptions = {
@@ -1098,10 +1100,12 @@
             const items = data && data.items ? data.items : [];
             return items.map((item) => ({
               title: item.title || '',
-              author: (item.authors && item.authors.length) ? item.authors.join(', ') : '',
+              author: item.author || '',
               pages: item.pages ? String(item.pages) : '',
               cover: item.cover || '',
-              source: 'canonical',
+              user_book_id: item.user_book_id || '',
+              book_id: item.book_id || '',
+              source: 'user_library',
             })).filter((item) => item.title);
           })
           .catch((err) => {
@@ -1181,24 +1185,9 @@
         }
         if (suggestionController) suggestionController.abort();
         suggestionController = new AbortController();
-        Promise.all([
-          fetchCanonicalSuggestions(query, suggestionController),
-          fetchGoogleSuggestions(query, suggestionController),
-          fetchOpenLibrarySuggestions(query, suggestionController),
-        ])
-          .then(([canonicalItems, googleItems, openItems]) => {
-            const combined = []
-              .concat(canonicalItems || [])
-              .concat(googleItems || [])
-              .concat(openItems || []);
-            const seen = new Set();
-            const unique = combined.filter((item) => {
-              const key = `${item.title}|${item.author}`;
-              if (seen.has(key)) return false;
-              seen.add(key);
-              return true;
-            });
-            renderSuggestions(unique.slice(0, 8));
+        fetchUserBookSuggestions(query, suggestionController)
+          .then((items) => {
+            renderSuggestions(items.slice(0, 8));
           })
           .catch((err) => {
             if (err && err.name === 'AbortError') return;
@@ -1210,6 +1199,8 @@
         const query = e.target.value.trim();
         clearBookError();
         titleInput.dataset.cover = '';
+        titleInput.dataset.userBookId = '';
+        titleInput.dataset.bookId = '';
         if (suggestionTimer) clearTimeout(suggestionTimer);
         suggestionTimer = setTimeout(() => runSuggestions(query), 250);
       });
@@ -1311,6 +1302,29 @@
         }
         if (titleValue && authorValue && pagesValue) {
           addButton.disabled = true;
+
+          const storedUserBookId = titleInput.dataset.userBookId;
+          const storedBookId = titleInput.dataset.bookId;
+
+          if (storedUserBookId) {
+            const resolvedCover = coverUrl || titleInput.dataset.cover || '';
+            state.formData.books = [{
+              id: storedBookId || Date.now(),
+              bookId: storedBookId || null,
+              userBookId: storedUserBookId,
+              title: titleValue,
+              author: authorValue,
+              pages: pagesValue,
+              cover: resolvedCover,
+            }];
+            if (!state.formData.startPage || state.formData.startPage < 1) {
+              state.formData.startPage = 1;
+            }
+            state.formData.bookError = '';
+            render();
+            return;
+          }
+
           const payload = { title: titleValue, author: authorValue, pages: pagesValue, cover_url: coverUrl };
           createBookRecord(payload)
             .catch((err) => {
@@ -1786,6 +1800,7 @@
           target_value: targetValue,
           period,
           book_id: activeBook?.bookId || null,
+          user_book_id: activeBook?.userBookId || null,
           starting_page: startingPage,
         });
       }
@@ -2507,6 +2522,13 @@
 
   if (successStartBtn) {
     successStartBtn.addEventListener('click', () => {
+      // Redirect to library if habit plan
+      if (state.calculatedPlan.type === 'habit') {
+        const libraryUrl = RP.myBooksUrl || '/my-books/';
+        window.location.href = libraryUrl;
+        return;
+      }
+
       const activeBook = state.formData.books && state.formData.books.length ? state.formData.books[0] : null;
       const bookId = activeBook?.bookId;
       const planId = state.acceptedPlanId || null;
@@ -2608,11 +2630,25 @@
         if (successNext) {
           successNext.textContent = format('next_session_message', 'Your next reading session is %s.', formatSessionDate(nextSession));
         }
-        if (successNote) successNote.classList.add('hidden');
+        if (successNote) {
+          if (isHabitPlan) {
+            successNote.textContent = t('habit_success_note', 'Any reading session that meets the number of pages per day counts.');
+            successNote.classList.remove('hidden');
+          } else {
+            successNote.classList.add('hidden');
+          }
+        }
         if (successStartBtn) {
           const hasBookId = !isHabitPlan && !!activeBook?.bookId;
-          successStartBtn.disabled = !hasBookId;
-          successStartBtn.setAttribute('aria-disabled', hasBookId ? 'false' : 'true');
+          const enableBtn = isHabitPlan || hasBookId;
+          successStartBtn.disabled = !enableBtn;
+          successStartBtn.setAttribute('aria-disabled', enableBtn ? 'false' : 'true');
+
+          if (isHabitPlan) {
+            successStartBtn.textContent = t('go_to_library', 'Ir a Mi Librería');
+          } else {
+            successStartBtn.textContent = t('start_reading', 'Comenzar Lectura');
+          }
         }
         state.acceptedPlanId = data?.plan_id || null;
         if (summaryContainer) summaryContainer.classList.add('is-success');

@@ -264,6 +264,10 @@
   text-transform: none;
 }
 
+#form_habit_start_title {
+  font-size: 34px !important;
+}
+
 .politeia-reading-plan-shell .habit-subtitle {
   font-size: 1.15rem;
   font-weight: 300;
@@ -568,7 +572,7 @@ div#finish_book_slide_sessions_per_week {
   display: flex;
   justify-content: center;
   gap: 32px;
-  margin-top: -14px;
+  margin-top: 50px;
 }
 
 .politeia-reading-plan-shell .habit-fail-seq::before {
@@ -2976,6 +2980,7 @@ h3#reading-plan-success-title {
   font-weight: 500;
   max-width: 500px;
   line-height: 1.5;
+  font-family: 'Poppins';
 }
 
 .politeia-reading-plan-shell .reading-plan-success__next {
@@ -2983,4 +2988,47 @@ h3#reading-plan-success-title {
   font-weight: 500;
   margin: 0;
   color: #ffffff;
+}
+
+.politeia-reading-plan-shell .reading-plan-success__btn {
+  margin-top: 30px;
+  margin-bottom: 20px;
+  width: 90%;
+  max-width: 500px;
+  padding: 16px 40px;
+  background: transparent;
+  border: none;
+  font-family: 'Poppins', sans-serif;
+  font-weight: 800;
+  text-transform: uppercase !important;
+  letter-spacing: 4px;
+  cursor: pointer;
+  font-size: 1.4rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  background-image: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent !important;
+  display: inline-block;
+}
+
+.politeia-reading-plan-shell .reading-plan-success__btn:hover,
+.politeia-reading-plan-shell .reading-plan-success__btn:active,
+.politeia-reading-plan-shell .reading-plan-success__btn:focus {
+  opacity: 1;
+  outline: none;
+  background-image: var(--gold-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent !important;
+}
+
+.politeia-reading-plan-shell .reading-plan-success__note {
+  font-size: 12px;
+  font-weight: 400;
+  color: #fff;
+  opacity: 0.9;
+  margin-top: 10px;
 }

@@ -18,13 +18,39 @@ class Installer
 
 		$charset_collate = $wpdb->get_charset_collate();
 		$plans_table = $wpdb->prefix . 'politeia_plans';
-		$plan_goals_table = $wpdb->prefix . 'politeia_plan_goals';
+
 		$plan_subjects_table = $wpdb->prefix . 'politeia_plan_subjects';
 		$plan_participants_table = $wpdb->prefix . 'politeia_plan_participants';
 		$planned_sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
 		$session_events_table = $wpdb->prefix . 'politeia_planned_session_events';
+		$plan_habit_table = $wpdb->prefix . 'politeia_plan_habit';
+		$plan_finish_book_table = $wpdb->prefix . 'politeia_plan_finish_book';
 
 		return array(
+			$plan_finish_book_table => sprintf(
+				'CREATE TABLE %s (
+			plan_id BIGINT UNSIGNED NOT NULL,
+			user_book_id BIGINT UNSIGNED NOT NULL,
+			start_page INT UNSIGNED NOT NULL DEFAULT 1,
+			PRIMARY KEY  (plan_id),
+			KEY user_book_id (user_book_id),
+			KEY idx_plan (plan_id)
+		) ENGINE=InnoDB %s;',
+				$plan_finish_book_table,
+				$charset_collate
+			),
+			$plan_habit_table => sprintf(
+				'CREATE TABLE %s (
+			plan_id BIGINT UNSIGNED NOT NULL,
+			start_page_amount INT UNSIGNED NOT NULL,
+			finish_page_amount INT UNSIGNED NOT NULL,
+			duration_days INT UNSIGNED NOT NULL,
+			PRIMARY KEY  (plan_id),
+			KEY idx_plan (plan_id)
+		) ENGINE=InnoDB %s;',
+				$plan_habit_table,
+				$charset_collate
+			),
 			$plans_table => sprintf(
 				'CREATE TABLE %s (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -32,8 +58,7 @@ class Installer
 			name VARCHAR(255) NOT NULL,
 			plan_type VARCHAR(50) NOT NULL,
 			status VARCHAR(50) NOT NULL,
-			pages_per_session INT UNSIGNED NULL,
-			sessions_per_week INT UNSIGNED NULL,
+			-- DEPRECATED FIELDS pages_per_session, sessions_per_week removed
 			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
 			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 			PRIMARY KEY  (id),
@@ -43,25 +68,7 @@ class Installer
 				$plans_table,
 				$charset_collate
 			),
-			$plan_goals_table => sprintf(
-				'CREATE TABLE %s (
-			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-			plan_id BIGINT UNSIGNED NOT NULL,
-			goal_kind VARCHAR(50) NOT NULL,
-			metric VARCHAR(50) NOT NULL,
-			target_value INT UNSIGNED NOT NULL,
-			period VARCHAR(50) NOT NULL,
-			book_id BIGINT UNSIGNED NULL,
-			subject_id BIGINT UNSIGNED NULL,
-			starting_page INT UNSIGNED NULL DEFAULT 1,
-			PRIMARY KEY  (id),
-			KEY idx_plan (plan_id),
-			KEY idx_book (book_id),
-			KEY idx_subject (subject_id)
-		) ENGINE=InnoDB %s;',
-				$plan_goals_table,
-				$charset_collate
-			),
+
 			$plan_subjects_table => sprintf(
 				'CREATE TABLE %s (
 			plan_id BIGINT UNSIGNED NOT NULL,
@@ -145,8 +152,8 @@ class Installer
 			dbDelta($sql);
 		}
 
-		if (defined('POLITEIA_READING_DB_VERSION')) {
-			update_option('politeia_reading_db_version', POLITEIA_READING_DB_VERSION);
+		if (defined('POLITEIA_READING_PLAN_DB_VERSION')) {
+			update_option('politeia_reading_plan_db_version', POLITEIA_READING_PLAN_DB_VERSION);
 		}
 	}
 }

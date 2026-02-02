@@ -169,6 +169,98 @@ class PlanSessionDeriver
             return $session;
         }, $derived_sessions);
     }
+
+    /**
+     * Derive session projections for a habit plan (Intensity Curve).
+     *
+     * PURE FUNCTION: No DB writes, no side effects.
+     * Linearly interpolates daily intensity from start to end over duration.
+     *
+     * @param int    $start_pages   Starting daily intensity.
+     * @param int    $end_pages     Target daily intensity (at end of duration).
+     * @param int    $duration_days Total duration of the habit challenge.
+     * @param string $start_date    Plan start date (Y-m-d).
+     * @param array  $future_dates  Array of date strings (Y-m-d) for future sessions.
+     *
+     * @return array Array of derived session projections.
+     */
+    public static function derive_habit_sessions(
+        int $start_pages,
+        int $end_pages,
+        int $duration_days,
+        string $start_date,
+        array $future_dates
+    ): array {
+        $projections = array();
+        $start_ts = strtotime($start_date);
+
+        if (!$start_ts || $duration_days <= 0) {
+            return array();
+        }
+
+        sort($future_dates);
+
+        foreach ($future_dates as $index => $date) {
+            $date_ts = strtotime($date);
+            if (!$date_ts || $date_ts < $start_ts) {
+                continue;
+            }
+
+            // Calculate day offset (1-based)
+            $day_offset = floor(($date_ts - $start_ts) / DAY_IN_SECONDS) + 1;
+
+            // Calculate progress (0 to 1)
+            $progress = min(1.0, max(0.0, ($day_offset - 1) / max(1, $duration_days - 1)));
+
+            // Linear interpolation
+            $intensity = (int) round($start_pages + (($end_pages - $start_pages) * $progress));
+
+            // Clamp to end_pages if passed duration
+            if ($day_offset > $duration_days) {
+                $intensity = $end_pages;
+            }
+
+            $projections[] = array(
+                'date' => $date,
+                'order' => $index + 1, // Order relative to future list
+                'start_page' => 0,     // Not applicable for generic habits
+                'end_page' => 0,       // Not applicable for generic habits
+                'pages' => $intensity,
+            );
+        }
+
+        return $projections;
+    }
+
+    /**
+     * Calculate habit progress based on time duration.
+     *
+     * PURE FUNCTION: No side effects.
+     *
+     * @param string $start_date    Plan start date (Y-m-d).
+     * @param int    $duration_days Total duration in days.
+     * @param string $today_key     Current date (Y-m-d).
+     *
+     * @return int Progress percentage (0-100).
+     */
+    public static function calculate_habit_progress(string $start_date, int $duration_days, string $today_key): int
+    {
+        if ($duration_days <= 0) {
+            return 100;
+        }
+
+        $start_ts = strtotime($start_date);
+        $today_ts = strtotime($today_key);
+
+        if (!$start_ts || !$today_ts || $today_ts < $start_ts) {
+            return 0;
+        }
+
+        $days_elapsed = floor(($today_ts - $start_ts) / DAY_IN_SECONDS);
+
+        // Progress is days completed (elapsed) / duration
+        return min(100, (int) floor(($days_elapsed / $duration_days) * 100));
+    }
     /**
      * Invalidate derived plan cache.
      *
@@ -176,6 +268,6 @@ class PlanSessionDeriver
      */
     public static function invalidate_plan_cache(int $plan_id): void
     {
-        delete_transient('prs_plan_view_' . $plan_id);
+        delete_transient('prs_plan_view_v3_' . $plan_id);
     }
 }

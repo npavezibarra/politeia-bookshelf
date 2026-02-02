@@ -32,21 +32,28 @@ class Politeia_Reading_Ajax_Handler
 
                 $user_id = get_current_user_id();
                 $rs_id = isset($_POST['rs_id']) ? absint($_POST['rs_id']) : 0;
-                $book_id = isset($_POST['book_id']) ? absint($_POST['book_id']) : 0;
+                $user_book_id = isset($_POST['user_book_id']) ? absint($_POST['user_book_id']) : 0;
+                // Fallback for transition period if JS sends book_id but not user_book_id
+                if (!$user_book_id && !empty($_POST['book_id'])) {
+                        $book_id = absint($_POST['book_id']);
+                        global $wpdb;
+                        $user_book_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}politeia_user_books WHERE user_id=%d AND book_id=%d LIMIT 1", $user_id, $book_id));
+                }
+
                 $raw_note = isset($_POST['note']) ? wp_unslash($_POST['note']) : '';
                 $note = wp_kses_post($raw_note);
                 $note_txt = trim(preg_replace('/\xc2\xa0|\x{00A0}/u', ' ', wp_strip_all_tags($note)));
 
-                if (!$rs_id || !$book_id || !$user_id || '' === $note_txt) {
+                if (!$rs_id || !$user_book_id || !$user_id || '' === $note_txt) {
                         wp_send_json_error(__('Missing required fields.', 'politeia-reading'), 400);
                 }
 
                 $session = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id FROM {$table_sessions} WHERE id = %d AND user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+                                "SELECT id FROM {$table_sessions} WHERE id = %d AND user_id = %d AND user_book_id = %d AND deleted_at IS NULL LIMIT 1",
                                 $rs_id,
                                 $user_id,
-                                $book_id
+                                (int) $user_book_id
                         )
                 );
 
@@ -56,9 +63,9 @@ class Politeia_Reading_Ajax_Handler
 
                 $existing = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id FROM {$table_notes} WHERE rs_id = %d AND book_id = %d AND user_id = %d LIMIT 1",
+                                "SELECT id FROM {$table_notes} WHERE rs_id = %d AND user_book_id = %d AND user_id = %d LIMIT 1",
                                 $rs_id,
-                                $book_id,
+                                (int) $user_book_id,
                                 $user_id
                         )
                 );
@@ -94,7 +101,7 @@ class Politeia_Reading_Ajax_Handler
                         $table_notes,
                         array(
                                 'rs_id' => $rs_id,
-                                'book_id' => $book_id,
+                                'user_book_id' => $user_book_id,
                                 'user_id' => $user_id,
                                 'note' => $note,
                                 'created_at' => $now,
@@ -134,18 +141,23 @@ class Politeia_Reading_Ajax_Handler
 
                 $user_id = get_current_user_id();
                 $rs_id = isset($_POST['rs_id']) ? absint($_POST['rs_id']) : 0;
-                $book_id = isset($_POST['book_id']) ? absint($_POST['book_id']) : 0;
+                $user_book_id = isset($_POST['user_book_id']) ? absint($_POST['user_book_id']) : 0;
+                // Fallback
+                if (!$user_book_id && !empty($_POST['book_id'])) {
+                        $book_id = absint($_POST['book_id']);
+                        $user_book_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}politeia_user_books WHERE user_id=%d AND book_id=%d LIMIT 1", $user_id, $book_id));
+                }
 
-                if (!$rs_id || !$book_id || !$user_id) {
+                if (!$rs_id || !$user_book_id || !$user_id) {
                         wp_send_json_error(__('Missing required fields.', 'politeia-reading'), 400);
                 }
 
                 $session = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id FROM {$table_sessions} WHERE id = %d AND user_id = %d AND book_id = %d AND deleted_at IS NULL LIMIT 1",
+                                "SELECT id FROM {$table_sessions} WHERE id = %d AND user_id = %d AND user_book_id = %d AND deleted_at IS NULL LIMIT 1",
                                 $rs_id,
                                 $user_id,
-                                $book_id
+                                (int) $user_book_id
                         )
                 );
 
@@ -155,9 +167,9 @@ class Politeia_Reading_Ajax_Handler
 
                 $note_row = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT note, updated_at FROM {$table_notes} WHERE rs_id = %d AND book_id = %d AND user_id = %d ORDER BY updated_at DESC LIMIT 1",
+                                "SELECT note, updated_at FROM {$table_notes} WHERE rs_id = %d AND user_book_id = %d AND user_id = %d ORDER BY updated_at DESC LIMIT 1",
                                 $rs_id,
-                                $book_id,
+                                (int) $user_book_id,
                                 $user_id
                         )
                 );

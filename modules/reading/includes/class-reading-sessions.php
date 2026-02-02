@@ -71,7 +71,7 @@ class Politeia_Reading_Sessions
 		// Guardamos placeholder (end_time=end_time=start_time) por restricción NOT NULL
 		$ins = array(
 			'user_id' => (int) $user_id,
-			'book_id' => (int) $book_id,
+			'user_book_id' => (int) $ub_row->id,
 			'start_time' => $now_gmt,
 			'end_time' => $now_gmt,
 			'start_page' => max(1, min($start_page, $total_pages)),
@@ -159,11 +159,11 @@ class Politeia_Reading_Sessions
 		if ($session_id > 0) {
 			$row = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT id,user_id,book_id FROM {$t} WHERE id=%d AND deleted_at IS NULL LIMIT 1",
+					"SELECT id,user_id,user_book_id FROM {$t} WHERE id=%d AND deleted_at IS NULL LIMIT 1",
 					$session_id
 				)
 			);
-			if ($row && (int) $row->user_id === $user_id && (int) $row->book_id === $book_id) {
+			if ($row && (int) $row->user_id === $user_id && (int) $row->user_book_id === (int) $ub_row->id) {
 				$wpdb->update(
 					$t,
 					array(
@@ -189,7 +189,7 @@ class Politeia_Reading_Sessions
 				$t,
 				array(
 					'user_id' => $user_id,
-					'book_id' => $book_id,
+					'user_book_id' => (int) $ub_row->id,
 					'start_time' => $start_gmt,
 					'end_time' => $now_gmt,
 					'start_page' => $start_page,
@@ -303,15 +303,22 @@ class Politeia_Reading_Sessions
 		global $wpdb;
 		$plans_table = $wpdb->prefix . 'politeia_plans';
 		$goals_table = $wpdb->prefix . 'politeia_plan_goals';
+		$finish_book_table = $wpdb->prefix . 'politeia_plan_finish_book';
+		$user_books_table = $wpdb->prefix . 'politeia_user_books';
 		$sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
 
+		// Find plans via legacy goals OR new finish_book table (via user_books link)
 		$plan_ids = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT p.id
 				FROM {$plans_table} p
-				INNER JOIN {$goals_table} g ON g.plan_id = p.id
-				WHERE p.user_id = %d AND g.book_id = %d",
+				LEFT JOIN {$goals_table} g ON g.plan_id = p.id
+				LEFT JOIN {$finish_book_table} pfb ON pfb.plan_id = p.id
+				LEFT JOIN {$user_books_table} ub ON ub.id = pfb.user_book_id
+				WHERE p.user_id = %d 
+				  AND (g.book_id = %d OR ub.book_id = %d)",
 				$user_id,
+				$book_id,
 				$book_id
 			)
 		);
@@ -415,12 +422,24 @@ class Politeia_Reading_Sessions
 	{
 		global $wpdb;
 		$t = $wpdb->prefix . 'politeia_reading_sessions';
+		$ub = $wpdb->prefix . 'politeia_user_books';
+
+		// Resolve user_book_id (could pass in, but for safety lookup)
+		$user_book_id = $wpdb->get_var($wpdb->prepare(
+			"SELECT id FROM {$ub} WHERE user_id=%d AND book_id=%d LIMIT 1",
+			$user_id,
+			$book_id
+		));
+
+		if (!$user_book_id)
+			return array();
+
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT start_page, end_page FROM {$t}
-             WHERE user_id=%d AND book_id=%d AND end_time IS NOT NULL AND deleted_at IS NULL",
+             WHERE user_id=%d AND user_book_id=%d AND end_time IS NOT NULL AND deleted_at IS NULL",
 				$user_id,
-				$book_id
+				$user_book_id
 			),
 			ARRAY_A
 		);
@@ -556,8 +575,25 @@ class Politeia_Reading_Sessions
 		$paged = max(1, (int) $paged);
 		$offset = ($paged - 1) * $per_page;
 
-		$where = 'WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL';
-		$args = array($user_id, $book_id);
+		$ub = $wpdb->prefix . 'politeia_user_books';
+		$user_book_id = $wpdb->get_var($wpdb->prepare(
+			"SELECT id FROM {$ub} WHERE user_id=%d AND book_id=%d LIMIT 1",
+			$user_id,
+			$book_id
+		));
+
+		if (!$user_book_id) {
+			return array(
+				'rows' => array(),
+				'total' => 0,
+				'max_pages' => 0,
+				'paged' => $paged,
+				'per_page' => $per_page,
+			);
+		}
+
+		$where = 'WHERE user_id=%d AND user_book_id=%d AND deleted_at IS NULL';
+		$args = array($user_id, $user_book_id);
 
 		if ($only_finished) {
 			$where .= ' AND end_time IS NOT NULL';

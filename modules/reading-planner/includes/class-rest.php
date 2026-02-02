@@ -124,45 +124,50 @@ class Rest
 		$tbl_plan_sessions = $wpdb->prefix . 'politeia_planned_sessions';
 		$default_start_page = 0;
 
-		$last_end_page = $wpdb->get_var(
-			$wpdb->prepare(
-				"SELECT end_page FROM {$tbl_rs}
-				 WHERE user_id = %d AND book_id = %d AND end_time IS NOT NULL AND deleted_at IS NULL
-				 ORDER BY end_time DESC LIMIT 1",
-				$user_id,
-				$book_id
-			)
-		);
-
 		$row_ub = $wpdb->get_row(
 			$wpdb->prepare(
-				"SELECT owning_status, pages FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
+				"SELECT id, owning_status, pages FROM {$tbl_ub} WHERE user_id=%d AND book_id=%d AND deleted_at IS NULL LIMIT 1",
 				$user_id,
 				$book_id
 			)
 		);
 		$owning_status = $row_ub && $row_ub->owning_status ? (string) $row_ub->owning_status : 'in_shelf';
 		$total_pages = $row_ub && $row_ub->pages ? (int) $row_ub->pages : 0;
+		$user_book_id = $row_ub ? (int) $row_ub->id : 0;
 		$can_start = !in_array($owning_status, array('borrowed', 'lost', 'sold'), true);
 
-		if ($plan_id > 0) {
-			$plan_owner = (int) $wpdb->get_var(
+		$last_end_page = 0;
+		if ($user_book_id > 0) {
+			$last_end_page = $wpdb->get_var(
 				$wpdb->prepare(
-					"SELECT user_id FROM {$tbl_plans} WHERE id = %d LIMIT 1",
+					"SELECT end_page FROM {$tbl_rs}
+					 WHERE user_id = %d AND user_book_id = %d AND end_time IS NOT NULL AND deleted_at IS NULL
+					 ORDER BY end_time DESC LIMIT 1",
+					$user_id,
+					$user_book_id
+				)
+			);
+		}
+
+		if ($plan_id > 0) {
+			$plan_row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT user_id, plan_type FROM {$tbl_plans} WHERE id = %d LIMIT 1",
 					$plan_id
 				)
 			);
-			if ($plan_owner === (int) $user_id) {
-				// Use starting_page from plan goals instead of deprecated planned_sessions column
-				$goals_table = $wpdb->prefix . 'politeia_plan_goals';
-				$default_start_page = (int) $wpdb->get_var(
-					$wpdb->prepare(
-						"SELECT starting_page FROM {$goals_table}
-						 WHERE plan_id = %d
-						 ORDER BY id ASC LIMIT 1",
-						$plan_id
-					)
-				);
+
+			if ($plan_row && (int) $plan_row->user_id === (int) $user_id) {
+				if ('complete_books' === $plan_row->plan_type) {
+					$plan_finish_book_table = $wpdb->prefix . 'politeia_plan_finish_book';
+					$default_start_page = (int) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT start_page FROM {$plan_finish_book_table} WHERE plan_id = %d LIMIT 1",
+							$plan_id
+						)
+					);
+				}
+				// Habits don't have a fixed book start page (Any Book)
 			}
 		}
 
@@ -266,26 +271,7 @@ class Rest
 		}
 
 		// Validate strategy parameters for complete_books plans
-		if ($has_complete_books) {
-			if (!$pages_per_session || !Config::validate_pages_per_session($pages_per_session)) {
-				return new WP_REST_Response(
-					array(
-						'error' => 'invalid_pages_per_session',
-						'message' => 'pages_per_session is required and must be one of: ' . implode(', ', Config::get_pages_per_session_options()),
-					),
-					400
-				);
-			}
-			if (!$sessions_per_week || !Config::validate_sessions_per_week($sessions_per_week)) {
-				return new WP_REST_Response(
-					array(
-						'error' => 'invalid_sessions_per_week',
-						'message' => 'sessions_per_week is required and must be one of: ' . implode(', ', Config::get_sessions_per_week_options()),
-					),
-					400
-				);
-			}
-		}
+		// (Legacy helper fields pages_per_session/sessions_per_week removed in Phase 2)
 
 		global $wpdb;
 		$plans_table = $wpdb->prefix . 'politeia_plans';
@@ -305,12 +291,12 @@ class Rest
 				'name' => $plan_name,
 				'plan_type' => $plan_type,
 				'status' => $status,
-				'pages_per_session' => $pages_per_session,
-				'sessions_per_week' => $sessions_per_week,
+				// 'pages_per_session' => $pages_per_session, // Removed
+				// 'sessions_per_week' => $sessions_per_week, // Removed
 				'created_at' => $now,
 				'updated_at' => $now,
 			),
-			array('%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s')
+			array('%d', '%s', '%s', '%s', '%s', '%s')
 		);
 
 		if (false === $inserted) {
@@ -330,64 +316,133 @@ class Rest
 			return new WP_REST_Response(array('error' => 'plan_insert_failed'), 500);
 		}
 
+		// --- GOALS TABLE REMOVAL (Refactor) ---
+		// We no longer write to wp_politeia_plan_goals.
+		// Instead, we trust the subsequent blocks to write to specialized tables.
+
+		// Validate that we have at least one valid goal struct in payload before proceeding
+		$valid_goal_found = false;
 		foreach ($goals as $goal) {
-			if (!is_array($goal)) {
-				continue;
+			if (is_array($goal) && !empty($goal['goal_kind'])) {
+				$valid_goal_found = true;
+				break;
+			}
+		}
+
+		if (!$valid_goal_found) {
+			if ($transaction_started) {
+				$wpdb->query('ROLLBACK');
+			}
+			return new WP_REST_Response(array('error' => 'invalid_goal'), 400);
+		}
+
+		// --- HABIT REFACTOR: Insert Plan Habit Configuration ---
+		$is_habit_plan = false;
+		foreach ($goals as $g) {
+			if (isset($g['goal_kind']) && 'habit' === $g['goal_kind']) {
+				$is_habit_plan = true;
+				break;
+			}
+		}
+
+		if ($is_habit_plan) {
+			$plan_habit_table = $wpdb->prefix . 'politeia_plan_habit';
+			// Extract from payload baselines
+			$habit_start = isset($baseline_metrics['habit_start_pages']) ? (int) $baseline_metrics['habit_start_pages'] : 5;
+			$habit_end = isset($baseline_metrics['habit_end_pages']) ? (int) $baseline_metrics['habit_end_pages'] : 30;
+			// Duration: try payload, then options, then default
+			$habit_duration = isset($baseline_metrics['habit_days_duration']) ? (int) $baseline_metrics['habit_days_duration'] : (int) get_option('default_habit_duration_days', 66);
+			if ($habit_duration <= 0) {
+				$habit_duration = 66;
 			}
 
-			$goal_kind = isset($goal['goal_kind']) ? sanitize_text_field((string) $goal['goal_kind']) : '';
-			$metric = isset($goal['metric']) ? sanitize_text_field((string) $goal['metric']) : '';
-			$target = isset($goal['target_value']) ? (int) $goal['target_value'] : 0;
-			$period = isset($goal['period']) ? sanitize_text_field((string) $goal['period']) : '';
-			$book_id = isset($goal['book_id']) ? (int) $goal['book_id'] : null;
-			$subject_id = isset($goal['subject_id']) ? (int) $goal['subject_id'] : null;
-			$starting_page = isset($goal['starting_page']) ? (int) $goal['starting_page'] : 1;
-
-			// Validate starting_page is positive
-			if ($starting_page < 1) {
-				$starting_page = 1;
-			}
-
-			if ('' === $goal_kind || '' === $metric || $target <= 0 || '' === $period) {
-				if ($transaction_started) {
-					$wpdb->query('ROLLBACK');
-				}
-				error_log('[ReadingPlanner] Invalid goal payload.');
-				return new WP_REST_Response(array('error' => 'invalid_goal'), 400);
-			}
-			if (
-				!in_array($goal_kind, $allowed_goal_kinds, true)
-				|| !in_array($metric, $allowed_metrics, true)
-				|| !in_array($period, $allowed_periods, true)
-			) {
-				if ($transaction_started) {
-					$wpdb->query('ROLLBACK');
-				}
-				error_log('[ReadingPlanner] Goal payload failed validation.');
-				return new WP_REST_Response(array('error' => 'invalid_goal'), 400);
-			}
-
-			$goal_inserted = $wpdb->insert(
-				$goals_table,
+			$habit_inserted = $wpdb->insert(
+				$plan_habit_table,
 				array(
 					'plan_id' => $plan_id,
-					'goal_kind' => $goal_kind,
-					'metric' => $metric,
-					'target_value' => $target,
-					'period' => $period,
-					'book_id' => $book_id,
-					'subject_id' => $subject_id,
-					'starting_page' => $starting_page,
+					'start_page_amount' => $habit_start,
+					'finish_page_amount' => $habit_end,
+					'duration_days' => $habit_duration,
 				),
-				array('%d', '%s', '%s', '%d', '%s', '%d', '%d', '%d')
+				array('%d', '%d', '%d', '%d')
 			);
 
-			if (false === $goal_inserted) {
+			if (false === $habit_inserted) {
 				if ($transaction_started) {
 					$wpdb->query('ROLLBACK');
 				}
-				error_log('[ReadingPlanner] Goal insert failed: ' . $wpdb->last_error);
-				return new WP_REST_Response(array('error' => 'goal_insert_failed'), 500);
+				error_log('[ReadingPlanner] Plan habit insert failed: ' . $wpdb->last_error);
+				return new WP_REST_Response(array('error' => 'plan_habit_insert_failed'), 500);
+			}
+		}
+
+
+		// --- FINISH BOOK REFACTOR: Insert Plan Finish Book Configuration ---
+		$finish_book_goal = null;
+		foreach ($goals as $g) {
+			if (isset($g['goal_kind']) && 'complete_books' === $g['goal_kind']) {
+				$finish_book_goal = $g;
+				break;
+			}
+		}
+
+		if ($finish_book_goal) {
+			$plan_finish_book_table = $wpdb->prefix . 'politeia_plan_finish_book';
+			$fb_user_book_id = isset($finish_book_goal['user_book_id']) ? (int) $finish_book_goal['user_book_id'] : 0;
+			$fb_book_id = isset($finish_book_goal['book_id']) ? (int) $finish_book_goal['book_id'] : 0;
+			$fb_start_page = isset($finish_book_goal['starting_page']) ? (int) $finish_book_goal['starting_page'] : 1;
+			if ($fb_start_page < 1)
+				$fb_start_page = 1;
+
+			$user_book_id = 0;
+			$resolution_error = null;
+
+			if ($fb_user_book_id > 0) {
+				// Verify ownership
+				$exists = $wpdb->get_var($wpdb->prepare(
+					"SELECT id FROM {$wpdb->prefix}politeia_user_books WHERE id=%d AND user_id=%d LIMIT 1",
+					$fb_user_book_id,
+					$user_id
+				));
+				if ($exists) {
+					$user_book_id = (int) $exists;
+				} else {
+					$resolution_error = 'invalid_user_book_id';
+				}
+			} elseif ($fb_book_id > 0) {
+				// Resolve User Book ID from Canonical Book ID
+				$user_book_id = prs_ensure_user_book($user_id, $fb_book_id);
+				if (!$user_book_id) {
+					$resolution_error = 'user_book_resolution_failed';
+				}
+			}
+
+			if ($resolution_error) {
+				if ($transaction_started) {
+					$wpdb->query('ROLLBACK');
+				}
+				error_log('[ReadingPlanner] Plan finish book error: ' . $resolution_error);
+				return new WP_REST_Response(array('error' => $resolution_error), 400);
+			}
+
+			if ($user_book_id > 0) {
+				$fb_inserted = $wpdb->insert(
+					$plan_finish_book_table,
+					array(
+						'plan_id' => $plan_id,
+						'user_book_id' => $user_book_id,
+						'start_page' => $fb_start_page,
+					),
+					array('%d', '%d', '%d')
+				);
+
+				if (false === $fb_inserted) {
+					if ($transaction_started) {
+						$wpdb->query('ROLLBACK');
+					}
+					error_log('[ReadingPlanner] Plan finish book insert failed: ' . $wpdb->last_error);
+					return new WP_REST_Response(array('error' => 'plan_finish_book_insert_failed'), 500);
+				}
 			}
 		}
 
@@ -426,15 +481,11 @@ class Rest
 						'plan_id' => $plan_id,
 						'planned_start_datetime' => $planned_start,
 						'planned_end_datetime' => $planned_end,
-						'planned_start_page' => null,
-						'planned_end_page' => null,
-						'expected_number_of_pages' => null,
-						'expected_duration_minutes' => null,
 						'status' => 'planned',
 						'previous_session_id' => isset($session['previous_session_id']) ? (int) $session['previous_session_id'] : null,
 						'comment' => isset($session['comment']) ? wp_kses_post((string) $session['comment']) : null,
 					),
-					array('%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%d', '%s')
+					array('%d', '%s', '%s', '%s', '%d', '%s')
 				);
 
 				if (false === $session_inserted) {
@@ -588,10 +639,11 @@ class Rest
 			$wpdb->prepare(
 				"SELECT p.id
 				 FROM {$plans_table} p
-				 INNER JOIN {$goals_table} g ON g.plan_id = p.id
+				 INNER JOIN {$wpdb->prefix}politeia_plan_finish_book pfb ON pfb.plan_id = p.id
+				 INNER JOIN {$wpdb->prefix}politeia_user_books ub ON ub.id = pfb.user_book_id
 				 WHERE p.user_id = %d
 				   AND p.status = %s
-				   AND g.book_id = %d
+				   AND ub.book_id = %d
 				 LIMIT 1",
 				$user_id,
 				'accepted',
@@ -851,23 +903,86 @@ class Rest
 			return new WP_REST_Response(array('error' => 'not_found'), 404);
 		}
 
-		$goal = $wpdb->get_row(
-			$wpdb->prepare(
-				"SELECT * FROM {$goals_table}
-				 WHERE plan_id = %d
-				 ORDER BY (book_id IS NULL), id ASC
-				 LIMIT 1",
-				$plan_id
-			),
-			ARRAY_A
-		);
 
-		$goal_kind = $goal && !empty($goal['goal_kind']) ? (string) $goal['goal_kind'] : '';
-		$goal_book_id = $goal && !empty($goal['book_id']) ? (int) $goal['book_id'] : 0;
-		$goal_target = $goal && !empty($goal['target_value']) ? (int) $goal['target_value'] : 0;
-		$goal_starting_page = $goal && !empty($goal['starting_page']) ? (int) $goal['starting_page'] : 1;
-		if ($goal_starting_page < 1) {
-			$goal_starting_page = 1;
+		// --- FREEZE THE PAST: Lazy Settlement ---
+		// Before any derivation, ensure expired sessions are settled.
+		$current_plan_type = isset($plan['plan_type']) ? $plan['plan_type'] : '';
+		if ('habit' === $current_plan_type && class_exists('\\Politeia\\ReadingPlanner\\HabitSettlementEngine')) {
+			\Politeia\ReadingPlanner\HabitSettlementEngine::settle((int) $plan_id, (int) $user_id);
+		} elseif (class_exists('\\Politeia\\ReadingPlanner\\PlanSettlementEngine')) {
+			\Politeia\ReadingPlanner\PlanSettlementEngine::settle((int) $plan_id, (int) $user_id);
+		}
+
+		// --- INVARIANT ENFORCEMENT & GOAL RESOLUTION ---
+		$p_type = isset($plan['plan_type']) ? (string) $plan['plan_type'] : '';
+		$goal_kind = '';
+		$goal_book_id = 0;
+		$user_book_id = 0;
+		$goal_target = 0;
+		$goal_starting_page = 1;
+
+		// 1. Try New Tables First
+		if ('habit' === $p_type) {
+			$ph_table = $wpdb->prefix . 'politeia_plan_habit';
+			$habit_row = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$ph_table} WHERE plan_id = %d LIMIT 1", $plan_id));
+			if ($habit_row) {
+				$goal_kind = 'habit';
+				// Habits don't strictly have a "book_id" for the goal itself, usually 'Any Book' or a specific one?
+				// Old logic allowed habit to be tied to a book?
+				// If so, it would be in plan_goals. But phase 2/3 habits are generic.
+			} else {
+				error_log(sprintf('[ReadingPlanner] INVARIANT BROKEN: Plan ID %d (habit) missing plan_habit row.', $plan_id));
+			}
+		} elseif ('finish_book' === $p_type) {
+			$pfb_table = $wpdb->prefix . 'politeia_plan_finish_book';
+			$ub_table = $wpdb->prefix . 'politeia_user_books';
+			// Join user_books to get canonical book_id and pages
+			$fb_row = $wpdb->get_row($wpdb->prepare(
+				"SELECT pfb.user_book_id, pfb.start_page, ub.book_id, ub.pages
+				 FROM {$pfb_table} pfb
+				 INNER JOIN {$ub_table} ub ON ub.id = pfb.user_book_id
+				 WHERE pfb.plan_id = %d LIMIT 1",
+				$plan_id
+			));
+
+			if ($fb_row) {
+				$goal_kind = 'complete_books';
+				$user_book_id = (int) $fb_row->user_book_id;
+				$goal_book_id = (int) $fb_row->book_id;
+				$goal_starting_page = (int) $fb_row->start_page;
+				if ($goal_starting_page < 1)
+					$goal_starting_page = 1;
+				$total_book_pages = (int) $fb_row->pages;
+				$goal_target = max(0, $total_book_pages - $goal_starting_page); // Approximate target derived
+			} else {
+				error_log(sprintf('[ReadingPlanner] INVARIANT BROKEN: Plan ID %d (finish_book) missing plan_finish_book row.', $plan_id));
+			}
+		}
+
+		// 2. Fallback to Legacy Goals Table
+		if ('' === $goal_kind) {
+			$goal = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT * FROM {$goals_table}
+					 WHERE plan_id = %d
+					 ORDER BY (book_id IS NULL), id ASC
+					 LIMIT 1",
+					$plan_id
+				),
+				ARRAY_A
+			);
+			if ($goal) {
+				$goal_kind = !empty($goal['goal_kind']) ? (string) $goal['goal_kind'] : '';
+				$goal_book_id = !empty($goal['book_id']) ? (int) $goal['book_id'] : 0;
+				$goal_target = !empty($goal['target_value']) ? (int) $goal['target_value'] : 0;
+				$goal_starting_page = !empty($goal['starting_page']) ? (int) $goal['starting_page'] : 1;
+				if ($goal_starting_page < 1)
+					$goal_starting_page = 1;
+				// If legacy plan has goal_book_id but no user_book_id, resolve it
+				if ($goal_book_id > 0 && 0 === $user_book_id) {
+					$user_book_id = prs_ensure_user_book($user_id, $goal_book_id);
+				}
+			}
 		}
 
 		$total_pages = $goal_target;
@@ -887,14 +1002,15 @@ class Rest
 
 		// Calculate Actual Sessions
 		$actual_sessions_payload = array();
-		if ($goal_book_id) {
+		// Use USER_BOOK_ID to find reading sessions
+		if ($user_book_id > 0) {
 			$actual_sessions = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT start_time, start_page, end_page
 					 FROM {$reading_sessions_table}
-					 WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL",
+					 WHERE user_id = %d AND user_book_id = %d AND deleted_at IS NULL",
 					$user_id,
-					$goal_book_id
+					$user_book_id
 				),
 				ARRAY_A
 			);
@@ -918,21 +1034,27 @@ class Rest
 					);
 				}
 			}
+		} elseif ($goal_book_id > 0) {
+			// Fallback: Query by book_id if user_book_id somehow missing (removed column scenario makes this query invalid if column gone!)
+			// But since we updated schema, ONLY user_book_id column exists.
+			// So we CANNOT query by book_id anymore.
+			// But we resolved user_book_id above. So this block is dead code unless user_book_id resolution failed.
+			// If resolution failed, we can't find sessions.
 		}
+
 
 		// Calculate Derivations
 		$highest_page_read = 0;
-		if ($goal_book_id) {
+		if ($user_book_id > 0) {
 			$highest_page_read = (int) $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT MAX(end_page) FROM {$reading_sessions_table}
-					 WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL AND end_page IS NOT NULL",
+					 WHERE user_id = %d AND user_book_id = %d AND deleted_at IS NULL AND end_page IS NOT NULL",
 					$user_id,
-					$goal_book_id
+					$user_book_id
 				)
 			);
 		}
-
 		if (!class_exists('\\Politeia\\ReadingPlanner\\PlanSessionDeriver')) {
 			// Fallback or error, though it should be loaded
 			return new WP_REST_Response(array('error' => 'deriver_missing'), 500);
@@ -1072,25 +1194,38 @@ class Rest
 		$sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
 
 		// Check ownership
-		$plan = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM {$plans_table} WHERE id = %d", $plan_id));
+		$plan = $wpdb->get_row($wpdb->prepare("SELECT user_id, plan_type FROM {$plans_table} WHERE id = %d", $plan_id));
 		if (!$plan || (int) $plan->user_id !== get_current_user_id()) {
 			return new WP_REST_Response(array('error' => 'forbidden'), 403);
 		}
 
+		// GUARD: Habit plans are immutable (cannot delete sessions)
+		if ('habit' === $plan->plan_type) {
+			return new WP_REST_Response(
+				array('error' => 'forbidden', 'message' => 'Habit sessions cannot be deleted.'),
+				403
+			);
+		}
+
+
 		// Cannot remove 'accomplished' or 'missed' (Immutability)
 		// We only delete 'planned' status.
-		// Use LIMIT 1 to remove single instance if duplicates exist.
+		// FREEZE THE PAST: We only delete FUTURE sessions. Past 'planned' must settle to missed/accomplished.
+		$now = current_time('Y-m-d H:i:s');
 		$deleted = $wpdb->query(
 			$wpdb->prepare(
 				"DELETE FROM {$sessions_table}
 				 WHERE plan_id = %d
 				 AND DATE(planned_start_datetime) = %s
 				 AND status = 'planned'
+				 AND planned_start_datetime >= %s
 				 LIMIT 1",
 				$plan_id,
-				$date
+				$date,
+				$now
 			)
 		);
+
 
 		if (class_exists('\\Politeia\\ReadingPlanner\\PlanSessionDeriver')) {
 			\Politeia\ReadingPlanner\PlanSessionDeriver::invalidate_plan_cache($plan_id);
@@ -1118,9 +1253,17 @@ class Rest
 		$sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
 
 		// Check ownership
-		$plan = $wpdb->get_row($wpdb->prepare("SELECT user_id FROM {$plans_table} WHERE id = %d", $plan_id));
+		$plan = $wpdb->get_row($wpdb->prepare("SELECT user_id, plan_type FROM {$plans_table} WHERE id = %d", $plan_id));
 		if (!$plan || (int) $plan->user_id !== get_current_user_id()) {
 			return new WP_REST_Response(array('error' => 'forbidden'), 403);
+		}
+
+		// GUARD: Habit plans are immutable (cannot move sessions)
+		if ('habit' === $plan->plan_type) {
+			return new WP_REST_Response(
+				array('error' => 'forbidden', 'message' => 'Habit sessions cannot be moved.'),
+				403
+			);
 		}
 
 		// Prepare new date
