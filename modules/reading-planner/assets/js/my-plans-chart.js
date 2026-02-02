@@ -289,9 +289,15 @@
             if (item) {
                 expected = parseInt(item.expectedPages || expected, 10);
 
-                // Determine Actual Pages
-                if (item.actual_end_page !== null && item.actual_start_page !== null) {
-                    actual = Math.max(0, parseInt(item.actual_end_page) - parseInt(item.actual_start_page));
+                // Determine Actual Pages (Position in book)
+                if (item.actual_end_page) {
+                    actual = parseInt(item.actual_end_page, 10);
+                } else if (item.actual_start_page) {
+                    // If started but not finished/recorded end, use start? Or 0?
+                    // Usually actual_end_page is set on completion. 
+                    // If incomplete, maybe use previous known? 
+                    // For now, let's trust actual_end_page.
+                    actual = parseInt(item.actual_start_page, 10);
                 }
 
                 // Determine isActual (Is this a past/completed day?)
@@ -303,12 +309,13 @@
                     isActual = true;
                 }
 
+                // If missed, distinct display? For now showing actual (which might be 0 or stuck at start).
+                // If the user missed, their position didn't change. 
+                // We should probably carry forward the last actual page if we want a continuous line?
+                // But this is a bar chart. A lower bar indicates "stuck". 
+
                 if (item.date) dateLabel = item.date;
             }
-
-            // If isActual, we show actual pages. If not, expected.
-            // Wait, if isActual is true but no reading happened (missed), actual is 0. 
-            // The chart will show 0 height bar. This is correct for "Actual".
 
             return {
                 day,
@@ -321,20 +328,13 @@
         });
 
         // Determine Y Axis bounds
-        // Min Y should be roughly 80% of start pages, but if actual pages drop to 0, 0 should be visible?
-        // User code: minY = Math.floor(startPages * 0.8).
-        // If we strictly follow user code, minY might be higher than 0.
-        // If actual is 0 (missed day), bars will go below axis if minY > 0.
-        // We should fix this: minY should probably be 0 if we have 0 values, or we clamp bars.
-        // But user said "based on this code".
-        // In user code, `d.pages` was always > 0 ( interpolated 15 to 28).
-        // If we have actual=0, we must accommodate 0.
-        // Improved logic: minY = 0.
-
+        // User request: minimum number on Y axis should be the starting page minus 20%
         let maxYData = Math.max(...data.map(d => d.pages));
         if (maxYData < endPages) maxYData = endPages;
         const maxY = Math.ceil(maxYData * 1.2);
-        const minY = 0; // Safer to start at 0 given we might have 0 actual pages
+
+        // Ensure non-negative
+        const minY = Math.max(0, Math.floor(startPages * 0.8));
 
         let chartBounds = { left: 40, right: 10, top: 20, bottom: 40 };
 
@@ -392,6 +392,12 @@
                 const x = chartBounds.left + i * (barWidth + barGap) + barGap / 2;
 
                 // Clamp height to chart area
+                // If d.pages < minY, logic implies barHeight < 0.
+                // We want to show NO bar if value is below axis range?
+                // Or show a minimal blip?
+                // If actual pages is 0 (missing data) and minY is > 0, we shouldn't draw.
+                // If actual pages is valid but < minY (weird regress), clamp to 0.
+
                 let barHeight = ((d.pages - minY) / (maxY - minY)) * chartHeight;
                 if (barHeight < 0) barHeight = 0;
 

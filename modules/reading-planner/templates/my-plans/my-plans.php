@@ -894,7 +894,7 @@ $is_owner = $requested_user
 
 	/* V2 Habit Card Styles */
 	.prs-v2-header {
-		text-align: center;
+		text-align: left;
 		margin-bottom: 32px;
 	}
 
@@ -917,7 +917,7 @@ $is_owner = $requested_user
 
 	.prs-v2-legend {
 		display: flex;
-		justify-content: center;
+		justify-content: flex-start;
 		flex-wrap: wrap;
 		gap: 16px;
 		margin-top: 16px;
@@ -1058,7 +1058,7 @@ $is_owner = $requested_user
 					\Politeia\ReadingPlanner\HabitSettlementEngine::settle($plan_id, $user_id);
 				}
 
-				$cache_key = 'prs_plan_view_v19_' . $plan_id;
+				$cache_key = 'prs_plan_card_v6_' . $plan_id . '_' . $today_key;
 				$cached_card = get_transient($cache_key);
 				if (false !== $cached_card) {
 					// Refresh transient "today" value so it doesn't get stuck in the past
@@ -1406,7 +1406,6 @@ $is_owner = $requested_user
 						$habit_duration,
 						$today_key
 					);
-
 					$derived_projections = \Politeia\ReadingPlanner\PlanSessionDeriver::derive_habit_sessions(
 						$habit_start_pages,
 						$habit_end_pages,
@@ -1414,6 +1413,26 @@ $is_owner = $requested_user
 						$curve_start_date,
 						$future_session_dates
 					);
+
+					// Recalculate Total Pages based on sum of daily targets
+					if (!empty($derived_projections)) {
+						$total_pages = 0;
+						foreach ($derived_projections as $proj) {
+							if (isset($proj['pages'])) {
+								$total_pages += (int) $proj['pages'];
+							}
+						}
+
+						// Update local keys for card (keep start/end for the graph bounds/labels)
+						$first_proj = reset($derived_projections);
+						$last_proj = end($derived_projections);
+						$habit_start_pages = isset($first_proj['pages']) ? (int) $first_proj['pages'] : $habit_start_pages;
+						$habit_end_pages = isset($last_proj['pages']) ? (int) $last_proj['pages'] : $habit_end_pages;
+					} else {
+						// Fallback if no projections derived (should not happen for valid habit)
+						// Approximate sum? Or just 0.
+						$total_pages = $habit_start_pages * $habit_duration;
+					}
 				} else {
 					// --- BOOK DERIVATION (Legacy) ---
 					$derived_projections = \Politeia\ReadingPlanner\PlanSessionDeriver::derive_sessions(
@@ -1984,7 +2003,9 @@ $is_owner = $requested_user
 							<?php echo esc_html($card['title']); ?>
 						</h1>
 						<h2 class="prs-v2-subtitle">
-							<?php esc_html_e('Desafío de Hábito 48 Días', 'politeia-reading'); ?>
+							<?php
+							printf(esc_html__('%d Páginas', 'politeia-reading'), $card['total_pages']);
+							?>
 						</h2>
 						<div class="prs-v2-legend">
 							<div class="prs-v2-legend-item">
