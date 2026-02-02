@@ -478,9 +478,9 @@
                     tooltip.style.top = `${y - 40}px`;
 
                     tooltip.innerHTML = `
-                        <div class="text-xs font-bold text-slate-800" style="font-size: 12px; font-weight: 700; color: #1e293b;">Day ${d.day}</div>
-                        <div class="text-sm text-indigo-600 font-semibold" style="font-size: 14px; font-weight: 600; color: #4f46e5;">${d.pages} pages</div>
-                        <div class="text-[10px] text-slate-400 uppercase" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">${d.isActual ? 'Actual' : 'Meta'}</div>
+                        <div class="text-xs font-bold text-slate-800" style="font-size: 12px; font-weight: 700; color: #1e293b;">${t('day_label', 'Día')} ${d.day}</div>
+                        <div class="text-sm font-semibold" style="font-size: 14px; font-weight: 600; background: linear-gradient(135deg, #8a6b1e, #c79f32, #e9d18a); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; color: #c79f32;">${d.pages} ${t('pages_label', 'Páginas')}</div>
+                        <div class="text-[10px] text-slate-400 uppercase" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">${d.isActual ? t('actual_label', 'Actual') : t('goal_label', 'Meta')}</div>
                     `;
                 }
             } else {

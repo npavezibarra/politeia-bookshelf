@@ -366,6 +366,16 @@ $is_owner = $requested_user
 		color: var(--prs-gold);
 	}
 
+	.prs-plan-toggle-main-date {
+		font-size: 15px;
+		font-weight: 800;
+		color: var(--prs-black);
+		text-transform: uppercase;
+		display: block;
+		margin-bottom: 2px;
+		line-height: 1.2;
+	}
+
 	.prs-chevron {
 		width: 24px;
 		height: 24px;
@@ -909,7 +919,12 @@ $is_owner = $requested_user
 	.prs-v2-subtitle {
 		font-size: 20px;
 		font-weight: 500;
-		color: #d97706;
+		background: linear-gradient(135deg, #8a6b1e, #c79f32, #e9d18a);
+		-webkit-background-clip: text;
+		-webkit-text-fill-color: transparent;
+		background-clip: text;
+		color: #c79f32;
+		/* Fallback */
 		text-transform: uppercase;
 		letter-spacing: 0.1em;
 		margin: 0;
@@ -934,21 +949,21 @@ $is_owner = $requested_user
 	.prs-v2-dot {
 		width: 16px;
 		height: 16px;
-		border-radius: 4px;
+		border-radius: 10px;
 	}
 
 	.prs-v2-dot-gold {
-		background: linear-gradient(to bottom, #fcd34d, #d97706);
+		background: linear-gradient(180deg, #E9D18A 0%, #C79F32 50%, #8A6B1E 100%);
 	}
 
 	.prs-v2-dot-gray {
-		background: #e2e8f0;
+		background: #e0e0e0;
 	}
 
 	.prs-v2-container {
 		position: relative;
 		width: 100%;
-		height: 400px;
+		height: 224px;
 		font-family: 'Poppins', sans-serif !important;
 	}
 
@@ -1019,6 +1034,7 @@ $is_owner = $requested_user
 		border: 1px solid #f1f1f1;
 		border-radius: var(--prs-radius);
 		box-shadow: 0 24px 40px rgba(0, 0, 0, 0.12);
+		padding-top: 20px;
 		/* removed overflow: hidden to allow tooltips or expansion */
 	}
 </style>
@@ -1063,7 +1079,7 @@ $is_owner = $requested_user
 					\Politeia\ReadingPlanner\HabitSettlementEngine::settle($plan_id, $user_id);
 				}
 
-				$cache_key = 'prs_plan_card_v8_' . $plan_id . '_' . $today_key;
+				$cache_key = 'prs_plan_card_v10_' . $plan_id . '_' . $today_key;
 				$cached_card = get_transient($cache_key);
 				if (false !== $cached_card) {
 					// Refresh transient "today" value so it doesn't get stuck in the past
@@ -1228,7 +1244,7 @@ $is_owner = $requested_user
 					$end_ts = $start_ts;
 				}
 
-				$month_ts = $start_ts;
+				$month_ts = time();
 				$month_label = date_i18n('F', $month_ts);
 				$month_year = date_i18n('F Y', $month_ts);
 				$month_range_label = $month_year;
@@ -1642,7 +1658,9 @@ $is_owner = $requested_user
 				// 5. Find next upcoming session for widget toggle
 				$next_session_label = '';
 				$next_session_sublabel = '';
+				$next_session_date_text = '';
 				$found_next = false;
+				$next_session_sort_key = '9999-99-99';
 
 				// Ensure items are sorted by date
 				usort($session_items, function ($a, $b) {
@@ -1655,6 +1673,7 @@ $is_owner = $requested_user
 				foreach ($session_items as $item) {
 					if ($item['date'] >= $today_key) {
 						$found_next = true;
+						$next_session_sort_key = $item['date'];
 
 						// Date Label
 						$s_ts = strtotime($item['date']);
@@ -1668,7 +1687,8 @@ $is_owner = $requested_user
 							$date_part = date_i18n('F j', $s_ts);
 						}
 
-						$next_session_label = sprintf(__('UPCOMING SESSION: %s', 'politeia-reading'), $date_part);
+						$next_session_label = __('UPCOMING SESSION:', 'politeia-reading');
+						$next_session_date_text = $date_part;
 
 						// Pages Label
 						$p_count = 0;
@@ -1744,8 +1764,10 @@ $is_owner = $requested_user
 					'start_date' => isset($curve_start_date) ? $curve_start_date : '',
 					'plan_status' => $plan['status'],
 					'toggle_label' => $next_session_label,
+					'toggle_date_text' => $next_session_date_text,
 					'toggle_sublabel' => $next_session_sublabel,
 					'has_upcoming' => $found_next,
+					'next_session_sort_key' => $next_session_sort_key,
 				);
 				set_transient($cache_key, $card_data, DAY_IN_SECONDS);
 				$cards[] = $card_data;
@@ -1832,6 +1854,10 @@ $is_owner = $requested_user
 		}
 		?>
 		<?php
+		$my_plans_sections = function_exists('politeia_bookshelf_get_my_plans_sections')
+			? politeia_bookshelf_get_my_plans_sections()
+			: array('view_1' => 1, 'view_2' => 1);
+
 		$habit_cards = array();
 		$book_cards = array();
 		if ($cards) {
@@ -1843,6 +1869,13 @@ $is_owner = $requested_user
 				} else {
 					$book_cards[] = $card;
 				}
+			}
+
+			// Sort book cards by upcoming session date (ASC)
+			if (!empty($book_cards)) {
+				usort($book_cards, function ($a, $b) {
+					return strcmp($a['next_session_sort_key'], $b['next_session_sort_key']);
+				});
 			}
 		}
 
@@ -1940,10 +1973,15 @@ $is_owner = $requested_user
 							</svg>
 						</div>
 						<div>
-							<span
-								class="prs-plan-toggle-label <?php echo $card['has_upcoming'] ? 'prs-upcoming-bold' : ''; ?>"><?php echo esc_html($card['toggle_label']); ?></span><br>
-							<span
-								class="prs-plan-toggle-date <?php echo $card['has_upcoming'] ? 'prs-upcoming-gold' : ''; ?>"><?php echo esc_html($card['toggle_sublabel']); ?></span>
+							<?php if ($card['has_upcoming']): ?>
+								<span class="prs-plan-toggle-label"><?php echo esc_html($card['toggle_label']); ?></span><br>
+								<span class="prs-plan-toggle-main-date"><?php echo esc_html($card['toggle_date_text']); ?></span>
+								<span
+									class="prs-plan-toggle-date prs-upcoming-gold"><?php echo esc_html($card['toggle_sublabel']); ?></span>
+							<?php else: ?>
+								<span class="prs-plan-toggle-label"><?php echo esc_html($card['toggle_label']); ?></span><br>
+								<span class="prs-plan-toggle-date"><?php echo esc_html($card['toggle_sublabel']); ?></span>
+							<?php endif; ?>
 						</div>
 						<svg class="prs-chevron" data-role="chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M19 9l-7 7-7-7" />
@@ -2079,7 +2117,7 @@ $is_owner = $requested_user
 			if (!$is_habit)
 				return;
 			?>
-			<div id="prs-plan-card-v2" class="prs-plan-card-v2" style="margin-top: 24px;">
+			<div id="prs-plan-card-v2" class="prs-plan-card-v2" style="margin-top: 0;">
 				<div class="prs-plan-header" style="display: block; width: 100%;">
 					<header class="prs-v2-header">
 						<h2 class="prs-v2-title">
@@ -2228,8 +2266,16 @@ $is_owner = $requested_user
 			<?php if (!empty($habit_cards)): ?>
 				<div id="politeia-habit-plan-loop" class="prs-plan-grid" style="margin-bottom: 24px;">
 					<?php foreach ($habit_cards as $card): ?>
-						<?php $render_plan_card($card); ?>
-						<?php $render_plan_card_v2($card); ?>
+						<?php
+						if (!empty($my_plans_sections['view_1'])) {
+							$render_plan_card($card);
+						}
+						?>
+						<?php
+						if (!empty($my_plans_sections['view_2'])) {
+							$render_plan_card_v2($card);
+						}
+						?>
 					<?php endforeach; ?>
 					<?php if (1 === $cards_count)
 						$render_upcoming_widget(); ?>

@@ -19,6 +19,9 @@ if (!defined('POLITEIA_BOOKSHELF_TEMPLATES_OPTION')) {
 if (!defined('POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION')) {
     define('POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION', 'politeia_bookshelf_my_stats_sections');
 }
+if (!defined('POLITEIA_BOOKSHELF_MY_PLANS_SECTIONS_OPTION')) {
+    define('POLITEIA_BOOKSHELF_MY_PLANS_SECTIONS_OPTION', 'politeia_bookshelf_my_plans_sections');
+}
 if (!defined('POLITEIA_BOOKSHELF_READING_PLANNER_INTENSITY_OPTION')) {
     define('POLITEIA_BOOKSHELF_READING_PLANNER_INTENSITY_OPTION', 'politeia_bookshelf_reading_planner_intensity');
 }
@@ -213,6 +216,29 @@ function politeia_bookshelf_get_my_stats_sections()
     return wp_parse_args($stored, $defaults);
 }
 
+function politeia_bookshelf_sanitize_my_plans_sections($value)
+{
+    $allowed = array('view_1', 'view_2');
+    $clean = array();
+
+    foreach ($allowed as $key) {
+        $clean[$key] = (isset($value[$key]) && '1' === (string) $value[$key]) ? 1 : 0;
+    }
+
+    return $clean;
+}
+
+function politeia_bookshelf_get_my_plans_sections()
+{
+    $defaults = array(
+        'view_1' => 1,
+        'view_2' => 1,
+    );
+    $stored = get_option(POLITEIA_BOOKSHELF_MY_PLANS_SECTIONS_OPTION, array());
+
+    return wp_parse_args($stored, $defaults);
+}
+
 /**
  * Get Reading Planner intensity configuration with defaults.
  *
@@ -340,6 +366,16 @@ function politeia_bookshelf_register_google_books_settings()
         ]
     );
 
+    register_setting(
+        'politeia_bookshelf_my_plans',
+        POLITEIA_BOOKSHELF_MY_PLANS_SECTIONS_OPTION,
+        [
+            'type' => 'array',
+            'sanitize_callback' => 'politeia_bookshelf_sanitize_my_plans_sections',
+            'default' => array(),
+        ]
+    );
+
     add_settings_section(
         'politeia_bookshelf_templates_section',
         __('Page templates', 'politeia-bookshelf'),
@@ -368,6 +404,21 @@ function politeia_bookshelf_register_google_books_settings()
         'politeia_bookshelf_render_my_stats_sections_field',
         'politeia_bookshelf_my_stats',
         'politeia_bookshelf_my_stats_section'
+    );
+
+    add_settings_section(
+        'politeia_bookshelf_my_plans_section',
+        __('My Plans Page', 'politeia-bookshelf'),
+        'politeia_bookshelf_render_my_plans_section_intro',
+        'politeia_bookshelf_my_plans'
+    );
+
+    add_settings_field(
+        'politeia_bookshelf_my_plans_sections_field',
+        __('Section visibility', 'politeia-bookshelf'),
+        'politeia_bookshelf_render_my_plans_sections_field',
+        'politeia_bookshelf_my_plans',
+        'politeia_bookshelf_my_plans_section'
     );
 
     register_setting(
@@ -539,6 +590,32 @@ function politeia_bookshelf_render_my_stats_sections_field()
         <label class="prs-admin-toggle">
             <input type="checkbox"
                 name="<?php echo esc_attr(POLITEIA_BOOKSHELF_MY_STATS_SECTIONS_OPTION); ?>[<?php echo esc_attr($key); ?>]"
+                value="1" <?php checked($checked); ?> />
+            <span class="prs-admin-toggle__control" aria-hidden="true"></span>
+            <span class="prs-admin-toggle__label"><?php echo esc_html($label); ?></span>
+        </label>
+    <?php endforeach;
+}
+
+function politeia_bookshelf_render_my_plans_section_intro()
+{
+    echo '<p>' . esc_html__('Toggle which habit plan views appear on the My Plans page.', 'politeia-bookshelf') . '</p>';
+}
+
+function politeia_bookshelf_render_my_plans_sections_field()
+{
+    $sections = politeia_bookshelf_get_my_plans_sections();
+    $labels = array(
+        'view_1' => __('Habit Plan View 1 (Old)', 'politeia-bookshelf'),
+        'view_2' => __('Habit Plan View 2 (New)', 'politeia-bookshelf'),
+    );
+
+    foreach ($labels as $key => $label):
+        $checked = !empty($sections[$key]);
+        ?>
+        <label class="prs-admin-toggle">
+            <input type="checkbox"
+                name="<?php echo esc_attr(POLITEIA_BOOKSHELF_MY_PLANS_SECTIONS_OPTION); ?>[<?php echo esc_attr($key); ?>]"
                 value="1" <?php checked($checked); ?> />
             <span class="prs-admin-toggle__control" aria-hidden="true"></span>
             <span class="prs-admin-toggle__label"><?php echo esc_html($label); ?></span>
@@ -737,33 +814,40 @@ function politeia_bookshelf_render_reading_planner_intensity_field()
                 fill="#FF5722" />
 
         </svg>
-        
+
         <?php
         // Calculate slopes (minutes per page)
-        $light_slope = ($config['light']['end_minutes'] - $config['light']['start_minutes']) / 
-                       max(1, $config['light']['end_pages'] - $config['light']['start_pages']);
-        $intense_slope = ($config['intense']['end_minutes'] - $config['intense']['start_minutes']) / 
-                         max(1, $config['intense']['end_pages'] - $config['intense']['start_pages']);
+        $light_slope = ($config['light']['end_minutes'] - $config['light']['start_minutes']) /
+            max(1, $config['light']['end_pages'] - $config['light']['start_pages']);
+        $intense_slope = ($config['intense']['end_minutes'] - $config['intense']['start_minutes']) /
+            max(1, $config['intense']['end_pages'] - $config['intense']['start_pages']);
         ?>
 
         <!-- Legend outside the chart -->
-        <div style="display: flex; justify-content: center; gap: 30px; margin-top: 15px; padding: 15px; background: white; border: 1px solid #ddd; border-radius: 4px;">
+        <div
+            style="display: flex; justify-content: center; gap: 30px; margin-top: 15px; padding: 15px; background: white; border: 1px solid #ddd; border-radius: 4px;">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 40px; height: 3px; background: #4CAF50; border-radius: 2px; position: relative;">
-                    <div style="width: 8px; height: 8px; background: #4CAF50; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>
+                    <div
+                        style="width: 8px; height: 8px; background: #4CAF50; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                    </div>
                 </div>
                 <div>
                     <div style="font-size: 12px; font-weight: 600; color: #333;">LIGHT</div>
-                    <div style="font-size: 10px; color: #666;">Slope: <?php echo esc_html(number_format($light_slope, 2)); ?> min/page</div>
+                    <div style="font-size: 10px; color: #666;">Slope:
+                        <?php echo esc_html(number_format($light_slope, 2)); ?> min/page</div>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
                 <div style="width: 40px; height: 3px; background: #FF5722; border-radius: 2px; position: relative;">
-                    <div style="width: 8px; height: 8px; background: #FF5722; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);"></div>
+                    <div
+                        style="width: 8px; height: 8px; background: #FF5722; border-radius: 50%; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);">
+                    </div>
                 </div>
                 <div>
                     <div style="font-size: 12px; font-weight: 600; color: #333;">INTENSE</div>
-                    <div style="font-size: 10px; color: #666;">Slope: <?php echo esc_html(number_format($intense_slope, 2)); ?> min/page</div>
+                    <div style="font-size: 10px; color: #666;">Slope:
+                        <?php echo esc_html(number_format($intense_slope, 2)); ?> min/page</div>
                 </div>
             </div>
         </div>
@@ -812,6 +896,7 @@ function politeia_bookshelf_render_admin_page()
     $templates_subtab = isset($_GET['templates_tab']) ? sanitize_key(wp_unslash($_GET['templates_tab'])) : 'my-stats';
     $templates_subtabs = array(
         'my-stats' => __('My Stats Page', 'politeia-bookshelf'),
+        'my-plans' => __('My Plans', 'politeia-bookshelf'),
         'assignments' => __('Template assignments', 'politeia-bookshelf'),
     );
     if (!array_key_exists($templates_subtab, $templates_subtabs)) {
@@ -921,20 +1006,23 @@ function politeia_bookshelf_render_admin_page()
             </h2>
 
             <?php
-            $settings_group = ('assignments' === $templates_subtab)
-                ? 'politeia_bookshelf_templates'
-                : 'politeia_bookshelf_my_stats';
+            $settings_group = 'politeia_bookshelf_my_stats';
+            $sections_page = 'politeia_bookshelf_my_stats';
+
+            if ('assignments' === $templates_subtab) {
+                $settings_group = 'politeia_bookshelf_templates';
+                $sections_page = 'politeia_bookshelf_templates';
+            } elseif ('my-plans' === $templates_subtab) {
+                $settings_group = 'politeia_bookshelf_my_plans';
+                $sections_page = 'politeia_bookshelf_my_plans';
+            }
+
             settings_errors($settings_group);
             ?>
             <form action="<?php echo esc_url(admin_url('options.php')); ?>" method="post">
                 <?php
-                if ('assignments' === $templates_subtab) {
-                    settings_fields($settings_group);
-                    do_settings_sections('politeia_bookshelf_templates');
-                } else {
-                    settings_fields($settings_group);
-                    do_settings_sections('politeia_bookshelf_my_stats');
-                }
+                settings_fields($settings_group);
+                do_settings_sections($sections_page);
                 submit_button();
                 ?>
             </form>
