@@ -58,6 +58,7 @@
         yLabel.style.fill = '#94a3b8';
         yLabel.style.fontSize = '11px';
         yLabel.style.fontWeight = '600';
+        yLabel.style.fontFamily = 'Poppins, sans-serif';
         yLabel.style.textTransform = 'uppercase';
         yLabel.textContent = t('pages_label', 'Páginas');
         g.appendChild(yLabel);
@@ -71,6 +72,7 @@
         xLabel.style.fill = '#94a3b8';
         xLabel.style.fontSize = '11px';
         xLabel.style.fontWeight = '600';
+        xLabel.style.fontFamily = 'Poppins, sans-serif';
         xLabel.style.textTransform = 'uppercase';
         xLabel.textContent = t('day_label', 'Día');
         g.appendChild(xLabel);
@@ -366,7 +368,7 @@
             ctx.lineWidth = 1;
             ctx.setLineDash([5, 5]);
             ctx.fillStyle = '#94a3b8';
-            ctx.font = '12px Inter, sans-serif';
+            ctx.font = '12px Poppins, sans-serif';
             ctx.textAlign = 'right';
 
             const yLines = 5;
@@ -430,6 +432,7 @@
                 // User code: 1, 10, 20, 30, 40, 48
                 if (d.day === 1 || d.day === 10 || d.day === 20 || d.day === 30 || d.day === 40 || d.day === totalDays) {
                     ctx.fillStyle = '#64748b';
+                    ctx.font = '12px Poppins, sans-serif';
                     ctx.textAlign = 'center';
                     ctx.fillText(d.day, x + barWidth / 2, chartBounds.top + chartHeight + 20);
                 }
@@ -437,7 +440,7 @@
 
             // Axis Labels
             ctx.fillStyle = '#94a3b8';
-            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.font = 'bold 12px Poppins, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText(t('day_label', 'Días'), chartBounds.left + chartWidth / 2, height - 5);
 

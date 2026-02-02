@@ -949,6 +949,11 @@ $is_owner = $requested_user
 		position: relative;
 		width: 100%;
 		height: 400px;
+		font-family: 'Poppins', sans-serif !important;
+	}
+
+	.prs-v2-container * {
+		font-family: 'Poppins', sans-serif !important;
 	}
 
 	.prs-v2-footer {
@@ -1844,7 +1849,7 @@ $is_owner = $requested_user
 		$render_plan_card = function ($card) {
 			$is_habit = in_array($card['goal_kind'], array('habit', 'form_habit'), true);
 			?>
-			<div class="prs-plan-card" data-plan-id="<?php echo esc_attr((string) $card['plan_id']); ?>"
+			<div id="prs-plan-card" class="prs-plan-card" data-plan-id="<?php echo esc_attr((string) $card['plan_id']); ?>"
 				data-days-count="<?php echo esc_attr((string) $card['days_count']); ?>"
 				data-start-offset="<?php echo esc_attr((string) $card['start_offset']); ?>"
 				data-selected-days="<?php echo esc_attr(wp_json_encode($card['selected'])); ?>"
@@ -2074,7 +2079,7 @@ $is_owner = $requested_user
 			if (!$is_habit)
 				return;
 			?>
-			<div class="prs-plan-card-v2" style="margin-top: 24px;">
+			<div id="prs-plan-card-v2" class="prs-plan-card-v2" style="margin-top: 24px;">
 				<div class="prs-plan-header" style="display: block; width: 100%;">
 					<header class="prs-v2-header">
 						<h2 class="prs-v2-title">
@@ -2112,45 +2117,7 @@ $is_owner = $requested_user
 						</div>
 					</div>
 
-					<footer class="prs-v2-footer">
-						<div class="prs-v2-stat-card prs-v2-stat-bg-gray">
-							<p class="prs-v2-stat-label prs-v2-text-gray">
-								<?php esc_html_e('Punto de Partida', 'politeia-reading'); ?>
-							</p>
-							<p class="prs-v2-stat-value prs-v2-val-dark">
-								<?php echo esc_html($card['habit_start_pages'] ?? 15); ?>
-								<?php esc_html_e('Páginas', 'politeia-reading'); ?>
-							</p>
-						</div>
-						<div class="prs-v2-stat-card prs-v2-stat-bg-amber">
-							<p class="prs-v2-stat-label prs-v2-text-amber">
-								<?php esc_html_e('Día Actual', 'politeia-reading'); ?>
-							</p>
-							<p class="prs-v2-stat-value prs-v2-val-amber">
-								<?php
-								// Calculate current day relative to start.
-								$day_label = __('Día 1', 'politeia-reading');
-								if (!empty($card['start_date'])) {
-									$start = new DateTime($card['start_date']);
-									$now = new DateTime('now');
-									$diff = $now->diff($start)->days + 1;
-									if ($diff > ($card['habit_duration'] ?? 48))
-										$diff = ($card['habit_duration'] ?? 48);
-									$day_label = sprintf(__('Día %d', 'politeia-reading'), $diff);
-								}
-								echo esc_html($day_label);
-								?>
-							</p>
-						</div>
-						<div class="prs-v2-stat-card prs-v2-stat-bg-gray">
-							<p class="prs-v2-stat-label prs-v2-text-gray"><?php esc_html_e('Meta Final', 'politeia-reading'); ?>
-							</p>
-							<p class="prs-v2-stat-value prs-v2-val-dark">
-								<?php echo esc_html($card['habit_end_pages'] ?? 28); ?>
-								<?php esc_html_e('Páginas', 'politeia-reading'); ?>
-							</p>
-						</div>
-					</footer>
+
 				</div>
 			</div>
 			<?php
