@@ -1590,84 +1590,86 @@ $is_owner = $requested_user
 					</button>
 				<?php endif; ?>
 
-				<div class="prs-collapsible <?php echo $is_habit ? 'is-open' : ''; ?>" data-role="collapsible">
-					<div class="prs-calendar-card">
+				<div id="prs-calendar-card-container" class="prs-collapsible <?php echo $is_habit ? 'is-open' : ''; ?>"
+					data-role="collapsible" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px;">
+					<div id="prs-calendar-card-left" class="prs-calendar-card">
 
-							<div class="prs-calendar-header">
-								<div>
-									<div class="prs-calendar-title-row">
-										<h3 class="prs-calendar-title" data-role="calendar-title">
-											<?php echo esc_html($card['month_year']); ?>
-										</h3>
-										<div class="prs-calendar-nav">
-											<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-prev"
-												aria-label="<?php esc_attr_e('Previous Month', 'politeia-reading'); ?>">
-												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
-													viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
-													stroke-linecap="round" stroke-linejoin="round">
-													<path d="M15 6l-6 6 6 6" />
-												</svg>
-											</a>
-											<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-next"
-												aria-label="<?php esc_attr_e('Next Month', 'politeia-reading'); ?>">
-												<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
-													viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
-													stroke-linecap="round" stroke-linejoin="round">
-													<path d="M9 6l6 6-6 6" />
-												</svg>
-											</a>
-										</div>
-									</div>
-									<div class="prs-calendar-meta" data-role="calendar-meta"></div>
-								</div>
-								<div>
-									<div class="prs-toggle-group" role="tablist">
-										<a href="#" class="prs-toggle-button is-active" role="button" data-role="view-cal"
-											aria-label="<?php esc_attr_e('Calendar', 'politeia-reading'); ?>">
-											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
-												viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
+						<div class="prs-calendar-header">
+							<div>
+								<div class="prs-calendar-title-row">
+									<h3 class="prs-calendar-title" data-role="calendar-title">
+										<?php echo esc_html($card['month_year']); ?>
+									</h3>
+									<div class="prs-calendar-nav">
+										<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-prev"
+											aria-label="<?php esc_attr_e('Previous Month', 'politeia-reading'); ?>">
+											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+												viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
 												stroke-linecap="round" stroke-linejoin="round">
-												<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-												<line x1="16" y1="2" x2="16" y2="6"></line>
-												<line x1="8" y1="2" x2="8" y2="6"></line>
-												<line x1="3" y1="10" x2="21" y2="10"></line>
+												<path d="M15 6l-6 6 6 6" />
 											</svg>
 										</a>
-										<a href="#" class="prs-toggle-button" role="button" data-role="view-list"
-											aria-label="<?php esc_attr_e('List', 'politeia-reading'); ?>">
-											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
-												viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"
+										<a href="#" class="prs-calendar-nav-btn" role="button" data-role="month-next"
+											aria-label="<?php esc_attr_e('Next Month', 'politeia-reading'); ?>">
+											<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none"
+												viewBox="0 0 24 24" stroke="currentColor" stroke-width="3"
 												stroke-linecap="round" stroke-linejoin="round">
-												<line x1="8" y1="6" x2="21" y2="6"></line>
-												<line x1="8" y1="12" x2="21" y2="12"></line>
-												<line x1="8" y1="18" x2="21" y2="18"></line>
-												<line x1="3" y1="6" x2="3.01" y2="6"></line>
-												<line x1="3" y1="12" x2="3.01" y2="12"></line>
-												<line x1="3" y1="18" x2="3.01" y2="18"></line>
+												<path d="M9 6l6 6-6 6" />
 											</svg>
 										</a>
 									</div>
 								</div>
+								<div class="prs-calendar-meta" data-role="calendar-meta"></div>
 							</div>
-
-							<div class="prs-view" data-role="calendar-view">
-								<div class="prs-weekdays">
-									<div><?php esc_html_e('Mon', 'politeia-reading'); ?></div>
-									<div><?php esc_html_e('Tue', 'politeia-reading'); ?></div>
-									<div><?php esc_html_e('Wed', 'politeia-reading'); ?></div>
-									<div><?php esc_html_e('Thu', 'politeia-reading'); ?></div>
-									<div><?php esc_html_e('Fri', 'politeia-reading'); ?></div>
-									<div><?php esc_html_e('Sat', 'politeia-reading'); ?></div>
-									<div><?php esc_html_e('Sun', 'politeia-reading'); ?></div>
+							<div>
+								<div class="prs-toggle-group" role="tablist">
+									<a href="#" class="prs-toggle-button is-active" role="button" data-role="view-cal"
+										aria-label="<?php esc_attr_e('Calendar', 'politeia-reading'); ?>">
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+											viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+											stroke-linejoin="round">
+											<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+											<line x1="16" y1="2" x2="16" y2="6"></line>
+											<line x1="8" y1="2" x2="8" y2="6"></line>
+											<line x1="3" y1="10" x2="21" y2="10"></line>
+										</svg>
+									</a>
+									<a href="#" class="prs-toggle-button" role="button" data-role="view-list"
+										aria-label="<?php esc_attr_e('List', 'politeia-reading'); ?>">
+										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+											viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+											stroke-linejoin="round">
+											<line x1="8" y1="6" x2="21" y2="6"></line>
+											<line x1="8" y1="12" x2="21" y2="12"></line>
+											<line x1="8" y1="18" x2="21" y2="18"></line>
+											<line x1="3" y1="6" x2="3.01" y2="6"></line>
+											<line x1="3" y1="12" x2="3.01" y2="12"></line>
+											<line x1="3" y1="18" x2="3.01" y2="18"></line>
+										</svg>
+									</a>
 								</div>
-								<div class="prs-calendar-grid" data-role="calendar-grid"></div>
 							</div>
+						</div>
 
-							<div class="prs-view is-hidden" data-role="list-view">
-								<div data-role="list"></div>
+						<div class="prs-view" data-role="calendar-view">
+							<div class="prs-weekdays">
+								<div><?php esc_html_e('Mon', 'politeia-reading'); ?></div>
+								<div><?php esc_html_e('Tue', 'politeia-reading'); ?></div>
+								<div><?php esc_html_e('Wed', 'politeia-reading'); ?></div>
+								<div><?php esc_html_e('Thu', 'politeia-reading'); ?></div>
+								<div><?php esc_html_e('Fri', 'politeia-reading'); ?></div>
+								<div><?php esc_html_e('Sat', 'politeia-reading'); ?></div>
+								<div><?php esc_html_e('Sun', 'politeia-reading'); ?></div>
 							</div>
+							<div class="prs-calendar-grid" data-role="calendar-grid"></div>
+						</div>
+
+						<div class="prs-view is-hidden" data-role="list-view">
+							<div data-role="list"></div>
+						</div>
 
 					</div>
+					<div id="prs-calendar-card-right"></div>
 				</div>
 
 				<div class="prs-progress">
@@ -1817,7 +1819,8 @@ $is_owner = $requested_user
 					<?php foreach ($book_cards as $card): ?>
 						<?php $render_plan_card($card); ?>
 					<?php endforeach; ?>
-					<?php if (1 === $cards_count && empty($habit_cards)) $render_upcoming_widget(); ?>
+					<?php if (1 === $cards_count && empty($habit_cards))
+						$render_upcoming_widget(); ?>
 				</div>
 			<?php endif; ?>
 
