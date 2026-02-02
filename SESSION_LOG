@@ -239,6 +239,10 @@ January 30, 2026, 22:50 UTC
 2. Implemented a third view mode (Line Chart) for Habit Plans using vanilla SVG to visualize daily page targets.
 3. Removed "Plan Fallido" label/icon and styled habit formation buttons (uppercase, wide spacing) per design requirements.
 
+February 2, 2026, 00:00 UTC
+1. Fixed HABIT month switching in My Plans by guarding calendar/list toggle DOM access so HABIT cards no longer throw JS errors.
+2. Aligned HABIT month navigation behavior with FINISH BOOK so next/prev buttons now advance months correctly.
+
 ------
 
 TO DO:

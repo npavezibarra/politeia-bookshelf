@@ -10,6 +10,14 @@ $enqueue_my_book_assets = function () {
 	if (function_exists('wp_enqueue_style') && function_exists('wp_enqueue_script')) {
 		wp_enqueue_style('politeia-my-book');
 		wp_enqueue_script('politeia-my-book');
+		wp_register_script(
+			'politeia-my-plans-chart',
+			POLITEIA_READING_PLAN_URL . 'assets/js/my-plans-chart.js',
+			array(),
+			'1.0.0',
+			true
+		);
+		wp_enqueue_script('politeia-my-plans-chart');
 	}
 };
 $enqueue_my_book_assets();
@@ -925,7 +933,7 @@ $is_owner = $requested_user
 					\Politeia\ReadingPlanner\HabitSettlementEngine::settle($plan_id, $user_id);
 				}
 
-				$cache_key = 'prs_plan_view_v3_' . $plan_id;
+				$cache_key = 'prs_plan_view_v19_' . $plan_id;
 				$cached_card = get_transient($cache_key);
 				if (false !== $cached_card) {
 					// Refresh transient "today" value so it doesn't get stuck in the past
@@ -1240,16 +1248,36 @@ $is_owner = $requested_user
 					// --- HABIT DERIVATION ---
 					$habit_start_pages = isset($baseline_metrics['habit_start_pages']) ? (int) $baseline_metrics['habit_start_pages'] : 5;
 					$habit_end_pages = isset($baseline_metrics['habit_end_pages']) ? (int) $baseline_metrics['habit_end_pages'] : 30;
-					$habit_duration = isset($baseline_metrics['habit_days_duration']) ? (int) $baseline_metrics['habit_days_duration'] : 48;
 
+					// Fetch actual duration from DB
+					$habit_duration = (int) $wpdb->get_var($wpdb->prepare(
+						"SELECT duration_days FROM {$wpdb->prefix}politeia_plan_habit WHERE plan_id = %d",
+						$plan_id
+					));
+					if (!$habit_duration)
+						$habit_duration = 48; // Fallback
+	
 					// Override Total Pages to be Duration for display context (days)
 					// $total_pages = $habit_duration; 
 	
 					// Recalculate progress based on Time (Duration)
-					// Use plan 'created_at' as start date reference
-					$plan_created_date = !empty($plan['created_at']) ? date('Y-m-d', strtotime($plan['created_at'])) : $today_key;
+					// Use first session date as start date reference if available, otherwise created_at
+					$curve_start_date = $start_ts ? date('Y-m-d', $start_ts) : (!empty($plan['created_at']) ? date('Y-m-d', strtotime($plan['created_at'])) : $today_key);
+
+					// Generate expected dates for the full duration to cover gaps or missing DB sessions
+					$expected_dates = array();
+					$current_d = new DateTime($curve_start_date);
+					for ($i = 0; $i < $habit_duration; $i++) {
+						$d_str = $current_d->format('Y-m-d');
+						$expected_dates[] = $d_str; // Always include to ensure full coverage
+						$current_d->modify('+1 day');
+					}
+					// Merge expected dates into future_session_dates cleanly
+					$future_session_dates = array_unique(array_merge($future_session_dates, $expected_dates));
+					sort($future_session_dates);
+
 					$progress = \Politeia\ReadingPlanner\PlanSessionDeriver::calculate_habit_progress(
-						$plan_created_date,
+						$curve_start_date,
 						$habit_duration,
 						$today_key
 					);
@@ -1258,7 +1286,7 @@ $is_owner = $requested_user
 						$habit_start_pages,
 						$habit_end_pages,
 						$habit_duration,
-						$plan_created_date,
+						$curve_start_date,
 						$future_session_dates
 					);
 				} else {
@@ -1279,7 +1307,107 @@ $is_owner = $requested_user
 						$session_items_map[$d]['planned_start_page'] = $projection['start_page'];
 						$session_items_map[$d]['planned_end_page'] = $projection['end_page'];
 						$session_items_map[$d]['order'] = $projection['order'];
+						if (isset($projection['pages'])) {
+							$session_items_map[$d]['expectedPages'] = $projection['pages'];
+						}
 						// Status remains 'planned' as set in derivation
+					} else {
+						// Virtual session for habit plan (missing in DB)
+						$session_items_map[$d] = array(
+							'date' => $d,
+							'status' => 'planned',
+							'planned_start_page' => $projection['start_page'],
+							'planned_end_page' => $projection['end_page'],
+							'order' => $projection['order'],
+							'actual_start_page' => null,
+							'actual_end_page' => null,
+							'expectedPages' => isset($projection['pages']) ? $projection['pages'] : 0,
+						);
+					}
+				}
+
+				// SAFETY: Ensure all expected dates are present in map (Habit Fix)
+				if (isset($expected_dates) && is_array($expected_dates)) {
+					$last_order = 0;
+					$last_pages = 0;
+					foreach ($session_items_map as $item) {
+						if (isset($item['order']) && $item['order'] > $last_order)
+							$last_order = $item['order'];
+						if (isset($item['expectedPages']) && $item['expectedPages'] > 0)
+							$last_pages = $item['expectedPages'];
+					}
+					// Default pages if none found
+					if ($last_pages == 0)
+						$last_pages = 10;
+
+					foreach ($expected_dates as $ed) {
+						if (!isset($session_items_map[$ed])) {
+							$last_order++;
+							$session_items_map[$ed] = array(
+								'date' => $ed,
+								'status' => 'planned',
+								'planned_start_page' => 0,
+								'planned_end_page' => 0,
+								'order' => $last_order,
+								'actual_start_page' => null,
+								'actual_end_page' => null,
+								'expectedPages' => $last_pages, // Projection
+							);
+						}
+					}
+				}
+
+				// ROBUST FIX: Guarantee session dates are passed to frontend
+				// Fallback: If expected dates not set (e.g. goal_kind mismatch), fetch duration now
+				if (!isset($expected_dates) || !is_array($expected_dates)) {
+					$habit_dur_fallback = (int) $wpdb->get_var($wpdb->prepare(
+						"SELECT duration_days FROM {$wpdb->prefix}politeia_plan_habit WHERE plan_id = %d",
+						$plan_id
+					));
+					if ($habit_dur_fallback > 0) {
+						$expected_dates = array();
+						// Use start_ts or today
+						$start_ts_fallback = $start_ts ?: time();
+						$current_d = new DateTime(date('Y-m-d', $start_ts_fallback));
+						for ($i = 0; $i < $habit_dur_fallback; $i++) {
+							$expected_dates[] = $current_d->format('Y-m-d');
+							$current_d->modify('+1 day');
+						}
+					}
+				}
+
+				// Update session_dates to include all expected dates, sorted.
+				if (isset($expected_dates) && is_array($expected_dates)) {
+					$session_dates = array_unique(array_merge($session_dates, $expected_dates));
+					sort($session_dates);
+				} else {
+					$session_dates = array_keys($session_items_map);
+				}
+
+				// Re-run safety refill for map if needed (in case expected_dates was just created)
+				if (isset($expected_dates) && is_array($expected_dates)) {
+					$last_order = 0;
+					$last_pages = 10;
+					foreach ($session_items_map as $item) {
+						if (isset($item['order']) && $item['order'] > $last_order)
+							$last_order = $item['order'];
+						if (isset($item['expectedPages']) && $item['expectedPages'] > 0)
+							$last_pages = $item['expectedPages'];
+					}
+					foreach ($expected_dates as $ed) {
+						if (!isset($session_items_map[$ed])) {
+							$last_order++;
+							$session_items_map[$ed] = array(
+								'date' => $ed,
+								'status' => 'planned',
+								'planned_start_page' => 0,
+								'planned_end_page' => 0,
+								'order' => $last_order,
+								'actual_start_page' => null,
+								'actual_end_page' => null,
+								'expectedPages' => $last_pages,
+							);
+						}
 					}
 				}
 				$session_items = array_values($session_items_map);
@@ -1383,6 +1511,8 @@ $is_owner = $requested_user
 					'session_items' => $session_items,
 					'actual_sessions' => $actual_sessions_payload,
 					'today_key' => $today_key,
+					'habit_duration' => isset($habit_duration) ? $habit_duration : 0,
+					'start_date' => isset($curve_start_date) ? $curve_start_date : '',
 					'plan_status' => $plan['status'],
 					'toggle_label' => $next_session_label,
 					'toggle_sublabel' => $next_session_sublabel,
@@ -1511,7 +1641,9 @@ $is_owner = $requested_user
 				data-goal-kind="<?php echo esc_attr($card['goal_kind']); ?>"
 				data-today-key="<?php echo esc_attr($card['today_key']); ?>"
 				data-confirm-text="<?php echo esc_attr__('Accept Proposal', 'politeia-reading'); ?>"
-				data-confirmed-text="<?php echo esc_attr__('Plan saved!', 'politeia-reading'); ?>">
+				data-confirmed-text="<?php echo esc_attr__('Plan saved!', 'politeia-reading'); ?>"
+				data-habit-duration="<?php echo esc_attr((string) ($card['habit_duration'] ?? 0)); ?>"
+				data-start-date="<?php echo esc_attr($card['start_date'] ?? ''); ?>">
 				<div class="prs-plan-header">
 					<div id="plan_book_info">
 						<span class="prs-plan-badge"><?php echo esc_html($card['badge']); ?></span>
@@ -1542,7 +1674,7 @@ $is_owner = $requested_user
 							<span class="prs-plan-subtitle"><?php echo esc_html($card['subtitle']); ?></span>
 						</h2>
 					</div>
-					<div id="politeia_plan_result">
+					<div class="politeia_plan_result">
 						<img src="<?php echo esc_url(plugins_url('politeia-bookshelf/modules/reading/assets/svg/PoliteiaGoldMedal.svg')); ?>"
 							alt="<?php esc_attr_e('Plan Result', 'politeia-reading'); ?>" class="<?php
 							   $status_class = '';
@@ -1590,9 +1722,9 @@ $is_owner = $requested_user
 					</button>
 				<?php endif; ?>
 
-				<div id="prs-calendar-card-container" class="prs-collapsible <?php echo $is_habit ? 'is-open' : ''; ?>"
-					data-role="collapsible" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px;">
-					<div id="prs-calendar-card-left" class="prs-calendar-card">
+				<div class="prs-calendar-card-container prs-collapsible <?php echo $is_habit ? 'is-open' : 'no-chart'; ?>"
+					data-role="collapsible">
+					<div class="prs-calendar-card-left prs-calendar-card">
 
 						<div class="prs-calendar-header">
 							<div>
@@ -1621,34 +1753,36 @@ $is_owner = $requested_user
 								</div>
 								<div class="prs-calendar-meta" data-role="calendar-meta"></div>
 							</div>
-							<div>
-								<div class="prs-toggle-group" role="tablist">
-									<a href="#" class="prs-toggle-button is-active" role="button" data-role="view-cal"
-										aria-label="<?php esc_attr_e('Calendar', 'politeia-reading'); ?>">
-										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
-											viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-											stroke-linejoin="round">
-											<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-											<line x1="16" y1="2" x2="16" y2="6"></line>
-											<line x1="8" y1="2" x2="8" y2="6"></line>
-											<line x1="3" y1="10" x2="21" y2="10"></line>
-										</svg>
-									</a>
-									<a href="#" class="prs-toggle-button" role="button" data-role="view-list"
-										aria-label="<?php esc_attr_e('List', 'politeia-reading'); ?>">
-										<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
-											viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-											stroke-linejoin="round">
-											<line x1="8" y1="6" x2="21" y2="6"></line>
-											<line x1="8" y1="12" x2="21" y2="12"></line>
-											<line x1="8" y1="18" x2="21" y2="18"></line>
-											<line x1="3" y1="6" x2="3.01" y2="6"></line>
-											<line x1="3" y1="12" x2="3.01" y2="12"></line>
-											<line x1="3" y1="18" x2="3.01" y2="18"></line>
-										</svg>
-									</a>
+							<?php if (!$is_habit): ?>
+								<div>
+									<div class="prs-toggle-group" role="tablist">
+										<a href="#" class="prs-toggle-button is-active" role="button" data-role="view-cal"
+											aria-label="<?php esc_attr_e('Calendar', 'politeia-reading'); ?>">
+											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+												viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+												stroke-linejoin="round">
+												<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+												<line x1="16" y1="2" x2="16" y2="6"></line>
+												<line x1="8" y1="2" x2="8" y2="6"></line>
+												<line x1="3" y1="10" x2="21" y2="10"></line>
+											</svg>
+										</a>
+										<a href="#" class="prs-toggle-button" role="button" data-role="view-list"
+											aria-label="<?php esc_attr_e('List', 'politeia-reading'); ?>">
+											<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none"
+												viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+												stroke-linejoin="round">
+												<line x1="8" y1="6" x2="21" y2="6"></line>
+												<line x1="8" y1="12" x2="21" y2="12"></line>
+												<line x1="8" y1="18" x2="21" y2="18"></line>
+												<line x1="3" y1="6" x2="3.01" y2="6"></line>
+												<line x1="3" y1="12" x2="3.01" y2="12"></line>
+												<line x1="3" y1="18" x2="3.01" y2="18"></line>
+											</svg>
+										</a>
+									</div>
 								</div>
-							</div>
+							<?php endif; ?>
 						</div>
 
 						<div class="prs-view" data-role="calendar-view">
@@ -1664,12 +1798,19 @@ $is_owner = $requested_user
 							<div class="prs-calendar-grid" data-role="calendar-grid"></div>
 						</div>
 
-						<div class="prs-view is-hidden" data-role="list-view">
-							<div data-role="list"></div>
-						</div>
+						<?php if (!$is_habit): ?>
+							<div class="prs-view is-hidden" data-role="list-view">
+								<div data-role="list"></div>
+							</div>
+						<?php endif; ?>
 
 					</div>
-					<div id="prs-calendar-card-right"></div>
+					<?php if ($is_habit): ?>
+						<div id="plan-line-chart-right-<?php echo esc_attr($card['plan_id']); ?>" data-role="plan-line-chart"
+							data-plan-id="<?php echo esc_attr($card['plan_id']); ?>"
+							data-sessions="<?php echo esc_attr(json_encode($card['session_items'] ?? [])); ?>"
+							style="flex: 1; min-width: 0;"></div>
+					<?php endif; ?>
 				</div>
 
 				<div class="prs-progress">
@@ -2030,19 +2171,32 @@ $is_owner = $requested_user
 				const monthSessions = getMonthSessions(currentMonthKey);
 				const sessionCount = monthSessions.length;
 
-				let pagesPerSession = 0;
-				if (isCompleteBooks) {
+				let pagesInfo = '';
+
+				if (['habit', 'form_habit'].includes(goalKind)) {
+					let totalMonthPages = 0;
+					monthSessions.forEach(date => {
+						const item = sessionItems.find(i => i.date === date);
+						if (item && item.expectedPages) {
+							totalMonthPages += parseInt(item.expectedPages) || 0;
+						}
+					});
+					pagesInfo = `${totalMonthPages} ${strings.pagesLabel}`;
+				} else if (isCompleteBooks) {
 					const remainingPages = Math.max(0, totalPages - pagesRead);
 					const remainingSessionsCount = sessionDates.filter(d => {
 						const s = getStatusByDate(d);
 						return s === 'planned' && d >= (todayKey || '');
 					}).length;
-					pagesPerSession = remainingSessionsCount > 0 ? Math.ceil(remainingPages / remainingSessionsCount) : 0;
+					const pagesPerSession = remainingSessionsCount > 0 ? Math.ceil(remainingPages / remainingSessionsCount) : 0;
+					pagesInfo = `${pagesPerSession} ${strings.pagesLabel}`;
 				} else {
+					let pagesPerSession = 0;
 					if (sessionCount > 0 && totalPages > 0) pagesPerSession = Math.ceil(totalPages / sessionCount);
+					pagesInfo = `${pagesPerSession} ${strings.pagesLabel}`;
 				}
 
-				metaLabel.textContent = `${sessionCount} ${strings.sessionsLabel} | ${pagesPerSession} ${strings.pagesLabel}`;
+				metaLabel.textContent = `${sessionCount} ${strings.sessionsLabel} | ${pagesInfo}`;
 			};
 
 			const updateTitle = () => {
@@ -2050,12 +2204,45 @@ $is_owner = $requested_user
 				titleLabel.textContent = formatMonthYear(parseMonthKey(currentMonthKey));
 			};
 
+			const getHabitMonthBounds = () => {
+				if (!['habit', 'form_habit'].includes(goalKind)) return null;
+				const duration = parseInt(card.dataset.habitDuration, 10);
+				const startDateStr = card.dataset.startDate;
+				if (!(duration > 0) || !startDateStr) return null;
+
+				const parts = startDateStr.split('-');
+				if (parts.length < 3) return null;
+				const sYear = parseInt(parts[0], 10);
+				const sMonth = parseInt(parts[1], 10) - 1;
+				const sDay = parseInt(parts[2], 10);
+				if (Number.isNaN(sYear) || Number.isNaN(sMonth) || Number.isNaN(sDay)) return null;
+
+				// Use timezone-agnostic parsing to avoid off-by-one issues on month boundaries.
+				const startDate = new Date(sYear, sMonth, sDay);
+				const endDate = new Date(sYear, sMonth, sDay + duration);
+
+				return {
+					minKey: monthKey(startDate),
+					maxKey: monthKey(endDate),
+				};
+			};
+
+			const getActiveMonthBounds = () => {
+				const habitBounds = getHabitMonthBounds();
+				if (habitBounds) return habitBounds;
+				if (!minMonthKey || !maxMonthKey) return null;
+				return { minKey: minMonthKey, maxKey: maxMonthKey };
+			};
+
 			const updateNavState = () => {
+				const bounds = getActiveMonthBounds();
+				if (!bounds) return;
+
 				if (btnPrevMonth) {
-					btnPrevMonth.classList.toggle('is-disabled', compareMonthKey(currentMonthKey, minMonthKey) <= 0);
+					btnPrevMonth.classList.toggle('is-disabled', compareMonthKey(currentMonthKey, bounds.minKey) <= 0);
 				}
 				if (btnNextMonth) {
-					btnNextMonth.classList.toggle('is-disabled', compareMonthKey(currentMonthKey, maxMonthKey) >= 0);
+					btnNextMonth.classList.toggle('is-disabled', compareMonthKey(currentMonthKey, bounds.maxKey) >= 0);
 				}
 			};
 
@@ -2114,10 +2301,18 @@ $is_owner = $requested_user
 
 						const mark = document.createElement('div');
 						mark.className = `prs-day-selected${isMissed ? ' is-missed' : ''}${isAccomplished ? ' is-accomplished' : ''}`;
+						let displayText = String(order);
+						if (['habit', 'form_habit'].includes(goalKind)) {
+							const item = sessionItems.find(i => i.date === targetDate);
+							if (item && item.expectedPages) {
+								displayText = String(item.expectedPages);
+							}
+						}
+
 						if (true) { // Always use this logic for uniformity
-							mark.textContent = isMissed ? '' : String(order);
+							mark.textContent = isMissed ? '' : displayText;
 						} else {
-							mark.textContent = String(order);
+							mark.textContent = displayText;
 						}
 						mark.dataset.day = String(day);
 						let hideTimer = null;
@@ -2426,10 +2621,18 @@ $is_owner = $requested_user
 
 			const setView = (view) => {
 				currentView = view;
-				btnViewCal.classList.toggle('is-active', view === 'calendar');
-				btnViewList.classList.toggle('is-active', view === 'list');
-				viewCal.classList.toggle('is-hidden', view !== 'calendar');
-				viewList.classList.toggle('is-hidden', view !== 'list');
+				if (btnViewCal) {
+					btnViewCal.classList.toggle('is-active', view === 'calendar');
+				}
+				if (btnViewList) {
+					btnViewList.classList.toggle('is-active', view === 'list');
+				}
+				if (viewCal) {
+					viewCal.classList.toggle('is-hidden', view !== 'calendar');
+				}
+				if (viewList) {
+					viewList.classList.toggle('is-hidden', view !== 'list');
+				}
 				if (view === 'calendar') {
 					renderCalendar();
 				} else {
@@ -2593,7 +2796,8 @@ $is_owner = $requested_user
 			if (btnPrevMonth) {
 				btnPrevMonth.addEventListener('click', (event) => {
 					event.preventDefault();
-					if (compareMonthKey(currentMonthKey, minMonthKey) <= 0) return;
+					const bounds = getActiveMonthBounds();
+					if (bounds && compareMonthKey(currentMonthKey, bounds.minKey) <= 0) return;
 					const date = parseMonthKey(currentMonthKey);
 					date.setMonth(date.getMonth() - 1);
 					currentMonthKey = monthKey(date);
@@ -2604,7 +2808,8 @@ $is_owner = $requested_user
 			if (btnNextMonth) {
 				btnNextMonth.addEventListener('click', (event) => {
 					event.preventDefault();
-					if (compareMonthKey(currentMonthKey, maxMonthKey) >= 0) return;
+					const bounds = getActiveMonthBounds();
+					if (bounds && compareMonthKey(currentMonthKey, bounds.maxKey) >= 0) return;
 					const date = parseMonthKey(currentMonthKey);
 					date.setMonth(date.getMonth() + 1);
 					currentMonthKey = monthKey(date);
