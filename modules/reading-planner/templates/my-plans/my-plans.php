@@ -899,9 +899,9 @@ $is_owner = $requested_user
 	}
 
 	.prs-v2-title {
-		font-size: 32px;
-		font-weight: 800;
-		color: #0f172a;
+		font-size: 28px;
+		font-weight: 700;
+		color: #000000;
 		margin-bottom: 8px;
 		line-height: 1.2;
 	}
@@ -1058,7 +1058,7 @@ $is_owner = $requested_user
 					\Politeia\ReadingPlanner\HabitSettlementEngine::settle($plan_id, $user_id);
 				}
 
-				$cache_key = 'prs_plan_card_v6_' . $plan_id . '_' . $today_key;
+				$cache_key = 'prs_plan_card_v8_' . $plan_id . '_' . $today_key;
 				$cached_card = get_transient($cache_key);
 				if (false !== $cached_card) {
 					// Refresh transient "today" value so it doesn't get stuck in the past
@@ -1248,38 +1248,94 @@ $is_owner = $requested_user
 
 				$actual_sessions_payload = array();
 				$actual_session_dates = array();
-				if ($goal_book_id) {
+				$actual_sessions_payload = array();
+				$actual_session_dates = array();
+				$is_habit_mode = in_array($goal_kind, array('habit', 'form_habit'), true);
+
+				if ($goal_book_id || $is_habit_mode) {
+					// Query: If habit, get ALL user sessions. If book plan, filter by book.
+					// Fix: Filter by DATE to exclude old sessions (e.g. 2025). Use plan creation date or start date.
+					$filter_date = !empty($plan['created_at']) ? $plan['created_at'] : date('Y-m-d H:i:s', strtotime('-1 week'));
+
+					$query = "SELECT start_time, start_page, end_page 
+							  FROM {$reading_sessions_table} 
+							  WHERE user_id = %d 
+							  AND start_time >= %s 
+							  AND deleted_at IS NULL";
+					$args = array($user_id, $filter_date);
+
+					if (!$is_habit_mode && $goal_book_id) {
+						$query .= " AND book_id = %d";
+						$args[] = $goal_book_id;
+					}
+
 					$actual_sessions = $wpdb->get_results(
-						$wpdb->prepare(
-							"SELECT start_time, start_page, end_page
-						FROM {$reading_sessions_table}
-						WHERE user_id = %d AND book_id = %d AND deleted_at IS NULL",
-							$user_id,
-							$goal_book_id
-						),
+						$wpdb->prepare($query, ...$args),
 						ARRAY_A
 					);
+
 					if ($actual_sessions) {
+						// For Habit: Group by date and Sum pages
+						$daily_sums = array();
+
 						foreach ($actual_sessions as $actual_session) {
-							if (empty($actual_session['start_time'])) {
+							if (empty($actual_session['start_time']))
 								continue;
-							}
+
 							$start_page = isset($actual_session['start_page']) ? (int) $actual_session['start_page'] : 0;
 							$end_page = isset($actual_session['end_page']) ? (int) $actual_session['end_page'] : 0;
-							if ($start_page <= 0 || $end_page <= 0 || $end_page < $start_page) {
-								continue;
+							$pages_amount = max(0, $end_page - $start_page);
+
+							if ($pages_amount <= 0 && !$is_habit_mode) {
+								if ($start_page <= 0 || $end_page <= 0 || $end_page < $start_page)
+									continue;
 							}
+
 							$date_key = get_date_from_gmt($actual_session['start_time'], 'Y-m-d');
-							if ('' === $date_key) {
+							if ('' === $date_key)
 								continue;
+
+							if ($is_habit_mode) {
+								if (!isset($daily_sums[$date_key]))
+									$daily_sums[$date_key] = 0;
+								$daily_sums[$date_key] += $pages_amount;
+							} else {
+								// Legacy Book Mode: Keep individual sessions? 
+								// Or just take the max end_page for the day?
+								// Original code just listed them. We'll stick to listing for legacy stability.
+								$actual_session_dates[] = $date_key;
+								$actual_sessions_payload[] = array(
+									'date' => $date_key,
+									'start' => $start_page,
+									'end' => $end_page,
+									'start_time' => (string) $actual_session['start_time'],
+								);
 							}
-							$actual_session_dates[] = $date_key;
-							$actual_sessions_payload[] = array(
-								'date' => $date_key,
-								'start' => $start_page,
-								'end' => $end_page,
-								'start_time' => (string) $actual_session['start_time'],
-							);
+						}
+
+						// Post-process Habit Sums to payloads + Cumulative Calculation
+						if ($is_habit_mode && !empty($daily_sums)) {
+							ksort($daily_sums);
+							$running_total = 0;
+							// finding the start offset for the challenge? 
+							// The chart starts at 0 or $habit_start_pages? 
+							// Usually chart is absolute pages. 
+							// Users 'start' the challenge at 0 progress relative to the challenge.
+	
+							foreach ($daily_sums as $d_key => $p_sum) {
+								$running_total += $p_sum;
+								$actual_session_dates[] = $d_key;
+								// We map this to a "Session" that the chart can understand.
+								// The chart uses 'actual_end_page' as the value.
+								// So we pass the Cumulative Total as the end page.
+								$actual_sessions_payload[] = array(
+									'date' => $d_key,
+									'start' => 0,
+									'end' => $running_total, // Cumulative position
+									'daily_pages' => $p_sum,
+									'is_aggregate' => true
+								);
+							}
 						}
 					}
 				}
@@ -1492,12 +1548,34 @@ $is_owner = $requested_user
 								'status' => 'planned',
 								'planned_start_page' => 0,
 								'planned_end_page' => 0,
-								'order' => $last_order,
-								'actual_start_page' => null,
-								'actual_end_page' => null,
 								'expectedPages' => $last_pages, // Projection
 							);
 						}
+					}
+
+					// 5. Merge Actual Aggregated Sessions into Map (Habit Fix)
+					if ($is_habit_mode && !empty($actual_sessions_payload)) {
+						foreach ($actual_sessions_payload as $agg) {
+							$d = $agg['date'];
+							if (!isset($session_items_map[$d])) {
+								$session_items_map[$d] = array(
+									'date' => $d,
+									'status' => 'accomplished',
+									'planned_start_page' => 0,
+									'planned_end_page' => 0,
+									'order' => 0,
+									'actual_start_page' => 0,
+									'actual_end_page' => 0,
+									'expectedPages' => 0,
+								);
+							}
+							$session_items_map[$d]['actual_start_page'] = $agg['start'];
+							$session_items_map[$d]['actual_end_page'] = $agg['end'];
+							$session_items_map[$d]['status'] = 'accomplished';
+						}
+
+						// Sort by date key to ensure chronological order
+						ksort($session_items_map);
 					}
 				}
 
@@ -1999,9 +2077,9 @@ $is_owner = $requested_user
 			<div class="prs-plan-card-v2" style="margin-top: 24px;">
 				<div class="prs-plan-header" style="display: block; width: 100%;">
 					<header class="prs-v2-header">
-						<h1 class="prs-v2-title">
+						<h2 class="prs-v2-title">
 							<?php echo esc_html($card['title']); ?>
-						</h1>
+						</h2>
 						<h2 class="prs-v2-subtitle">
 							<?php
 							printf(esc_html__('%d Páginas', 'politeia-reading'), $card['total_pages']);

@@ -329,9 +329,8 @@
 
         // Determine Y Axis bounds
         // User request: minimum number on Y axis should be the starting page minus 20%
-        let maxYData = Math.max(...data.map(d => d.pages));
-        if (maxYData < endPages) maxYData = endPages;
-        const maxY = Math.ceil(maxYData * 1.2);
+        // Max Y should be final page number + 10%
+        const maxY = Math.ceil(endPages * 1.1);
 
         // Ensure non-negative
         const minY = Math.max(0, Math.floor(startPages * 0.8));
@@ -404,15 +403,13 @@
                 const y = chartBounds.top + chartHeight - barHeight;
 
                 if (d.isActual) {
-                    // Golden Gradient from website
-                    // linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A)
                     const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
                     gradient.addColorStop(0, '#E9D18A');
                     gradient.addColorStop(0.5, '#C79F32');
                     gradient.addColorStop(1, '#8A6B1E');
                     ctx.fillStyle = gradient;
                 } else {
-                    ctx.fillStyle = '#e2e8f0';
+                    ctx.fillStyle = '#e0e0e0';
                 }
 
                 // Rounded top rect
@@ -427,8 +424,6 @@
                     ctx.lineTo(x, y + radius);
                     ctx.quadraticCurveTo(x, y, x + radius, y);
                     ctx.fill();
-                } else {
-                    // Draw a thin line for 0? No, just leave empty.
                 }
 
                 // Draw X-axis label for every 5th day roughly or start/end
