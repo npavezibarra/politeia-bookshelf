@@ -216,6 +216,7 @@
 
     // Initialize all chart containers on the page
     document.addEventListener('DOMContentLoaded', () => {
+        // Initialize existing charts
         const containers = document.querySelectorAll('[data-role="plan-line-chart"]');
         containers.forEach(container => {
             try {
@@ -226,5 +227,288 @@
                 console.error('Error parsing session data for chart', e);
             }
         });
+
+        // Initialize Version 2 Charts
+        initVer2Charts();
     });
+
+    function initVer2Charts() {
+        const canvases = document.querySelectorAll('[data-role="habit-chart-ver-2"]');
+        canvases.forEach(canvas => {
+            try {
+                const planId = canvas.dataset.planId;
+                const sessionsStr = canvas.dataset.sessions;
+                const sessions = JSON.parse(sessionsStr || '[]');
+                const startPages = parseInt(canvas.dataset.startPages || 15, 10);
+                const endPages = parseInt(canvas.dataset.endPages || 28, 10);
+                const duration = parseInt(canvas.dataset.duration || 48, 10);
+
+                renderHabitChartVer2(canvas, sessions, startPages, endPages, duration);
+            } catch (e) {
+                console.error('Error initializing ver 2 chart', e);
+            }
+        });
+    }
+
+    function renderHabitChartVer2(canvas, sessions, startPages, endPages, duration) {
+        const ctx = canvas.getContext('2d');
+        const tooltip = document.getElementById(`tooltip-ver-2-${canvas.dataset.planId}`);
+        const totalDays = duration > 0 ? duration : 48;
+
+        // Process Data
+        // We need an array of length totalDays
+        // If sessions has data, map it.
+
+        // Find today to determine "isActual"
+        // In the PHP code, isActual was logic-based. Here we use the session status or date.
+        // We can check if session has actual pages or status is accomplished/missed/partial
+
+        // Helper to parse date string YYYY-MM-DD
+        const todayFn = new Date();
+        const todayStr = todayFn.toISOString().split('T')[0];
+
+        // Prepare data array
+        // Expected curve can be linear interpolation if not provided, but session items usually have expectedPages.
+
+        // Sort sessions by date
+        sessions.sort((a, b) => (a.date < b.date ? -1 : 1));
+
+        const data = Array.from({ length: totalDays }, (_, i) => {
+            const day = i + 1;
+            let item = sessions[i]; // Assuming sessions are strictly ordered day 1 to N.
+            // If sessions array is sparse or mapped differently, we might need to find by order or date.
+            // sessions usually contains all days due to the PHP derivation logic.
+
+            // Fallback expected pages logic if item missing
+            let expected = Math.round(startPages + i * ((endPages - startPages) / (totalDays - 1)));
+
+            let actual = 0;
+            let isActual = false;
+            let dateLabel = `Day ${day}`;
+
+            if (item) {
+                expected = parseInt(item.expectedPages || expected, 10);
+
+                // Determine Actual Pages
+                if (item.actual_end_page !== null && item.actual_start_page !== null) {
+                    actual = Math.max(0, parseInt(item.actual_end_page) - parseInt(item.actual_start_page));
+                }
+
+                // Determine isActual (Is this a past/completed day?)
+                // Use date comparison
+                if (item.date && item.date <= todayStr) {
+                    isActual = true;
+                }
+                if (item.status === 'accomplished' || item.status === 'partial' || item.status === 'missed') {
+                    isActual = true;
+                }
+
+                if (item.date) dateLabel = item.date;
+            }
+
+            // If isActual, we show actual pages. If not, expected.
+            // Wait, if isActual is true but no reading happened (missed), actual is 0. 
+            // The chart will show 0 height bar. This is correct for "Actual".
+
+            return {
+                day,
+                pages: isActual ? actual : expected,
+                expectedPages: expected,
+                actualPages: actual,
+                isActual,
+                dateLabel
+            };
+        });
+
+        // Determine Y Axis bounds
+        // Min Y should be roughly 80% of start pages, but if actual pages drop to 0, 0 should be visible?
+        // User code: minY = Math.floor(startPages * 0.8).
+        // If we strictly follow user code, minY might be higher than 0.
+        // If actual is 0 (missed day), bars will go below axis if minY > 0.
+        // We should fix this: minY should probably be 0 if we have 0 values, or we clamp bars.
+        // But user said "based on this code".
+        // In user code, `d.pages` was always > 0 ( interpolated 15 to 28).
+        // If we have actual=0, we must accommodate 0.
+        // Improved logic: minY = 0.
+
+        let maxYData = Math.max(...data.map(d => d.pages));
+        if (maxYData < endPages) maxYData = endPages;
+        const maxY = Math.ceil(maxYData * 1.2);
+        const minY = 0; // Safer to start at 0 given we might have 0 actual pages
+
+        let chartBounds = { left: 40, right: 10, top: 20, bottom: 40 };
+
+        function draw() {
+            if (!canvas.parentNode) return;
+
+            // High DPI handling
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.parentNode.getBoundingClientRect();
+
+            // Avoid 0 dimensions
+            if (rect.width === 0 || rect.height === 0) return;
+
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+
+            // We need to reset transform matrix before scaling?
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+
+            const width = rect.width;
+            const height = rect.height;
+            const chartWidth = width - chartBounds.left - chartBounds.right;
+            const chartHeight = height - chartBounds.top - chartBounds.bottom;
+
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Y Grid lines
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([5, 5]);
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = '12px Inter, sans-serif';
+            ctx.textAlign = 'right';
+
+            const yLines = 5;
+            for (let i = 0; i <= yLines; i++) {
+                const val = minY + (i * (maxY - minY) / yLines);
+                const y = chartBounds.top + chartHeight - (i * chartHeight / yLines);
+
+                ctx.beginPath();
+                ctx.moveTo(chartBounds.left, y);
+                ctx.lineTo(chartBounds.left + chartWidth, y);
+                ctx.stroke();
+
+                ctx.fillText(Math.round(val), chartBounds.left - 10, y + 4);
+            }
+            ctx.setLineDash([]);
+
+            // Draw Bars
+            const barWidth = (chartWidth / totalDays) * 0.8;
+            const barGap = (chartWidth / totalDays) * 0.2;
+
+            data.forEach((d, i) => {
+                const x = chartBounds.left + i * (barWidth + barGap) + barGap / 2;
+
+                // Clamp height to chart area
+                let barHeight = ((d.pages - minY) / (maxY - minY)) * chartHeight;
+                if (barHeight < 0) barHeight = 0;
+
+                const y = chartBounds.top + chartHeight - barHeight;
+
+                if (d.isActual) {
+                    // Golden Gradient from website
+                    // linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A)
+                    const gradient = ctx.createLinearGradient(x, y, x, y + barHeight);
+                    gradient.addColorStop(0, '#E9D18A');
+                    gradient.addColorStop(0.5, '#C79F32');
+                    gradient.addColorStop(1, '#8A6B1E');
+                    ctx.fillStyle = gradient;
+                } else {
+                    ctx.fillStyle = '#e2e8f0';
+                }
+
+                // Rounded top rect
+                const radius = Math.min(4, barWidth / 2);
+                if (barHeight > 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(x + radius, y);
+                    ctx.lineTo(x + barWidth - radius, y);
+                    ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + radius);
+                    ctx.lineTo(x + barWidth, y + barHeight);
+                    ctx.lineTo(x, y + barHeight);
+                    ctx.lineTo(x, y + radius);
+                    ctx.quadraticCurveTo(x, y, x + radius, y);
+                    ctx.fill();
+                } else {
+                    // Draw a thin line for 0? No, just leave empty.
+                }
+
+                // Draw X-axis label for every 5th day roughly or start/end
+                // User code: 1, 10, 20, 30, 40, 48
+                if (d.day === 1 || d.day === 10 || d.day === 20 || d.day === 30 || d.day === 40 || d.day === totalDays) {
+                    ctx.fillStyle = '#64748b';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(d.day, x + barWidth / 2, chartBounds.top + chartHeight + 20);
+                }
+            });
+
+            // Axis Labels
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 12px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(t('day_label', 'Días'), chartBounds.left + chartWidth / 2, height - 5);
+
+            ctx.save();
+            ctx.translate(15, chartBounds.top + chartHeight / 2);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(t('pages_label', 'Páginas'), 0, 0);
+            ctx.restore();
+        }
+
+        // Interaction
+        const onMouseMove = (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            const chartWidth = rect.width - chartBounds.left - chartBounds.right;
+            // index based on X position considering bar widths
+            // Simpler calculation mapping x to day index
+            // x_in_chart = x - chartBounds.left
+            // chartWidth represents totalDays items
+            // index = floor(x_in_chart / (chartWidth / totalDays))
+
+            const xInChart = x - chartBounds.left;
+            const index = Math.floor((xInChart / chartWidth) * totalDays);
+
+            if (index >= 0 && index < totalDays) {
+                const d = data[index];
+                if (d && tooltip) {
+                    tooltip.style.display = 'block';
+                    // Position tooltip relative to container (which is parent of canvas)
+                    // e.clientX is global. tooltip is absolute in container.
+                    // Actually simpler to set left/top based on mouse relative to canvas
+                    tooltip.style.left = `${x + 10}px`;
+                    tooltip.style.top = `${y - 40}px`;
+
+                    tooltip.innerHTML = `
+                        <div class="text-xs font-bold text-slate-800" style="font-size: 12px; font-weight: 700; color: #1e293b;">Day ${d.day}</div>
+                        <div class="text-sm text-indigo-600 font-semibold" style="font-size: 14px; font-weight: 600; color: #4f46e5;">${d.pages} pages</div>
+                        <div class="text-[10px] text-slate-400 uppercase" style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">${d.isActual ? 'Actual' : 'Meta'}</div>
+                    `;
+                }
+            } else {
+                if (tooltip) tooltip.style.display = 'none';
+            }
+        };
+
+        const onMouseLeave = () => {
+            if (tooltip) tooltip.style.display = 'none';
+        };
+
+        canvas.removeEventListener('mousemove', canvas._ver2mousemove); // cleanup if re-init
+        canvas.removeEventListener('mouseleave', canvas._ver2mouseleave);
+
+        canvas.addEventListener('mousemove', onMouseMove);
+        canvas.addEventListener('mouseleave', onMouseLeave);
+
+        // Store refs for cleanup
+        canvas._ver2mousemove = onMouseMove;
+        canvas._ver2mouseleave = onMouseLeave;
+
+        draw();
+
+        // Handle Resize
+        // We can use ResizeObserver if available
+        if (typeof ResizeObserver !== 'undefined') {
+            const ro = new ResizeObserver(() => {
+                window.requestAnimationFrame(draw);
+            });
+            ro.observe(canvas.parentNode);
+        } else {
+            window.addEventListener('resize', draw);
+        }
+    }
 })();

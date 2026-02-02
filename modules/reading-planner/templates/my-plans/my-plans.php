@@ -891,6 +891,131 @@ $is_owner = $requested_user
 		color: #C79F32;
 		/* Fallback */
 	}
+
+	/* V2 Habit Card Styles */
+	.prs-v2-header {
+		text-align: center;
+		margin-bottom: 32px;
+	}
+
+	.prs-v2-title {
+		font-size: 32px;
+		font-weight: 800;
+		color: #0f172a;
+		margin-bottom: 8px;
+		line-height: 1.2;
+	}
+
+	.prs-v2-subtitle {
+		font-size: 20px;
+		font-weight: 500;
+		color: #d97706;
+		text-transform: uppercase;
+		letter-spacing: 0.1em;
+		margin: 0;
+	}
+
+	.prs-v2-legend {
+		display: flex;
+		justify-content: center;
+		flex-wrap: wrap;
+		gap: 16px;
+		margin-top: 16px;
+		font-size: 14px;
+		font-weight: 500;
+	}
+
+	.prs-v2-legend-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.prs-v2-dot {
+		width: 16px;
+		height: 16px;
+		border-radius: 4px;
+	}
+
+	.prs-v2-dot-gold {
+		background: linear-gradient(to bottom, #fcd34d, #d97706);
+	}
+
+	.prs-v2-dot-gray {
+		background: #e2e8f0;
+	}
+
+	.prs-v2-container {
+		position: relative;
+		width: 100%;
+		height: 400px;
+	}
+
+	.prs-v2-footer {
+		margin-top: 32px;
+		display: grid;
+		grid-template-columns: repeat(1, minmax(0, 1fr));
+		gap: 16px;
+		border-top: 1px solid #f1f5f9;
+		padding-top: 32px;
+		text-align: center;
+	}
+
+	@media (min-width: 768px) {
+		.prs-v2-footer {
+			grid-template-columns: repeat(3, minmax(0, 1fr));
+		}
+	}
+
+	.prs-v2-stat-card {
+		padding: 16px;
+		border-radius: 12px;
+	}
+
+	.prs-v2-stat-bg-gray {
+		background-color: #f8fafc;
+	}
+
+	.prs-v2-stat-bg-amber {
+		background-color: #fffbeb;
+		border: 1px solid #fef3c7;
+	}
+
+	.prs-v2-stat-label {
+		font-size: 10px;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		margin-bottom: 4px;
+	}
+
+	.prs-v2-text-gray {
+		color: #64748b;
+	}
+
+	.prs-v2-text-amber {
+		color: #d97706;
+	}
+
+	.prs-v2-stat-value {
+		font-size: 24px;
+		font-weight: 700;
+	}
+
+	.prs-v2-val-dark {
+		color: #1e293b;
+	}
+
+	.prs-v2-val-amber {
+		color: #b45309;
+	}
+
+	.prs-plan-card-v2 {
+		background: #ffffff;
+		border: 1px solid #f1f1f1;
+		border-radius: var(--prs-radius);
+		box-shadow: 0 24px 40px rgba(0, 0, 0, 0.12);
+		/* removed overflow: hidden to allow tooltips or expansion */
+	}
 </style>
 
 <div class="wrap prs-plans-wrap">
@@ -1512,6 +1637,8 @@ $is_owner = $requested_user
 					'actual_sessions' => $actual_sessions_payload,
 					'today_key' => $today_key,
 					'habit_duration' => isset($habit_duration) ? $habit_duration : 0,
+					'habit_start_pages' => isset($baseline_metrics['habit_start_pages']) ? (int) $baseline_metrics['habit_start_pages'] : 0,
+					'habit_end_pages' => isset($baseline_metrics['habit_end_pages']) ? (int) $baseline_metrics['habit_end_pages'] : 0,
 					'start_date' => isset($curve_start_date) ? $curve_start_date : '',
 					'plan_status' => $plan['status'],
 					'toggle_label' => $next_session_label,
@@ -1845,6 +1972,93 @@ $is_owner = $requested_user
 		?>
 
 		<?php
+		$render_plan_card_v2 = function ($card) {
+			$is_habit = in_array($card['goal_kind'], array('habit', 'form_habit'), true);
+			if (!$is_habit)
+				return;
+			?>
+			<div class="prs-plan-card-v2" style="margin-top: 24px;">
+				<div class="prs-plan-header" style="display: block; width: 100%;">
+					<header class="prs-v2-header">
+						<h1 class="prs-v2-title">
+							<?php echo esc_html($card['title']); ?>
+						</h1>
+						<h2 class="prs-v2-subtitle">
+							<?php esc_html_e('Desafío de Hábito 48 Días', 'politeia-reading'); ?>
+						</h2>
+						<div class="prs-v2-legend">
+							<div class="prs-v2-legend-item">
+								<div class="prs-v2-dot prs-v2-dot-gold"></div>
+								<span
+									class="prs-v2-text-gray"><?php esc_html_e('Días Completados', 'politeia-reading'); ?></span>
+							</div>
+							<div class="prs-v2-legend-item">
+								<div class="prs-v2-dot prs-v2-dot-gray"></div>
+								<span
+									class="prs-v2-text-gray"><?php esc_html_e('Meta Planificada', 'politeia-reading'); ?></span>
+							</div>
+						</div>
+					</header>
+
+					<div class="prs-v2-container">
+						<canvas id="habitChart-ver-2-<?php echo esc_attr($card['plan_id']); ?>" data-role="habit-chart-ver-2"
+							data-plan-id="<?php echo esc_attr($card['plan_id']); ?>"
+							data-start-pages="<?php echo esc_attr($card['habit_start_pages'] ?? 15); ?>"
+							data-end-pages="<?php echo esc_attr($card['habit_end_pages'] ?? 28); ?>"
+							data-duration="<?php echo esc_attr($card['habit_duration'] ?? 48); ?>"
+							data-sessions="<?php echo esc_attr(json_encode($card['session_items'] ?? [])); ?>"
+							style="width: 100% !important; height: 100% !important; display: block;"></canvas>
+						<div id="tooltip-ver-2-<?php echo esc_attr($card['plan_id']); ?>" class="custom-tooltip"
+							style="position: absolute; pointer-events: none; background: white; border: 1px solid #e2e8f0; padding: 8px 12px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); display: none; z-index: 50;">
+						</div>
+					</div>
+
+					<footer class="prs-v2-footer">
+						<div class="prs-v2-stat-card prs-v2-stat-bg-gray">
+							<p class="prs-v2-stat-label prs-v2-text-gray">
+								<?php esc_html_e('Punto de Partida', 'politeia-reading'); ?>
+							</p>
+							<p class="prs-v2-stat-value prs-v2-val-dark">
+								<?php echo esc_html($card['habit_start_pages'] ?? 15); ?>
+								<?php esc_html_e('Páginas', 'politeia-reading'); ?>
+							</p>
+						</div>
+						<div class="prs-v2-stat-card prs-v2-stat-bg-amber">
+							<p class="prs-v2-stat-label prs-v2-text-amber">
+								<?php esc_html_e('Día Actual', 'politeia-reading'); ?>
+							</p>
+							<p class="prs-v2-stat-value prs-v2-val-amber">
+								<?php
+								// Calculate current day relative to start.
+								$day_label = __('Día 1', 'politeia-reading');
+								if (!empty($card['start_date'])) {
+									$start = new DateTime($card['start_date']);
+									$now = new DateTime('now');
+									$diff = $now->diff($start)->days + 1;
+									if ($diff > ($card['habit_duration'] ?? 48))
+										$diff = ($card['habit_duration'] ?? 48);
+									$day_label = sprintf(__('Día %d', 'politeia-reading'), $diff);
+								}
+								echo esc_html($day_label);
+								?>
+							</p>
+						</div>
+						<div class="prs-v2-stat-card prs-v2-stat-bg-gray">
+							<p class="prs-v2-stat-label prs-v2-text-gray"><?php esc_html_e('Meta Final', 'politeia-reading'); ?>
+							</p>
+							<p class="prs-v2-stat-value prs-v2-val-dark">
+								<?php echo esc_html($card['habit_end_pages'] ?? 28); ?>
+								<?php esc_html_e('Páginas', 'politeia-reading'); ?>
+							</p>
+						</div>
+					</footer>
+				</div>
+			</div>
+			<?php
+		};
+		?>
+
+		<?php
 		$render_upcoming_widget = function () use ($upcoming_sessions, $timezone, $today_key, $book_map, $book_titles, $book_slugs, $baseline_metrics) {
 			?>
 			<div class="prs-upcoming-wrap">
@@ -1949,6 +2163,7 @@ $is_owner = $requested_user
 				<div id="politeia-habit-plan-loop" class="prs-plan-grid" style="margin-bottom: 24px;">
 					<?php foreach ($habit_cards as $card): ?>
 						<?php $render_plan_card($card); ?>
+						<?php $render_plan_card_v2($card); ?>
 					<?php endforeach; ?>
 					<?php if (1 === $cards_count)
 						$render_upcoming_widget(); ?>

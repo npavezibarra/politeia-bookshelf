@@ -255,3 +255,7 @@ December 31st
 5. Develop mechanism to add books we've been borrowed from either a person or a Public Library.
 6. Develop page for My Reading Stats: a dashboard of reading stats across all books (not just a single book).
 7. Develop a public page (Twitter-like feed) for user notes, comments, reading stats, ranking, and recommendations.
+
+February 2, 2026, 14:00 UTC
+1. Implemented Habit Plan View Version 2 as a standalone card widget, featuring a custom canvas-based progress chart with gold/grey bars and dedicated styling.
+2. Resolved HTML structure issues and CSS conflicts that caused layout glitches between the original and new cards, ensuring correct rendering of both views.
