@@ -259,3 +259,4 @@ December 31st
 February 2, 2026, 14:00 UTC
 1. Implemented Habit Plan View Version 2 as a standalone card widget, featuring a custom canvas-based progress chart with gold/grey bars and dedicated styling.
 2. Resolved HTML structure issues and CSS conflicts that caused layout glitches between the original and new cards, ensuring correct rendering of both views.
+2026-02-02 20:27:47 - Fixed 'Finish Book' plan logic: corrected dynamic daily target calculation, fixed DB query to use user_book_id, properly calculated relative progress percentage, and resolved calendar ghost sessions by fixing variable leakage.

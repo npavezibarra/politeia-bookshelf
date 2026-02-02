@@ -1079,7 +1079,7 @@ $is_owner = $requested_user
 					\Politeia\ReadingPlanner\HabitSettlementEngine::settle($plan_id, $user_id);
 				}
 
-				$cache_key = 'prs_plan_card_v10_' . $plan_id . '_' . $today_key;
+				$cache_key = 'prs_plan_card_v14_' . $plan_id . '_' . $today_key;
 				$cached_card = get_transient($cache_key);
 				if (false !== $cached_card) {
 					// Refresh transient "today" value so it doesn't get stuck in the past
@@ -1090,8 +1090,10 @@ $is_owner = $requested_user
 				// --- GOALS TABLE REFACTOR: Derive Identity from Plan Type ---
 				$goal_kind = '';
 				$goal_book_id = 0;
+				$goal_user_book_id = 0;
 				$goal_target = 0;
 				$goal_starting_page = 1;
+				$expected_dates = null;
 
 				if (isset($plan['plan_type'])) {
 					if (in_array($plan['plan_type'], array('habit', 'form_habit'), true)) {
@@ -1104,16 +1106,29 @@ $is_owner = $requested_user
 						$plan_finish_book_table = $wpdb->prefix . 'politeia_plan_finish_book';
 						$fb_row = $wpdb->get_row(
 							$wpdb->prepare(
-								"SELECT book_id, start_page FROM {$plan_finish_book_table} WHERE plan_id = %d LIMIT 1",
+								"SELECT user_book_id, start_page FROM {$plan_finish_book_table} WHERE plan_id = %d LIMIT 1",
 								$plan_id
 							),
 							ARRAY_A
 						);
 						if ($fb_row) {
-							$goal_book_id = (int) $fb_row['book_id'];
 							$goal_starting_page = (int) $fb_row['start_page'];
+							// Resolve book_id and pages from user_books
+							$u_book_id = (int) $fb_row['user_book_id'];
+							$goal_user_book_id = $u_book_id;
+							$ub_table = $wpdb->prefix . 'politeia_user_books';
+							$ub_row = $wpdb->get_row(
+								$wpdb->prepare(
+									"SELECT book_id, pages FROM {$ub_table} WHERE id = %d LIMIT 1",
+									$u_book_id
+								),
+								ARRAY_A
+							);
+							if ($ub_row) {
+								$goal_book_id = (int) $ub_row['book_id'];
+								$goal_target = (int) $ub_row['pages'];
+							}
 						}
-						// For books, target is total pages (handled below)
 					}
 				}
 
@@ -1380,7 +1395,17 @@ $is_owner = $requested_user
 	
 				// 1. Calculate actual reading progress
 				$highest_page_read = 0;
-				if ($goal_book_id) {
+				if ($goal_user_book_id) {
+					$highest_page_read = (int) $wpdb->get_var(
+						$wpdb->prepare(
+							"SELECT MAX(end_page) FROM {$reading_sessions_table}
+							 WHERE user_id = %d AND user_book_id = %d AND deleted_at IS NULL AND end_page IS NOT NULL",
+							$user_id,
+							$goal_user_book_id
+						)
+					);
+				} elseif ($goal_book_id) {
+					// Fallback if no user_book_id (legacy or generic)
 					$highest_page_read = (int) $wpdb->get_var(
 						$wpdb->prepare(
 							"SELECT MAX(end_page) FROM {$reading_sessions_table}
@@ -1391,7 +1416,15 @@ $is_owner = $requested_user
 					);
 				}
 				$pages_read_in_plan = \Politeia\ReadingPlanner\PlanSessionDeriver::calculate_pages_read($highest_page_read, $goal_starting_page);
-				$progress = \Politeia\ReadingPlanner\PlanSessionDeriver::calculate_progress($pages_read_in_plan, $total_pages);
+
+				// Fix Progress: Calculate based on *plan content length*, not *absolute book total*
+				$plan_progress_total = ($goal_starting_page > 1) ? max(1, $total_pages - $goal_starting_page + 1) : $total_pages;
+				// If it's a habit, $total_pages might be 0 or duration, but calculate_progress handles that (or habit has its own logic)
+				if ($goal_kind === 'complete_books') {
+					$progress = \Politeia\ReadingPlanner\PlanSessionDeriver::calculate_progress($pages_read_in_plan, $plan_progress_total);
+				} else {
+					$progress = \Politeia\ReadingPlanner\PlanSessionDeriver::calculate_progress($pages_read_in_plan, $total_pages);
+				}
 
 				// 2. Prepare dates for derivation
 				$future_session_dates = array();
@@ -1670,6 +1703,25 @@ $is_owner = $requested_user
 				$today_ts = strtotime($today_key);
 				$tomorrow_key = date('Y-m-d', strtotime('+1 day', $today_ts));
 
+				// Calculate dynamic daily target for 'complete_books'
+				// Logic: ( (Total Pages - Start Page + 1) - Actual Pages Read ) / Remaining Sessions
+				$dynamic_pages_per_session = 0;
+				if ($goal_kind === 'complete_books' && count($future_session_dates) > 0) {
+					$plan_total_content = max(0, $total_pages - $goal_starting_page + 1);
+					$remaining_pages_to_read = max(0, $plan_total_content - $pages_read_in_plan);
+					$dynamic_pages_per_session = ceil($remaining_pages_to_read / count($future_session_dates));
+
+					if ($plan_id == 6) {
+						error_log("PRS DEBUG: Plan 6 Calculation");
+						error_log("Total Content: " . $plan_total_content);
+						error_log("Pages Read: " . $pages_read_in_plan);
+						error_log("Remaining: " . $remaining_pages_to_read);
+						error_log("Future Dates Count: " . count($future_session_dates));
+						error_log("Future Dates: " . print_r($future_session_dates, true));
+						error_log("Items Map Count: " . count($session_items_map));
+					}
+				}
+
 				foreach ($session_items as $item) {
 					if ($item['date'] >= $today_key) {
 						$found_next = true;
@@ -1692,7 +1744,11 @@ $is_owner = $requested_user
 
 						// Pages Label
 						$p_count = 0;
-						if (isset($item['planned_end_page']) && isset($item['planned_start_page'])) {
+						if ($goal_kind === 'complete_books' && $dynamic_pages_per_session > 0) {
+							// Use dynamic target for Finish Book
+							$p_count = (int) $dynamic_pages_per_session;
+						} elseif (isset($item['planned_end_page']) && isset($item['planned_start_page'])) {
+							// Default fallback (Habits or legacy logic)
 							$p_count = max(0, $item['planned_end_page'] - $item['planned_start_page'] + 1);
 						}
 						$next_session_sublabel = sprintf(_n('%d Page', '%d Pages', $p_count, 'politeia-reading'), $p_count);
