@@ -103,6 +103,15 @@ if (!function_exists('politeia_bookshelf_get_page_templates')) {
                     ),
                 ),
             ),
+            'feed' => array(
+                'label' => __('Feed', 'politeia-bookshelf'),
+                'templates' => array(
+                    'feed-default' => array(
+                        'label' => __('Default (Feed)', 'politeia-bookshelf'),
+                        'file' => 'feed.php',
+                    ),
+                ),
+            ),
         );
 
         return apply_filters('politeia_bookshelf_page_templates', $templates);
@@ -162,6 +171,11 @@ if (!function_exists('politeia_bookshelf_get_selected_template_file')) {
         }
 
         $base_path = defined('POLITEIA_READING_PATH') ? POLITEIA_READING_PATH : plugin_dir_path(dirname(__FILE__, 2)) . 'modules/reading/';
+
+        if ('feed' === $page_key) {
+            $base_path = plugin_dir_path(dirname(__FILE__, 2)) . 'modules/feed/';
+        }
+
         $path = trailingslashit($base_path) . 'templates/' . ltrim($file, '/');
 
         return file_exists($path) ? $path : null;
@@ -835,7 +849,8 @@ function politeia_bookshelf_render_reading_planner_intensity_field()
                 <div>
                     <div style="font-size: 12px; font-weight: 600; color: #333;">LIGHT</div>
                     <div style="font-size: 10px; color: #666;">Slope:
-                        <?php echo esc_html(number_format($light_slope, 2)); ?> min/page</div>
+                        <?php echo esc_html(number_format($light_slope, 2)); ?> min/page
+                    </div>
                 </div>
             </div>
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -847,7 +862,8 @@ function politeia_bookshelf_render_reading_planner_intensity_field()
                 <div>
                     <div style="font-size: 12px; font-weight: 600; color: #333;">INTENSE</div>
                     <div style="font-size: 10px; color: #666;">Slope:
-                        <?php echo esc_html(number_format($intense_slope, 2)); ?> min/page</div>
+                        <?php echo esc_html(number_format($intense_slope, 2)); ?> min/page
+                    </div>
                 </div>
             </div>
         </div>

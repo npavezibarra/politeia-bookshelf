@@ -29,14 +29,17 @@ if ( $is_owner ) {
 	$user_id        = (int) $current_user->ID;
 	$sessions_table = $wpdb->prefix . 'politeia_reading_sessions';
 	$timezone       = wp_timezone();
-	$now_gmt        = current_time( 'timestamp', true );
-	$month_start    = gmdate( 'Y-m-01 00:00:00', $now_gmt );
-	$month_end      = gmdate( 'Y-m-d H:i:s', $now_gmt );
+	$now_local      = new DateTimeImmutable( 'now', $timezone );
+	$month_start_local = $now_local->modify( 'first day of this month' )->setTime( 0, 0, 0 );
+	$month_end_local   = $now_local->modify( 'last day of this month' )->setTime( 23, 59, 59 );
+	$month_start    = $month_start_local->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
+	$month_end      = $month_end_local->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
 	$avg_seconds    = $wpdb->get_var(
 		$wpdb->prepare(
 			"SELECT AVG(TIMESTAMPDIFF(SECOND, start_time, end_time))
 			 FROM {$sessions_table}
 			 WHERE user_id = %d
+			   AND end_time IS NOT NULL
 			   AND deleted_at IS NULL
 			   AND start_time >= %s
 			   AND start_time <= %s",
@@ -53,6 +56,7 @@ if ( $is_owner ) {
 			"SELECT SUM(GREATEST(TIMESTAMPDIFF(SECOND, start_time, end_time), 0))
 			 FROM {$sessions_table}
 			 WHERE user_id = %d
+			   AND end_time IS NOT NULL
 			   AND deleted_at IS NULL
 			   AND start_time >= %s
 			   AND start_time <= %s",
@@ -70,6 +74,7 @@ if ( $is_owner ) {
 			"SELECT SUM(GREATEST(end_page - start_page, 0))
 			 FROM {$sessions_table}
 			 WHERE user_id = %d
+			   AND end_time IS NOT NULL
 			   AND deleted_at IS NULL
 			   AND start_time >= %s
 			   AND start_time <= %s",
@@ -85,7 +90,7 @@ if ( $is_owner ) {
 		$avg_pages_per_hour = (int) round( $total_pages_month / ( $total_reading_seconds_month / 3600 ) );
 	}
 
-	$heatmap_year = 2026;
+	$heatmap_year = (int) $now_local->format( 'Y' );
 	$heatmap_start = new DateTimeImmutable( $heatmap_year . '-01-01 00:00:00', $timezone );
 	$heatmap_end = new DateTimeImmutable( $heatmap_year . '-12-31 23:59:59', $timezone );
 	$heatmap_start_gmt = $heatmap_start->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );

@@ -12,6 +12,86 @@ class Politeia_Reading_Ajax_Handler
                 add_action('wp_ajax_politeia_get_session_note', array(__CLASS__, 'get_session_note'));
                 add_action('wp_ajax_politeia_save_note_emotions', array(__CLASS__, 'save_note_emotions'));
                 add_action('wp_ajax_politeia_delete_session_note', array(__CLASS__, 'delete_session_note'));
+                add_action('wp_ajax_politeia_save_note_comment', array(__CLASS__, 'save_note_comment'));
+                add_action('wp_ajax_politeia_load_more_feed', array(__CLASS__, 'load_more_feed'));
+        }
+
+        public static function load_more_feed()
+        {
+                if (!is_user_logged_in()) {
+                        wp_send_json_error(__('Not allowed.', 'politeia-reading'), 401);
+                }
+
+                check_ajax_referer('prs_reading_nonce', 'nonce');
+
+                $offset = isset($_POST['offset']) ? absint($_POST['offset']) : 0;
+                $user_id = get_current_user_id();
+
+                global $wpdb;
+                $table_notes = $wpdb->prefix . 'politeia_read_ses_notes';
+                $table_ub = $wpdb->prefix . 'politeia_user_books';
+                $table_books = $wpdb->prefix . 'politeia_books';
+                $table_book_authors = $wpdb->prefix . 'politeia_book_authors';
+                $table_authors = $wpdb->prefix . 'politeia_authors';
+
+                $sql = $wpdb->prepare("
+                        SELECT 
+                                n.id as note_id,
+                                n.note, 
+                                n.created_at, 
+                                n.emotions,
+                                b.title AS book_title, 
+                                
+                                (SELECT GROUP_CONCAT(a.display_name SEPARATOR ', ') 
+                                 FROM {$table_book_authors} ba 
+                                 JOIN {$table_authors} a ON ba.author_id = a.id 
+                                 WHERE ba.book_id = b.id
+                                ) AS book_author,
+
+                                ub.cover_url AS user_cover,
+                                b.cover_url AS book_cover
+                        FROM {$table_notes} n
+                        JOIN {$table_ub} ub ON n.user_book_id = ub.id
+                        JOIN {$table_books} b ON ub.book_id = b.id
+                        WHERE n.user_id = %d 
+                          AND n.note != ''
+                        ORDER BY n.created_at DESC
+                        LIMIT 10 OFFSET %d
+                ", $user_id, $offset);
+
+                $notes = $wpdb->get_results($sql);
+
+                if (empty($notes)) {
+                        wp_send_json_success(array('html' => '', 'remaining' => false));
+                }
+
+                // Fetch comments
+                $comments_by_note = [];
+                $note_ids = wp_list_pluck($notes, 'note_id');
+                $note_ids_str = implode(',', array_map('absint', $note_ids));
+
+                $table_comments = $wpdb->prefix . 'politeia_notes_comments';
+                $comments_sql = "SELECT * FROM {$table_comments} WHERE note_id IN ({$note_ids_str}) AND status = 'published' ORDER BY created_at ASC";
+                $all_comments = $wpdb->get_results($comments_sql);
+
+                foreach ($all_comments as $c) {
+                        $comments_by_note[$c->note_id][] = $c;
+                }
+
+                ob_start();
+                foreach ($notes as $note) {
+                        $note_comments = isset($comments_by_note[$note->note_id]) ? $comments_by_note[$note->note_id] : [];
+                        // Resolve path relative to this file: .../modules/reading/includes/class-ajax-handler.php
+                        // We want .../modules/feed/templates/feed-item.php
+                        $modules_path = dirname(dirname(dirname(__FILE__)));
+                        $template_path = $modules_path . '/feed/templates/feed-item.php';
+                        if (file_exists($template_path)) {
+                                include $template_path;
+                        }
+                }
+                $html = ob_get_clean();
+
+                wp_send_json_success(array('html' => $html, 'remaining' => count($notes) === 10));
         }
 
         public static function save_session_note()
@@ -323,6 +403,68 @@ class Politeia_Reading_Ajax_Handler
                                 'deleted' => true,
                         )
                 );
+        }
+
+        public static function save_note_comment()
+        {
+                if (!is_user_logged_in()) {
+                        wp_send_json_error(__('Not allowed.', 'politeia-reading'), 401);
+                }
+
+                $nonce_valid = check_ajax_referer('prs_reading_nonce', 'nonce', false);
+                if (!$nonce_valid) {
+                        wp_send_json_error(__('Invalid nonce.', 'politeia-reading'), 403);
+                }
+
+                $note_id = isset($_POST['note_id']) ? absint($_POST['note_id']) : 0;
+                $content = isset($_POST['content']) ? wp_kses_post(wp_unslash($_POST['content'])) : '';
+
+                if (!$note_id || empty($content)) {
+                        wp_send_json_error(__('Missing note ID or content.', 'politeia-reading'), 400);
+                }
+
+                global $wpdb;
+                $table_notes = $wpdb->prefix . 'politeia_read_ses_notes';
+                $table_comments = $wpdb->prefix . 'politeia_notes_comments';
+
+                // Verify note exists
+                $note_exists = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$table_notes} WHERE id = %d", $note_id));
+                if (!$note_exists) {
+                        wp_send_json_error(__('Invalid note.', 'politeia-reading'), 404);
+                }
+
+                $user_id = get_current_user_id();
+                $now = current_time('mysql');
+
+                $inserted = $wpdb->insert(
+                        $table_comments,
+                        array(
+                                'note_id' => $note_id,
+                                'user_id' => $user_id,
+                                'content' => $content,
+                                'created_at' => $now,
+                                'updated_at' => $now,
+                                'status' => 'published'
+                        ),
+                        array('%d', '%d', '%s', '%s', '%s', '%s')
+                );
+
+                if ($inserted === false) {
+                        wp_send_json_error(__('Database error.', 'politeia-reading'), 500);
+                }
+
+                $comment_id = $wpdb->insert_id;
+
+                // Fetch user display name
+                $user_info = get_userdata($user_id);
+                $author_name = $user_info ? $user_info->display_name : __('Anonymous', 'politeia-reading');
+
+                wp_send_json_success(array(
+                        'id' => $comment_id,
+                        'content' => $content,
+                        'author' => $author_name,
+                        'date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($now))
+                ));
         }
 }
 
