@@ -15,6 +15,7 @@ class Routes {
 	public static function register_rules(): void {
 		add_rewrite_rule( '^members/([^/]+)/my-plans/?$', 'index.php?prs_my_plans=1&prs_my_plans_user=$matches[1]', 'top' );
 		add_rewrite_rule( '^members/([^/]+)/my-reading-stats/?$', 'index.php?prs_my_reading_stats=1&prs_my_reading_stats_user=$matches[1]', 'top' );
+		add_rewrite_rule( '^members/([^/]+)/my-reading-stats-2/?$', 'index.php?prs_my_reading_stats_2=1&prs_my_reading_stats_2_user=$matches[1]', 'top' );
 	}
 
 	public static function query_vars( array $vars ): array {
@@ -22,6 +23,8 @@ class Routes {
 		$vars[] = 'prs_my_plans_user';
 		$vars[] = 'prs_my_reading_stats';
 		$vars[] = 'prs_my_reading_stats_user';
+		$vars[] = 'prs_my_reading_stats_2';
+		$vars[] = 'prs_my_reading_stats_2_user';
 		return $vars;
 	}
 
@@ -31,6 +34,9 @@ class Routes {
 		}
 		if ( get_query_var( 'prs_my_reading_stats' ) ) {
 			return POLITEIA_READING_PLAN_PATH . 'templates/my-reading-stats/my-reading-stats.php';
+		}
+		if ( get_query_var( 'prs_my_reading_stats_2' ) ) {
+			return POLITEIA_READING_PLAN_PATH . 'templates/my-reading-stats-2/my-reading-stats-2.php';
 		}
 
 		return $template;

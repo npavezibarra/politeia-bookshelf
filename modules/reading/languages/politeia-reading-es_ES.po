@@ -1710,3 +1710,9 @@ msgstr "ISBN inválido."
 
 msgid "Drag photo here"
 msgstr "Arrastra foto aquí"
+
+msgid "%s posted..."
+msgstr "%s posteó..."
+
+msgid "User"
+msgstr "Usuario"
