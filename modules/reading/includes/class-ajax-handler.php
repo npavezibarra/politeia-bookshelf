@@ -14,6 +14,7 @@ class Politeia_Reading_Ajax_Handler
                 add_action('wp_ajax_politeia_delete_session_note', array(__CLASS__, 'delete_session_note'));
                 add_action('wp_ajax_politeia_save_note_comment', array(__CLASS__, 'save_note_comment'));
                 add_action('wp_ajax_politeia_load_more_feed', array(__CLASS__, 'load_more_feed'));
+                add_action('wp_ajax_politeia_update_note_visibility', array(__CLASS__, 'update_note_visibility'));
         }
 
         public static function load_more_feed()
@@ -37,6 +38,8 @@ class Politeia_Reading_Ajax_Handler
                 $sql = $wpdb->prepare("
                         SELECT 
                                 n.id as note_id,
+                                n.user_id as note_user_id,
+                                u.display_name as note_user_name,
                                 n.note, 
                                 n.created_at, 
                                 n.emotions,
@@ -53,11 +56,12 @@ class Politeia_Reading_Ajax_Handler
                         FROM {$table_notes} n
                         JOIN {$table_ub} ub ON n.user_book_id = ub.id
                         JOIN {$table_books} b ON ub.book_id = b.id
-                        WHERE n.user_id = %d 
+                        JOIN {$wpdb->users} u ON n.user_id = u.ID
+                        WHERE n.visibility = 'public'
                           AND n.note != ''
                         ORDER BY n.created_at DESC
                         LIMIT 10 OFFSET %d
-                ", $user_id, $offset);
+                ", $offset);
 
                 $notes = $wpdb->get_results($sql);
 
@@ -465,6 +469,66 @@ class Politeia_Reading_Ajax_Handler
                         'author' => $author_name,
                         'date' => date_i18n(get_option('date_format') . ' ' . get_option('time_format'), strtotime($now))
                 ));
+        }
+
+        public static function update_note_visibility()
+        {
+                if (!is_user_logged_in()) {
+                        wp_send_json_error(__('Not allowed.', 'politeia-reading'), 401);
+                }
+
+                $nonce_valid = check_ajax_referer('prs_reading_nonce', 'nonce', false);
+                if (!$nonce_valid) {
+                        wp_send_json_error(__('Invalid nonce.', 'politeia-reading'), 403);
+                }
+
+                $note_id = isset($_POST['note_id']) ? absint($_POST['note_id']) : 0;
+                $visibility = isset($_POST['visibility']) ? sanitize_key(wp_unslash($_POST['visibility'])) : '';
+                if (!$note_id || !in_array($visibility, array('private', 'public'), true)) {
+                        wp_send_json_error(__('Invalid request.', 'politeia-reading'), 400);
+                }
+
+                global $wpdb;
+                $table_notes = $wpdb->prefix . 'politeia_read_ses_notes';
+                $user_id = get_current_user_id();
+
+                $note_row = $wpdb->get_row(
+                        $wpdb->prepare(
+                                "SELECT id, user_id FROM {$table_notes} WHERE id = %d LIMIT 1",
+                                $note_id
+                        )
+                );
+
+                if (!$note_row) {
+                        wp_send_json_error(__('Note not found.', 'politeia-reading'), 404);
+                }
+
+                if ((int) $note_row->user_id !== $user_id) {
+                        wp_send_json_error(__('You do not have permission to update this note.', 'politeia-reading'), 403);
+                }
+
+                $updated = $wpdb->update(
+                        $table_notes,
+                        array(
+                                'visibility' => $visibility,
+                                'updated_at' => current_time('mysql'),
+                        ),
+                        array('id' => (int) $note_id),
+                        array('%s', '%s'),
+                        array('%d')
+                );
+
+                if (false === $updated) {
+                        $error = $wpdb->last_error ? $wpdb->last_error : __('DB update failed.', 'politeia-reading');
+                        wp_send_json_error($error, 500);
+                }
+
+                wp_send_json_success(
+                        array(
+                                'note_id' => (int) $note_id,
+                                'visibility' => $visibility,
+                        )
+                );
         }
 }
 

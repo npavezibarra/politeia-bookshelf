@@ -58,6 +58,78 @@ if (!defined('ABSPATH')) {
 		margin-bottom: 12px;
 	}
 
+	.prs-note__meta {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-end;
+		gap: 6px;
+	}
+
+	.prs-note__visibility {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		font-size: 0.7rem;
+		color: var(--prs-notes-muted);
+	}
+
+	.prs-note__visibility-label {
+		font-weight: 600;
+		letter-spacing: 0.02em;
+		text-transform: uppercase;
+	}
+
+	.prs-toggle {
+		position: relative;
+		display: inline-block;
+		width: 34px;
+		height: 18px;
+	}
+
+	.prs-toggle input {
+		opacity: 0;
+		width: 0;
+		height: 0;
+	}
+
+	.prs-toggle__slider {
+		position: absolute;
+		cursor: pointer;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		background-color: #e5e7eb;
+		transition: background-color 0.2s ease;
+		border-radius: 999px;
+	}
+
+	.prs-toggle__slider:before {
+		position: absolute;
+		content: "";
+		height: 14px;
+		width: 14px;
+		left: 2px;
+		top: 2px;
+		background-color: #ffffff;
+		transition: transform 0.2s ease;
+		border-radius: 50%;
+		box-shadow: 0 1px 2px rgba(15, 23, 42, 0.2);
+	}
+
+	.prs-toggle input:checked + .prs-toggle__slider {
+		background-color: var(--prs-notes-accent);
+	}
+
+	.prs-toggle input:checked + .prs-toggle__slider:before {
+		transform: translateX(16px);
+	}
+
+	.prs-toggle input:disabled + .prs-toggle__slider {
+		cursor: not-allowed;
+		opacity: 0.55;
+	}
+
 	.prs-note__session {
 		font-weight: 700;
 		font-size: 12px;
@@ -71,6 +143,23 @@ if (!defined('ABSPATH')) {
 	.prs-note__body {
 		font-size: 0.95rem;
 		line-height: 1.5;
+	}
+
+	.prs-note__content {
+		padding: 12px;
+		border: 1px solid var(--prs-notes-border);
+		border-radius: 6px;
+		background: #fafafa;
+	}
+
+	.prs-note__content ul,
+	.prs-note__content ol {
+		padding-left: 20px;
+		margin: 8px 0;
+	}
+
+	.prs-note__content li {
+		margin: 4px 0;
 	}
 
 	.prs-note__text {
@@ -437,6 +526,7 @@ $other_readers = $wpdb->get_results(
 						$emotion_keys = array('joy', 'sorrow', 'fear', 'fascination', 'anger', 'serenity', 'enlightenment');
 						$emotion_values = array();
 						$total_emotion = 0;
+						$note_visibility = !empty($note->visibility) ? (string) $note->visibility : 'private';
 						$decoded_emotions = $note->emotions ? json_decode((string) $note->emotions, true) : array();
 						if (!is_array($decoded_emotions)) {
 							$decoded_emotions = array();
@@ -453,7 +543,8 @@ $other_readers = $wpdb->get_results(
 						}
 						?>
 						<article class="prs-note" data-note-id="<?php echo esc_attr((string) $note->id); ?>"
-							data-rs-id="<?php echo esc_attr((string) $note->rs_id); ?>">
+							data-rs-id="<?php echo esc_attr((string) $note->rs_id); ?>"
+							data-note-visibility="<?php echo esc_attr($note_visibility); ?>">
 							<?php
 							$session_start_page = isset($note->start_page) ? (int) $note->start_page : 0;
 							$session_end_page = isset($note->end_page) ? (int) $note->end_page : 0;
@@ -471,16 +562,31 @@ $other_readers = $wpdb->get_results(
 									echo esc_html($session_label . ($page_range ? ', ' . $page_range : ''));
 									?>
 								</div>
-								<time class="prs-note__date">
-									<?php
-									$note_date = !empty($note->created_at) ? strtotime($note->created_at) : 0;
-									echo $note_date ? esc_html(date_i18n('M j, Y', $note_date)) : esc_html__('Date', 'politeia-reading');
-									?>
-								</time>
+								<div class="prs-note__meta">
+									<time class="prs-note__date">
+										<?php
+										$note_date = !empty($note->created_at) ? strtotime($note->created_at) : 0;
+										echo $note_date ? esc_html(date_i18n('M j, Y', $note_date)) : esc_html__('Date', 'politeia-reading');
+										?>
+									</time>
+									<div class="prs-note__visibility">
+										<span class="prs-note__visibility-label"><?php esc_html_e('Private', 'politeia-reading'); ?></span>
+										<label class="prs-toggle">
+											<input class="prs-note__visibility-toggle" type="checkbox"
+												data-note-id="<?php echo esc_attr((string) $note->id); ?>"
+												aria-label="<?php esc_attr_e('Toggle private note', 'politeia-reading'); ?>"
+												<?php checked('private', $note_visibility); ?> />
+											<span class="prs-toggle__slider" aria-hidden="true"></span>
+										</label>
+									</div>
+								</div>
 							</header>
 							<div class="prs-note__body">
+								<div class="prs-note__content">
+									<?php echo wp_kses_post((string) $note->note); ?>
+								</div>
 								<textarea class="prs-note__text"
-									readonly="readonly"><?php echo esc_textarea((string) $note->note); ?></textarea>
+									readonly="readonly" hidden="hidden"><?php echo esc_textarea((string) $note->note); ?></textarea>
 							</div>
 							<footer class="prs-note__footer">
 								<div class="prs-note__composition<?php echo $total_emotion > 0 ? '' : ' is-empty'; ?>"
@@ -575,6 +681,7 @@ $other_readers = $wpdb->get_results(
 			'delete_confirm' => __('If you delete this session note, you will not be able to recover it. Are you sure you want to proceed?', 'politeia-reading'),
 			'delete_failed' => __('Failed to delete note.', 'politeia-reading'),
 			'deleting' => __('Deleting...', 'politeia-reading'),
+			'visibility_failed' => __('Failed to update note visibility.', 'politeia-reading'),
 		)); ?>;
 		const t = (key, fallback) => (I18N && I18N[key]) ? I18N[key] : fallback;
 		const modal = document.getElementById("prs-note-modal");
@@ -584,6 +691,7 @@ $other_readers = $wpdb->get_results(
 		const noteButtons = document.querySelectorAll(".prs-note__rate-button");
 		const editButtons = document.querySelectorAll(".prs-note__edit-button");
 		const deleteButtons = document.querySelectorAll(".prs-note__delete-button");
+		const visibilityToggles = document.querySelectorAll(".prs-note__visibility-toggle");
 		if (!modal || !rowsWrap || !resetBtn || !saveBtn || !noteButtons.length) return;
 
 		const EMOTIONS = [
@@ -754,11 +862,16 @@ $other_readers = $wpdb->get_results(
 				const note = button.closest(".prs-note");
 				if (!note) return;
 				const textarea = note.querySelector(".prs-note__text");
+				const content = note.querySelector(".prs-note__content");
 				if (!textarea) return;
 				const isEditing = button.dataset.state === "editing";
 				if (!isEditing) {
 					button.dataset.state = "editing";
 					button.textContent = t("save_label", "Save");
+					if (content) {
+						content.hidden = true;
+					}
+					textarea.hidden = false;
 					textarea.removeAttribute("readonly");
 					textarea.style.height = "auto";
 					textarea.style.height = `${textarea.scrollHeight}px`;
@@ -807,6 +920,11 @@ $other_readers = $wpdb->get_results(
 							throw new Error(data && data.data ? data.data : t("save_failed", "Save failed."));
 						}
 						textarea.setAttribute("readonly", "readonly");
+						textarea.hidden = true;
+						if (content) {
+							content.innerHTML = textarea.value;
+							content.hidden = false;
+						}
 						button.dataset.state = "";
 						button.textContent = t("edit_label", "Edit");
 					})
@@ -866,6 +984,48 @@ $other_readers = $wpdb->get_results(
 						window.alert(err && err.message ? err.message : t("delete_failed", "Failed to delete note."));
 						button.disabled = false;
 						button.textContent = originalText;
+					});
+			});
+		});
+
+		visibilityToggles.forEach((toggle) => {
+			toggle.addEventListener("change", () => {
+				const noteId = toggle.dataset.noteId;
+				if (!noteId) return;
+
+				const ajaxUrl = (window.PRS_BOOK && window.PRS_BOOK.ajax_url) || (typeof window.ajaxurl === "string" && window.ajaxurl) || "";
+				const nonce = (window.PRS_BOOK && window.PRS_BOOK.reading_nonce) || (window.PRS_SR && window.PRS_SR.nonce) || "";
+				if (!ajaxUrl || !nonce) {
+					toggle.checked = !toggle.checked;
+					window.alert(t("visibility_failed", "Failed to update note visibility."));
+					return;
+				}
+
+				const visibility = toggle.checked ? "private" : "public";
+				const payload = new FormData();
+				payload.append("action", "politeia_update_note_visibility");
+				payload.append("nonce", nonce);
+				payload.append("note_id", String(noteId));
+				payload.append("visibility", visibility);
+
+				toggle.disabled = true;
+				fetch(ajaxUrl, { method: "POST", body: payload, credentials: "same-origin" })
+					.then((resp) => resp.json())
+					.then((data) => {
+						if (!data || !data.success) {
+							throw new Error(data && data.data ? data.data : t("visibility_failed", "Failed to update note visibility."));
+						}
+						const note = toggle.closest(".prs-note");
+						if (note) {
+							note.dataset.noteVisibility = visibility;
+						}
+					})
+					.catch((err) => {
+						toggle.checked = !toggle.checked;
+						window.alert(err && err.message ? err.message : t("visibility_failed", "Failed to update note visibility."));
+					})
+					.finally(() => {
+						toggle.disabled = false;
 					});
 			});
 		});

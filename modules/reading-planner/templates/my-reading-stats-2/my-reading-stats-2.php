@@ -13,567 +13,670 @@ $is_owner       = $requested_user
 	&& $current_user
 	&& $current_user->exists()
 	&& $current_user->user_login === $requested_user;
-$avg_session_minutes = 0;
-$total_pages_month   = 0;
-$total_reading_hours_month = 0;
-$total_reading_seconds_month = 0;
-$avg_pages_per_hour = 0;
-$heatmap_cells = array();
-$stats_sections = array(
-	'performance' => true,
-	'consistency' => true,
-	'library'     => true,
+$total_user_books = 0;
+$reading_status_counts = array(
+	'not_started' => 0,
+	'started'     => 0,
+	'finished'    => 0,
 );
 if ( $is_owner ) {
-	if ( function_exists( 'politeia_bookshelf_get_my_stats_sections' ) ) {
-		$stats_sections = politeia_bookshelf_get_my_stats_sections();
-	}
 	global $wpdb;
-	$user_id        = (int) $current_user->ID;
-	$sessions_table = $wpdb->prefix . 'politeia_reading_sessions';
-	$timezone       = wp_timezone();
-	$now_local      = new DateTimeImmutable( 'now', $timezone );
-	$month_start_local = $now_local->modify( 'first day of this month' )->setTime( 0, 0, 0 );
-	$month_end_local   = $now_local->modify( 'last day of this month' )->setTime( 23, 59, 59 );
-	$month_start    = $month_start_local->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
-	$month_end      = $month_end_local->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
-	$avg_seconds    = $wpdb->get_var(
+	$user_id = (int) $current_user->ID;
+	$user_books_table = $wpdb->prefix . 'politeia_user_books';
+	$books_table = $wpdb->prefix . 'politeia_books';
+	$total_user_books = (int) $wpdb->get_var(
 		$wpdb->prepare(
-			"SELECT AVG(TIMESTAMPDIFF(SECOND, start_time, end_time))
-			 FROM {$sessions_table}
-			 WHERE user_id = %d
-			   AND end_time IS NOT NULL
-			   AND deleted_at IS NULL
-			   AND start_time >= %s
-			   AND start_time <= %s",
-			$user_id,
-			$month_start,
-			$month_end
+			"SELECT COUNT(*)
+			FROM {$user_books_table} ub
+			JOIN {$books_table} b ON b.id = ub.book_id
+			WHERE ub.user_id = %d
+			  AND ub.deleted_at IS NULL
+			  AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')",
+			$user_id
 		)
 	);
-	if ( $avg_seconds ) {
-		$avg_session_minutes = (int) round( (float) $avg_seconds / 60 );
-	}
-	$total_seconds = $wpdb->get_var(
+	$status_row = $wpdb->get_row(
 		$wpdb->prepare(
-			"SELECT SUM(GREATEST(TIMESTAMPDIFF(SECOND, start_time, end_time), 0))
-			 FROM {$sessions_table}
-			 WHERE user_id = %d
-			   AND end_time IS NOT NULL
-			   AND deleted_at IS NULL
-			   AND start_time >= %s
-			   AND start_time <= %s",
-			$user_id,
-			$month_start,
-			$month_end
-		)
-	);
-	if ( $total_seconds ) {
-		$total_reading_seconds_month = (float) $total_seconds;
-		$total_reading_hours_month = (int) round( $total_reading_seconds_month / 3600 );
-	}
-	$total_pages = $wpdb->get_var(
-		$wpdb->prepare(
-			"SELECT SUM(GREATEST(end_page - start_page, 0))
-			 FROM {$sessions_table}
-			 WHERE user_id = %d
-			   AND end_time IS NOT NULL
-			   AND deleted_at IS NULL
-			   AND start_time >= %s
-			   AND start_time <= %s",
-			$user_id,
-			$month_start,
-			$month_end
-		)
-	);
-	if ( null !== $total_pages ) {
-		$total_pages_month = (int) $total_pages;
-	}
-	if ( $total_reading_seconds_month > 0 ) {
-		$avg_pages_per_hour = (int) round( $total_pages_month / ( $total_reading_seconds_month / 3600 ) );
-	}
-
-	$heatmap_year = (int) $now_local->format( 'Y' );
-	$heatmap_start = new DateTimeImmutable( $heatmap_year . '-01-01 00:00:00', $timezone );
-	$heatmap_end = new DateTimeImmutable( $heatmap_year . '-12-31 23:59:59', $timezone );
-	$heatmap_start_gmt = $heatmap_start->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
-	$heatmap_end_gmt   = $heatmap_end->setTimezone( new DateTimeZone( 'UTC' ) )->format( 'Y-m-d H:i:s' );
-
-	$heatmap_rows = $wpdb->get_results(
-		$wpdb->prepare(
-			"SELECT start_time, start_page, end_page
-			 FROM {$sessions_table}
-			 WHERE user_id = %d
-			   AND deleted_at IS NULL
-			   AND start_time >= %s
-			   AND start_time <= %s",
-			$user_id,
-			$heatmap_start_gmt,
-			$heatmap_end_gmt
+			"SELECT
+				SUM(CASE WHEN ub.reading_status = 'not_started' THEN 1 ELSE 0 END) AS not_started,
+				SUM(CASE WHEN ub.reading_status = 'started' THEN 1 ELSE 0 END) AS started,
+				SUM(CASE WHEN ub.reading_status = 'finished' THEN 1 ELSE 0 END) AS finished
+			FROM {$user_books_table} ub
+			JOIN {$books_table} b ON b.id = ub.book_id
+			WHERE ub.user_id = %d
+			  AND ub.deleted_at IS NULL
+			  AND (ub.owning_status IS NULL OR ub.owning_status != 'deleted')",
+			$user_id
 		),
 		ARRAY_A
 	);
-
-	$pages_by_date = array();
-	if ( $heatmap_rows ) {
-		foreach ( $heatmap_rows as $row ) {
-			if ( empty( $row['start_time'] ) ) {
-				continue;
-			}
-			$start_dt = date_create_immutable( $row['start_time'], new DateTimeZone( 'UTC' ) );
-			if ( ! $start_dt ) {
-				continue;
-			}
-			$local_dt = $start_dt->setTimezone( $timezone );
-			$date_key = $local_dt->format( 'Y-m-d' );
-			$start_page = isset( $row['start_page'] ) ? (int) $row['start_page'] : 0;
-			$end_page   = isset( $row['end_page'] ) ? (int) $row['end_page'] : 0;
-			$delta      = $end_page - $start_page;
-			if ( $delta < 0 ) {
-				$delta = 0;
-			}
-			if ( ! isset( $pages_by_date[ $date_key ] ) ) {
-				$pages_by_date[ $date_key ] = 0;
-			}
-			$pages_by_date[ $date_key ] += $delta;
-		}
-	}
-
-	$max_pages = $pages_by_date ? max( $pages_by_date ) : 0;
-	$day_count = (int) $heatmap_start->diff( $heatmap_end )->days + 1;
-	$week_start = 1; // Monday.
-	$first_day = (int) $heatmap_start->format( 'N' );
-	$leading = ( $first_day - $week_start + 7 ) % 7;
-	for ( $i = 0; $i < $leading; $i++ ) {
-		$heatmap_cells[] = array(
-			'date'  => null,
-			'pages' => 0,
-			'class' => 'heatmap-cell is-empty',
-		);
-	}
-
-	$cell_date = $heatmap_start;
-	for ( $i = 0; $i < $day_count; $i++ ) {
-		$date_key = $cell_date->format( 'Y-m-d' );
-		$pages    = isset( $pages_by_date[ $date_key ] ) ? (int) $pages_by_date[ $date_key ] : 0;
-		$class    = 'heatmap-cell';
-		if ( $pages > 0 && $max_pages > 0 ) {
-			$ratio = $pages / $max_pages;
-			if ( $ratio <= 0.25 ) {
-				$class .= ' level-1';
-			} elseif ( $ratio <= 0.5 ) {
-				$class .= ' level-2';
-			} elseif ( $ratio <= 0.75 ) {
-				$class .= ' level-3';
-			} else {
-				$class .= ' level-4';
-			}
-		}
-		$heatmap_cells[] = array(
-			'date'  => $cell_date,
-			'pages' => $pages,
-			'class' => $class,
-		);
-		$cell_date = $cell_date->modify( '+1 day' );
-	}
-
-	$last_day = (int) $heatmap_end->format( 'N' );
-	$last_index = ( $last_day - $week_start + 7 ) % 7;
-	$trailing = 6 - $last_index;
-	for ( $i = 0; $i < $trailing; $i++ ) {
-		$heatmap_cells[] = array(
-			'date'  => null,
-			'pages' => 0,
-			'class' => 'heatmap-cell is-empty',
-		);
+	if ( $status_row ) {
+		$reading_status_counts['not_started'] = (int) $status_row['not_started'];
+		$reading_status_counts['started'] = (int) $status_row['started'];
+		$reading_status_counts['finished'] = (int) $status_row['finished'];
 	}
 }
 ?>
 
 <div class="wrap">
 	<?php if ( $is_owner ) : ?>
-		<?php echo do_shortcode( '[politeia_reading_plan]' ); ?>
 		<style>
-			#politeia-open-reading-plan {
-				display: none;
-			}
-			.prs-reading-stats-dashboard {
-				background-color: #f5f5f5;
-				display: flex;
-				align-items: start;
-				justify-content: center;
-				min-height: 70vh;
-				margin: 0;
-				font-family: system-ui, -apple-system, sans-serif;
-				margin-top: 24px;
-				width: 100%;
-			}
-			.prs-reading-stats-shell {
-				width: 100%;
-				max-width: none;
-				--gold-grad: linear-gradient(135deg, #8a6b1e, #c79f32, #e9d18a);
-				--silver-grad: linear-gradient(135deg, #949494, #d1d1d1, #f2f2f2);
-				--copper-grad: linear-gradient(135deg, #783f27, #b87333, #e5aa70);
-				--pure-black: #000000;
+			:root {
+				--gold: linear-gradient(135deg, #8A6B1E, #C79F32, #E9D18A);
+				--silver: linear-gradient(135deg, #949494, #D1D1D1, #F2F2F2);
+				--copper: linear-gradient(135deg, #783F27, #B87333, #E5AA70);
+				--black: #000000;
 				--deep-gray: #333333;
-				--light-gray: #a8a8a8;
+				--light-gray: #A8A8A8;
 				--subtle-gray: #f5f5f5;
-				--off-white: #fefeff;
-				background-color: var(--subtle-gray);
-				color: var(--pure-black);
-				font-family: 'Inter', system-ui, -apple-system, sans-serif;
-				padding: 16px;
+				--off-white: #FEFEFF;
+				--border-radius: 9px;
 			}
-			@media (min-width: 768px) {
-				.prs-reading-stats-shell {
-					padding: 0px 0px 122px;
-				}
-			}
-			.prs-reading-stats-shell .material-symbols-outlined {
-				font-variation-settings:
-					'FILL' 0,
-					'wght' 400,
-					'GRAD' 0,
-					'opsz' 24;
-			}
-			.prs-reading-stats-shell .gradient-gold {
-				background: var(--gold-grad);
-			}
-			.prs-reading-stats-shell .gradient-silver {
-				background: var(--silver-grad);
-			}
-			.prs-reading-stats-shell .gradient-copper {
-				background: var(--copper-grad);
-			}
-			.prs-reading-stats-shell .card-politeia {
-				background-color: var(--off-white);
-				border: 1px solid #e2e8f0;
-				transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-				border-radius: 9px;
-			}
-			.prs-reading-stats-shell .card-politeia:hover {
-				transform: translateY(-2px);
-				box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.1);
-				border-color: var(--light-gray);
-			}
-			.prs-reading-stats-shell .section-header {
-				display: flex;
-				align-items: center;
-				gap: 12px;
-				padding-bottom: 8px;
-			}
-			.prs-stats-section-title {
-				font-size: 0.95rem;
-				font-weight: 800;
-				letter-spacing: 0.18em;
-				text-transform: uppercase;
-				margin: 0;
-			}
-			.prs-stats-section-icon {
-				font-size: 1.25rem;
-			}
-			.prs-reading-stats-shell .stat-label {
-				font-size: 0.65rem;
-				font-weight: 800;
-				text-transform: uppercase;
-				letter-spacing: 0.15em;
-				color: var(--deep-gray);
-				line-height: 1.3;
-			}
-			.prs-stats-section {
-				margin-bottom: 64px;
-			}
-			.prs-stats-section:last-child {
-				margin-bottom: 0;
-			}
-			.prs-stats-grid {
-				display: grid;
-				gap: 24px;
-			}
-			.prs-stats-grid--4 {
-				grid-template-columns: 1fr;
-			}
-			.prs-stats-grid--3 {
-				grid-template-columns: 1fr;
-			}
-			.prs-stats-grid--library {
-				grid-template-columns: 1fr;
-			}
-			@media (min-width: 640px) {
-				.prs-stats-grid--4 {
-					grid-template-columns: repeat(2, minmax(0, 1fr));
-				}
-			}
-			@media (min-width: 1024px) {
-				.prs-stats-grid--4 {
-					grid-template-columns: repeat(4, minmax(0, 1fr));
-				}
-				.prs-stats-grid--3 {
-					grid-template-columns: repeat(3, minmax(0, 1fr));
-				}
-				.prs-stats-grid--library {
-					grid-template-columns: repeat(3, minmax(0, 1fr));
-				}
-			}
-			.prs-stats-card {
-				position: relative;
-				overflow: hidden;
-				padding: 32px;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				text-align: center;
-				gap: 8px;
-			}
-			.prs-stats-card--left {
-				align-items: stretch;
-				text-align: left;
-			}
-			.prs-stats-card--accent {
-				border-left: 8px solid #b87333;
-				padding: 24px;
-				align-items: stretch;
-				text-align: left;
-			}
-			.prs-stats-card--dark {
-				background-color: #000000;
-				color: #ffffff;
-				border-color: #000000;
-				padding: 24px;
-				text-align: left;
-			}
-			.prs-stats-watermark {
-				position: absolute;
-				top: -14px;
-				right: -14px;
-				font-size: 3.5rem;
-				opacity: 0.06;
-				pointer-events: none;
-			}
-			.prs-stats-badge {
-				width: 56px;
-				height: 56px;
-				border-radius: 50%;
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				color: #ffffff;
-				box-shadow: 0 10px 18px -10px rgba(0, 0, 0, 0.3);
-				margin-bottom: 8px;
-			}
-			.prs-stats-badge .material-symbols-outlined {
-				font-size: 1.6rem;
-			}
-			.prs-stats-number {
-				font-size: 2.2rem;
-				font-weight: 900;
-			}
-			.prs-stats-heatmap-header {
-				display: flex;
-				align-items: center;
-				justify-content: space-between;
-				gap: 16px;
-				margin-bottom: 20px;
-				flex-wrap: wrap;
-			}
-			.prs-stats-legend {
-				display: inline-flex;
-				align-items: center;
-				gap: 6px;
-				font-size: 0.5rem;
-				font-weight: 700;
-				text-transform: uppercase;
-				letter-spacing: 0.1em;
-				color: #9ca3af;
-			}
-			.prs-stats-legend-dot {
-				width: 8px;
-				height: 8px;
-				border-radius: 2px;
-				background-color: #ebedf0;
-			}
-			.prs-reading-stats-shell .heatmap-grid {
-				display: grid;
-				grid-template-columns: repeat(53, 1fr);
-				grid-template-rows: repeat(7, 1fr);
-				grid-auto-flow: column;
-				gap: 3px;
-			}
-			.prs-reading-stats-shell .heatmap-cell {
-				aspect-ratio: 1 / 1;
-				border-radius: 9px;
-				background-color: #ebedf0;
-			}
-			.prs-reading-stats-shell .heatmap-cell.is-empty {
-				background-color: transparent;
-			}
-			.prs-reading-stats-shell .level-1 {
-				background-color: #e9d18a;
-				opacity: 0.3;
-			}
-			.prs-reading-stats-shell .level-2 {
-				background-color: #c79f32;
-				opacity: 0.6;
-			}
-			.prs-reading-stats-shell .level-3 {
-				background-color: #c79f32;
-			}
-			.prs-reading-stats-shell .level-4 {
-				background-color: #8a6b1e;
-			}
-			.prs-stats-months {
-				display: flex;
-				justify-content: space-between;
-				margin-top: 16px;
-				font-size: 0.55rem;
-				font-weight: 700;
-				text-transform: uppercase;
-				letter-spacing: 0.14em;
-				color: #9ca3af;
-			}
-			.prs-stats-stack {
-				display: flex;
-				flex-direction: column;
-				gap: 24px;
-			}
-			.prs-stats-accent-row {
-				display: flex;
-				align-items: center;
-				gap: 16px;
-			}
-			.prs-stats-accent-icon {
-				width: 48px;
-				height: 48px;
-				border-radius: 9px;
-				display: inline-flex;
-				align-items: center;
-				justify-content: center;
-				color: #ffffff;
-				flex-shrink: 0;
-			}
-			.prs-stats-accent-value {
-				font-size: 1.8rem;
-				font-weight: 900;
-			}
-			.prs-stats-format-group {
-				display: flex;
-				gap: 12px;
-				align-items: flex-end;
-				margin-top: 12px;
-			}
-			.prs-stats-format-bar {
-				flex: 1;
-				background: #f3f4f6;
-				border-radius: 9px;
-				height: 96px;
-				position: relative;
-				overflow: hidden;
-			}
-			.prs-stats-format-fill {
-				position: absolute;
-				bottom: 0;
-				width: 100%;
-			}
-			.prs-stats-format-label {
-				position: absolute;
-				top: 8px;
-				left: 8px;
-				font-size: 0.55rem;
-				font-weight: 800;
-				text-transform: uppercase;
-				letter-spacing: 0.1em;
-				color: #111827;
-			}
-			.prs-stats-format-label--muted {
-				color: #6b7280;
-			}
-			.prs-stats-prediction-title {
-				font-size: 0.6rem;
-				font-weight: 700;
-				text-transform: uppercase;
-				letter-spacing: 0.1em;
-				color: #e9d18a;
-				margin-bottom: 8px;
-			}
-			.prs-stats-prediction-text {
-				font-size: 0.85rem;
-				line-height: 1.4;
-				margin: 0;
-			}
-			.prs-stats-highlight {
-				color: #e9d18a;
-				font-weight: 900;
-			}
-			.prs-stats-radar-card {
-				min-height: 350px;
-				display: flex;
-				flex-direction: column;
-				align-items: center;
-				justify-content: center;
-				gap: 24px;
-				padding: 24px;
-			}
-			.prs-stats-radar-container {
-				position: relative;
-				width: 100%;
-				max-width: 320px;
-				aspect-ratio: 1 / 1;
-				display: flex;
-				align-items: center;
-				justify-content: center;
-			}
-			.prs-stats-radar-label {
-				position: absolute;
-				font-size: 0.55rem;
-				font-weight: 800;
-				letter-spacing: 0.18em;
-				background: #ffffff;
-				padding: 4px 8px;
-				text-transform: uppercase;
-			}
-			.prs-stats-radar-label--top {
-				top: -6px;
-			}
-			.prs-stats-radar-label--bottom {
-				bottom: -6px;
-			}
-			.prs-stats-radar-label--left {
-				left: -6px;
-			}
-			.prs-stats-radar-label--right {
-				right: -6px;
-			}
-			.prs-stats-pill {
-				display: inline-flex;
-				align-items: center;
-				gap: 8px;
-				padding: 6px 12px;
-				background: #000000;
-				color: #ffffff;
-				border-radius: 9px;
-				font-size: 0.55rem;
-				font-weight: 700;
-				letter-spacing: 0.12em;
-				text-transform: uppercase;
-			}
-			.prs-stats-pill-dot {
-				width: 8px;
-				height: 8px;
-				border-radius: 50%;
-			}
-			@media (min-width: 1024px) {
-				.prs-stats-span-2 {
-					grid-column: span 2;
-				}
-			}
-		</style>
-		<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
-		<div class="prs-reading-stats-dashboard">
-			<div class="prs-reading-stats-shell">
-				<?php /* Stats layout intentionally removed for my-reading-stats-2. */ ?>
-			</div>
+			* {
+				margin: 0;
+				padding: 0;
+				box-sizing: border-box;
+				font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+				font-style: normal !important;
+			}
+
+			body {
+				background-color: var(--subtle-gray);
+				padding: 0;
+				color: var(--black);
+			}
+
+			.wrap {
+				margin: 0;
+				max-width: none;
+				width: 100%;
+			}
+
+			.container {
+				max-width: 1280px;
+				margin: 0 auto;
+			}
+
+			header {
+				display: flex;
+				justify-content: flex-end;
+				margin-bottom: 3rem;
+			}
+
+			.nav-buttons {
+				display: flex;
+				gap: 0.5rem;
+				padding: 0.25rem;
+				background: white;
+				border: 1px solid var(--light-gray);
+				border-radius: 6px;
+			}
+
+			.btn {
+				padding: 0.5rem 1.5rem;
+				font-size: 0.75rem;
+				font-weight: 900;
+				text-transform: uppercase;
+				border-radius: 4px;
+				border: none;
+				cursor: pointer;
+				transition: opacity 0.2s;
+			}
+
+			.btn-black {
+				background: var(--black);
+				color: white;
+			}
+
+			.btn-ghost {
+				background: transparent;
+				color: var(--deep-gray);
+			}
+
+			main {
+				display: flex;
+				flex-direction: column;
+				gap: 4rem;
+				padding-bottom: 5rem;
+			}
+
+			.grid-4 {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+				gap: 1.5rem;
+			}
+
+			.grid-3-split {
+				display: grid;
+				grid-template-columns: 2fr 1fr;
+				gap: 1.5rem;
+				margin-top: 1.5rem;
+			}
+
+			@media (max-width: 1024px) {
+				.grid-3-split { grid-template-columns: 1fr; }
+			}
+
+			.section-header {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+				margin-bottom: 1.5rem;
+				margin-top: 2.5rem;
+			}
+
+			.section-header:first-child { margin-top: 0; }
+
+			.icon-circle {
+				width: 40px;
+				height: 40px;
+				border-radius: 50%;
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				flex-shrink: 0;
+				color: white;
+				box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+			}
+
+			.icon-circle svg { width: 20px; height: 20px; }
+
+			.section-title {
+				font-size: 1.25rem;
+				font-weight: 900;
+				text-transform: uppercase;
+				letter-spacing: -0.02em;
+			}
+
+			.title-line {
+				flex: 1;
+				height: 1px;
+				background: var(--light-gray);
+			}
+
+			.card {
+				background: var(--off-white);
+				border: 1px solid var(--light-gray);
+				border-radius: var(--border-radius);
+				padding: 1.25rem;
+				box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+				transition: box-shadow 0.2s;
+			}
+
+			.card:hover { box-shadow: 0 4px 6px rgba(0,0,0,0.07); }
+
+			.card-header {
+				display: flex;
+				justify-content: space-between;
+				align-items: flex-start;
+			}
+
+			.card-label {
+				font-size: 0.875rem;
+				font-weight: 600;
+				text-transform: uppercase;
+				letter-spacing: 0.05em;
+				color: var(--deep-gray);
+			}
+
+			.card-value {
+				font-size: 1.5rem;
+				font-weight: 700;
+				margin-top: 0.25rem;
+			}
+
+			.card-subtext {
+				font-size: 0.75rem;
+				color: var(--light-gray);
+				margin-top: 0.25rem;
+			}
+
+			.progress-container {
+				margin-bottom: 1rem;
+			}
+
+			.progress-labels {
+				display: flex;
+				justify-content: space-between;
+				margin-bottom: 0.35rem;
+			}
+
+			.progress-label {
+				font-size: 0.75rem;
+				font-weight: 700;
+				text-transform: uppercase;
+				color: var(--deep-gray);
+			}
+
+			.progress-count {
+				font-size: 0.75rem;
+				font-weight: 700;
+				color: var(--light-gray);
+			}
+
+			.progress-track {
+				width: 100%;
+				height: 10px;
+				background: #e2e2e2;
+				border-radius: var(--border-radius);
+				overflow: hidden;
+			}
+
+			.progress-fill {
+				height: 100%;
+				transition: width 0.7s ease-out;
+			}
+
+			.black-card {
+				background: var(--black);
+				color: white;
+				padding: 2rem;
+				border-radius: var(--border-radius);
+				display: flex;
+				flex-direction: column;
+				justify-content: space-between;
+			}
+
+			.chart-container {
+				display: flex;
+				align-items: flex-end;
+				justify-content: space-between;
+				height: 80px;
+				gap: 4px;
+				margin-top: 1rem;
+			}
+
+			.chart-bar {
+				flex: 1;
+				border-radius: 4px 4px 0 0;
+				background: var(--gold);
+			}
+
+			.baseline-card {
+				background: var(--black);
+				padding: 2.5rem;
+				border-radius: var(--border-radius);
+				color: white;
+				position: relative;
+				overflow: hidden;
+			}
+
+			.baseline-grid {
+				display: grid;
+				grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+				gap: 3rem;
+				margin-top: 3rem;
+			}
+
+			.baseline-stat {
+				margin-bottom: 0.5rem;
+			}
+
+			.baseline-stat-header {
+				display: flex;
+				justify-content: space-between;
+				font-size: 10px;
+				font-weight: 700;
+				color: #71717a;
+				text-transform: uppercase;
+				margin-bottom: 0.5rem;
+			}
+
+			.baseline-track {
+				height: 6px;
+				background: #27272a;
+				border-radius: var(--border-radius);
+			}
+
+			.baseline-fill { height: 100%; border-radius: var(--border-radius); }
+
+			.bg-gold { background: var(--gold); }
+			.bg-silver { background: var(--silver); color: var(--black) !important; }
+			.bg-copper { background: var(--copper); }
+			.bg-black { background: var(--black); }
+
+			footer {
+				border-top: 1px solid #e5e7eb;
+				padding-top: 3rem;
+				padding-bottom: 5rem;
+				display: flex;
+				justify-content: space-between;
+				align-items: center;
+			}
+
+			.footer-logo {
+				display: flex;
+				align-items: center;
+				gap: 0.75rem;
+			}
+
+			.logo-text-top { font-weight: 900; font-size: 1.125rem; letter-spacing: -0.05em; display: block; }
+			.logo-text-bot { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--light-gray); letter-spacing: 0.3em; }
+
+			.footer-links {
+				display: flex;
+				gap: 2rem;
+				font-size: 10px;
+				font-weight: 900;
+				text-transform: uppercase;
+				letter-spacing: 0.1em;
+			}
+
+			.footer-links a { text-decoration: none; color: var(--deep-gray); }
+		</style>
+
+		<script src="https://unpkg.com/lucide@latest"></script>
+
+		<div class="container">
+			<header>
+				<div class="nav-buttons">
+					<button class="btn btn-black">Librería</button>
+					<button class="btn btn-ghost">Lecturas</button>
+					<button class="btn btn-ghost">Social</button>
+				</div>
+			</header>
+
+			<main>
+			<section id="library-stats">
+				<div class="section-header" id="library-stats-header">
+					<div class="icon-circle bg-gold" id="library-stats-header-icon"><i data-lucide="book"></i></div>
+					<h2 class="section-title" id="library-stats-title">Librería</h2>
+				</div>
+
+				<div class="grid-4" id="library-stats-grid-4">
+					<div class="card" id="library-stats-card-total">
+						<div class="card-header" id="library-stats-card-total-header">
+							<div id="library-stats-card-total-body">
+								<p class="card-label" id="library-stats-card-total-label">Total Libros</p>
+								<h3 class="card-value" id="library-stats-card-total-value"><?php echo esc_html( number_format_i18n( $total_user_books ) ); ?></h3>
+								<p class="card-subtext" id="library-stats-card-total-subtext">Biblioteca completa</p>
+							</div>
+							<div class="icon-circle bg-gold" id="library-stats-card-total-icon"><i data-lucide="book"></i></div>
+						</div>
+					</div>
+					<div class="card" id="library-stats-card-read">
+						<div class="card-header" id="library-stats-card-read-header">
+							<div id="library-stats-card-read-body">
+								<p class="card-label" id="library-stats-card-read-label">Leídos / No Leídos</p>
+								<h3 class="card-value" id="library-stats-card-read-value">
+									<?php
+									echo esc_html(
+										sprintf(
+											'%1$s / %2$s / %3$s',
+											number_format_i18n( $reading_status_counts['not_started'] ),
+											number_format_i18n( $reading_status_counts['started'] ),
+											number_format_i18n( $reading_status_counts['finished'] )
+										)
+									);
+									?>
+								</h3>
+								<p class="card-subtext" id="library-stats-card-read-subtext">Ratio 1.5x</p>
+							</div>
+							<div class="icon-circle bg-silver" id="library-stats-card-read-icon"><i data-lucide="book-open"></i></div>
+						</div>
+					</div>
+					<div class="card" id="library-stats-card-format">
+						<div class="card-header" id="library-stats-card-format-header">
+							<div id="library-stats-card-format-body">
+								<p class="card-label" id="library-stats-card-format-label">Físicos vs Digital</p>
+								<h3 class="card-value" id="library-stats-card-format-value">92 / 50</h3>
+								<p class="card-subtext" id="library-stats-card-format-subtext">Híbrido</p>
+							</div>
+							<div class="icon-circle bg-copper" id="library-stats-card-format-icon"><i data-lucide="globe"></i></div>
+						</div>
+					</div>
+					<div class="card" id="library-stats-card-rating">
+						<div class="card-header" id="library-stats-card-rating-header">
+							<div id="library-stats-card-rating-body">
+								<p class="card-label" id="library-stats-card-rating-label">Rating Promedio</p>
+								<h3 class="card-value" id="library-stats-card-rating-value">4.8</h3>
+								<p class="card-subtext" id="library-stats-card-rating-subtext">Calidad alta</p>
+							</div>
+							<div class="icon-circle bg-gold" id="library-stats-card-rating-icon"><i data-lucide="star"></i></div>
+						</div>
+					</div>
+				</div>
+
+				<div class="grid-3-split" id="library-stats-grid-split">
+					<div class="card" id="library-stats-distribution-card">
+						<h4 class="card-label" id="library-stats-distribution-title" style="margin-bottom: 1.5rem;">Distribución de Inventario</h4>
+						<div class="progress-container" id="library-stats-progress-language">
+							<div class="progress-labels" id="library-stats-progress-language-labels"><span class="progress-label" id="library-stats-progress-language-label">Libros por Idioma</span><span class="progress-count" id="library-stats-progress-language-count">110/142</span></div>
+							<div class="progress-track" id="library-stats-progress-language-track"><div class="progress-fill bg-gold" id="library-stats-progress-language-fill" style="width: 77%;"></div></div>
+						</div>
+						<div class="progress-container" id="library-stats-progress-loans">
+							<div class="progress-labels" id="library-stats-progress-loans-labels"><span class="progress-label" id="library-stats-progress-loans-label">Libros Prestados</span><span class="progress-count" id="library-stats-progress-loans-count">12/142</span></div>
+							<div class="progress-track" id="library-stats-progress-loans-track"><div class="progress-fill bg-silver" id="library-stats-progress-loans-fill" style="width: 8%;"></div></div>
+						</div>
+						<div class="progress-container" id="library-stats-progress-losses">
+							<div class="progress-labels" id="library-stats-progress-losses-labels"><span class="progress-label" id="library-stats-progress-losses-label">Libros Perdidos / Vendidos</span><span class="progress-count" id="library-stats-progress-losses-count">4/142</span></div>
+							<div class="progress-track" id="library-stats-progress-losses-track"><div class="progress-fill bg-copper" id="library-stats-progress-losses-fill" style="width: 3%;"></div></div>
+						</div>
+					</div>
+					<div class="black-card shadow-xl" id="library-stats-growth-card">
+						<div id="library-stats-growth-header">
+							<p id="library-stats-growth-label" style="font-size: 10px; font-weight: 700; letter-spacing: 0.1em; color: #71717a; text-transform: uppercase;">Crecimiento Mensual</p>
+							<h3 id="library-stats-growth-value" style="font-size: 1.875rem; font-weight: 900; margin-top: 0.5rem;">+12 <span id="library-stats-growth-unit" style="font-size: 0.875rem; font-weight: 400; color: #a1a1aa;">libros</span></h3>
+						</div>
+						<div class="chart-container" id="library-stats-growth-chart">
+							<div class="chart-bar" id="library-stats-growth-bar-1" style="height: 40%;"></div>
+							<div class="chart-bar" id="library-stats-growth-bar-2" style="height: 60%;"></div>
+							<div class="chart-bar" id="library-stats-growth-bar-3" style="height: 35%;"></div>
+							<div class="chart-bar" id="library-stats-growth-bar-4" style="height: 85%;"></div>
+							<div class="chart-bar" id="library-stats-growth-bar-5" style="height: 55%;"></div>
+							<div class="chart-bar" id="library-stats-growth-bar-6" style="height: 100%;"></div>
+							<div class="chart-bar" id="library-stats-growth-bar-7" style="height: 80%;"></div>
+						</div>
+					</div>
+				</div>
+			</section>
+
+				<section>
+					<div class="section-header">
+						<div class="icon-circle bg-silver"><i data-lucide="clock"></i></div>
+						<h2 class="section-title">Lectura y Hábitos</h2>
+					</div>
+					
+					<div class="grid-3-split">
+						<div class="card" style="display: flex; flex-direction: column; justify-content: center;">
+							<p class="card-label" style="color: #a1a1aa;">Actividad Principal</p>
+							<h3 style="font-size: 1.25rem; font-weight: 900; margin-top: 0.5rem;">El problema de los tres cuerpos</h3>
+							<div style="margin-top: 2rem;">
+								<div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 0.5rem;">
+									<span style="font-size: 1.875rem; font-weight: 900;">78%</span>
+									<span class="card-label" style="font-size: 10px;">Progreso</span>
+								</div>
+								<div class="progress-track" style="height: 6px;"><div class="progress-fill bg-silver" style="width: 78%;"></div></div>
+								<p style="font-size: 0.75rem; color: var(--deep-gray); margin-top: 1rem;">Velocidad constante: 42 pág/h</p>
+							</div>
+						</div>
+						<div style="display: grid; gap: 1.5rem;">
+							<div class="card">
+								<div class="card-header">
+									<div>
+										<p class="card-label">Tiempo Total</p>
+										<h3 class="card-value">156h</h3>
+										<p class="card-subtext">Este año</p>
+									</div>
+									<div class="icon-circle bg-silver"><i data-lucide="clock"></i></div>
+								</div>
+							</div>
+							<div class="card">
+								<div class="card-header">
+									<div>
+										<p class="card-label">Días Consecutivos</p>
+										<h3 class="card-value">24</h3>
+										<p class="card-subtext">Racha actual</p>
+									</div>
+									<div class="icon-circle bg-gold"><i data-lucide="zap"></i></div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<section style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+					<div>
+						<div class="section-header">
+							<div class="icon-circle bg-copper"><i data-lucide="sticky-note"></i></div>
+							<h2 class="section-title">Notas</h2>
+						</div>
+						<div class="card">
+							<div style="display: flex; justify-content: space-between; margin-bottom: 2rem;">
+								<div>
+									<p style="font-size: 2.25rem; font-weight: 900;">65%</p>
+									<p class="card-label" style="font-size: 10px; color: var(--light-gray);">Sesiones con Notas</p>
+								</div>
+								<div style="text-align: right;">
+									<p style="font-size: 1.25rem; font-weight: 700;">40 / 60</p>
+									<p class="card-label" style="font-size: 10px; color: var(--light-gray);">Públicas / Privadas</p>
+								</div>
+							</div>
+							<h4 class="card-label" style="font-size: 10px; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+								<i data-lucide="heart" style="width: 12px; color: #b87333;"></i> Distribución Emocional
+							</h4>
+							<div class="progress-container">
+								<div class="progress-labels"><span class="progress-label" style="font-size: 10px; width: 80px;">Inspiración</span><div class="progress-track" style="height: 4px;"><div class="progress-fill bg-copper" style="width: 45%;"></div></div></div>
+							</div>
+							<div class="progress-container">
+								<div class="progress-labels"><span class="progress-label" style="font-size: 10px; width: 80px;">Melancolía</span><div class="progress-track" style="height: 4px;"><div class="progress-fill bg-copper" style="width: 20%;"></div></div></div>
+							</div>
+							<div class="progress-container">
+								<div class="progress-labels"><span class="progress-label" style="font-size: 10px; width: 80px;">Tensión</span><div class="progress-track" style="height: 4px;"><div class="progress-fill bg-copper" style="width: 35%;"></div></div></div>
+							</div>
+						</div>
+					</div>
+
+					<div>
+						<div class="section-header">
+							<div class="icon-circle bg-black"><i data-lucide="users"></i></div>
+							<h2 class="section-title">Social</h2>
+						</div>
+						<div class="card" style="display: flex; flex-direction: column; gap: 1.5rem;">
+							<div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f9fafb; border: 1px solid var(--light-gray); border-radius: var(--border-radius);">
+								<div style="display: flex; align-items: center; gap: 1rem;">
+									<div class="icon-circle bg-black" style="font-weight: 900;">S</div>
+									<div>
+										<p style="font-size: 0.875rem; font-weight: 900; text-transform: uppercase;">Comentarios</p>
+										<p style="font-size: 0.75rem; color: #a1a1aa;">24 nuevas interacciones</p>
+									</div>
+								</div>
+								<span style="font-size: 1.125rem; font-weight: 900;">+12%</span>
+							</div>
+							<div style="display: flex; justify-content: space-between; align-items: center;">
+								<p class="card-label" style="font-size: 10px;">Usuarios Activos</p>
+								<div style="display: flex; margin-right: 0.75rem;">
+									<div style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid white; background: #e5e7eb; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; margin-right: -12px;">U1</div>
+									<div style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid white; background: #d1d5db; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; margin-right: -12px;">U2</div>
+									<div style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid white; background: #9ca3af; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900; margin-right: -12px;">U3</div>
+									<div style="width: 40px; height: 40px; border-radius: 50%; border: 4px solid white; background: var(--black); color: white; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 900;">+8</div>
+								</div>
+							</div>
+							<div style="padding: 1rem; border-left: 4px solid #C79F32; background: var(--off-white); border-radius: 0 var(--border-radius) var(--border-radius) 0;">
+								<p class="card-label" style="font-size: 10px; color: #a1a1aa; margin-bottom: 0.25rem;">Thread más largo</p>
+								<p style="font-size: 0.875rem; font-weight: 700; letter-spacing: -0.01em;">La deconstrucción del héroe en el siglo XXI</p>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<section>
+					<div class="section-header">
+						<div class="icon-circle bg-copper"><i data-lucide="hand-helping"></i></div>
+						<h2 class="section-title">Préstamos</h2>
+					</div>
+					<div class="grid-4">
+						<div class="card">
+							<div class="card-header">
+								<div><p class="card-label">Activos</p><h3 class="card-value">12</h3><p class="card-subtext">Libros fuera</p></div>
+								<div class="icon-circle bg-copper"><i data-lucide="hand-helping"></i></div>
+							</div>
+						</div>
+						<div class="card">
+							<div class="card-header">
+								<div><p class="card-label">Promedio Días</p><h3 class="card-value">18d</h3><p class="card-subtext">Tiempo retorno</p></div>
+								<div class="icon-circle bg-silver"><i data-lucide="clock"></i></div>
+							</div>
+						</div>
+						<div class="card">
+							<div class="card-header">
+								<div><p class="card-label">No Devueltos</p><h3 class="card-value">02</h3><p class="card-subtext">Alerta crítica</p></div>
+								<div class="icon-circle bg-gold"><i data-lucide="zap"></i></div>
+							</div>
+						</div>
+						<div class="card">
+							<div class="card-header">
+								<div><p class="card-label">Personas Freq.</p><h3 class="card-value">Ana, Luis</h3><p class="card-subtext">Confianza</p></div>
+								<div class="icon-circle bg-silver"><i data-lucide="users"></i></div>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<section>
+					<div class="section-header">
+						<div class="icon-circle bg-black"><i data-lucide="trending-up"></i></div>
+						<h2 class="section-title">Baselines</h2>
+						<div class="title-line"></div>
+					</div>
+					<div class="baseline-card shadow-2xl">
+						<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 3rem;">
+							<div>
+								<h3 style="font-size: 1.875rem; font-weight: 900; text-transform: uppercase;">Evolución vs Baseline</h3>
+								<p style="font-size: 0.875rem; font-weight: 700; text-transform: uppercase; color: #71717a; letter-spacing: 0.1em; margin-top: 0.25rem;">Comparativa de hábitos iniciales</p>
+							</div>
+							<div style="padding: 0.5rem 1.5rem; border: 1px solid #3f3f46; border-radius: var(--border-radius); font-size: 10px; font-weight: 700; text-transform: uppercase;">Estadística de Crecimiento</div>
+						</div>
+
+						<div class="baseline-grid">
+							<div class="baseline-stat">
+								<div class="baseline-stat-header"><span>Hábitos AVG</span><span style="color: white;">+45%</span></div>
+								<div class="baseline-track"><div class="baseline-fill bg-gold" style="width: 85%;"></div></div>
+							</div>
+							<div class="baseline-stat">
+								<div class="baseline-stat-header"><span>Velocidad</span><span style="color: white;">+20%</span></div>
+								<div class="baseline-track"><div class="baseline-fill bg-silver" style="width: 60%;"></div></div>
+							</div>
+							<div class="baseline-stat">
+								<div class="baseline-stat-header"><span>Notas Freq</span><span style="color: white;">+120%</span></div>
+								<div class="baseline-track"><div class="baseline-fill bg-copper" style="width: 92%;"></div></div>
+							</div>
+						</div>
+
+						<div style="margin-top: 4rem; display: flex; align-items: baseline; gap: 1rem;">
+							<span style="font-size: 4.5rem; font-weight: 900; color: var(--off-white);">12.5K</span>
+							<div>
+								<p style="font-size: 1.25rem; font-weight: 700; text-transform: uppercase;">Páginas Totales</p>
+								<p style="font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: #71717a; letter-spacing: 0.1em;">Superado Baseline Anual</p>
+							</div>
+						</div>
+						<div style="position: absolute; inset: 0; opacity: 0.05; pointer-events: none; background-image: radial-gradient(white 1px, transparent 1px); background-size: 40px 40px;"></div>
+					</div>
+				</section>
+			</main>
+
+			<footer>
+				<div class="footer-logo">
+					<div class="icon-circle bg-black"><i data-lucide="book" style="color: white;"></i></div>
+					<div>
+						<span class="logo-text-top">LECTURASTATS</span>
+						<span class="logo-text-bot">SISTEMA DE GESTIÓN</span>
+					</div>
+				</div>
+				<div class="footer-links">
+					<a href="#">Exportar Reporte</a>
+					<a href="#">Base de Datos</a>
+					<a href="#">Legal</a>
+				</div>
+			</footer>
 		</div>
+
+		<script>
+			window.onload = function() {
+				lucide.createIcons();
+			};
+		</script>
 	<?php else : ?>
 		<p><?php esc_html_e( 'Access denied.', 'politeia-reading' ); ?></p>
 	<?php endif; ?>

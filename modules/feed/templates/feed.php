@@ -119,7 +119,8 @@ $user_id = get_current_user_id();
             <div class="prs-sidebar-group">
                 <h2 class="prs-sidebar-title"><?php esc_html_e('Daily stats', 'politeia-bookshelf'); ?></h2>
                 <div class="prs-filter-item">
-                    <span class="prs-filter-label"><?php esc_html_e('Total pages read today', 'politeia-bookshelf'); ?></span>
+                    <span
+                        class="prs-filter-label"><?php esc_html_e('Total pages read today', 'politeia-bookshelf'); ?></span>
                     <strong>128</strong>
                 </div>
                 <div class="prs-filter-item">
@@ -127,7 +128,8 @@ $user_id = get_current_user_id();
                     <strong>7</strong>
                 </div>
                 <div class="prs-filter-item">
-                    <span class="prs-filter-label"><?php esc_html_e('Most popular genre', 'politeia-bookshelf'); ?></span>
+                    <span
+                        class="prs-filter-label"><?php esc_html_e('Most popular genre', 'politeia-bookshelf'); ?></span>
                     <strong><?php esc_html_e('Literary Fiction', 'politeia-bookshelf'); ?></strong>
                 </div>
                 <div class="prs-filter-item">
@@ -151,6 +153,7 @@ $user_id = get_current_user_id();
             SELECT 
                 n.id as note_id,
                 n.user_id as note_user_id,
+                u.display_name as note_user_name,
                 n.note, 
                 n.created_at, 
                 n.emotions,
@@ -167,11 +170,12 @@ $user_id = get_current_user_id();
             FROM {$table_notes} n
             JOIN {$table_ub} ub ON n.user_book_id = ub.id
             JOIN {$table_books} b ON ub.book_id = b.id
-            WHERE n.user_id = %d 
+            JOIN {$wpdb->users} u ON n.user_id = u.ID
+            WHERE n.visibility = 'public'
               AND n.note != ''
             ORDER BY n.created_at DESC
             LIMIT 10
-        ", $user_id);
+        ");
 
             $notes = $wpdb->get_results($sql);
 
