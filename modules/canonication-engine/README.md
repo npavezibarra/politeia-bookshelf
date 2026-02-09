@@ -1,4 +1,5 @@
 # Canonication Engine (NG)
+https://chatgpt.com/g/g-p-689f61d3cfbc8191845062baadc05805-politeia-book-session/c/6983cc3e-0108-8325-b422-f9a960e4f6d0
 
 ## 1. Purpose of the Module
 Canonicalization is needed to prevent duplicate representations of the same intellectual work while keeping the user experience flexible and forgiving. The module separates the idea of a Canonical Book (the abstract work) from a User Book (the specific edition or entry a user owns or creates). The goal is to avoid duplicate canonical works for clean aggregation and analytics, while preserving the freedom for users to enter books quickly and in their own terms.
