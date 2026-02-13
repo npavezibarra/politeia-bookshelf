@@ -839,9 +839,13 @@ wp_add_inline_script(
                 </div>
                 </section>
 
-                <!-- Status Row -->
-                <section id="prs-book-info__sidebar" class="prs-book-info__sidebar" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
-                <div id="prs-status-row" class="prs-status-row">
+<!-- Status Row -->
+               <div id="prs-book-info__sidebar" class="prs-flip-container">
+
+                       <!-- FRONT FACE -->
+                       <div class="prs-front relative">
+                               <section class="prs-book-info__sidebar" aria-label="<?php esc_attr_e( 'Reading and owning status', 'politeia-reading' ); ?>">
+                                       <div id="prs-status-row" class="prs-status-row">
                         <?php
                                 // "In Shelf" es derivado solo cuando owning_status es NULL/''.
                                 $is_in_shelf = empty( $ub->owning_status );
@@ -903,8 +907,39 @@ wp_add_inline_script(
                                 </p>
 
                         </div>
-                </div>
-                </section>
+                                       </div>
+                               </section>
+
+                               <button id="prs-flip-btn-front" class="prs-flip-button absolute top-3 right-3 p-2 text-gray-400 hover:text-indigo-600 transition rounded-full hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="<?php esc_attr_e( 'Flip card to calendar view', 'politeia-reading' ); ?>">
+                                       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                               <path d="M21 12a9 9 0 0 0-9-9c-1.4 0-2.8.3-4 .9A6 6 0 0 0 4 8.5M3 12a9 9 0 0 0 9 9c1.4 0 2.8-.3 4-.9A6 6 0 0 0 20 15.5"></path>
+                                               <path d="m3 5 1.5 1.5m16.5 12L19.5 17.5M12 2v2m-7.8 11.8 1.5-1.5m15.6-7.6-1.5 1.5"></path>
+                                       </svg>
+                               </button>
+                       </div>
+
+                       <!-- BACK FACE -->
+                       <div class="prs-back relative">
+                               <button id="prs-flip-btn-back" class="prs-flip-button absolute top-3 right-3 p-2 text-gray-400 hover:text-indigo-600 transition rounded-full hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500" aria-label="<?php esc_attr_e( 'Flip back to status view', 'politeia-reading' ); ?>">
+                                       <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                               <path d="M21 12a9 9 0 0 0-9-9c-1.4 0-2.8.3-4 .9A6 6 0 0 0 4 8.5M3 12a9 9 0 0 0 9 9c1.4 0 2.8-.3 4-.9A6 6 0 0 0 20 15.5"></path>
+                                               <path d="m3 5 1.5 1.5m16.5 12L19.5 17.5M12 2v2m-7.8 11.8 1.5-1.5m15.6-7.6-1.5 1.5"></path>
+                                       </svg>
+                               </button>
+
+                               <h2 class="text-lg font-bold mb-3"><?php esc_html_e( 'Reading Calendar', 'politeia-reading' ); ?></h2>
+
+                               <div class="prs-calendar-grid mb-4">
+                                       <div>SUN</div><div>MON</div><div>TUE</div><div>WED</div><div>THU</div><div>FRI</div><div>SAT</div>
+<?php for ( $i = 1; $i <= 35; $i++ ) : ?>
+                                       <div class="prs-day-box"><?php echo (int) $i; ?></div>
+<?php endfor; ?>
+                               </div>
+
+                               <button class="prs-plan-btn"><?php esc_html_e( 'Plan a reading session', 'politeia-reading' ); ?></button>
+                       </div>
+
+               </div>
         </div>
 
         <section id="prs-reading-sessions" class="prs-book-sessions prs-reading-sessions">
