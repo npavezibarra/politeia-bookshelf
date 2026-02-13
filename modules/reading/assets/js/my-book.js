@@ -4999,5 +4999,15 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
     setupLibraryFilterDashboard();
     setupSearchCoverOverlay();
     attachCoverImgGuards();
+
+    const sidebar = document.getElementById("prs-book-info__sidebar");
+    const frontBtn = document.getElementById("prs-flip-btn-front");
+    const backBtn = document.getElementById("prs-flip-btn-back");
+
+    if (sidebar && frontBtn && backBtn) {
+      const toggleFlip = () => sidebar.classList.toggle("flipped");
+      frontBtn.addEventListener("click", toggleFlip);
+      backBtn.addEventListener("click", toggleFlip);
+    }
   });
 })();
