@@ -8,14 +8,27 @@ if (!defined('ABSPATH')) {
 
 class Politeia_Reading_Sessions
 {
+	private const HARD_PROMPT_SECONDS = 4800; // 80 minutes
+	private const AUTO_STOP_SECONDS = 6000; // 100 minutes (80 + 20)
+	private const ACTIVE_SESSIONS_OPTION = 'politeia_reading_active_recorder_sessions';
+	private const ACTIVE_SESSION_TRANSIENT_PREFIX = 'politeia_reading_active_recorder_session_';
+	private const CRON_HOOK = 'politeia_reading_recorder_autostop';
+	private const CRON_SCHEDULE = 'politeia_reading_15min';
 
 	public static function init()
 	{
 		add_action('wp_ajax_prs_start_reading', array(__CLASS__, 'ajax_start'));
 		add_action('wp_ajax_prs_save_reading', array(__CLASS__, 'ajax_save'));
+		add_action('wp_ajax_prs_add_manual_session', array(__CLASS__, 'ajax_add_manual_session'));
+		add_action('wp_ajax_prs_sr_heartbeat', array(__CLASS__, 'ajax_heartbeat'));
+		add_action('wp_ajax_prs_sr_auto_stop', array(__CLASS__, 'ajax_auto_stop'));
 
 		// Render parcial (tabla de sesiones + paginación) para AJAX en my-book-single.php
 		add_action('wp_ajax_prs_render_sessions', array(__CLASS__, 'ajax_render_sessions'));
+
+		add_filter('cron_schedules', array(__CLASS__, 'register_cron_schedule'));
+		add_action('init', array(__CLASS__, 'schedule_autostop_cron'));
+		add_action(self::CRON_HOOK, array(__CLASS__, 'cron_autostop'));
 	}
 
 	/*
@@ -67,6 +80,48 @@ class Politeia_Reading_Sessions
 		global $wpdb;
 		$t = $wpdb->prefix . 'politeia_reading_sessions';
 
+		self::cleanup_active_sessions();
+
+		$existing = self::find_active_session_id($user_id, $book_id);
+		if ($existing > 0) {
+			$meta = self::get_active_session_meta($existing);
+			$started_at = $meta && !empty($meta['started_at_gmt']) ? (string) $meta['started_at_gmt'] : '';
+			if (!$started_at) {
+				$row = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT start_time FROM {$t} WHERE id=%d AND user_id=%d AND deleted_at IS NULL LIMIT 1",
+						$existing,
+						$user_id
+					)
+				);
+				if ($row && !empty($row->start_time)) {
+					$started_at = (string) $row->start_time;
+				}
+			}
+			if ($started_at) {
+				// Refresh transient TTL for the active session.
+				set_transient(
+					self::ACTIVE_SESSION_TRANSIENT_PREFIX . $existing,
+					array(
+						'session_id' => (int) $existing,
+						'user_id' => (int) $user_id,
+						'book_id' => (int) $book_id,
+						'user_book_id' => (int) $ub_row->id,
+						'started_at_gmt' => (string) $started_at,
+					),
+					3 * HOUR_IN_SECONDS
+				);
+
+				self::ok(
+					array(
+						'session_id' => (int) $existing,
+						'started_at' => $started_at,
+						'reused'     => 1,
+					)
+				);
+			}
+		}
+
 		$now_gmt = gmdate('Y-m-d H:i:s', current_time('timestamp', true)); // GMT
 		// Guardamos placeholder (end_time=end_time=start_time) por restricción NOT NULL
 		$ins = array(
@@ -79,17 +134,32 @@ class Politeia_Reading_Sessions
 			'chapter_name' => $chapter ?: null,
 		);
 
-		$ok = $wpdb->insert($t, $ins, array('%d', '%d', '%s', '%s', '%d', '%d', '%s'));
+		$formats = array('%d', '%d', '%s', '%s', '%d', '%d', '%s');
+		if (self::table_has_columns('politeia_reading_sessions', array('insert_type'))) {
+			$ins['insert_type'] = 'recorder';
+			$formats[] = '%s';
+		}
+
+		$ok = $wpdb->insert($t, $ins, $formats);
 		if (!$ok) {
 			self::err('db_insert_failed', 500);
 		}
 
 		$session_id = (int) $wpdb->insert_id;
 
+		self::register_active_session(
+			$session_id,
+			(int) $user_id,
+			(int) $book_id,
+			(int) $ub_row->id,
+			$now_gmt
+		);
+
 		self::ok(
 			array(
 				'session_id' => $session_id,
 				'started_at' => $now_gmt,
+				'reused'     => 0,
 			)
 		);
 	}
@@ -107,6 +177,36 @@ class Politeia_Reading_Sessions
 			self::err('bad_nonce', 403);
 		}
 
+		$data = self::save_session_common('recorder', true);
+		self::ok($data);
+	}
+
+	/*
+	=========================
+	 * AJAX: ADD MANUAL
+	 * ========================= */
+	public static function ajax_add_manual_session()
+	{
+		if (!is_user_logged_in()) {
+			self::err('auth', 401);
+		}
+		if (!self::verify_nonce('prs_reading_nonce', array('nonce'))) {
+			self::err('bad_nonce', 403);
+		}
+
+		$data = self::save_session_common('manual', false);
+		self::ok($data);
+	}
+
+	/**
+	 * Shared implementation for saving a session.
+	 *
+	 * @param string $insert_type 'manual' or 'recorder'.
+	 * @param bool   $allow_update_existing Allow updating an existing session by session_id.
+	 * @return array<string,mixed>
+	 */
+	private static function save_session_common($insert_type, $allow_update_existing)
+	{
 		$user_id = get_current_user_id();
 		$book_id = isset($_POST['book_id']) ? absint($_POST['book_id']) : 0;
 		if (!$book_id) {
@@ -149,55 +249,140 @@ class Politeia_Reading_Sessions
 		global $wpdb;
 		$t = $wpdb->prefix . 'politeia_reading_sessions';
 
-		$now_gmt = gmdate('Y-m-d H:i:s', current_time('timestamp', true)); // end_time GMT
-		$end_dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $now_gmt, new \DateTimeZone('UTC'));
-		$end_ts = $end_dt ? $end_dt->getTimestamp() : time();
-		$start_ts = $duration_sec > 0 ? max(0, $end_ts - $duration_sec) : $end_ts;
-		$start_gmt = gmdate('Y-m-d H:i:s', $start_ts);
+		$start_gmt = '';
+		$end_gmt   = '';
+		if ($insert_type === 'manual') {
+			$raw_start = isset($_POST['start_datetime']) ? sanitize_text_field(wp_unslash($_POST['start_datetime'])) : '';
+			$raw_end   = isset($_POST['end_datetime']) ? sanitize_text_field(wp_unslash($_POST['end_datetime'])) : '';
+			$raw_start = trim((string) $raw_start);
+			$raw_end   = trim((string) $raw_end);
+			if ($raw_start === '' || $raw_end === '') {
+				self::err('invalid_datetime', 400);
+			}
 
-		$session_id = isset($_POST['session_id']) ? absint($_POST['session_id']) : 0;
-		if ($session_id > 0) {
+			$tz = wp_timezone();
+			$start_local = \DateTimeImmutable::createFromFormat('Y-m-d\\TH:i', $raw_start, $tz);
+			if (!$start_local) {
+				$start_local = \DateTimeImmutable::createFromFormat('Y-m-d\\TH:i:s', $raw_start, $tz);
+			}
+			$end_local = \DateTimeImmutable::createFromFormat('Y-m-d\\TH:i', $raw_end, $tz);
+			if (!$end_local) {
+				$end_local = \DateTimeImmutable::createFromFormat('Y-m-d\\TH:i:s', $raw_end, $tz);
+			}
+			if (!$start_local || !$end_local) {
+				self::err('invalid_datetime', 400);
+			}
+
+			$start_utc = $start_local->setTimezone(new \DateTimeZone('UTC'));
+			$end_utc   = $end_local->setTimezone(new \DateTimeZone('UTC'));
+
+			if ($end_utc->getTimestamp() < $start_utc->getTimestamp()) {
+				self::err('invalid_time_range', 400);
+			}
+
+			$start_gmt = $start_utc->format('Y-m-d H:i:s');
+			$end_gmt   = $end_utc->format('Y-m-d H:i:s');
+		} else {
+			$end_gmt = gmdate('Y-m-d H:i:s', current_time('timestamp', true)); // end_time GMT
+			$end_dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', $end_gmt, new \DateTimeZone('UTC'));
+			$end_ts = $end_dt ? $end_dt->getTimestamp() : time();
+			$start_ts = $duration_sec > 0 ? max(0, $end_ts - $duration_sec) : $end_ts;
+			$start_gmt = gmdate('Y-m-d H:i:s', $start_ts);
+		}
+
+		$session_id = 0;
+		if ($allow_update_existing) {
+			$session_id = isset($_POST['session_id']) ? absint($_POST['session_id']) : 0;
+		}
+		if ($allow_update_existing && $session_id > 0) {
 			$row = $wpdb->get_row(
 				$wpdb->prepare(
-					"SELECT id,user_id,user_book_id FROM {$t} WHERE id=%d AND deleted_at IS NULL LIMIT 1",
+					"SELECT id,user_id,user_book_id,start_time,end_time,insert_type FROM {$t} WHERE id=%d AND deleted_at IS NULL LIMIT 1",
 					$session_id
 				)
 			);
 			if ($row && (int) $row->user_id === $user_id && (int) $row->user_book_id === (int) $ub_row->id) {
+				$is_active = self::is_active_session($session_id);
+				$is_automatic_stop = isset($row->insert_type) && (string) $row->insert_type === 'automatic_stop';
+				$is_placeholder = !empty($row->start_time) && !empty($row->end_time) && (string) $row->start_time === (string) $row->end_time;
+
+				// When updating an existing recorder session, treat DB start_time as authoritative.
+				if ($insert_type === 'recorder' && !empty($row->start_time)) {
+					$start_gmt = (string) $row->start_time;
+				}
+
+				$forced_type = null;
+				if ($insert_type === 'recorder' && ($is_active || $is_placeholder) && !$is_automatic_stop && !empty($row->start_time)) {
+					$forced = self::compute_forced_end_time((string) $row->start_time);
+					if ($forced['forced']) {
+						$end_gmt = $forced['end_time'];
+						$forced_type = 'automatic_stop';
+					}
+				}
+
+				$update_data = array(
+					'start_time' => $start_gmt,
+					'end_time' => $end_gmt,
+					'start_page' => $start_page,
+					'end_page' => $end_page,
+					'chapter_name' => $chapter ?: null,
+				);
+				$update_formats = array('%s', '%s', '%d', '%d', '%s');
+				if ($forced_type && self::table_has_columns('politeia_reading_sessions', array('insert_type'))) {
+					$update_data['insert_type'] = $forced_type;
+					$update_formats[] = '%s';
+				}
+
 				$wpdb->update(
 					$t,
-					array(
-						'start_time' => $start_gmt,
-						'end_time' => $now_gmt,
-						'start_page' => $start_page,
-						'end_page' => $end_page,
-						'chapter_name' => $chapter ?: null,
-					),
+					$update_data,
 					array('id' => $session_id),
-					array('%s', '%s', '%d', '%d', '%s'),
+					$update_formats,
 					array('%d')
 				);
 				if ($wpdb->last_error) {
 					self::err('db_update_failed', 500);
+				}
+
+				// Closing a recorder session ends its active lifecycle (safe even if already deregistered).
+				if ($insert_type === 'recorder') {
+					self::deregister_active_session($session_id);
 				}
 			} else {
 				$session_id = 0; // caer a inserción
 			}
 		}
 		if ($session_id === 0) {
-			$ok = $wpdb->insert(
-				$t,
-				array(
-					'user_id' => $user_id,
-					'user_book_id' => (int) $ub_row->id,
-					'start_time' => $start_gmt,
-					'end_time' => $now_gmt,
-					'start_page' => $start_page,
-					'end_page' => $end_page,
-					'chapter_name' => $chapter ?: null,
-				),
-				array('%d', '%d', '%s', '%s', '%d', '%d', '%s')
+			$insert = array(
+				'user_id' => $user_id,
+				'user_book_id' => (int) $ub_row->id,
+				'start_time' => $start_gmt,
+				'end_time' => $end_gmt,
+				'start_page' => $start_page,
+				'end_page' => $end_page,
+				'chapter_name' => $chapter ?: null,
 			);
+			$formats = array('%d', '%d', '%s', '%s', '%d', '%d', '%s');
+			if (self::table_has_columns('politeia_reading_sessions', array('insert_type'))) {
+				$insert_type_value = $insert_type;
+				if ($insert_type === 'recorder') {
+					// Clamp derived durations to avoid indefinite sessions.
+					$start_dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) $start_gmt, new \DateTimeZone('UTC'));
+					$end_dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) $end_gmt, new \DateTimeZone('UTC'));
+					if ($start_dt && $end_dt) {
+						$elapsed = max(0, $end_dt->getTimestamp() - $start_dt->getTimestamp());
+						if ($elapsed >= self::AUTO_STOP_SECONDS) {
+							$insert_type_value = 'automatic_stop';
+							$end_gmt = gmdate('Y-m-d H:i:s', $start_dt->getTimestamp() + self::AUTO_STOP_SECONDS);
+							$insert['end_time'] = $end_gmt;
+						}
+					}
+				}
+				$insert['insert_type'] = $insert_type_value;
+				$formats[] = '%s';
+			}
+
+			$ok = $wpdb->insert($t, $insert, $formats);
 			if (!$ok) {
 				self::err('db_insert_failed', 500);
 			}
@@ -223,10 +408,10 @@ class Politeia_Reading_Sessions
 		if ($has_full) {
 			// si no es finished o es finished auto, lo ponemos finished auto
 			$do_finish = false;
-			$update = array('reading_status' => 'finished');
+				$update = array('reading_status' => 'finished');
 			if (self::table_has_columns('politeia_user_books', array('finish_mode', 'finished_at'))) {
 				$update['finish_mode'] = 'auto';
-				$update['finished_at'] = $now_gmt;
+				$update['finished_at'] = $end_gmt;
 			}
 			if ((string) $ub_row->reading_status !== 'finished') {
 				$do_finish = true;
@@ -269,13 +454,359 @@ class Politeia_Reading_Sessions
 
 		self::mark_planned_session_accomplished($user_id, $book_id, $start_gmt);
 
+		return array(
+			'session_id' => (int) $session_id,
+			'start_time' => $start_gmt,
+			'end_time' => $end_gmt,
+			'coverage' => $coverage, // { covered, total, full }
+		);
+	}
+
+	/*
+	=========================
+	 * AJAX: heartbeat / auto-stop
+	 * ========================= */
+
+	public static function ajax_heartbeat()
+	{
+		if (!is_user_logged_in()) {
+			self::err('auth', 401);
+		}
+		if (!self::verify_nonce('prs_reading_nonce', array('nonce'))) {
+			self::err('bad_nonce', 403);
+		}
+
+		$user_id = get_current_user_id();
+		$session_id = isset($_POST['session_id']) ? absint($_POST['session_id']) : 0;
+		if ($session_id <= 0) {
+			self::err('invalid_session', 400);
+		}
+
+		global $wpdb;
+		$t = $wpdb->prefix . 'politeia_reading_sessions';
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id,user_id,start_time,deleted_at FROM {$t} WHERE id=%d AND deleted_at IS NULL LIMIT 1",
+				$session_id
+			)
+		);
+		if (!$row || (int) $row->user_id !== (int) $user_id) {
+			self::err('forbidden', 403);
+		}
+		if (empty($row->start_time)) {
+			self::err('invalid_session', 400);
+		}
+
+		$start_dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) $row->start_time, new \DateTimeZone('UTC'));
+		if (!$start_dt) {
+			self::err('invalid_session', 400);
+		}
+
+		$now_ts = (int) current_time('timestamp', true);
+		$elapsed = max(0, $now_ts - $start_dt->getTimestamp());
+
 		self::ok(
 			array(
-				'session_id' => (int) $session_id,
-				'start_time' => $start_gmt,
-				'end_time' => $now_gmt,
-				'coverage' => $coverage, // { covered, total, full }
+				'elapsed_sec' => (int) $elapsed,
+				'should_prompt_80' => $elapsed >= self::HARD_PROMPT_SECONDS && $elapsed < self::AUTO_STOP_SECONDS ? 1 : 0,
+				'must_stop_100' => $elapsed >= self::AUTO_STOP_SECONDS ? 1 : 0,
+				'is_active' => self::is_active_session($session_id) ? 1 : 0,
 			)
+		);
+	}
+
+	public static function ajax_auto_stop()
+	{
+		if (!is_user_logged_in()) {
+			self::err('auth', 401);
+		}
+		if (!self::verify_nonce('prs_reading_nonce', array('nonce'))) {
+			self::err('bad_nonce', 403);
+		}
+
+		$user_id = get_current_user_id();
+		$session_id = isset($_POST['session_id']) ? absint($_POST['session_id']) : 0;
+		if ($session_id <= 0) {
+			self::err('invalid_session', 400);
+		}
+
+		$result = self::auto_stop_session($session_id, (int) $user_id, 'ajax');
+		if (isset($result['error'])) {
+			self::err((string) $result['error'], isset($result['code']) ? (int) $result['code'] : 400);
+		}
+
+		self::ok($result);
+	}
+
+	/*
+	=========================
+	 * Active session registry + cron
+	 * ========================= */
+
+	public static function register_cron_schedule($schedules)
+	{
+		if (!isset($schedules[self::CRON_SCHEDULE])) {
+			$schedules[self::CRON_SCHEDULE] = array(
+				'interval' => 15 * MINUTE_IN_SECONDS,
+				'display'  => 'Every 15 minutes (Politeia Reading)',
+			);
+		}
+		return $schedules;
+	}
+
+	public static function schedule_autostop_cron()
+	{
+		if (!wp_next_scheduled(self::CRON_HOOK)) {
+			wp_schedule_event(time() + 5 * MINUTE_IN_SECONDS, self::CRON_SCHEDULE, self::CRON_HOOK);
+		}
+	}
+
+	public static function cron_autostop()
+	{
+		$sessions = get_option(self::ACTIVE_SESSIONS_OPTION, array());
+		if (!is_array($sessions) || empty($sessions)) {
+			return;
+		}
+
+		foreach ($sessions as $sid) {
+			$sid = absint($sid);
+			if ($sid <= 0) {
+				continue;
+			}
+
+			// Cron runs without a logged-in user context; auto_stop_session will validate ownership via row data.
+			self::auto_stop_session($sid, 0, 'cron');
+		}
+	}
+
+	private static function get_active_sessions(): array
+	{
+		$sessions = get_option(self::ACTIVE_SESSIONS_OPTION, array());
+		if (!is_array($sessions)) {
+			return array();
+		}
+		return array_values(array_unique(array_map('absint', $sessions)));
+	}
+
+	private static function save_active_sessions(array $sessions): void
+	{
+		$sessions = array_values(array_unique(array_filter(array_map('absint', $sessions))));
+		update_option(self::ACTIVE_SESSIONS_OPTION, $sessions, false);
+	}
+
+	private static function register_active_session(int $session_id, int $user_id, int $book_id, int $user_book_id, string $started_at_gmt): void
+	{
+		$list = self::get_active_sessions();
+		$list[] = $session_id;
+		self::save_active_sessions($list);
+
+		$meta = array(
+			'session_id' => $session_id,
+			'user_id' => $user_id,
+			'book_id' => $book_id,
+			'user_book_id' => $user_book_id,
+			'started_at_gmt' => $started_at_gmt,
+		);
+		set_transient(self::ACTIVE_SESSION_TRANSIENT_PREFIX . $session_id, $meta, 3 * HOUR_IN_SECONDS);
+	}
+
+	private static function deregister_active_session(int $session_id): void
+	{
+		$list = self::get_active_sessions();
+		$list = array_values(array_filter($list, static fn($id) => (int) $id !== (int) $session_id));
+		self::save_active_sessions($list);
+		delete_transient(self::ACTIVE_SESSION_TRANSIENT_PREFIX . $session_id);
+	}
+
+	private static function get_active_session_meta(int $session_id)
+	{
+		$meta = get_transient(self::ACTIVE_SESSION_TRANSIENT_PREFIX . $session_id);
+		return is_array($meta) ? $meta : null;
+	}
+
+	private static function is_active_session(int $session_id): bool
+	{
+		$list = self::get_active_sessions();
+		return in_array((int) $session_id, array_map('intval', $list), true);
+	}
+
+	private static function cleanup_active_sessions(): void
+	{
+		$list = self::get_active_sessions();
+		if (empty($list)) {
+			return;
+		}
+
+		global $wpdb;
+		$t = $wpdb->prefix . 'politeia_reading_sessions';
+
+		$kept = array();
+		foreach ($list as $sid) {
+			$sid = (int) $sid;
+			if ($sid <= 0) {
+				continue;
+			}
+			$row = $wpdb->get_row(
+				$wpdb->prepare(
+					"SELECT id,deleted_at FROM {$t} WHERE id=%d LIMIT 1",
+					$sid
+				)
+			);
+			if (!$row || !empty($row->deleted_at)) {
+				delete_transient(self::ACTIVE_SESSION_TRANSIENT_PREFIX . $sid);
+				continue;
+			}
+			$kept[] = $sid;
+		}
+		self::save_active_sessions($kept);
+	}
+
+	private static function find_active_session_id(int $user_id, int $book_id): int
+	{
+		$list = self::get_active_sessions();
+		if (empty($list)) {
+			return 0;
+		}
+
+		foreach ($list as $sid) {
+			$meta = self::get_active_session_meta((int) $sid);
+			if (!$meta) {
+				continue;
+			}
+			if ((int) ($meta['user_id'] ?? 0) === $user_id && (int) ($meta['book_id'] ?? 0) === $book_id) {
+				return (int) $sid;
+			}
+		}
+		return 0;
+	}
+
+	private static function compute_forced_end_time(string $start_gmt): array
+	{
+		$start_dt = \DateTimeImmutable::createFromFormat('Y-m-d H:i:s', (string) $start_gmt, new \DateTimeZone('UTC'));
+		if (!$start_dt) {
+			return array('forced' => false, 'end_time' => $start_gmt);
+		}
+
+		$now_ts = (int) current_time('timestamp', true);
+		$start_ts = $start_dt->getTimestamp();
+		$elapsed = max(0, $now_ts - $start_ts);
+		if ($elapsed < self::AUTO_STOP_SECONDS) {
+			return array('forced' => false, 'end_time' => gmdate('Y-m-d H:i:s', $now_ts));
+		}
+
+		return array(
+			'forced' => true,
+			'end_time' => gmdate('Y-m-d H:i:s', $start_ts + self::AUTO_STOP_SECONDS),
+		);
+	}
+
+	/**
+	 * Force-stop an active recorder session and persist it as automatic_stop.
+	 *
+	 * @param int    $session_id
+	 * @param int    $request_user_id 0 for cron.
+	 * @param string $trigger ajax|cron|save_clamp
+	 * @return array<string,mixed>
+	 */
+	private static function auto_stop_session(int $session_id, int $request_user_id, string $trigger): array
+	{
+		global $wpdb;
+		$t = $wpdb->prefix . 'politeia_reading_sessions';
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id,user_id,start_time,insert_type,deleted_at FROM {$t} WHERE id=%d LIMIT 1",
+				$session_id
+			),
+			ARRAY_A
+		);
+
+		if (!$row || !empty($row['deleted_at'])) {
+			self::deregister_active_session($session_id);
+			return array(
+				'session_id' => $session_id,
+				'stopped' => 0,
+				'reason' => 'missing',
+			);
+		}
+
+		$owner_id = (int) ($row['user_id'] ?? 0);
+		if ($request_user_id > 0 && $owner_id !== $request_user_id) {
+			return array('error' => 'forbidden', 'code' => 403);
+		}
+
+		// Only auto-stop if it's still considered active in our registry.
+		if (!self::is_active_session($session_id)) {
+			return array(
+				'session_id' => $session_id,
+				'stopped' => 0,
+				'reason' => 'not_active',
+			);
+		}
+
+		$start_time = isset($row['start_time']) ? (string) $row['start_time'] : '';
+		if (!$start_time) {
+			self::deregister_active_session($session_id);
+			return array('error' => 'invalid_session', 'code' => 400);
+		}
+
+		$forced = self::compute_forced_end_time($start_time);
+		$end_time = $forced['end_time'];
+
+		if (!$forced['forced']) {
+			return array(
+				'session_id' => $session_id,
+				'stopped' => 0,
+				'reason' => 'below_limit',
+			);
+		}
+
+		$insert_type = isset($row['insert_type']) ? (string) $row['insert_type'] : 'recorder';
+		if ($insert_type !== 'recorder' && $insert_type !== 'automatic_stop') {
+			self::deregister_active_session($session_id);
+			return array(
+				'session_id' => $session_id,
+				'stopped' => 0,
+				'reason' => 'not_recorder',
+			);
+		}
+
+		$update = array(
+			'end_time' => $end_time,
+		);
+		$formats = array('%s');
+		if (self::table_has_columns('politeia_reading_sessions', array('insert_type'))) {
+			$update['insert_type'] = 'automatic_stop';
+			$formats[] = '%s';
+		}
+
+		$wpdb->update(
+			$t,
+			$update,
+			array('id' => $session_id),
+			$formats,
+			array('%d')
+		);
+
+		self::deregister_active_session($session_id);
+
+		error_log(sprintf('[PRS_SR] auto_stop session_id=%d user_id=%d trigger=%s', $session_id, $owner_id, $trigger));
+		do_action(
+			'politeia_reading_session_auto_stopped',
+			array(
+				'session_id' => $session_id,
+				'user_id' => $owner_id,
+				'trigger' => $trigger,
+				'end_time' => $end_time,
+			)
+		);
+
+		return array(
+			'session_id' => $session_id,
+			'stopped' => 1,
+			'end_time' => $end_time,
+			'insert_type' => 'automatic_stop',
 		);
 	}
 

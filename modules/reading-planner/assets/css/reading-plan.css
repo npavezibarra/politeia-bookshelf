@@ -21,7 +21,7 @@
   justify-content: center;
   gap: 10px;
   padding: 12px 20px;
-  border-radius: 4px;
+  border-radius: 6px;
   border: 1px solid var(--color-black, #000);
   background: var(--color-black, #000);
   color: var(--color-gold, #c79f32);
@@ -200,7 +200,7 @@
   transition: all 0.3s ease;
   background: transparent !important;
   border: none;
-  border-radius: 20px;
+  border-radius: 6px;
 }
 
 .politeia-reading-plan-shell .goal-option-card:hover {
@@ -534,7 +534,7 @@ div#finish_book_slide_sessions_per_week {
   transition: all 0.3s ease;
   background: transparent;
   border: none;
-  border-radius: 20px;
+  border-radius: 6px;
 }
 
 .politeia-reading-plan-shell .habit-option-card:hover {
@@ -882,6 +882,7 @@ div#finish_book_slide_sessions_per_week {
 
 .politeia-reading-plan-shell input[type="number"] {
   -moz-appearance: textfield;
+  appearance: textfield;
 }
 
 .politeia-reading-plan-shell .input-shake {
@@ -2349,7 +2350,6 @@ h2#form_habit_intensity_title {
   box-shadow: 0 20px 40px rgba(199, 159, 50, 0.2);
 }
 
-.politeia-reading-plan-shell .group {}
 
 .politeia-reading-plan-shell .ring-2 {
   box-shadow: 0 0 0 2px var(--ring-color, #C79F32);

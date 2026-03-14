@@ -102,6 +102,7 @@ class Installer
             end_time DATETIME NOT NULL,
             start_page INT UNSIGNED NOT NULL,
             end_page INT UNSIGNED NOT NULL,
+            insert_type ENUM(\'manual\',\'recorder\',\'automatic_stop\') NOT NULL DEFAULT \'recorder\',
             chapter_name VARCHAR(255) NULL,
             created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             deleted_at DATETIME NULL DEFAULT NULL,

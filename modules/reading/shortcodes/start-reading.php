@@ -127,6 +127,8 @@ add_shortcode(
 			'actions' => array(
 				'start' => 'prs_start_reading',
 				'save' => 'prs_save_reading',
+				'heartbeat' => 'prs_sr_heartbeat',
+				'auto_stop' => 'prs_sr_auto_stop',
 			),
 			'strings' => array(
 				'tooltip_pages_required' => __('Set total Pages for this book before starting a session.', 'politeia-reading'),
@@ -142,6 +144,11 @@ add_shortcode(
 				'minutes_under_one' => __('less than a minute', 'politeia-reading'),
 				'minutes_single' => __('1 minute', 'politeia-reading'),
 				'minutes_multiple' => __('%d minutes', 'politeia-reading'),
+				'limit_message' => __('This session has reached the maximum length. Confirm to continue or it will stop automatically in 20 minutes.', 'politeia-reading'),
+				'limit_continue' => __('Continue', 'politeia-reading'),
+				'limit_stop_now' => __('Stop now', 'politeia-reading'),
+				'auto_stopped' => __('This session was stopped automatically because it exceeded the maximum length.', 'politeia-reading'),
+				'auto_stop_failed' => __('Network error while stopping the session automatically.', 'politeia-reading'),
 			),
 		);
 
@@ -165,9 +172,10 @@ add_shortcode(
 			width: 100%;
 			background: #1a1a1a;
 			color: #ffffff;
-			border-radius: 24px;
+			border-radius: 6px;
 			padding: 32px;
 			font-family: 'Poppins', sans-serif;
+			position: relative;
 		}
 
 		.prs-sr * {
@@ -367,6 +375,7 @@ add_shortcode(
 			font-size: 18px;
 			font-weight: 600;
 			padding: 10px 14px;
+			border-radius: 6px;
 			transition: transform 0.2s ease, opacity 0.2s ease;
 		}
 
@@ -726,11 +735,80 @@ add_shortcode(
 				font-size: 32px;
 			}
 
-			.prs-sr-btn {
-				letter-spacing: 0.15em;
-				font-size: 14px;
-			}
+		.prs-sr-btn {
+			letter-spacing: 0.15em;
+			font-size: 14px;
 		}
+	}
+
+	.prs-sr-limit-overlay {
+		position: absolute;
+		inset: 0;
+		display: none;
+		align-items: center;
+		justify-content: center;
+		padding: 22px;
+		background: rgba(0, 0, 0, 0.75);
+		backdrop-filter: blur(3px);
+		z-index: 20;
+	}
+
+	.prs-sr-limit-overlay.is-active {
+		display: flex;
+	}
+
+	.prs-sr-limit-card {
+		width: 100%;
+		max-width: 520px;
+		background: #141414;
+		border: 1px solid rgba(255, 255, 255, 0.14);
+		border-radius: 10px;
+		padding: 18px 18px 16px;
+		box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55);
+		font-family: 'Poppins', sans-serif;
+	}
+
+	.prs-sr-limit-title {
+		margin: 0 0 10px;
+		font-size: 14px;
+		letter-spacing: 0.24em;
+		text-transform: uppercase;
+		opacity: 0.75;
+	}
+
+	.prs-sr-limit-message {
+		margin: 0 0 16px;
+		font-size: 14px;
+		line-height: 1.55;
+		color: rgba(255, 255, 255, 0.88);
+	}
+
+	.prs-sr-limit-actions {
+		display: flex;
+		gap: 10px;
+		justify-content: flex-end;
+	}
+
+	.prs-sr-limit-btn {
+		border: 0;
+		border-radius: 8px;
+		padding: 10px 14px;
+		font-weight: 600;
+		font-size: 12px;
+		cursor: pointer;
+		letter-spacing: 0.08em;
+		text-transform: uppercase;
+	}
+
+	.prs-sr-limit-btn--secondary {
+		background: rgba(255, 255, 255, 0.1);
+		color: #ffffff;
+	}
+
+	.prs-sr-limit-btn--primary {
+		background: linear-gradient(135deg, #8A6B1E 0%, #C79F32 50%, #E9D18A 100%);
+		color: #141414;
+	}
 	</style>
 
 	<div class="prs-sr" data-book-id="<?php echo (int) $book_id; ?>"
@@ -899,6 +977,24 @@ add_shortcode(
 					<span class="prs-sr-btn-icon">&#10003;</span>
 					<span class="prs-sr-btn-label"><?php esc_html_e('Save Session', 'politeia-reading'); ?></span>
 				</a>
+			</div>
+		</div>
+
+		<div id="prs-sr-limit-overlay" class="prs-sr-limit-overlay" role="dialog" aria-modal="true"
+			aria-label="<?php esc_attr_e('Session limit reached', 'politeia-reading'); ?>">
+			<div class="prs-sr-limit-card">
+				<div class="prs-sr-limit-title"><?php esc_html_e('Session limit', 'politeia-reading'); ?></div>
+				<p class="prs-sr-limit-message" id="prs-sr-limit-message">
+					<?php esc_html_e('This session has reached the maximum length. Confirm to continue or it will stop automatically in 20 minutes.', 'politeia-reading'); ?>
+				</p>
+				<div class="prs-sr-limit-actions">
+					<button type="button" id="prs-sr-limit-stop" class="prs-sr-limit-btn prs-sr-limit-btn--secondary">
+						<?php esc_html_e('Stop now', 'politeia-reading'); ?>
+					</button>
+					<button type="button" id="prs-sr-limit-continue" class="prs-sr-limit-btn prs-sr-limit-btn--primary">
+						<?php esc_html_e('Continue', 'politeia-reading'); ?>
+					</button>
+				</div>
 			</div>
 		</div>
 	</div>

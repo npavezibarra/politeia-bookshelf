@@ -24,6 +24,11 @@ const prsStartReadingInit = (options = {}) => {
   const $clockWrap    = root.querySelector('.prs-sr-clock');
   const $stardustCanvas = root.querySelector('.prs-sr-stardust');
 
+  // Limit overlay
+  const $limitOverlay = $('#prs-sr-limit-overlay');
+  const $limitContinue = $('#prs-sr-limit-continue');
+  const $limitStop = $('#prs-sr-limit-stop');
+
   // End/Save
   const $rowEnd       = $('#prs-sr-row-end');
   const $endPage      = $('#prs-sr-end-page');
@@ -68,6 +73,21 @@ const prsStartReadingInit = (options = {}) => {
   // helpers de tiempo
   let t0 = 0, raf = 0;
   let clockStartSeconds = null;
+  const HARD_PROMPT_SECONDS = 80 * 60;
+  const AUTO_STOP_SECONDS = 100 * 60;
+
+  const STORAGE_KEY = (() => {
+    const uid = typeof ctx?.user_id !== 'undefined' ? String(ctx.user_id) : '';
+    const bid = typeof ctx?.book_id !== 'undefined' ? String(ctx.book_id) : '';
+    return `prs_sr_active_${uid}_${bid}`;
+  })();
+
+  let limitPromptShown = false;
+  let limitPromptAcknowledged = false;
+  let limitWatchTimer = null;
+  let heartbeatTimer = null;
+  let autoStopInFlight = false;
+
   const pad = (n) => String(n).padStart(2, '0');
   const hms = (ms) => {
     const s = Math.floor(ms / 1000);
@@ -104,7 +124,11 @@ const prsStartReadingInit = (options = {}) => {
     updateClock();
     raf = requestAnimationFrame(tick);
   };
-  const startTimer = () => { t0 = Date.now(); cancelAnimationFrame(raf); raf = requestAnimationFrame(tick); };
+  const startTimer = (startEpochMs = null) => {
+    t0 = (typeof startEpochMs === 'number' && Number.isFinite(startEpochMs)) ? startEpochMs : Date.now();
+    cancelAnimationFrame(raf);
+    raf = requestAnimationFrame(tick);
+  };
   const stopTimer  = () => { cancelAnimationFrame(raf); raf = 0; return Math.floor((Date.now() - t0) / 1000); };
 
   const stardustState = {
@@ -474,6 +498,58 @@ const prsStartReadingInit = (options = {}) => {
   // API
   const ACTION_START = (ctx?.actions?.start) || 'prs_start_reading';
   const ACTION_SAVE  = (ctx?.actions?.save)  || 'prs_save_reading';
+  const ACTION_HEARTBEAT = (ctx?.actions?.heartbeat) || 'prs_sr_heartbeat';
+  const ACTION_AUTOSTOP = (ctx?.actions?.auto_stop) || 'prs_sr_auto_stop';
+
+  const parseGmtToEpochMs = (gmtString) => {
+    if (typeof gmtString !== 'string' || !gmtString.trim()) return null;
+    const s = gmtString.trim().replace(' ', 'T') + 'Z';
+    const d = new Date(s);
+    const ms = d.getTime();
+    return Number.isFinite(ms) ? ms : null;
+  };
+
+  const persistActiveSession = () => {
+    try {
+      if (!sessionId) return;
+      const startPageVal = Number($startPage?.value || 0);
+      const chapterVal = ($chapter?.value || '').trim();
+      const payload = {
+        session_id: sessionId,
+        user_id: typeof ctx?.user_id !== 'undefined' ? String(ctx.user_id) : '',
+        book_id: typeof ctx?.book_id !== 'undefined' ? String(ctx.book_id) : '',
+        started_at_gmt: serverStartedAtGmt || '',
+        started_at_epoch_ms: t0 || 0,
+        start_page: Number.isFinite(startPageVal) ? startPageVal : 0,
+        chapter_name: chapterVal,
+        limitPromptShown: Boolean(limitPromptShown),
+        limitPromptAcknowledged: Boolean(limitPromptAcknowledged),
+      };
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    } catch {
+      // ignore
+    }
+  };
+
+  const clearActiveSession = () => {
+    try {
+      window.localStorage.removeItem(STORAGE_KEY);
+    } catch {
+      // ignore
+    }
+  };
+
+  const loadActiveSession = () => {
+    try {
+      const raw = window.localStorage.getItem(STORAGE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== 'object') return null;
+      return parsed;
+    } catch {
+      return null;
+    }
+  };
 
   async function api(action, payload) {
     const fallback = (window.PRS_BOOK && typeof window.PRS_BOOK === 'object') ? window.PRS_BOOK : {};
@@ -502,6 +578,123 @@ const prsStartReadingInit = (options = {}) => {
   // === NUEVO: mantener y enviar session_id ===
   let sessionId = null;
   let durationSec = 0;
+  let serverStartedAtGmt = '';
+
+  const stopLimitWatchers = () => {
+    if (limitWatchTimer) window.clearInterval(limitWatchTimer);
+    if (heartbeatTimer) window.clearInterval(heartbeatTimer);
+    limitWatchTimer = null;
+    heartbeatTimer = null;
+  };
+
+  const openLimitOverlay = () => {
+    if (!$limitOverlay) return;
+    $limitOverlay.classList.add('is-active');
+    const focusTarget = $limitContinue || $limitStop;
+    if (focusTarget && typeof focusTarget.focus === 'function') {
+      focusTarget.focus();
+    }
+  };
+
+  const closeLimitOverlay = () => {
+    if (!$limitOverlay) return;
+    $limitOverlay.classList.remove('is-active');
+  };
+
+  const autoStopSession = async (reason = 'limit') => {
+    if (autoStopInFlight) return;
+    autoStopInFlight = true;
+
+    try {
+      // Stop local timers/UI first to prevent duplicate triggers.
+      stopLimitWatchers();
+      stopTimer();
+      closeLimitOverlay();
+
+      if (!sessionId) {
+        clearActiveSession();
+        setIdle();
+        alert(text('auto_stopped', 'This session was stopped automatically because it exceeded the maximum length.'));
+        autoStopInFlight = false;
+        return;
+      }
+
+      const out = await api(ACTION_AUTOSTOP, { session_id: sessionId });
+      if (out?.success && out?.data?.stopped) {
+        sessionId = null;
+        serverStartedAtGmt = '';
+        clearActiveSession();
+        setIdle();
+        alert(text('auto_stopped', 'This session was stopped automatically because it exceeded the maximum length.'));
+      } else {
+        console.error('Auto-stop failed', out, reason);
+        // Even if the network call failed, keep UI safe and let server reconcile later.
+        clearActiveSession();
+        setIdle();
+        alert(text('auto_stop_failed', 'Network error while stopping the session automatically.'));
+      }
+    } catch (err) {
+      console.error(err);
+      clearActiveSession();
+      setIdle();
+      alert(text('auto_stop_failed', 'Network error while stopping the session automatically.'));
+    } finally {
+      autoStopInFlight = false;
+    }
+  };
+
+  const checkLimitsLocal = () => {
+    if (!raf) return; // not running
+    const elapsedSec = Math.floor((Date.now() - t0) / 1000);
+    if (!limitPromptAcknowledged && !limitPromptShown && elapsedSec >= HARD_PROMPT_SECONDS && elapsedSec < AUTO_STOP_SECONDS) {
+      limitPromptShown = true;
+      persistActiveSession();
+      openLimitOverlay();
+    }
+    if (elapsedSec >= AUTO_STOP_SECONDS) {
+      autoStopSession('local');
+    }
+  };
+
+  const runHeartbeat = async () => {
+    if (!sessionId) return;
+    try {
+      const out = await api(ACTION_HEARTBEAT, { session_id: sessionId });
+      if (!out?.success) return;
+      const data = out?.data || {};
+
+      if (data?.is_active === 0) {
+        // Session is no longer active server-side; cleanup local state.
+        sessionId = null;
+        serverStartedAtGmt = '';
+        stopLimitWatchers();
+        clearActiveSession();
+        setIdle();
+        return;
+      }
+
+      const elapsed = Number(data?.elapsed_sec ?? 0);
+      if (Number.isFinite(elapsed) && elapsed > 0) {
+        const desiredT0 = Date.now() - (elapsed * 1000);
+        const drift = Math.abs(desiredT0 - t0);
+        if (drift > 10_000) {
+          t0 = desiredT0;
+        }
+      }
+
+      if (data?.should_prompt_80 && !limitPromptShown && !limitPromptAcknowledged) {
+        limitPromptShown = true;
+        persistActiveSession();
+        openLimitOverlay();
+      }
+
+      if (data?.must_stop_100) {
+        autoStopSession('heartbeat');
+      }
+    } catch {
+      // ignore; we'll retry later
+    }
+  };
 
   // Start
   $startBtn?.addEventListener('click', async (e) => {
@@ -527,9 +720,29 @@ const prsStartReadingInit = (options = {}) => {
       if (out?.success) {
         // <<< guardar session_id del backend
         sessionId = out?.data?.session_id ?? null;
+        serverStartedAtGmt = out?.data?.started_at ? String(out.data.started_at) : '';
+
+        // If backend reused an existing session, re-sync timer to server start time.
+        const startedEpoch = parseGmtToEpochMs(serverStartedAtGmt);
+        if (startedEpoch) {
+          startTimer(startedEpoch);
+          clockStartSeconds = secondsInHour(new Date(startedEpoch));
+          updateClock();
+        }
+
+        limitPromptShown = false;
+        limitPromptAcknowledged = false;
+
+        persistActiveSession();
+        stopLimitWatchers();
+        limitWatchTimer = window.setInterval(checkLimitsLocal, 1000);
+        heartbeatTimer = window.setInterval(runHeartbeat, 30_000);
+        runHeartbeat();
       } else {
         // Revertimos si backend bloquea (doble seguridad)
         stopTimer();
+        stopLimitWatchers();
+        clearActiveSession();
         setIdle();
         console.error('Start reading error', out);
         if (out?.message === 'bad_nonce' || out?.data?.message === 'bad_nonce') {
@@ -541,6 +754,8 @@ const prsStartReadingInit = (options = {}) => {
     } catch (err) {
       console.error(err);
       stopTimer();
+      stopLimitWatchers();
+      clearActiveSession();
       setIdle();
       alert(text('alert_start_network', 'Network error while starting the session.'));
     }
@@ -550,6 +765,8 @@ const prsStartReadingInit = (options = {}) => {
   $stopBtn?.addEventListener('click', (e) => {
     e.preventDefault();
     durationSec = stopTimer();
+    stopLimitWatchers();
+    closeLimitOverlay();
     setStopped();
     if ($endPage) {
       $endPage.value = '';
@@ -587,6 +804,10 @@ const prsStartReadingInit = (options = {}) => {
 
         // Limpiar sessionId: la sesión quedó cerrada
         sessionId = null;
+        serverStartedAtGmt = '';
+        stopLimitWatchers();
+        closeLimitOverlay();
+        clearActiveSession();
 
         // Actualiza “Last session page” en la UI
         const lastNode = root.querySelector('.prs-sr-last strong');
@@ -622,12 +843,63 @@ const prsStartReadingInit = (options = {}) => {
     } catch (err) {
       console.error(err);
       $saveBtn.disabled = false;
+      // Keep local state; user can retry saving.
       alert(text('alert_save_network', 'Network error while saving the session.'));
+    }
+  });
+
+  // Limit overlay actions
+  $limitContinue?.addEventListener('click', () => {
+    limitPromptAcknowledged = true;
+    persistActiveSession();
+    closeLimitOverlay();
+  });
+  $limitStop?.addEventListener('click', () => {
+    limitPromptAcknowledged = true;
+    persistActiveSession();
+    closeLimitOverlay();
+    if ($stopBtn && $stopBtn.style.display !== 'none') {
+      $stopBtn.click();
     }
   });
 
   // Estado inicial
   setIdle();
+
+  // Rehydrate an active session after refresh/reopen.
+  const saved = loadActiveSession();
+  if (saved && String(saved.book_id || '') === String(ctx?.book_id || '') && String(saved.user_id || '') === String(ctx?.user_id || '') && saved.session_id) {
+    sessionId = saved.session_id;
+    serverStartedAtGmt = typeof saved.started_at_gmt === 'string' ? saved.started_at_gmt : '';
+    limitPromptShown = Boolean(saved.limitPromptShown);
+    limitPromptAcknowledged = Boolean(saved.limitPromptAcknowledged);
+
+    const savedStartPage = Number(saved.start_page || 0);
+    const savedChapter = typeof saved.chapter_name === 'string' ? saved.chapter_name : '';
+    if ($startPage && Number.isFinite(savedStartPage) && savedStartPage > 0) {
+      $startPage.value = String(savedStartPage);
+      setText($startView, String(savedStartPage));
+    }
+    if ($chapter) {
+      $chapter.value = savedChapter;
+      setText($chapterView, savedChapter || '—');
+    }
+
+    const startedEpoch = parseGmtToEpochMs(serverStartedAtGmt) || (Number(saved.started_at_epoch_ms) || null);
+    clockStartSeconds = secondsInHour(new Date(startedEpoch || Date.now()));
+    updateClock();
+    setRunning();
+    startTimer(startedEpoch);
+    stopLimitWatchers();
+    limitWatchTimer = window.setInterval(checkLimitsLocal, 1000);
+    heartbeatTimer = window.setInterval(runHeartbeat, 30_000);
+    runHeartbeat();
+
+    if (!limitPromptAcknowledged && limitPromptShown) {
+      openLimitOverlay();
+    }
+  }
+
   if (existingBookId && existingBookId !== currentBookId && $startPage) {
     $startPage.value = '';
   }

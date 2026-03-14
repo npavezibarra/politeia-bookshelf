@@ -28,6 +28,13 @@ if ( $is_owner ) {
 	global $wpdb;
 	$user_id        = (int) $current_user->ID;
 	$sessions_table = $wpdb->prefix . 'politeia_reading_sessions';
+	$has_insert_type = (bool) $wpdb->get_var(
+		$wpdb->prepare(
+			"SHOW COLUMNS FROM {$sessions_table} LIKE %s",
+			'insert_type'
+		)
+	);
+	$insert_type_filter_sql = $has_insert_type ? " AND insert_type IN ('manual','recorder') " : '';
 	$timezone       = wp_timezone();
 	$now_local      = new DateTimeImmutable( 'now', $timezone );
 	$month_start_local = $now_local->modify( 'first day of this month' )->setTime( 0, 0, 0 );
@@ -41,6 +48,7 @@ if ( $is_owner ) {
 			 WHERE user_id = %d
 			   AND end_time IS NOT NULL
 			   AND deleted_at IS NULL
+			   {$insert_type_filter_sql}
 			   AND start_time >= %s
 			   AND start_time <= %s",
 			$user_id,
@@ -58,6 +66,7 @@ if ( $is_owner ) {
 			 WHERE user_id = %d
 			   AND end_time IS NOT NULL
 			   AND deleted_at IS NULL
+			   {$insert_type_filter_sql}
 			   AND start_time >= %s
 			   AND start_time <= %s",
 			$user_id,
@@ -76,6 +85,7 @@ if ( $is_owner ) {
 			 WHERE user_id = %d
 			   AND end_time IS NOT NULL
 			   AND deleted_at IS NULL
+			   {$insert_type_filter_sql}
 			   AND start_time >= %s
 			   AND start_time <= %s",
 			$user_id,

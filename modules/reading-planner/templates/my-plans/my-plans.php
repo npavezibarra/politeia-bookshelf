@@ -2553,33 +2553,7 @@ $is_owner = $requested_user
 				if (!metaLabel) return;
 				const monthSessions = getMonthSessions(currentMonthKey);
 				const sessionCount = monthSessions.length;
-
-				let pagesInfo = '';
-
-				if (['habit', 'form_habit'].includes(goalKind)) {
-					let totalMonthPages = 0;
-					monthSessions.forEach(date => {
-						const item = sessionItems.find(i => i.date === date);
-						if (item && item.expectedPages) {
-							totalMonthPages += parseInt(item.expectedPages) || 0;
-						}
-					});
-					pagesInfo = `${totalMonthPages} ${strings.pagesLabel}`;
-				} else if (isCompleteBooks) {
-					const remainingPages = Math.max(0, totalPages - pagesRead);
-					const remainingSessionsCount = sessionDates.filter(d => {
-						const s = getStatusByDate(d);
-						return s === 'planned' && d >= (todayKey || '');
-					}).length;
-					const pagesPerSession = remainingSessionsCount > 0 ? Math.ceil(remainingPages / remainingSessionsCount) : 0;
-					pagesInfo = `${pagesPerSession} ${strings.pagesLabel}`;
-				} else {
-					let pagesPerSession = 0;
-					if (sessionCount > 0 && totalPages > 0) pagesPerSession = Math.ceil(totalPages / sessionCount);
-					pagesInfo = `${pagesPerSession} ${strings.pagesLabel}`;
-				}
-
-				metaLabel.textContent = `${sessionCount} ${strings.sessionsLabel} | ${pagesInfo}`;
+				metaLabel.textContent = `${sessionCount} ${strings.sessionsLabel}`;
 			};
 
 			const updateTitle = () => {

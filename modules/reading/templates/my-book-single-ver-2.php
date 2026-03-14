@@ -278,6 +278,10 @@ wp_localize_script(
 			'isbn_invalid' => __('Invalid ISBN.', 'politeia-reading'),
 			'saved_short' => __('Saved.', 'politeia-reading'),
 			'status_saving' => __('Saving...', 'politeia-reading'),
+			'manual_invalid_pages' => __('Page number cannot be less than the starting page.', 'politeia-reading'),
+			'manual_invalid_datetime' => __('Please enter valid date & time values.', 'politeia-reading'),
+			'manual_invalid_time_range' => __('End date/time must be after start date/time.', 'politeia-reading'),
+			'manual_save_failed' => __('Unable to save session. Please try again.', 'politeia-reading'),
 			'missing_contact' => __('Please enter both name and email.', 'politeia-reading'),
 			'borrower_buying_title' => __('Borrowed person is buying this book:', 'politeia-reading'),
 			'borrower_buying_confirm' => __('Confirm that the borrower is purchasing or compensating for the book.', 'politeia-reading'),
@@ -623,10 +627,56 @@ wp_add_inline_script(
 		min-height: 32px;
 	}
 
-	.tabs {
-		display: flex;
-		border-bottom: 1px solid #e5e7eb;
-		overflow-x: auto;
+	#prs-book-content .tabs {
+		display: inline-flex;
+		gap: 0;
+		background: #fff;
+		border: 1px solid #e5e5e5;
+		padding: 2px;
+		border-radius: 6px;
+		margin-bottom: 0px;
+	}
+
+	.tab {
+		border: none;
+		background: transparent;
+		color: #333;
+		cursor: pointer;
+		padding: 8px 14px;
+		font-size: 11px;
+		font-weight: 600;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		border-radius: 6px;
+		transition: opacity 0.15s ease, background 0.15s ease;
+		box-shadow: none !important;
+		outline: none !important;
+	}
+
+	.tab:hover {
+		opacity: 0.92;
+		background: rgba(0, 0, 0, .04);
+		color: #333;
+	}
+
+	.tab.active {
+		color: #fff;
+		background: #000;
+	}
+
+	.tab.active:hover,
+	.tab.active:focus,
+	.tab.active:focus-visible,
+	.tab.active:active {
+		background: #000 !important;
+		color: #fff !important;
+	}
+
+	.tab:focus,
+	.tab:focus-visible,
+	.tab:active {
+		background: rgba(0, 0, 0, .04);
+		color: #333;
 	}
 
 	.prs-sessions-mobile {
@@ -684,32 +734,6 @@ wp_add_inline_script(
 	.prs-sessions-mobile__duration {
 		padding-top: 8px;
 		font-weight: 600;
-	}
-
-	.tab {
-		flex: 1 1 0;
-		padding: 14px 16px;
-		cursor: pointer;
-		font-weight: 600;
-		font-size: 13px;
-		color: #6b7280;
-		border-bottom: 2px solid transparent;
-		background: transparent;
-		border: none;
-		border-radius: 0;
-		transition: color 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-	}
-
-	.tab.active {
-		color: #f7f0da;
-		border-color: #C79F32;
-		background: #000000;
-	}
-
-	.tab:hover {
-		color: #000000;
-		border-color: #C79F32;
-		background: #f7f0da;
 	}
 
 	.prs-tab-content {
@@ -1118,7 +1142,7 @@ wp_add_inline_script(
 	}
 </style>
 
-<div class="prs-page-wrap">
+<div class="prs-page-wrap prs-page-wrap--ver2">
 	<div class="page">
 		<aside class="sidebar">
 			<section id="prs-cover-progress" class="prs-sidebar-block">
@@ -1178,7 +1202,8 @@ wp_add_inline_script(
 									<div id="prs-cover-placeholder" class="prs-cover-placeholder" role="img"
 										aria-label="<?php echo esc_attr($placeholder_label); ?>">
 										<h3 id="prs-book-title-placeholder" class="prs-cover-title">
-											<?php echo esc_html($placeholder_title); ?></h3>
+											<?php echo esc_html($placeholder_title); ?>
+										</h3>
 										<span id="prs-book-author-placeholder"
 											class="prs-cover-author"><?php echo esc_html($placeholder_author); ?></span>
 										<?php echo do_shortcode('[prs_cover_button]'); ?>
@@ -1222,7 +1247,8 @@ wp_add_inline_script(
 
 			<section id="book-details-section" class="prs-sidebar-block">
 				<h4 style="margin: 0 0 8px; font-size: 18px; color: #000;">
-					<?php esc_html_e('Book Details', 'politeia-reading'); ?></h4>
+					<?php esc_html_e('Book Details', 'politeia-reading'); ?>
+				</h4>
 				<ul class="prs-details">
 					<li class="prs-detail-divider" aria-hidden="true">
 						<hr />
@@ -1260,11 +1286,14 @@ wp_add_inline_script(
 							style="font-weight: 600; margin-right: 4px; font-size: 13px;"><?php esc_html_e('Format:', 'politeia-reading'); ?></label>
 						<select id="prs-type-book" class="prs-type-book__select">
 							<option value="" <?php selected($current_type, ''); ?>>
-								<?php esc_html_e('Not specified', 'politeia-reading'); ?></option>
+								<?php esc_html_e('Not specified', 'politeia-reading'); ?>
+							</option>
 							<option value="d" <?php selected($current_type, 'd'); ?>>
-								<?php esc_html_e('Digital', 'politeia-reading'); ?></option>
+								<?php esc_html_e('Digital', 'politeia-reading'); ?>
+							</option>
 							<option value="p" <?php selected($current_type, 'p'); ?>>
-								<?php esc_html_e('Printed', 'politeia-reading'); ?></option>
+								<?php esc_html_e('Printed', 'politeia-reading'); ?>
+							</option>
 						</select>
 						<span id="type-book-status" class="prs-help" aria-live="polite"></span>
 					</li>
@@ -1307,9 +1336,11 @@ wp_add_inline_script(
 							<select id="purchase-channel-select">
 								<option value=""><?php esc_html_e('Select…', 'politeia-reading'); ?></option>
 								<option value="online" <?php selected($ub->purchase_channel, 'online'); ?>>
-									<?php esc_html_e('Online', 'politeia-reading'); ?></option>
+									<?php esc_html_e('Online', 'politeia-reading'); ?>
+								</option>
 								<option value="store" <?php selected($ub->purchase_channel, 'store'); ?>>
-									<?php esc_html_e('Store', 'politeia-reading'); ?></option>
+									<?php esc_html_e('Store', 'politeia-reading'); ?>
+								</option>
 							</select>
 							<input type="text" id="purchase-place-input"
 								placeholder="<?php esc_attr_e('Which?', 'politeia-reading'); ?>"
@@ -1373,11 +1404,14 @@ wp_add_inline_script(
 									class="reading-status-select<?php echo esc_attr($reading_disabled_class); ?>"
 									data-disabled-text="<?php echo esc_attr(__('Disabled while this book is being borrowed.', 'politeia-reading')); ?>"
 									aria-disabled="<?php echo $reading_disabled ? 'true' : 'false'; ?>" <?php echo $reading_disabled_attr; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?><?php echo $reading_disabled_title; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped ?>>
-									<option value="not_started" <?php selected($ub->reading_status, 'not_started'); ?>><?php esc_html_e('Not Started', 'politeia-reading'); ?></option>
+									<option value="not_started" <?php selected($ub->reading_status, 'not_started'); ?>>
+										<?php esc_html_e('Not Started', 'politeia-reading'); ?></option>
 									<option value="started" <?php selected($ub->reading_status, 'started'); ?>>
-										<?php esc_html_e('Started', 'politeia-reading'); ?></option>
+										<?php esc_html_e('Started', 'politeia-reading'); ?>
+									</option>
 									<option value="finished" <?php selected($ub->reading_status, 'finished'); ?>>
-										<?php esc_html_e('Finished', 'politeia-reading'); ?></option>
+										<?php esc_html_e('Finished', 'politeia-reading'); ?>
+									</option>
 								</select>
 								<span id="reading-status-status" class="prs-help" aria-live="polite"></span>
 							</div>
@@ -1404,17 +1438,23 @@ wp_add_inline_script(
 							<select id="owning-status-select" <?php disabled($is_digital); ?>
 								aria-disabled="<?php echo $is_digital ? 'true' : 'false'; ?>">
 								<option value="" <?php selected(empty($ub->owning_status)); ?>>
-									<?php esc_html_e('— Select —', 'politeia-reading'); ?></option>
+									<?php esc_html_e('— Select —', 'politeia-reading'); ?>
+								</option>
 								<option value="borrowed" <?php selected($ub->owning_status, 'borrowed'); ?>>
-									<?php esc_html_e('Borrowed', 'politeia-reading'); ?></option>
+									<?php esc_html_e('Borrowed', 'politeia-reading'); ?>
+								</option>
 								<option value="borrowing" <?php selected($ub->owning_status, 'borrowing'); ?>>
-									<?php esc_html_e('Lent Out', 'politeia-reading'); ?></option>
+									<?php esc_html_e('Lent Out', 'politeia-reading'); ?>
+								</option>
 								<option value="bought" <?php selected($ub->owning_status, 'bought'); ?>>
-									<?php esc_html_e('Bought', 'politeia-reading'); ?></option>
+									<?php esc_html_e('Bought', 'politeia-reading'); ?>
+								</option>
 								<option value="sold" <?php selected($ub->owning_status, 'sold'); ?>>
-									<?php esc_html_e('Sold', 'politeia-reading'); ?></option>
+									<?php esc_html_e('Sold', 'politeia-reading'); ?>
+								</option>
 								<option value="lost" <?php selected($ub->owning_status, 'lost'); ?>>
-									<?php esc_html_e('Lost', 'politeia-reading'); ?></option>
+									<?php esc_html_e('Lost', 'politeia-reading'); ?>
+								</option>
 							</select>
 
 							<button type="button" id="owning-return-shelf" class="prs-btn owning-return-shelf"
@@ -1441,8 +1481,7 @@ wp_add_inline_script(
 			</div>
 
 			<div id="prs-book-content" class="prs-content-card">
-				<div class="tabs" role="tablist"
-					aria-label="<?php esc_attr_e('Book sections', 'politeia-reading'); ?>">
+				<div class="tabs" role="tablist" aria-label="<?php esc_attr_e('Book sections', 'politeia-reading'); ?>">
 					<button class="tab active" type="button" data-tab="reading-sessions" role="tab"
 						aria-selected="true"><?php esc_html_e('Reading Sessions', 'politeia-reading'); ?></button>
 					<button class="tab" type="button" data-tab="book-stats" role="tab"

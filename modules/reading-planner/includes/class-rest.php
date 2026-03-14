@@ -10,11 +10,263 @@ if (!defined('ABSPATH')) {
 
 class Rest
 {
+	private const INVITE_EMAIL_QUERY_KEYS = array('invite_email', 'signup_email', 'email');
+	private const INVITE_FIRST_NAME_QUERY_KEYS = array('invite_first_name', 'signup_first_name', 'first_name');
+	private const INVITE_LAST_NAME_QUERY_KEYS = array('invite_last_name', 'signup_last_name', 'last_name');
+
+	private static function table_column_exists(string $table, string $column): bool
+	{
+		global $wpdb;
+		return (bool) $wpdb->get_var(
+			$wpdb->prepare(
+				'SELECT 1 FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = %s AND COLUMN_NAME = %s LIMIT 1',
+				$table,
+				$column
+			)
+		);
+	}
+
+	/**
+	 * Resolve whether a viewer can read a plan and return the plan row with relationship context.
+	 *
+	 * @return array<string,mixed>|null
+	 */
+	private static function get_viewable_plan(int $plan_id, int $viewer_user_id): ?array
+	{
+		global $wpdb;
+
+		$plans_table = $wpdb->prefix . 'politeia_plans';
+		$participants_table = $wpdb->prefix . 'politeia_plan_participants';
+		$participants_has_revoked_at = self::table_column_exists($participants_table, 'revoked_at');
+		$active_clause = $participants_has_revoked_at ? 'AND pp.revoked_at IS NULL' : '';
+
+		$sql = "
+			SELECT
+				p.*,
+				CASE
+					WHEN p.user_id = %d THEN 'owner'
+					ELSE 'observer'
+				END AS relationship_type
+			FROM {$plans_table} p
+			LEFT JOIN {$participants_table} pp
+				ON pp.plan_id = p.id
+				AND pp.user_id = %d
+				AND pp.role = 'observer'
+				{$active_clause}
+			WHERE p.id = %d
+				AND (p.user_id = %d OR pp.user_id IS NOT NULL)
+			LIMIT 1
+		";
+
+		$row = $wpdb->get_row(
+			$wpdb->prepare(
+				$sql,
+				$viewer_user_id,
+				$viewer_user_id,
+				$plan_id,
+				$viewer_user_id
+			),
+			ARRAY_A
+		);
+
+		return $row ?: null;
+	}
+
+	private static function normalize_email(string $email): string
+	{
+		return strtolower(trim($email));
+	}
+
+	private static function render_email_template(string $template_file, array $vars): string
+	{
+		$template_path = POLITEIA_READING_PLAN_PATH . 'templates/emails/' . ltrim($template_file, '/');
+		if (!file_exists($template_path)) {
+			return '';
+		}
+
+		extract($vars, EXTR_SKIP);
+		ob_start();
+		include $template_path;
+		return (string) ob_get_clean();
+	}
+
+	private static function upsert_participant(int $plan_id, int $participant_user_id, string $role, string $notify_on, int $added_by_user_id): bool
+	{
+		global $wpdb;
+		$table = $wpdb->prefix . 'politeia_plan_participants';
+		$has_added_by = self::table_column_exists($table, 'added_by_user_id');
+		$has_added_at = self::table_column_exists($table, 'added_at');
+		$has_revoked_at = self::table_column_exists($table, 'revoked_at');
+
+		$columns = array('plan_id', 'user_id', 'role', 'notify_on');
+		$values = array('%d', '%d', '%s', '%s');
+		$params = array($plan_id, $participant_user_id, $role, $notify_on);
+
+		if ($has_added_by) {
+			$columns[] = 'added_by_user_id';
+			$values[] = '%d';
+			$params[] = $added_by_user_id;
+		}
+		if ($has_added_at) {
+			$columns[] = 'added_at';
+			$values[] = '%s';
+			$params[] = current_time('mysql');
+		}
+
+		$insert_placeholders = implode(', ', $values);
+		$insert_columns = implode(', ', $columns);
+
+		$updates = array(
+			'role = VALUES(role)',
+			'notify_on = VALUES(notify_on)',
+		);
+		if ($has_added_by) {
+			$updates[] = 'added_by_user_id = VALUES(added_by_user_id)';
+		}
+		if ($has_added_at) {
+			$updates[] = 'added_at = VALUES(added_at)';
+		}
+		if ($has_revoked_at) {
+			$updates[] = 'revoked_at = NULL';
+		}
+
+		$sql = "INSERT INTO {$table} ({$insert_columns}) VALUES ({$insert_placeholders}) ON DUPLICATE KEY UPDATE " . implode(', ', $updates);
+		$result = $wpdb->query($wpdb->prepare($sql, $params));
+
+		return false !== $result;
+	}
+
+	private static function ensure_invite_tables_ready(): bool
+	{
+		global $wpdb;
+
+		$invites_table = $wpdb->prefix . 'politeia_plan_participant_invites';
+		$participants_table = $wpdb->prefix . 'politeia_plan_participants';
+
+		$invites_exists = ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $invites_table)) === $invites_table);
+		$participants_exists = ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $participants_table)) === $participants_table);
+		if ($invites_exists && $participants_exists) {
+			return true;
+		}
+
+		if (class_exists('\\Politeia\\ReadingPlanner\\Installer')) {
+			\Politeia\ReadingPlanner\Installer::install();
+		}
+
+		$invites_exists = ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $invites_table)) === $invites_table);
+		$participants_exists = ($wpdb->get_var($wpdb->prepare('SHOW TABLES LIKE %s', $participants_table)) === $participants_table);
+
+		return $invites_exists && $participants_exists;
+	}
+
 	public static function init(): void
 	{
 		add_action('rest_api_init', array(__CLASS__, 'register'));
 		add_action('wp_ajax_prs_reading_plan_add_book', array(__CLASS__, 'ajax_create_book'));
 		add_action('wp_ajax_prs_reading_plan_check_active', array(__CLASS__, 'ajax_check_active_plan'));
+		add_filter('bp_get_signup_email_value', array(__CLASS__, 'prefill_signup_email_from_query'), 20, 1);
+		add_action('template_redirect', array(__CLASS__, 'prime_signup_prefill_from_query'), 1);
+	}
+
+	public static function prefill_signup_email_from_query($value)
+	{
+		$current = is_string($value) ? trim($value) : '';
+		if ('' !== $current) {
+			return $value;
+		}
+
+		foreach (self::INVITE_EMAIL_QUERY_KEYS as $query_key) {
+			if (!isset($_GET[$query_key])) {
+				continue;
+			}
+			$candidate = sanitize_email((string) wp_unslash($_GET[$query_key]));
+			if ($candidate && is_email($candidate)) {
+				return $candidate;
+			}
+		}
+
+		return $value;
+	}
+
+	public static function prime_signup_prefill_from_query(): void
+	{
+		if (is_admin() || is_user_logged_in()) {
+			return;
+		}
+		if (!function_exists('bp_is_register_page') || !bp_is_register_page()) {
+			return;
+		}
+
+		$email = '';
+		foreach (self::INVITE_EMAIL_QUERY_KEYS as $query_key) {
+			if (!isset($_GET[$query_key])) {
+				continue;
+			}
+			$candidate = sanitize_email((string) wp_unslash($_GET[$query_key]));
+			if ($candidate && is_email($candidate)) {
+				$email = $candidate;
+				break;
+			}
+		}
+		if ('' !== $email) {
+			if (empty($_POST['signup_email'])) {
+				$_POST['signup_email'] = $email;
+			}
+			if (empty($_POST['email'])) {
+				$_POST['email'] = $email;
+			}
+		}
+
+		$first_name = '';
+		foreach (self::INVITE_FIRST_NAME_QUERY_KEYS as $query_key) {
+			if (!isset($_GET[$query_key])) {
+				continue;
+			}
+			$candidate = sanitize_text_field((string) wp_unslash($_GET[$query_key]));
+			if ('' !== $candidate) {
+				$first_name = $candidate;
+				break;
+			}
+		}
+
+		$last_name = '';
+		foreach (self::INVITE_LAST_NAME_QUERY_KEYS as $query_key) {
+			if (!isset($_GET[$query_key])) {
+				continue;
+			}
+			$candidate = sanitize_text_field((string) wp_unslash($_GET[$query_key]));
+			if ('' !== $candidate) {
+				$last_name = $candidate;
+				break;
+			}
+		}
+
+		if ('' !== $first_name && empty($_POST['first_name'])) {
+			$_POST['first_name'] = $first_name;
+		}
+		if ('' !== $last_name && empty($_POST['last_name'])) {
+			$_POST['last_name'] = $last_name;
+		}
+
+		if (function_exists('bp_xprofile_firstname_field_id')) {
+			$first_name_field_id = (int) bp_xprofile_firstname_field_id();
+			if ($first_name_field_id > 0 && '' !== $first_name) {
+				$field_key = 'field_' . $first_name_field_id;
+				if (empty($_POST[$field_key])) {
+					$_POST[$field_key] = $first_name;
+				}
+			}
+		}
+
+		if (function_exists('bp_xprofile_lastname_field_id')) {
+			$last_name_field_id = (int) bp_xprofile_lastname_field_id();
+			if ($last_name_field_id > 0 && '' !== $last_name) {
+				$field_key = 'field_' . $last_name_field_id;
+				if (empty($_POST[$field_key])) {
+					$_POST[$field_key] = $last_name;
+				}
+			}
+		}
 	}
 
 	public static function register(): void
@@ -96,6 +348,381 @@ class Rest
 					return is_user_logged_in();
 				},
 			)
+		);
+		register_rest_route(
+			'politeia/v1',
+			'/reading-plan/(?P<plan_id>\d+)/participants/invite',
+			array(
+				'methods' => 'POST',
+				'callback' => array(__CLASS__, 'invite_participant'),
+				'permission_callback' => function () {
+					return is_user_logged_in();
+				},
+			)
+		);
+		register_rest_route(
+			'politeia/v1',
+			'/reading-plan/invites/respond/(?P<token>[a-fA-F0-9]{64})',
+			array(
+				'methods' => 'GET',
+				'callback' => array(__CLASS__, 'respond_to_invite'),
+				'permission_callback' => '__return_true',
+			)
+		);
+	}
+
+	public static function invite_participant(WP_REST_Request $request)
+	{
+		if (!is_user_logged_in()) {
+			return new WP_REST_Response(array('error' => 'not_logged_in'), 401);
+		}
+
+		$nonce = $request->get_header('X-WP-Nonce') ?: ($request['nonce'] ?? '');
+		if (!wp_verify_nonce($nonce, 'wp_rest')) {
+			return new WP_REST_Response(array('error' => 'invalid_nonce'), 403);
+		}
+
+		$plan_id = (int) $request['plan_id'];
+		if ($plan_id <= 0) {
+			return new WP_REST_Response(array('error' => 'invalid_plan_id'), 400);
+		}
+
+		$payload = $request->get_json_params();
+		if (!is_array($payload)) {
+			$payload = array();
+		}
+
+		$invitee_email = sanitize_email((string) ($payload['invitee_email'] ?? ''));
+		if (!$invitee_email || !is_email($invitee_email)) {
+			return new WP_REST_Response(array('error' => 'invalid_email'), 400);
+		}
+
+		$role = sanitize_key((string) ($payload['role'] ?? 'observer'));
+		$allowed_roles = array('observer');
+		if (!in_array($role, $allowed_roles, true)) {
+			return new WP_REST_Response(array('error' => 'invalid_role'), 400);
+		}
+
+		$notify_on = sanitize_key((string) ($payload['notify_on'] ?? 'none'));
+		$allowed_notify = array('none', 'failures_only', 'milestones', 'daily_summary', 'weekly_summary');
+		if (!in_array($notify_on, $allowed_notify, true)) {
+			$notify_on = 'none';
+		}
+		$invitee_first_name = sanitize_text_field((string) ($payload['first_name'] ?? ''));
+		$invitee_last_name = sanitize_text_field((string) ($payload['last_name'] ?? ''));
+
+		global $wpdb;
+		if (!self::ensure_invite_tables_ready()) {
+			return new WP_REST_Response(array('error' => 'missing_invite_tables'), 500);
+		}
+
+		$current_user_id = get_current_user_id();
+		$plans_table = $wpdb->prefix . 'politeia_plans';
+		$participants_table = $wpdb->prefix . 'politeia_plan_participants';
+		$invites_table = $wpdb->prefix . 'politeia_plan_participant_invites';
+		$invites_has_notify_on = self::table_column_exists($invites_table, 'notify_on');
+
+		$plan = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT id, user_id, name FROM {$plans_table} WHERE id = %d LIMIT 1",
+				$plan_id
+			),
+			ARRAY_A
+		);
+		if (!$plan) {
+			return new WP_REST_Response(array('error' => 'plan_not_found'), 404);
+		}
+		if ((int) $plan['user_id'] !== $current_user_id) {
+			return new WP_REST_Response(array('error' => 'forbidden'), 403);
+		}
+
+		$owner = get_userdata($current_user_id);
+		$owner_email = $owner ? self::normalize_email((string) $owner->user_email) : '';
+		$normalized_invitee_email = self::normalize_email($invitee_email);
+		if ($owner_email && $normalized_invitee_email === $owner_email) {
+			return new WP_REST_Response(array('error' => 'cannot_invite_owner'), 400);
+		}
+
+		$participants_has_revoked_at = self::table_column_exists($participants_table, 'revoked_at');
+		$participant_sql = $participants_has_revoked_at
+			? "SELECT 1 FROM {$participants_table} WHERE plan_id = %d AND user_id = %d AND role = %s AND revoked_at IS NULL LIMIT 1"
+			: "SELECT 1 FROM {$participants_table} WHERE plan_id = %d AND user_id = %d AND role = %s LIMIT 1";
+
+		$invitee_user = get_user_by('email', $invitee_email);
+		$invitee_user_id = $invitee_user ? (int) $invitee_user->ID : 0;
+		if ($invitee_user_id > 0) {
+			$already_participant = (bool) $wpdb->get_var(
+				$wpdb->prepare(
+					$participant_sql,
+					$plan_id,
+					$invitee_user_id,
+					$role
+				)
+			);
+			if ($already_participant) {
+				return new WP_REST_Response(array('error' => 'already_participant'), 409);
+			}
+		}
+
+		$now = current_time('mysql');
+		$expires_at = gmdate('Y-m-d H:i:s', current_time('timestamp', true) + (7 * DAY_IN_SECONDS));
+		$raw_token = bin2hex(random_bytes(32));
+		$token_hash = hash('sha256', $raw_token);
+
+		$wpdb->query(
+			$wpdb->prepare(
+				"UPDATE {$invites_table}
+				 SET status = %s, revoked_at = %s, updated_at = %s
+				 WHERE plan_id = %d AND invitee_email = %s AND status = %s",
+				'revoked',
+				$now,
+				$now,
+				$plan_id,
+				$invitee_email,
+				'pending'
+			)
+		);
+
+		$invite_insert_data = array(
+			'plan_id' => $plan_id,
+			'inviter_user_id' => $current_user_id,
+			'invitee_email' => $invitee_email,
+			'invitee_user_id' => $invitee_user_id > 0 ? $invitee_user_id : null,
+			'role' => $role,
+			'status' => 'pending',
+			'token_hash' => $token_hash,
+			'expires_at' => $expires_at,
+			'created_at' => $now,
+			'updated_at' => $now,
+		);
+		$invite_insert_format = array('%d', '%d', '%s', '%d', '%s', '%s', '%s', '%s', '%s', '%s');
+		if ($invites_has_notify_on) {
+			$invite_insert_data['notify_on'] = $notify_on;
+			$invite_insert_format[] = '%s';
+		}
+
+		$inserted = $wpdb->insert($invites_table, $invite_insert_data, $invite_insert_format);
+		if (false === $inserted) {
+			return new WP_REST_Response(array('error' => 'invite_insert_failed', 'db_error' => $wpdb->last_error), 500);
+		}
+
+		$invite_id = (int) $wpdb->insert_id;
+		$invite_response_base = rest_url('politeia/v1/reading-plan/invites/respond/' . $raw_token);
+		$accept_url = add_query_arg(array('action' => 'accept'), $invite_response_base);
+		$decline_url = add_query_arg(array('action' => 'decline'), $invite_response_base);
+		$register_query = array(
+			'redirect_to' => $accept_url,
+			'invite_email' => $invitee_email,
+			'signup_email' => $invitee_email,
+			'email' => $invitee_email,
+		);
+		if ('' !== $invitee_first_name) {
+			$register_query['invite_first_name'] = $invitee_first_name;
+			$register_query['signup_first_name'] = $invitee_first_name;
+			$register_query['first_name'] = $invitee_first_name;
+		}
+		if ('' !== $invitee_last_name) {
+			$register_query['invite_last_name'] = $invitee_last_name;
+			$register_query['signup_last_name'] = $invitee_last_name;
+			$register_query['last_name'] = $invitee_last_name;
+		}
+		$register_url = add_query_arg($register_query, wp_registration_url());
+
+		$plan_name = isset($plan['name']) && '' !== trim((string) $plan['name'])
+			? (string) $plan['name']
+			: 'Reading Plan #' . $plan_id;
+		$inviter_name = $owner ? ($owner->display_name ?: $owner->user_login) : 'Politeia';
+
+		$template_vars = array(
+			'plan_id' => $plan_id,
+			'plan_name' => $plan_name,
+			'invitee_email' => $invitee_email,
+			'inviter_name' => $inviter_name,
+			'accept_url' => $accept_url,
+			'decline_url' => $decline_url,
+			'register_url' => $register_url,
+			'expires_at' => $expires_at,
+		);
+		$template_file = $invitee_user_id > 0 ? 'participant-invite-existing.php' : 'participant-invite-register.php';
+		$email_html = self::render_email_template($template_file, $template_vars);
+		if ('' === trim($email_html)) {
+			$email_html = sprintf(
+				'<p>%s invited you to observe plan "%s".</p><p><a href="%s">Accept invitation</a></p>',
+				esc_html($inviter_name),
+				esc_html($plan_name),
+				esc_url($accept_url)
+			);
+		}
+
+		$mail_subject = sprintf('Politeia invitation: %s', $plan_name);
+		$mail_headers = array('Content-Type: text/html; charset=UTF-8');
+		$mail_sent = wp_mail($invitee_email, $mail_subject, $email_html, $mail_headers);
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'invite_id' => $invite_id,
+				'plan_id' => $plan_id,
+				'invitee_email' => $invitee_email,
+				'is_registered_user' => ($invitee_user_id > 0),
+				'expires_at' => $expires_at,
+				'mail_sent' => (bool) $mail_sent,
+				'template_file' => POLITEIA_READING_PLAN_PATH . 'templates/emails/' . $template_file,
+			),
+			200
+		);
+	}
+
+	public static function respond_to_invite(WP_REST_Request $request)
+	{
+		if (!self::ensure_invite_tables_ready()) {
+			return new WP_REST_Response(array('error' => 'missing_invite_tables'), 500);
+		}
+
+		$raw_token = strtolower(trim((string) $request['token']));
+		if (!preg_match('/^[a-f0-9]{64}$/', $raw_token)) {
+			return new WP_REST_Response(array('error' => 'invalid_token'), 400);
+		}
+
+		$action = sanitize_key((string) $request->get_param('action'));
+		if (!in_array($action, array('accept', 'decline'), true)) {
+			$action = 'accept';
+		}
+
+		$token_hash = hash('sha256', $raw_token);
+		global $wpdb;
+		$invites_table = $wpdb->prefix . 'politeia_plan_participant_invites';
+		$plans_table = $wpdb->prefix . 'politeia_plans';
+
+		$invite = $wpdb->get_row(
+			$wpdb->prepare(
+				"SELECT * FROM {$invites_table} WHERE token_hash = %s LIMIT 1",
+				$token_hash
+			),
+			ARRAY_A
+		);
+		if (!$invite) {
+			return new WP_REST_Response(array('error' => 'invite_not_found'), 404);
+		}
+		if ('pending' !== (string) $invite['status']) {
+			return new WP_REST_Response(array('error' => 'invite_not_pending', 'status' => (string) $invite['status']), 409);
+		}
+
+		$now_ts = current_time('timestamp', true);
+		$expires_ts = strtotime((string) $invite['expires_at'] . ' UTC');
+		if ($expires_ts && $expires_ts < $now_ts) {
+			$now = current_time('mysql');
+			$wpdb->update(
+				$invites_table,
+				array(
+					'status' => 'expired',
+					'updated_at' => $now,
+				),
+				array('id' => (int) $invite['id']),
+				array('%s', '%s'),
+				array('%d')
+			);
+			return new WP_REST_Response(array('error' => 'invite_expired'), 410);
+		}
+
+		if (!is_user_logged_in()) {
+			$respond_base = rest_url('politeia/v1/reading-plan/invites/respond/' . $raw_token);
+			$next_url = add_query_arg(array('action' => $action), $respond_base);
+			return new WP_REST_Response(
+				array(
+					'error' => 'not_logged_in',
+					'login_url' => wp_login_url($next_url),
+					'register_url' => add_query_arg(
+						array(
+							'redirect_to' => $next_url,
+							'invite_email' => (string) $invite['invitee_email'],
+							'signup_email' => (string) $invite['invitee_email'],
+							'email' => (string) $invite['invitee_email'],
+						),
+						wp_registration_url()
+					),
+				),
+				401
+			);
+		}
+
+		$current_user = wp_get_current_user();
+		$current_email = self::normalize_email((string) ($current_user->user_email ?? ''));
+		$invite_email = self::normalize_email((string) $invite['invitee_email']);
+		if ('' === $current_email || $current_email !== $invite_email) {
+			return new WP_REST_Response(array('error' => 'email_mismatch'), 403);
+		}
+
+		$invite_id = (int) $invite['id'];
+		$plan_id = (int) $invite['plan_id'];
+		$plan_exists = (bool) $wpdb->get_var($wpdb->prepare("SELECT 1 FROM {$plans_table} WHERE id = %d LIMIT 1", $plan_id));
+		if (!$plan_exists) {
+			return new WP_REST_Response(array('error' => 'plan_not_found'), 404);
+		}
+
+		$now = current_time('mysql');
+		if ('decline' === $action) {
+			$updated = $wpdb->update(
+				$invites_table,
+				array(
+					'status' => 'declined',
+					'declined_at' => $now,
+					'invitee_user_id' => (int) $current_user->ID,
+					'updated_at' => $now,
+				),
+				array('id' => $invite_id),
+				array('%s', '%s', '%d', '%s'),
+				array('%d')
+			);
+			if (false === $updated) {
+				return new WP_REST_Response(array('error' => 'decline_failed', 'db_error' => $wpdb->last_error), 500);
+			}
+
+			return new WP_REST_Response(
+				array(
+					'success' => true,
+					'action' => 'decline',
+					'plan_id' => $plan_id,
+				),
+				200
+			);
+		}
+
+		$participant_saved = self::upsert_participant(
+			$plan_id,
+			(int) $current_user->ID,
+			(string) $invite['role'],
+			isset($invite['notify_on']) ? (string) $invite['notify_on'] : 'none',
+			(int) $invite['inviter_user_id']
+		);
+		if (!$participant_saved) {
+			return new WP_REST_Response(array('error' => 'participant_insert_failed', 'db_error' => $wpdb->last_error), 500);
+		}
+
+		$updated = $wpdb->update(
+			$invites_table,
+			array(
+				'status' => 'accepted',
+				'accepted_at' => $now,
+				'invitee_user_id' => (int) $current_user->ID,
+				'updated_at' => $now,
+			),
+			array('id' => $invite_id),
+			array('%s', '%s', '%d', '%s'),
+			array('%d')
+		);
+		if (false === $updated) {
+			return new WP_REST_Response(array('error' => 'invite_update_failed', 'db_error' => $wpdb->last_error), 500);
+		}
+
+		return new WP_REST_Response(
+			array(
+				'success' => true,
+				'action' => 'accept',
+				'plan_id' => $plan_id,
+				'plan_url' => home_url('/my-plan/' . $plan_id),
+			),
+			200
 		);
 	}
 
@@ -184,6 +811,8 @@ class Rest
 			'actions' => array(
 				'start' => 'prs_start_reading',
 				'save' => 'prs_save_reading',
+				'heartbeat' => 'prs_sr_heartbeat',
+				'auto_stop' => 'prs_sr_auto_stop',
 			),
 			'strings' => array(
 				'tooltip_pages_required' => __('Set total Pages for this book before starting a session.', 'politeia-reading'),
@@ -199,6 +828,11 @@ class Rest
 				'minutes_under_one' => __('less than a minute', 'politeia-reading'),
 				'minutes_single' => __('1 minute', 'politeia-reading'),
 				'minutes_multiple' => __('%d minutes', 'politeia-reading'),
+				'limit_message' => __('This session has reached the maximum length. Confirm to continue or it will stop automatically in 20 minutes.', 'politeia-reading'),
+				'limit_continue' => __('Continue', 'politeia-reading'),
+				'limit_stop_now' => __('Stop now', 'politeia-reading'),
+				'auto_stopped' => __('This session was stopped automatically because it exceeded the maximum length.', 'politeia-reading'),
+				'auto_stop_failed' => __('Network error while stopping the session automatically.', 'politeia-reading'),
 			),
 		);
 
@@ -887,7 +1521,7 @@ class Rest
 	{
 		$plan_id = (int) $request['plan_id'];
 		global $wpdb;
-		$user_id = get_current_user_id();
+		$viewer_user_id = get_current_user_id();
 		$plans_table = $wpdb->prefix . 'politeia_plans';
 		$goals_table = $wpdb->prefix . 'politeia_plan_goals';
 		$sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
@@ -898,19 +1532,21 @@ class Rest
 			return new WP_REST_Response(array('error' => 'invalid_plan_id'), 404);
 		}
 
-		$plan = $wpdb->get_row($wpdb->prepare("SELECT * FROM {$plans_table} WHERE id = %d AND user_id = %d", $plan_id, $user_id), ARRAY_A);
+		$plan = self::get_viewable_plan($plan_id, $viewer_user_id);
 		if (!$plan) {
 			return new WP_REST_Response(array('error' => 'not_found'), 404);
 		}
 
+		$owner_user_id = isset($plan['user_id']) ? (int) $plan['user_id'] : 0;
+		$relationship_type = isset($plan['relationship_type']) ? (string) $plan['relationship_type'] : 'owner';
 
 		// --- FREEZE THE PAST: Lazy Settlement ---
 		// Before any derivation, ensure expired sessions are settled.
 		$current_plan_type = isset($plan['plan_type']) ? $plan['plan_type'] : '';
 		if ('habit' === $current_plan_type && class_exists('\\Politeia\\ReadingPlanner\\HabitSettlementEngine')) {
-			\Politeia\ReadingPlanner\HabitSettlementEngine::settle((int) $plan_id, (int) $user_id);
+			\Politeia\ReadingPlanner\HabitSettlementEngine::settle((int) $plan_id, (int) $owner_user_id);
 		} elseif (class_exists('\\Politeia\\ReadingPlanner\\PlanSettlementEngine')) {
-			\Politeia\ReadingPlanner\PlanSettlementEngine::settle((int) $plan_id, (int) $user_id);
+			\Politeia\ReadingPlanner\PlanSettlementEngine::settle((int) $plan_id, (int) $owner_user_id);
 		}
 
 		// --- INVARIANT ENFORCEMENT & GOAL RESOLUTION ---
@@ -933,7 +1569,7 @@ class Rest
 			} else {
 				error_log(sprintf('[ReadingPlanner] INVARIANT BROKEN: Plan ID %d (habit) missing plan_habit row.', $plan_id));
 			}
-		} elseif ('finish_book' === $p_type) {
+		} elseif (in_array($p_type, array('finish_book', 'complete_books'), true)) {
 			$pfb_table = $wpdb->prefix . 'politeia_plan_finish_book';
 			$ub_table = $wpdb->prefix . 'politeia_user_books';
 			// Join user_books to get canonical book_id and pages
@@ -953,9 +1589,9 @@ class Rest
 				if ($goal_starting_page < 1)
 					$goal_starting_page = 1;
 				$total_book_pages = (int) $fb_row->pages;
-				$goal_target = max(0, $total_book_pages - $goal_starting_page); // Approximate target derived
+				$goal_target = max(0, $total_book_pages - $goal_starting_page + 1);
 			} else {
-				error_log(sprintf('[ReadingPlanner] INVARIANT BROKEN: Plan ID %d (finish_book) missing plan_finish_book row.', $plan_id));
+				error_log(sprintf('[ReadingPlanner] INVARIANT BROKEN: Plan ID %d (finish_book/complete_books) missing plan_finish_book row.', $plan_id));
 			}
 		}
 
@@ -980,7 +1616,7 @@ class Rest
 					$goal_starting_page = 1;
 				// If legacy plan has goal_book_id but no user_book_id, resolve it
 				if ($goal_book_id > 0 && 0 === $user_book_id) {
-					$user_book_id = prs_ensure_user_book($user_id, $goal_book_id);
+					$user_book_id = prs_ensure_user_book($owner_user_id, $goal_book_id);
 				}
 			}
 		}
@@ -1009,7 +1645,7 @@ class Rest
 					"SELECT start_time, start_page, end_page
 					 FROM {$reading_sessions_table}
 					 WHERE user_id = %d AND user_book_id = %d AND deleted_at IS NULL",
-					$user_id,
+					$owner_user_id,
 					$user_book_id
 				),
 				ARRAY_A
@@ -1050,7 +1686,7 @@ class Rest
 				$wpdb->prepare(
 					"SELECT MAX(end_page) FROM {$reading_sessions_table}
 					 WHERE user_id = %d AND user_book_id = %d AND deleted_at IS NULL AND end_page IS NOT NULL",
-					$user_id,
+					$owner_user_id,
 					$user_book_id
 				)
 			);
@@ -1120,6 +1756,8 @@ class Rest
 			'total_pages' => $total_pages,
 			'pages_read' => $pages_read_in_plan,
 			'progress' => $progress,
+			'relationship_type' => $relationship_type,
+			'can_edit' => ('owner' === $relationship_type),
 			'session_dates' => $session_dates,
 			'session_items' => $session_items,
 			'actual_sessions' => $actual_sessions_payload,

@@ -87,6 +87,9 @@ msgstr "JPG o PNG"
 msgid "Change Cover"
 msgstr "Cambiar portada"
 
+msgid "Date"
+msgstr "Fecha"
+
 msgid "Remove cover"
 msgstr "Eliminar portada"
 
@@ -95,6 +98,51 @@ msgstr "Vista previa de la portada"
 
 msgid "Add session"
 msgstr "Agregar sesión"
+
+msgid "Add Session"
+msgstr "Agregar sesión"
+
+msgid "Close add session"
+msgstr "Cerrar agregar sesión"
+
+msgid "Open date picker"
+msgstr "Abrir selector de fecha"
+
+msgid "Previous month"
+msgstr "Mes anterior"
+
+msgid "Next month"
+msgstr "Mes siguiente"
+
+msgid "Hour"
+msgstr "Hora"
+
+msgid "Minute"
+msgstr "Minuto"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Date & time"
+msgstr "Fecha y hora"
+
+msgid "Final page"
+msgstr "Página final"
+
+msgid "Session Duration"
+msgstr "Duración de la sesión"
+
+msgid "Please enter a valid duration."
+msgstr "Ingresa una duración válida."
+
+msgid "Please enter valid date & time values."
+msgstr "Ingresa valores válidos de fecha y hora."
+
+msgid "End date/time must be after start date/time."
+msgstr "La fecha/hora final debe ser posterior a la fecha/hora inicial."
+
+msgid "Unable to save session. Please try again."
+msgstr "No se pudo guardar la sesión. Inténtalo de nuevo."
 
 msgid "Add to Library"
 msgstr "Agregar a la biblioteca"
@@ -320,9 +368,6 @@ msgstr "Error de base de datos. Inténtalo de nuevo."
 
 msgid "Database update failed."
 msgstr "Falló la actualización de la base de datos."
-
-msgid "Date"
-msgstr "Fecha"
 
 msgid "December"
 msgstr "Diciembre"
@@ -1716,3 +1761,24 @@ msgstr "%s posteó..."
 
 msgid "User"
 msgstr "Usuario"
+
+msgid "Stop now"
+msgstr "Detener ahora"
+
+msgid "Session limit reached"
+msgstr "Límite de sesión alcanzado"
+
+msgid "Session limit"
+msgstr "Límite de sesión"
+
+msgid "This session has reached the maximum length. Confirm to continue or it will stop automatically in 20 minutes."
+msgstr "Esta sesión ha alcanzado la duración máxima. Confirma para continuar o se detendrá automáticamente en 20 minutos."
+
+msgid "This session was stopped automatically because it exceeded the maximum length."
+msgstr "Esta sesión se detuvo automáticamente porque superó la duración máxima."
+
+msgid "Network error while stopping the session automatically."
+msgstr "Error de red al detener la sesión automáticamente."
+
+msgid "per session"
+msgstr "por sesión"

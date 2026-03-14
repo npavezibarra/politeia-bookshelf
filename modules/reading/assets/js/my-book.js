@@ -687,6 +687,7 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
         action: "politeia_save_session_note",
         rs_id: rsId,
         book_id: bookId,
+        user_book_id: window.PRS_BOOK?.user_book_id ? String(window.PRS_BOOK.user_book_id) : "",
         user_id: userId,
         note: noteContent,
         nonce,
@@ -2955,6 +2956,413 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
     });
   }
 
+  // ---------- Manual add session modal ----------
+  function setupManualSessionModal() {
+    const modal = qs("#prs-manual-session-modal");
+    if (!modal || !window.PRS_BOOK) return;
+
+    const closeBtn = qs("#prs-manual-session-close", modal);
+    const cancelBtn = qs('[data-prs-close-manual-session="1"]', modal);
+    const form = qs("#prs-manual-session-form", modal);
+    const statusEl = qs("#prs-ms-status", modal);
+    const startDtInput = qs("#prs-ms-start-dt", modal);
+    const endDtInput = qs("#prs-ms-end-dt", modal);
+    const startIsoInput = qs("#prs-ms-start-iso", modal);
+    const endIsoInput = qs("#prs-ms-end-iso", modal);
+    const startInput = qs("#prs-ms-start-page", modal);
+    const endInput = qs("#prs-ms-end-page", modal);
+    const chapterInput = qs("#prs-ms-chapter", modal);
+    const submitBtn = qs('button[type="submit"]', modal);
+
+    if (!form || !startDtInput || !endDtInput || !startIsoInput || !endIsoInput || !startInput || !endInput) return;
+
+    function setStatus(msg, opts = {}) {
+      if (!statusEl) return;
+      statusEl.textContent = msg || "";
+      statusEl.style.color = opts.color || "rgba(255, 255, 255, 0.8)";
+    }
+
+    function handleKeydown(event) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+      }
+    }
+
+    function pad2(n) {
+      return String(n).padStart(2, "0");
+    }
+
+    function formatIsoLocal(dt) {
+      const yyyy = dt.getFullYear();
+      const mm = pad2(dt.getMonth() + 1);
+      const dd = pad2(dt.getDate());
+      const hh = pad2(dt.getHours());
+      const mi = pad2(dt.getMinutes());
+      return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+    }
+
+    function formatDisplay(dt) {
+      const dd = pad2(dt.getDate());
+      const mm = pad2(dt.getMonth() + 1);
+      const yyyy = dt.getFullYear();
+
+      let h = dt.getHours();
+      const m = pad2(dt.getMinutes());
+      const ampm = h >= 12 ? "PM" : "AM";
+      h = h % 12;
+      h = h === 0 ? 12 : h;
+      const hh = pad2(h);
+      return `${dd}-${mm}-${yyyy}, ${hh}:${m} ${ampm}`;
+    }
+
+    function parseIsoToDate(iso) {
+      if (!iso || typeof iso !== "string") return null;
+      const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+      if (!m) return null;
+      const yyyy = parseInt(m[1], 10);
+      const mm = parseInt(m[2], 10);
+      const dd = parseInt(m[3], 10);
+      const hh = parseInt(m[4], 10);
+      const mi = parseInt(m[5], 10);
+      const dt = new Date(yyyy, mm - 1, dd, hh, mi, 0, 0);
+      if (Number.isNaN(dt.getTime())) return null;
+      return dt;
+    }
+
+    function setDtFields(displayInput, hiddenIsoInput, dateObj) {
+      const iso = formatIsoLocal(dateObj);
+      hiddenIsoInput.value = iso;
+      displayInput.value = formatDisplay(dateObj);
+    }
+
+    function open() {
+      if (!modal.classList.contains("is-active")) {
+        modal.classList.add("is-active");
+        document.addEventListener("keydown", handleKeydown);
+      }
+      modal.setAttribute("aria-hidden", "false");
+      setStatus("");
+      form.reset();
+      try {
+        const now = new Date();
+        setDtFields(startDtInput, startIsoInput, now);
+        setDtFields(endDtInput, endIsoInput, now);
+      } catch (e) { /* noop */ }
+      setTimeout(() => startInput.focus(), 0);
+    }
+
+    function close() {
+      if (!modal.classList.contains("is-active")) return;
+      modal.classList.remove("is-active");
+      modal.setAttribute("aria-hidden", "true");
+      document.removeEventListener("keydown", handleKeydown);
+    }
+
+    document.addEventListener("click", event => {
+      const openBtn = event.target.closest('[data-prs-open-manual-session="1"]');
+      if (openBtn) {
+        event.preventDefault();
+        open();
+        return;
+      }
+
+      const closeBtn2 = event.target.closest('[data-prs-close-manual-session="1"]');
+      if (closeBtn2) {
+        event.preventDefault();
+        close();
+      }
+    });
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", event => {
+        event.preventDefault();
+        close();
+      });
+    }
+
+    modal.addEventListener("click", event => {
+      if (event.target === modal) {
+        event.preventDefault();
+      }
+    });
+
+    if (cancelBtn) {
+      cancelBtn.addEventListener("click", event => {
+        event.preventDefault();
+        close();
+      });
+    }
+
+    form.addEventListener("submit", event => {
+      event.preventDefault();
+
+      const startDt = (startIsoInput.value || "").trim();
+      const endDt = (endIsoInput.value || "").trim();
+      const startPage = num(startInput.value, 0);
+      const endPage = num(endInput.value, 0);
+      const chapter = (chapterInput && chapterInput.value || "").trim();
+
+      if (!startDt || !endDt) {
+        setStatus(prsText("manual_invalid_datetime", "Please enter valid date & time values."), { color: "#fca5a5" });
+        return;
+      }
+
+      if (endDt < startDt) {
+        setStatus(prsText("manual_invalid_time_range", "End date/time must be after start date/time."), { color: "#fca5a5" });
+        return;
+      }
+
+      if (!startPage || !endPage || endPage < startPage) {
+        setStatus(prsText("manual_invalid_pages", "Please check the page range."), { color: "#fca5a5" });
+        return;
+      }
+
+      if (submitBtn) submitBtn.disabled = true;
+      setStatus(prsText("status_saving", "Saving..."));
+
+      const fd = new FormData();
+      fd.append("action", "prs_add_manual_session");
+      fd.append("nonce", PRS_BOOK.reading_nonce || "");
+      fd.append("book_id", String(PRS_BOOK.book_id || ""));
+      fd.append("start_datetime", startDt);
+      fd.append("end_datetime", endDt);
+      fd.append("start_page", String(startPage));
+      fd.append("end_page", String(endPage));
+      fd.append("chapter_name", chapter);
+
+      ajaxPost(PRS_BOOK.ajax_url, fd)
+        .then(json => {
+          if (!json || !json.success) throw json;
+          close();
+          window.location.reload();
+        })
+        .catch(err => {
+          const code = err && err.data && err.data.message ? String(err.data.message) : "";
+          let msg = prsText("manual_save_failed", "Unable to save session. Please try again.");
+          if (code === "invalid_datetime") msg = prsText("manual_invalid_datetime", "Please enter valid date & time values.");
+          if (code === "invalid_time_range") msg = prsText("manual_invalid_time_range", "End date/time must be after start date/time.");
+          if (code === "invalid_pages") msg = prsText("manual_invalid_pages", msg);
+          setStatus(msg, { color: "#fca5a5" });
+        })
+        .finally(() => {
+          if (submitBtn) submitBtn.disabled = false;
+        });
+    });
+
+    // Minimal custom picker (corporate colors) to avoid any browser blue UI.
+    (function setupMiniPicker() {
+      const pop = qs("#prs-ms-dtp-pop");
+      if (!pop) return;
+
+      const monthEl = qs("[data-ms-dtp-month]", pop);
+      const gridEl = qs("[data-ms-dtp-grid]", pop);
+      const hourSel = qs("[data-ms-dtp-hour]", pop);
+      const minSel = qs("[data-ms-dtp-minute]", pop);
+      const ampmSel = qs("[data-ms-dtp-ampm]", pop);
+      const applyBtn = qs("[data-ms-dtp-apply]", pop);
+
+      let active = null; // { displayInput, isoInput }
+      let view = new Date();
+      let selected = new Date();
+
+      function show(anchorEl) {
+        pop.classList.remove("is-hidden");
+        pop.setAttribute("aria-hidden", "false");
+
+        // Position under anchor (inside viewport)
+        const r = anchorEl.getBoundingClientRect();
+        const w = pop.offsetWidth || 320;
+        const h = pop.offsetHeight || 360;
+        const pad = 10;
+        let left = Math.min(window.innerWidth - w - pad, Math.max(pad, r.left));
+        let top = r.bottom + 8;
+        if (top + h + pad > window.innerHeight) {
+          top = Math.max(pad, r.top - h - 8);
+        }
+        pop.style.left = `${left}px`;
+        pop.style.top = `${top}px`;
+      }
+
+      function hide() {
+        pop.classList.add("is-hidden");
+        pop.setAttribute("aria-hidden", "true");
+        active = null;
+      }
+
+      function monthName(dt) {
+        try {
+          return dt.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+        } catch {
+          const months = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+          return `${months[dt.getMonth()]} ${dt.getFullYear()}`;
+        }
+      }
+
+      function buildSelects() {
+        if (hourSel && !hourSel.options.length) {
+          for (let h = 1; h <= 12; h++) {
+            const o = document.createElement("option");
+            o.value = String(h);
+            o.textContent = pad2(h);
+            hourSel.appendChild(o);
+          }
+        }
+        if (minSel && !minSel.options.length) {
+          for (let m = 0; m < 60; m++) {
+            const o = document.createElement("option");
+            o.value = String(m);
+            o.textContent = pad2(m);
+            minSel.appendChild(o);
+          }
+        }
+      }
+
+      function syncControlsFromSelected() {
+        if (!hourSel || !minSel || !ampmSel) return;
+        let h = selected.getHours();
+        const ampm = h >= 12 ? "PM" : "AM";
+        h = h % 12;
+        h = h === 0 ? 12 : h;
+        hourSel.value = String(h);
+        minSel.value = String(selected.getMinutes());
+        ampmSel.value = ampm;
+      }
+
+      function syncSelectedFromControls() {
+        if (!hourSel || !minSel || !ampmSel) return;
+        let h = parseInt(hourSel.value || "12", 10);
+        const m = parseInt(minSel.value || "0", 10);
+        const ampm = ampmSel.value || "AM";
+        if (ampm === "PM" && h !== 12) h += 12;
+        if (ampm === "AM" && h === 12) h = 0;
+        selected = new Date(selected.getFullYear(), selected.getMonth(), selected.getDate(), h, m, 0, 0);
+      }
+
+      function isSameDay(a, b) {
+        return a.getFullYear() === b.getFullYear()
+          && a.getMonth() === b.getMonth()
+          && a.getDate() === b.getDate();
+      }
+
+      function render() {
+        if (monthEl) monthEl.textContent = monthName(view);
+        if (!gridEl) return;
+        gridEl.innerHTML = "";
+
+        const first = new Date(view.getFullYear(), view.getMonth(), 1);
+        const startDow = first.getDay();
+        const cur = new Date(first);
+        cur.setDate(first.getDate() - startDow);
+
+        for (let i = 0; i < 42; i++) {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "prs-ms-dtp-pop__day";
+          btn.textContent = String(cur.getDate());
+          if (cur.getMonth() !== view.getMonth()) btn.classList.add("is-out");
+          if (isSameDay(cur, new Date())) btn.classList.add("is-today");
+          if (isSameDay(cur, selected)) btn.classList.add("is-selected");
+          const pick = new Date(cur);
+          btn.addEventListener("click", () => {
+            selected = new Date(pick.getFullYear(), pick.getMonth(), pick.getDate(), selected.getHours(), selected.getMinutes(), 0, 0);
+            render();
+          });
+          gridEl.appendChild(btn);
+          cur.setDate(cur.getDate() + 1);
+        }
+      }
+
+      function openFor(which, anchorEl) {
+        buildSelects();
+        active = which === "end"
+          ? { displayInput: endDtInput, isoInput: endIsoInput }
+          : { displayInput: startDtInput, isoInput: startIsoInput };
+
+        const existing = parseIsoToDate(active.isoInput.value || "");
+        selected = existing || new Date();
+        view = new Date(selected.getFullYear(), selected.getMonth(), 1);
+        syncControlsFromSelected();
+        render();
+        show(anchorEl);
+      }
+
+      document.addEventListener("click", event => {
+        const openBtn = event.target.closest("[data-ms-dtp-open]");
+        if (openBtn) {
+          event.preventDefault();
+          const which = openBtn.getAttribute("data-ms-dtp-open");
+          openFor(which, openBtn);
+          return;
+        }
+
+        if (!pop.classList.contains("is-hidden")) {
+          const inside = event.target.closest("#prs-ms-dtp-pop");
+          const openAny = event.target.closest("[data-ms-dtp-open]");
+          if (!inside && !openAny) {
+            hide();
+          }
+        }
+      });
+
+      pop.addEventListener("click", event => {
+        const nav = event.target.closest("[data-ms-dtp-nav]");
+        if (nav) {
+          event.preventDefault();
+          const dir = nav.getAttribute("data-ms-dtp-nav");
+          view = new Date(view.getFullYear(), view.getMonth() + (dir === "prev" ? -1 : 1), 1);
+          render();
+          return;
+        }
+
+        const clear = event.target.closest("[data-ms-dtp-clear]");
+        if (clear) {
+          event.preventDefault();
+          if (active) {
+            active.isoInput.value = "";
+            active.displayInput.value = "";
+          }
+          hide();
+          return;
+        }
+
+        const today = event.target.closest("[data-ms-dtp-today]");
+        if (today) {
+          event.preventDefault();
+          const now = new Date();
+          selected = new Date(now.getFullYear(), now.getMonth(), now.getDate(), selected.getHours(), selected.getMinutes(), 0, 0);
+          view = new Date(selected.getFullYear(), selected.getMonth(), 1);
+          render();
+          return;
+        }
+      });
+
+      function onTimeChange() {
+        syncSelectedFromControls();
+        render();
+      }
+
+      if (hourSel) hourSel.addEventListener("change", onTimeChange);
+      if (minSel) minSel.addEventListener("change", onTimeChange);
+      if (ampmSel) ampmSel.addEventListener("change", onTimeChange);
+
+      if (applyBtn) {
+        applyBtn.addEventListener("click", event => {
+          event.preventDefault();
+          syncSelectedFromControls();
+          if (active) setDtFields(active.displayInput, active.isoInput, selected);
+          hide();
+        });
+      }
+
+      [startDtInput, endDtInput].forEach((inp) => {
+        inp.addEventListener("click", (event) => {
+          event.preventDefault();
+          openFor(inp === endDtInput ? "end" : "start", inp);
+        });
+      });
+    })();
+  }
+
 
   // ---------- Library filter dashboard ----------
   function setupLibraryFilterDashboard() {
@@ -4996,6 +5404,7 @@ const prsFormat = (key, fallback, value) => prsText(key, fallback).replace('%s',
     applyOwningOptionFilters();
     setupSessionsAjax();
     setupSessionRecorderModal();
+    setupManualSessionModal();
     setupLibraryFilterDashboard();
     setupSearchCoverOverlay();
     attachCoverImgGuards();

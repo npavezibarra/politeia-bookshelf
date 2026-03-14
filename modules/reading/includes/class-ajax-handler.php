@@ -5,6 +5,12 @@ if (!defined('ABSPATH')) {
 
 class Politeia_Reading_Ajax_Handler
 {
+        /**
+         * Cache for notes table book-link column.
+         *
+         * @var string|null
+         */
+        private static $notes_book_column = null;
 
         public static function init()
         {
@@ -15,6 +21,65 @@ class Politeia_Reading_Ajax_Handler
                 add_action('wp_ajax_politeia_save_note_comment', array(__CLASS__, 'save_note_comment'));
                 add_action('wp_ajax_politeia_load_more_feed', array(__CLASS__, 'load_more_feed'));
                 add_action('wp_ajax_politeia_update_note_visibility', array(__CLASS__, 'update_note_visibility'));
+        }
+
+        /**
+         * Notes table may use either legacy `book_id` or new `user_book_id`.
+         *
+         * @return string
+         */
+        private static function get_notes_book_column()
+        {
+                if (null !== self::$notes_book_column) {
+                        return self::$notes_book_column;
+                }
+
+                global $wpdb;
+                $table_notes = $wpdb->prefix . 'politeia_read_ses_notes';
+                $has_user_book_id = (bool) $wpdb->get_var(
+                        $wpdb->prepare("SHOW COLUMNS FROM {$table_notes} LIKE %s", 'user_book_id')
+                );
+
+                self::$notes_book_column = $has_user_book_id ? 'user_book_id' : 'book_id';
+                return self::$notes_book_column;
+        }
+
+        /**
+         * Resolve both identifiers from request payload.
+         *
+         * @return array{user_book_id:int,book_id:int}
+         */
+        private static function resolve_request_book_ids($user_id)
+        {
+                global $wpdb;
+
+                $user_book_id = isset($_POST['user_book_id']) ? absint($_POST['user_book_id']) : 0;
+                $book_id = isset($_POST['book_id']) ? absint($_POST['book_id']) : 0;
+
+                if (!$user_book_id && $book_id) {
+                        $user_book_id = (int) $wpdb->get_var(
+                                $wpdb->prepare(
+                                        "SELECT id FROM {$wpdb->prefix}politeia_user_books WHERE user_id=%d AND book_id=%d LIMIT 1",
+                                        $user_id,
+                                        $book_id
+                                )
+                        );
+                }
+
+                if (!$book_id && $user_book_id) {
+                        $book_id = (int) $wpdb->get_var(
+                                $wpdb->prepare(
+                                        "SELECT book_id FROM {$wpdb->prefix}politeia_user_books WHERE id=%d AND user_id=%d LIMIT 1",
+                                        $user_book_id,
+                                        $user_id
+                                )
+                        );
+                }
+
+                return array(
+                        'user_book_id' => (int) $user_book_id,
+                        'book_id' => (int) $book_id,
+                );
         }
 
         public static function load_more_feed()
@@ -34,6 +99,13 @@ class Politeia_Reading_Ajax_Handler
                 $table_books = $wpdb->prefix . 'politeia_books';
                 $table_book_authors = $wpdb->prefix . 'politeia_book_authors';
                 $table_authors = $wpdb->prefix . 'politeia_authors';
+                $notes_book_column = self::get_notes_book_column();
+
+                if ('user_book_id' === $notes_book_column) {
+                        $join_user_book = "JOIN {$table_ub} ub ON n.user_book_id = ub.id";
+                } else {
+                        $join_user_book = "JOIN {$table_ub} ub ON ub.user_id = n.user_id AND ub.book_id = n.book_id AND ub.deleted_at IS NULL";
+                }
 
                 $sql = $wpdb->prepare("
                         SELECT 
@@ -54,7 +126,7 @@ class Politeia_Reading_Ajax_Handler
                                 ub.cover_url AS user_cover,
                                 b.cover_url AS book_cover
                         FROM {$table_notes} n
-                        JOIN {$table_ub} ub ON n.user_book_id = ub.id
+                        {$join_user_book}
                         JOIN {$table_books} b ON ub.book_id = b.id
                         JOIN {$wpdb->users} u ON n.user_id = u.ID
                         WHERE n.visibility = 'public'
@@ -116,19 +188,17 @@ class Politeia_Reading_Ajax_Handler
 
                 $user_id = get_current_user_id();
                 $rs_id = isset($_POST['rs_id']) ? absint($_POST['rs_id']) : 0;
-                $user_book_id = isset($_POST['user_book_id']) ? absint($_POST['user_book_id']) : 0;
-                // Fallback for transition period if JS sends book_id but not user_book_id
-                if (!$user_book_id && !empty($_POST['book_id'])) {
-                        $book_id = absint($_POST['book_id']);
-                        global $wpdb;
-                        $user_book_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}politeia_user_books WHERE user_id=%d AND book_id=%d LIMIT 1", $user_id, $book_id));
-                }
+                $book_ids = self::resolve_request_book_ids($user_id);
+                $user_book_id = (int) $book_ids['user_book_id'];
+                $book_id = (int) $book_ids['book_id'];
+                $notes_book_column = self::get_notes_book_column();
+                $note_book_value = ('user_book_id' === $notes_book_column) ? $user_book_id : $book_id;
 
                 $raw_note = isset($_POST['note']) ? wp_unslash($_POST['note']) : '';
                 $note = wp_kses_post($raw_note);
                 $note_txt = trim(preg_replace('/\xc2\xa0|\x{00A0}/u', ' ', wp_strip_all_tags($note)));
 
-                if (!$rs_id || !$user_book_id || !$user_id || '' === $note_txt) {
+                if (!$rs_id || !$user_book_id || !$note_book_value || !$user_id || '' === $note_txt) {
                         wp_send_json_error(__('Missing required fields.', 'politeia-reading'), 400);
                 }
 
@@ -147,9 +217,9 @@ class Politeia_Reading_Ajax_Handler
 
                 $existing = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT id FROM {$table_notes} WHERE rs_id = %d AND user_book_id = %d AND user_id = %d LIMIT 1",
+                                "SELECT id FROM {$table_notes} WHERE rs_id = %d AND {$notes_book_column} = %d AND user_id = %d LIMIT 1",
                                 $rs_id,
-                                (int) $user_book_id,
+                                (int) $note_book_value,
                                 $user_id
                         )
                 );
@@ -185,7 +255,7 @@ class Politeia_Reading_Ajax_Handler
                         $table_notes,
                         array(
                                 'rs_id' => $rs_id,
-                                'user_book_id' => $user_book_id,
+                                $notes_book_column => $note_book_value,
                                 'user_id' => $user_id,
                                 'note' => $note,
                                 'created_at' => $now,
@@ -225,14 +295,13 @@ class Politeia_Reading_Ajax_Handler
 
                 $user_id = get_current_user_id();
                 $rs_id = isset($_POST['rs_id']) ? absint($_POST['rs_id']) : 0;
-                $user_book_id = isset($_POST['user_book_id']) ? absint($_POST['user_book_id']) : 0;
-                // Fallback
-                if (!$user_book_id && !empty($_POST['book_id'])) {
-                        $book_id = absint($_POST['book_id']);
-                        $user_book_id = $wpdb->get_var($wpdb->prepare("SELECT id FROM {$wpdb->prefix}politeia_user_books WHERE user_id=%d AND book_id=%d LIMIT 1", $user_id, $book_id));
-                }
+                $book_ids = self::resolve_request_book_ids($user_id);
+                $user_book_id = (int) $book_ids['user_book_id'];
+                $book_id = (int) $book_ids['book_id'];
+                $notes_book_column = self::get_notes_book_column();
+                $note_book_value = ('user_book_id' === $notes_book_column) ? $user_book_id : $book_id;
 
-                if (!$rs_id || !$user_book_id || !$user_id) {
+                if (!$rs_id || !$user_book_id || !$note_book_value || !$user_id) {
                         wp_send_json_error(__('Missing required fields.', 'politeia-reading'), 400);
                 }
 
@@ -251,9 +320,9 @@ class Politeia_Reading_Ajax_Handler
 
                 $note_row = $wpdb->get_row(
                         $wpdb->prepare(
-                                "SELECT note, updated_at FROM {$table_notes} WHERE rs_id = %d AND user_book_id = %d AND user_id = %d ORDER BY updated_at DESC LIMIT 1",
+                                "SELECT note, updated_at FROM {$table_notes} WHERE rs_id = %d AND {$notes_book_column} = %d AND user_id = %d ORDER BY updated_at DESC LIMIT 1",
                                 $rs_id,
-                                (int) $user_book_id,
+                                (int) $note_book_value,
                                 $user_id
                         )
                 );

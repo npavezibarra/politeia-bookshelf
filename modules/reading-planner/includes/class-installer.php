@@ -21,6 +21,8 @@ class Installer
 
 		$plan_subjects_table = $wpdb->prefix . 'politeia_plan_subjects';
 		$plan_participants_table = $wpdb->prefix . 'politeia_plan_participants';
+		$plan_participant_invites_table = $wpdb->prefix . 'politeia_plan_participant_invites';
+		$plan_participant_notifications_table = $wpdb->prefix . 'politeia_plan_participant_notifications';
 		$planned_sessions_table = $wpdb->prefix . 'politeia_planned_sessions';
 		$session_events_table = $wpdb->prefix . 'politeia_planned_session_events';
 		$plan_habit_table = $wpdb->prefix . 'politeia_plan_habit';
@@ -85,14 +87,61 @@ class Installer
 				'CREATE TABLE %s (
 			plan_id BIGINT UNSIGNED NOT NULL,
 			user_id BIGINT UNSIGNED NOT NULL,
-			role VARCHAR(50) NOT NULL,
-			notify_on VARCHAR(50) NOT NULL,
+			role VARCHAR(50) NOT NULL DEFAULT \'observer\',
+			notify_on VARCHAR(50) NOT NULL DEFAULT \'none\',
+			added_by_user_id BIGINT UNSIGNED NULL,
+			added_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			revoked_at DATETIME NULL,
 			PRIMARY KEY  (plan_id, user_id),
 			KEY idx_user (user_id),
 			KEY idx_role (role),
-			KEY idx_notify (notify_on)
+			KEY idx_notify (notify_on),
+			KEY idx_added_by (added_by_user_id),
+			KEY idx_role_active (role, revoked_at)
 		) ENGINE=InnoDB %s;',
 				$plan_participants_table,
+				$charset_collate
+			),
+			$plan_participant_invites_table => sprintf(
+				'CREATE TABLE %s (
+			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+			plan_id BIGINT UNSIGNED NOT NULL,
+			inviter_user_id BIGINT UNSIGNED NOT NULL,
+			invitee_email VARCHAR(191) NOT NULL,
+			invitee_user_id BIGINT UNSIGNED NULL,
+			role VARCHAR(50) NOT NULL DEFAULT \'observer\',
+			notify_on VARCHAR(50) NOT NULL DEFAULT \'none\',
+			status VARCHAR(20) NOT NULL DEFAULT \'pending\',
+			token_hash CHAR(64) NOT NULL,
+			expires_at DATETIME NOT NULL,
+			accepted_at DATETIME NULL,
+			declined_at DATETIME NULL,
+			revoked_at DATETIME NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			PRIMARY KEY  (id),
+			UNIQUE KEY uq_token_hash (token_hash),
+			KEY idx_plan_status (plan_id, status),
+			KEY idx_invitee_email_status (invitee_email, status),
+			KEY idx_invitee_user_status (invitee_user_id, status),
+			KEY idx_inviter_user (inviter_user_id),
+			KEY idx_notify_on (notify_on),
+			KEY idx_expires_at (expires_at)
+		) ENGINE=InnoDB %s;',
+				$plan_participant_invites_table,
+				$charset_collate
+			),
+			$plan_participant_notifications_table => sprintf(
+				'CREATE TABLE %s (
+			plan_id BIGINT UNSIGNED NOT NULL,
+			user_id BIGINT UNSIGNED NOT NULL,
+			notification_type VARCHAR(50) NOT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			PRIMARY KEY  (plan_id, user_id, notification_type),
+			KEY idx_user (user_id),
+			KEY idx_notification_type (notification_type)
+		) ENGINE=InnoDB %s;',
+				$plan_participant_notifications_table,
 				$charset_collate
 			),
 			$planned_sessions_table => sprintf(

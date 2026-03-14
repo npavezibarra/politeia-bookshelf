@@ -7,7 +7,7 @@
  * License: GPL-2.0-or-later
  */
 
-if ( ! defined( 'ABSPATH' ) ) {
+if (!defined('ABSPATH')) {
     exit;
 }
 
@@ -27,16 +27,17 @@ require_once __DIR__ . '/modules/user-baseline/init.php';
 require_once __DIR__ . '/modules/user-baseline/user-baseline.php';
 Politeia\UserBaseline\Init::register();
 
-register_activation_hook( __FILE__, array( '\\Politeia\\ReadingPlanner\\Activator', 'activate' ) );
-register_activation_hook( __FILE__, array( '\\Politeia\\UserBaseline\\Activator', 'activate' ) );
+register_activation_hook(__FILE__, array('\\Politeia\\ReadingPlanner\\Activator', 'activate'));
+register_activation_hook(__FILE__, array('\\Politeia\\UserBaseline\\Activator', 'activate'));
 
 /**
  * Register Politeia Bookshelf admin menu.
  */
-function politeia_bookshelf_register_menu() {
+function politeia_bookshelf_register_menu()
+{
     add_menu_page(
-        __( 'Politeia Bookshelf', 'politeia-bookshelf' ),
-        __( 'Politeia Bookshelf', 'politeia-bookshelf' ),
+        __('Politeia Bookshelf', 'politeia-bookshelf'),
+        __('Politeia Bookshelf', 'politeia-bookshelf'),
         'manage_options',
         'politeia-bookshelf',
         'politeia_bookshelf_render_admin_page',
@@ -46,8 +47,8 @@ function politeia_bookshelf_register_menu() {
 
     add_submenu_page(
         'politeia-bookshelf',
-        __( 'Overview', 'politeia-bookshelf' ),
-        __( 'Overview', 'politeia-bookshelf' ),
+        __('Overview', 'politeia-bookshelf'),
+        __('Overview', 'politeia-bookshelf'),
         'manage_options',
         'politeia-bookshelf',
         'politeia_bookshelf_render_admin_page'
@@ -55,11 +56,22 @@ function politeia_bookshelf_register_menu() {
 
     add_submenu_page(
         'politeia-bookshelf',
-        __( 'Google Books API', 'politeia-bookshelf' ),
-        __( 'Google Books API', 'politeia-bookshelf' ),
+        __('Google Books API', 'politeia-bookshelf'),
+        __('Google Books API', 'politeia-bookshelf'),
         'manage_options',
         'politeia-bookshelf-google-books',
         'politeia_bookshelf_render_admin_page'
     );
+
+    require_once __DIR__ . '/admin/functionalities-settings.php';
+
+    add_submenu_page(
+        'politeia-bookshelf',
+        __('Functionalities', 'politeia-bookshelf'),
+        __('Functionalities', 'politeia-bookshelf'),
+        'manage_options',
+        'politeia-bookshelf-functionalities',
+        'politeia_bookshelf_render_functionalities_page'
+    );
 }
-add_action( 'admin_menu', 'politeia_bookshelf_register_menu' );
+add_action('admin_menu', 'politeia_bookshelf_register_menu');
